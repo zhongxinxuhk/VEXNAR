@@ -725,7 +725,9 @@ export interface FindingRetest {
   finding_id: number;
   conversation_id: number | null;
   status: "pending" | "running" | "completed" | "failed" | "stopped";
-  verdict: "" | "reproduced" | "fixed" | "inconclusive";
+  verdict: "" | "reproduced" | "fixed" | "inconclusive" | "false_positive";
+  // 用途：retest=人工复测，verify=上报后独立验证（P1/R1.5）。
+  purpose?: "retest" | "verify";
   notes: string;
   summary: string;
   evidence: string;
@@ -943,6 +945,8 @@ export interface Settings {
   // worker/主 agent/对话)由 noa 接管上下文压缩,取代内置 compaction;每 run 读一次,对
   // 之后启动的 run 生效。
   noa_compaction?: boolean;
+  // 漏洞上报后自动开独立验证会话（P1/R1.5）。默认关；每次验证都是一次真实 LLM 调用。
+  finding_auto_verify?: boolean;
   // ---- 漏洞 IM 推送（渠道本身是独立资源，见 /api/notify/*，这里只有三项全局配置）----
   notify_enabled?: boolean; // 推送总开关，默认开；用于维护期一键止血
   notify_public_base_url?: string; // 漏洞详情回链的外部访问地址；空=消息不带回链

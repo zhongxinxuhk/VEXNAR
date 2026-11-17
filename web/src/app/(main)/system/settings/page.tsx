@@ -2,7 +2,15 @@
 
 import * as React from "react";
 
-import { CpuIcon, FlaskConicalIcon, KeyboardIcon, RadioTowerIcon, SearchIcon, ShieldAlertIcon } from "lucide-react";
+import {
+  CpuIcon,
+  FlaskConicalIcon,
+  KeyboardIcon,
+  RadioTowerIcon,
+  SearchIcon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +51,8 @@ export default function SystemSettingsPage() {
   const [injectWorker, setInjectWorker] = React.useState(true);
   // 实验功能:noa 上下文压缩(默认关)。
   const [noaCompaction, setNoaCompaction] = React.useState(false);
+  // 漏洞上报后自动独立验证(P1/R1.5,默认关)。
+  const [findingAutoVerify, setFindingAutoVerify] = React.useState(false);
   // 纯前端偏好：不走 /api/settings，直接读写 localStorage。
   const sendMode = useChatSendMode();
 
@@ -60,6 +70,7 @@ export default function SystemSettingsPage() {
     setInjectPlanner(s.constraints_inject_planner !== false);
     setInjectWorker(s.constraints_inject_worker !== false);
     setNoaCompaction(!!s.noa_compaction);
+    setFindingAutoVerify(!!s.finding_auto_verify);
   }, []);
 
   const saveWorkers = () => {
@@ -159,6 +170,22 @@ export default function SystemSettingsPage() {
       })
       .catch((e) => {
         setNoaCompaction(!v); // revert on failure
+        toast.error(`保存失败：${(e as Error).message}`);
+      });
+  };
+
+  const toggleFindingAutoVerify = (v: boolean) => {
+    setFindingAutoVerify(v); // optimistic
+    api
+      .setSettings({ finding_auto_verify: v })
+      .then((s) => {
+        apply(s);
+        toast.success(v ? "已开启上报后自动独立验证" : "已关闭自动独立验证", {
+          description: v ? "之后上报的漏洞会在后台创建验证会话；只有实测复现才自动确认。" : undefined,
+        });
+      })
+      .catch((e) => {
+        setFindingAutoVerify(!v); // revert on failure
         toast.error(`保存失败：${(e as Error).message}`);
       });
   };
@@ -401,6 +428,35 @@ export default function SystemSettingsPage() {
                 onCheckedChange={toggleInjectWorker}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-4 break-inside-avoid md:mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheckIcon className="size-4" />
+              漏洞验证
+            </CardTitle>
+            <CardDescription>
+              <b>上报后自动独立验证</b>：默认关闭。开启后，每次上报漏洞都会在后台创建一条独立验证会话
+              （复用「漏洞复测」Agent），由它用原 PoC 的关键条件重新触发；只有本次实测复现
+              （reproduced）才把漏洞从「待处理」提升为「已确认」，确认误报则标记为「误报」，
+              无法确认（inconclusive）保持原状态。每条验证都是一次真实 LLM 调用，会计费。
+              <br />
+              前提是「漏洞复测」Agent 已启用、并绑定了 get_finding_retest_context 与
+              record_finding_retest_result 两个工具。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <Label htmlFor="finding-auto-verify" className="text-sm font-normal text-muted-foreground">
+              上报后自动独立验证{findingAutoVerify ? " · 已开启" : " · 已关闭"}
+            </Label>
+            <Switch
+              id="finding-auto-verify"
+              checked={findingAutoVerify}
+              disabled={!loaded}
+              onCheckedChange={toggleFindingAutoVerify}
+            />
           </CardContent>
         </Card>
 

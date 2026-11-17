@@ -208,9 +208,9 @@ func (s *Server) findingRetestTools() []actool.CoreTool {
 				}
 				return jsonResult(map[string]any{"retest": r, "current_constraints": constraints})
 			}),
-		wrTool("record_finding_retest_result", "为当前复测会话保存唯一结论；原漏洞证据与报告保持不变。会话成功结束且结论为 fixed 时，系统自动将漏洞状态改为已修复；其他结论保留原状态。必须提供本次实际检查的证据，无法确认时写明阻塞原因。",
+		wrTool("record_finding_retest_result", "为当前复测会话保存唯一结论；原漏洞证据与报告保持不变。会话成功结束且结论为 fixed 时，系统自动将漏洞状态改为已修复；独立验证会话（verify）的 reproduced/false_positive 会把仍待处理的漏洞改成已确认/误报；其他结论保留原状态。必须提供本次实际检查的证据，无法确认时写明阻塞原因。",
 			objSchema(map[string]any{
-				"verdict":  map[string]any{"type": "string", "enum": []string{"reproduced", "fixed", "inconclusive"}},
+				"verdict":  map[string]any{"type": "string", "enum": []string{"reproduced", "fixed", "inconclusive", "false_positive"}},
 				"summary":  strParam("本次复测结论摘要"),
 				"evidence": strParam("Markdown：本次实际步骤、观察、对照、结论依据；无法确认则列出已检查内容和阻塞原因"),
 			}, "verdict", "summary", "evidence"), func(ctx context.Context, in json.RawMessage) (actool.Result, error) {
