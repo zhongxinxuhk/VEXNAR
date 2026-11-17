@@ -1,8 +1,10 @@
 package server
 
 import (
+	"strings"
 	"time"
 
+	"github.com/Autumn-27/norma/harness"
 	"github.com/zhongxinxuhk/vexnar/agent"
 	"github.com/zhongxinxuhk/vexnar/db"
 )
@@ -103,4 +105,41 @@ func (e *Engine) emptyTurnNudgeLimit() int {
 	default:
 		return n
 	}
+}
+
+// isLLMAuthError reports a deterministic credential/permission failure. The
+// provider layer already refuses to replay these (see isRetryableStreamError);
+// the intent layer must not spend its replay budget on them either, because
+// every remaining intent would fail the same way until the operator fixes the key.
+func isLLMAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	for _, marker := range []string{
+		"status 401", "status 403",
+		"invalid x-api-key", "invalid api key", "authentication_error", "permission_error",
+	} {
+		if strings.Contains(s, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// shouldParkTaskAfterLLMFailure decides whether one settled intent means the whole
+// task should stop claiming new work. Only the LLM layer qualifies:
+//   - 鉴权/权限错误：重跑多少次都一样，key 修好之前每条意图都会同样失败；
+//   - 意图级重跑额度已用完：已经按配置的上限试过，再领下一条只会重复刷日志。
+//
+// 其它错误（工具失败、步数上限、任务暂停/删除、额度故障转移）保持原有语义：
+// 只结算本条意图，由规划者/用户决定下一步。
+func shouldParkTaskAfterLLMFailure(reason harness.TerminalReason, err error, retriesUsed, maxRetries int) bool {
+	if err == nil || reason != harness.ReasonModelError || isTaskLLMRuntimeError(err) {
+		return false
+	}
+	if isLLMAuthError(err) {
+		return true
+	}
+	return retriesUsed >= maxRetries
 }

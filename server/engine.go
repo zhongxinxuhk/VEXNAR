@@ -151,6 +151,12 @@ type Engine struct {
 	// readiness reports whether a global LLM provider is configured — the signal behind
 	// Ready()/the llm_configured indicator. Wired once at startup; nil → not ready.
 	readiness func() bool
+
+	// parkOnLLMFailure is wired by the server to pause the whole task through the
+	// same lifecycle path as a user pause once the LLM layer is proven unusable
+	// (auth error, or the intent replay budget is spent). nil → keep the legacy
+	// behavior: settle only this intent and let workers claim the next one.
+	parkOnLLMFailure func(t *Task, cause error)
 }
 
 type taskRuntime struct {
@@ -715,6 +721,11 @@ func (e *Engine) SetAuthoritativeAgentResolver(fn func(t *Task) (*agent.Planner,
 	e.resolveAuthoritative = true
 }
 
+// SetTaskParkHook installs the server-side pause path used when a task's LLM
+// layer is proven unusable. Wired once at startup, before any task loop runs, so
+// no lock is needed on reads.
+func (e *Engine) SetTaskParkHook(fn func(t *Task, cause error)) { e.parkOnLLMFailure = fn }
+
 // snapshotFor returns the planner/worker a task should run on, from the task-router
 // resolver. nil,nil means the task is deliberately unavailable (e.g. an exhausted
 // failover chain); there is no global-pair fallback.
@@ -1028,9 +1039,11 @@ func (e *Engine) runIntent(ctx context.Context, t *Task, name string, worker *ag
 	// 未暂停/未终止/未取消【且未进入收尾】时重试；否则让位给对应分支处理(收尾期不
 	// 再重试,避免退避挤占其他 worker 的优雅收尾窗口)。
 	maxRetries, retryBackoff := e.modelErrorRetryPolicy()
+	retriesUsed := 0
 	for attempt := 1; attempt <= maxRetries &&
-		retryableWorkerModelError(reason, err) &&
+		retryableWorkerModelError(reason, err) && !isLLMAuthError(err) &&
 		workCtx.Err() == nil && ectx.Err() == nil && !e.IsPaused(t.ID) && !e.isSettling(t.ID); attempt++ {
+		retriesUsed = attempt
 		log.Printf("[worker %s] task %s 意图 #%d model_error 收场，%v 后重试 (%d/%d)",
 			name, t.ID, intent.ID, retryBackoff, attempt, maxRetries)
 		if sleepCtx(workCtx, retryBackoff) {
@@ -1152,6 +1165,16 @@ func (e *Engine) runIntent(ctx context.Context, t *Task, name string, worker *ag
 	}
 	log.Printf("[worker %s] task %s 意图 #%d 结束: %s (写回 %s)", name, t.ID, intent.ID, state, wrote)
 	e.touch(t.ID)
+	// 重试额度用完（或鉴权错误根本不该重试）后停的是整个任务：LLM 层已经确认不可用，
+	// 再让 worker 领下一条意图只会把同样的失败与日志刷一遍。其余情况保持原有语义
+	// ——只结算本条意图。
+	if state == "blocked" && e.parkOnLLMFailure != nil && ectx.Err() == nil &&
+		!e.IsPaused(t.ID) && !e.IsDeleting(t.ID) && !e.isSettling(t.ID) &&
+		shouldParkTaskAfterLLMFailure(reason, err, retriesUsed, maxRetries) {
+		e.parkOnLLMFailure(t, agent.Causef("paused_by_orchestrator",
+			"LLM 不可用，任务已自动暂停",
+			"LLM 调用失败已达到重试上限（或鉴权失败）。本次 Planner/Worker 运行被取消，运行中的意图退回 frontier(open)；修复模型配置后继续任务即可重新领取"))
+	}
 	t.NotifyDone(intent.ID) // results changed the graph -> wake the planner (with the just-finished intent id)
 	return true
 }
