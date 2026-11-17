@@ -1,19 +1,68 @@
 <div align="center">
 
+<img src="assets/logo.png" width="108" alt="VEXNAR" />
+
 # VEXNAR
 
-AI 自主渗透测试系统（Go 后端 + Next.js 前端）
+**AI 自主渗透测试系统** · LLM 多 Agent 驱动的攻击面探索与漏洞验证
 
+<sub>Go 单体后端 · Next.js 内嵌前端 · PostgreSQL 双图</sub>
 
-🌐 **项目仓库**： [https://github.com/zhongxinxuhk/VEXNAR](https://github.com/zhongxinxuhk/VEXNAR)
+<br />
+
+![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![License](https://img.shields.io/badge/License-AGPL--3.0-A42E2B)
+![Stars](https://img.shields.io/github/stars/zhongxinxuhk/VEXNAR?style=social)
+
+<br />
+
+[项目仓库](https://github.com/zhongxinxuhk/VEXNAR) · [快速安装](#安装) · [截图预览](#截图预览) · [技术架构](#系统技术架构) · [交流群](#交流群)
 
 </div>
 
 ---
 
+## 目录
+
+- [核心特性](#核心特性)
+- [最近更新](#最近更新)
+- [截图预览](#截图预览)
+- [安装](#安装)
+- [更新升级](#更新升级)
+- [配置](#配置)
+- [开发](#开发)
+- [系统技术架构](#系统技术架构)
+- [交流群](#交流群)
+- [许可与免责声明](#许可与免责声明)
+
+---
+
+## 核心特性
+
+| | 能力 | 说明 |
+| :---: | --- | --- |
+| 🧭 | **双图驱动** | 探索图记录意图 / 事实 / 漏洞的血缘链，资产图沉淀跨任务复用的资产真值；锚点把「在想什么」和「测到了什么」连起来 |
+| 🤖 | **自主闭环** | planner 规划 → worker 执行 → 写回触发下一轮；事件驱动、无状态会话 + 跨轮共享 todolist，多步攻击链稳定推进 |
+| 🧪 | **真实执行** | Kali / Bash / HTTP 全量工具面，记录型 MITM 代理逐请求留痕，证据可回溯、可导出 |
+| 🛡️ | **人在环路** | 危险命令与删除类接口内置拦截，审批记录可展开；随时通过对话介入、纠偏或接管 |
+| 🎯 | **判真而非猜测** | 8 类漏洞基线、OAST 带外回连、独立验证器：只有实测复现（`reproduced`）才进入 `confirmed` |
+| 📮 | **交付与集成** | 漏洞推送（钉钉 / 飞书 / 企业微信 / Webhook / Telegram / 邮件）、报告导出、ScopeSentry 资产同步、MCP / Skills |
+
+---
+
+## 最近更新
+
+- ✅ **品牌统一为 VEXNAR**：侧边栏、登录页、应用图标、favicon 与后端启动横幅全部换成新版标识。
+- ✅ **LLM 不可用时自动止损**：鉴权失败（401/403）不再做意图级重跑；重跑次数用尽后任务自动暂停，不再领完整个意图队列刷屏。
+- ✅ **P0 能力落地**：凭据与会话成为任务级一等资产、capability 缺口查询、任务度量（MTTD / 类目命中 / 无效意图占比）均已开发完成，详见 [CHANGELOG](CHANGELOG.md)。
+
+---
+
 ## 截图预览
 
-> 以下为运行界面截图；完整交互请按下方「[安装](#安装)」本地部署后体验。
+> 截图取自本地演示实例，界面细节可能随版本略有差异；完整交互请按下方「[安装](#安装)」本地部署后体验。
 
 | 仪表盘（总览 / Token 消耗 / 活动流） | 任务列表 |
 | :---: | :---: |
@@ -42,7 +91,6 @@ AI 自主渗透测试系统（Go 后端 + Next.js 前端）
 | 拦截审批 | 后端日志 |
 | :---: | :---: |
 | ![拦截](screenshots/intercept.png) | ![日志](screenshots/logs.png) |
-
 
 ---
 
@@ -128,7 +176,7 @@ CGO_ENABLED=0 go build -tags embedui -o vexnar ./cmd/vexnar
 
 ```bash
 ./build.sh --release
-# 产物：dist/vexnar-0.3.3-*.zip
+# 产物：dist/vexnar-<version>-*.zip
 ```
 
 UPX 自解压二进制可能与部分 Linux 内核、虚拟化环境或安全策略不兼容，因此默认不启用。可用 `VEXNAR_TARGETS` 自定义目标；确认目标运行环境兼容时，可显式传入 `--upx` 进一步缩小二进制：
@@ -174,7 +222,7 @@ cd VEXNAR
 ```bash
 cd VEXNAR
 git pull                       # 更新 compose / 脚本（可选）
-# 指定版本：在 .env 设 VEXNAR_TAG=v0.2.0；不设则用 latest
+# 指定版本：在 .env 设 VEXNAR_TAG=vX.Y.Z；不设则用 latest
 docker compose pull vexnar
 docker compose up -d vexnar     # 换新镜像重启 → 自动迁移 schema
 docker image prune -f          # 清理旧镜像（可选）
