@@ -4,10 +4,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/Autumn-27/artex/agent"
-	"github.com/Autumn-27/artex/db"
-	"github.com/Autumn-27/artex/llmpool"
 	"github.com/Autumn-27/norma/llm"
+	"github.com/zhongxinxuhk/vexnar/agent"
+	"github.com/zhongxinxuhk/vexnar/db"
+	"github.com/zhongxinxuhk/vexnar/llmpool"
 )
 
 // LLM 轮询(故障转移)的服务端接线。设计见 docs/LLM轮询设计.md：

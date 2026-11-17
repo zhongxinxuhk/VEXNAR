@@ -13,10 +13,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Autumn-27/artex/agent"
-	"github.com/Autumn-27/artex/db"
-	"github.com/Autumn-27/artex/intercept"
-	"github.com/Autumn-27/artex/sidequestion"
+	"github.com/zhongxinxuhk/vexnar/agent"
+	"github.com/zhongxinxuhk/vexnar/db"
+	"github.com/zhongxinxuhk/vexnar/intercept"
+	"github.com/zhongxinxuhk/vexnar/sidequestion"
 )
 
 const (
