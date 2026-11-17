@@ -1447,3 +1447,37 @@ CREATE TABLE IF NOT EXISTS oast_hits (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_oast_hits_token ON oast_hits(token, id DESC);
+
+-- R2.2 能力模型：capability 是「已经能做什么」，finding 是「已经证实的问题」。
+-- 两者多对多：一个漏洞可支撑多项能力，一项能力也可能由多个漏洞共同支撑。
+CREATE TABLE IF NOT EXISTS capabilities (
+    id                BIGSERIAL PRIMARY KEY,
+    task_id           BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    kind              TEXT NOT NULL,
+    asset_id          BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+    scope             TEXT NOT NULL DEFAULT '',
+    strength          TEXT NOT NULL DEFAULT '',
+    status            TEXT NOT NULL DEFAULT 'active',  -- active/expired/revoked/suspected
+    origin            TEXT NOT NULL DEFAULT 'explicit', -- explicit/derived
+    confidence        REAL NOT NULL DEFAULT 1.0 CHECK (confidence >= 0 AND confidence <= 1),
+    derivation_rule   TEXT NOT NULL DEFAULT '',
+    source_finding_id BIGINT REFERENCES findings(id) ON DELETE SET NULL,
+    evidence          TEXT NOT NULL DEFAULT '',
+    attrs             JSONB NOT NULL DEFAULT '{}'::jsonb,
+    expires_at        TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_capabilities_scope
+    ON capabilities(task_id, kind, COALESCE(asset_id, 0), COALESCE(NULLIF(scope, ''), '-'));
+CREATE INDEX IF NOT EXISTS idx_capabilities_task ON capabilities(task_id, kind) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS finding_capabilities (
+    finding_id    BIGINT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    capability_id BIGINT NOT NULL REFERENCES capabilities(id) ON DELETE CASCADE,
+    relation      TEXT NOT NULL DEFAULT 'provides', -- provides；为 R2.3 的 requires 预留
+    rule          TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (finding_id, capability_id, relation)
+);
+CREATE INDEX IF NOT EXISTS idx_finding_capabilities_cap ON finding_capabilities(capability_id);
