@@ -567,6 +567,7 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	oastTools := agent.NewOASTTools(s.oastStore(), oastTaskID, s.oastBaseURL)
 	wk := agent.NewWorker(workerRuntime, "task-router", s.m.dir, tx, window, s.agentMaxTurns("worker"), oastTools...)
 	wk.SetFindingRecorder(s.evidenceStore())
+	wk.SetAfterFinding(s.enqueueFindingVerification) // 上报后自动排独立验证（P1/R1.5，设置项 finding_auto_verify）
 	wk.SetCompactionWindowResolver(workerRuntime.CompactionWindow)
 	wk.SetNonStreaming(workerRuntime.nonStreaming) // 按任务当前激活 profile 的流式开关(每轮读)
 	wk.SetMaxTokens(workerRuntime.maxTokens)       // 同上,输出上限也跟随当前激活 profile
@@ -577,6 +578,7 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	wk.SetConstraintInject(s.constraintInjectWorker) // 操作约束注入 worker(可配置,默认开)
 	pl := agent.NewPlanner(plannerRuntime, "task-router", s.m.dir, tx, plannerRuntime.CompactionWindow(), s.agentMaxTurns("planner"))
 	pl.SetFindingRecorder(s.evidenceStore())
+	pl.SetAfterFinding(s.enqueueFindingVerification)
 	pl.SetCompactionWindowResolver(plannerRuntime.CompactionWindow)
 	pl.SetNonStreaming(plannerRuntime.nonStreaming)
 	pl.SetMaxTokens(plannerRuntime.maxTokens)
@@ -593,6 +595,7 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	pl.SetCompactor(agent.NewCompactor(plannerRuntime, "task-router"))
 	main := agent.NewMainAgent(mainRuntime, "task-router", s.m.dir, tx, mainRuntime.CompactionWindow(), s.agentMaxTurns("mainagent"))
 	main.SetFindingRecorder(s.evidenceStore())
+	main.SetAfterFinding(s.enqueueFindingVerification)
 	main.SetCompactionWindowResolver(mainRuntime.CompactionWindow)
 	main.SetNonStreaming(mainRuntime.nonStreaming)
 	main.SetMaxTokens(mainRuntime.maxTokens)
