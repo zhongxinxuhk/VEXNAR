@@ -220,6 +220,8 @@ CGO_ENABLED=0 go build -tags embedui -o vexnar ./cmd/vexnar
 
 **OAST（带外回连）**：盲 SSRF / 盲 XXE / 盲命令注入靠回调判真。回调地址默认取本机 `http://127.0.0.1:8787`，部署在公网或反代后面时必须显式配置对外可达的基址：`export VEXNAR_OAST_BASE=https://oast.example.com`（也可写进 `settings` 表的 `oast_public_base`）。回调入口是 `GET|POST /oast/<token>`，无需登录，靠随机 token 保护；读取命中走 agent 工具 `oast_poll`。
 
+**漏洞独立验证**：默认只登记、不自动判真。`PUT /api/settings` 传 `{"finding_auto_verify":true}` 后，`report_finding` 落库会在后台排一条独立验证会话（复用 retester Agent）：只有本次实测复现（`reproduced`）才把 `pending` 提升为 `confirmed`，环境不足只能给 `inconclusive`，状态不变。每条验证都是一次真实 LLM 运行，默认关闭是有意为之。
+
 **并发**：每个任务的 work agent 数在「系统设置」里配置（默认 3）。
 
 **常用参数**：`./start.sh -addr :8787 -proxy :8788`（`-addr` 前端+API，`-proxy` 流量录制代理）。启动脚本会把参数原样透传给 `vexnar`。

@@ -52,11 +52,15 @@ func compactIntents(ns []*db.Node, parentsOf, yieldsOf map[int64][]int64) []map[
 // One ToolSet is created per planner/worker run; per-run signals live here.
 type ToolSet struct {
 	findingRecorder FindingRecorder
-	as              *db.AssetStore   // asset store (optional; nil = asset tools not available)
-	cs              *db.CompanyStore // company store (optional)
-	ts              *db.ExplorationStore
-	worker          string
-	taskID          int64 // PG tasks.id; 0 when unknown (tests / orchestrator cross-task reads)
+	// afterFinding, if set, is called with the new finding's ID after report_finding
+	// commits. The server uses it to enqueue an independent verification session
+	// (P1 / R1.5); it must not block the tool call.
+	afterFinding func(findingID int64)
+	as           *db.AssetStore   // asset store (optional; nil = asset tools not available)
+	cs           *db.CompanyStore // company store (optional)
+	ts           *db.ExplorationStore
+	worker       string
+	taskID       int64 // PG tasks.id; 0 when unknown (tests / orchestrator cross-task reads)
 	// coverageDisabled mirrors tasks.coverage_enabled=false. Stored inverted so the
 	// zero value (all existing ToolSet constructions) means ENABLED — matching the
 	// DB default (true). When true: graphOverviewData drops the coverage block, the
@@ -1275,6 +1279,9 @@ func (t *ToolSet) addFinding() actool.CoreTool {
 			t.notify()
 		}
 		t.writes.Findings++
+		if t.afterFinding != nil && recorded != nil && recorded.FindingID > 0 {
+			t.afterFinding(recorded.FindingID)
+		}
 		// Keep the first line's node-ID contract for existing reporter triggers.
 		for i := range recorded.Traffic.Bindings {
 			recorded.Traffic.Bindings[i].Snapshot.ReqHead = ""

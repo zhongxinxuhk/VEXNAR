@@ -59,10 +59,6 @@ func (s *Server) listFindingRetests(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
-	pg := s.pg(w)
-	if pg == nil {
-		return
-	}
 	id, ok := pathInt(r, "id")
 	if !ok || id <= 0 {
 		writeErr(w, 400, "bad finding id")
@@ -79,51 +75,66 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "复测补充说明最多 4000 个字符")
 		return
 	}
-	f, err := pg.GetFinding(id)
-	if err != nil {
-		writeErr(w, 500, err.Error())
+	retest, created, code, msg := s.enqueueRetest(r.Context(), id, req.Notes, db.RetestPurposeRetest)
+	if msg != "" {
+		writeErr(w, code, msg)
 		return
 	}
+	if created {
+		code = http.StatusAccepted
+	}
+	writeJSON(w, code, map[string]any{"retest": retest, "created": created})
+}
+
+// enqueueRetest 是人工复测与报告后独立验证的共用入口。一个 finding 同时只能有
+// 一条活跃会话（DB 部分唯一索引），已有则复用并返回 created=false。
+func (s *Server) enqueueRetest(ctx context.Context, findingID int64, notes, purpose string) (*db.FindingRetest, bool, int, string) {
+	if s.m == nil || s.m.pg == nil {
+		return nil, false, http.StatusInternalServerError, "数据库不可用"
+	}
+	pg := s.m.pg
+	f, err := pg.GetFinding(findingID)
+	if err != nil {
+		return nil, false, http.StatusInternalServerError, err.Error()
+	}
 	if f == nil {
-		writeErr(w, 404, "finding not found")
-		return
+		return nil, false, http.StatusNotFound, "finding not found"
 	}
 	a, err := pg.GetAgentByKey(db.FindingRetestAgentKey)
 	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
+		return nil, false, http.StatusInternalServerError, err.Error()
 	}
 	if a == nil || !a.Enabled {
-		writeErr(w, 409, "漏洞复测 Agent 不存在或未启用，请在 Agent 管理中配置 retester")
-		return
+		return nil, false, http.StatusConflict, "漏洞复测 Agent 不存在或未启用，请在 Agent 管理中配置 retester"
 	}
 	for _, key := range []string{"get_finding_retest_context", "record_finding_retest_result"} {
 		t, err := pg.GetTool(key)
 		if err != nil {
-			writeErr(w, 500, err.Error())
-			return
+			return nil, false, http.StatusInternalServerError, err.Error()
 		}
 		if t == nil || !t.Enabled || !slices.Contains(t.Agents, a.Key) {
-			writeErr(w, 409, "请为复测 Agent 启用并绑定工具："+key)
-			return
+			return nil, false, http.StatusConflict, "请为复测 Agent 启用并绑定工具：" + key
 		}
 	}
 	if s.resolveChatAgent(&db.Conversation{AgentKey: a.Key}) == nil {
-		writeErr(w, 503, s.chatUnavailableReason())
-		return
+		return nil, false, http.StatusServiceUnavailable, s.chatUnavailableReason()
 	}
-	if s.ctx.Err() != nil {
-		writeErr(w, 503, "服务正在停止")
-		return
+	if s.ctx != nil && s.ctx.Err() != nil {
+		return nil, false, http.StatusServiceUnavailable, "服务正在停止"
 	}
-	retest, conv, created, err := pg.CreateFindingRetest(r.Context(), id, req.Notes)
+	var retest *db.FindingRetest
+	var conv *db.Conversation
+	var created bool
+	if purpose == db.RetestPurposeVerify {
+		retest, conv, created, err = pg.CreateFindingVerification(ctx, findingID, notes)
+	} else {
+		retest, conv, created, err = pg.CreateFindingRetest(ctx, findingID, notes)
+	}
 	if errors.Is(err, sql.ErrNoRows) {
-		writeErr(w, 404, "finding not found")
-		return
+		return nil, false, http.StatusNotFound, "finding not found"
 	}
 	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
+		return nil, false, http.StatusInternalServerError, err.Error()
 	}
 	if created {
 		busyKey := s.convBusyKey(conv.ID)
@@ -132,11 +143,41 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 		s.chatMu.Unlock()
 		s.runConversation(conv, retest.InitialMessage(), busyKey)
 	}
-	code := http.StatusOK
-	if created {
-		code = http.StatusAccepted
+	return retest, created, http.StatusOK, ""
+}
+
+// settingFindingAutoVerify：报告后自动开独立验证。默认关闭，PUT /api/settings 可改。
+const settingFindingAutoVerify = "finding_auto_verify"
+
+// findingAutoVerifyEnabled 读平台设置；默认关闭，显式设置为 true 才自动开验证会话
+// （每次验证都是一次真实 LLM 运行，不能被默认值悄悄放大成本）。
+func (s *Server) findingAutoVerifyEnabled() bool {
+	if s.m == nil || s.m.pg == nil {
+		return false
 	}
-	writeJSON(w, code, map[string]any{"retest": retest, "created": created})
+	v, ok, err := s.m.pg.GetSetting(settingFindingAutoVerify)
+	if err != nil || !ok {
+		return false
+	}
+	return strings.TrimSpace(v) == "true"
+}
+
+// enqueueFindingVerification 由 report_finding 落库后触发：不阻塞工具调用，
+// 在后台排一条独立验证会话。验证失败/无法确认不会改漏洞状态。
+func (s *Server) enqueueFindingVerification(findingID int64) {
+	if findingID <= 0 || !s.findingAutoVerifyEnabled() {
+		return
+	}
+	go func() {
+		retest, created, code, msg := s.enqueueRetest(context.Background(), findingID, "由系统在漏洞上报后自动发起：请独立复现，不依赖原证据结论。", db.RetestPurposeVerify)
+		if msg != "" {
+			log.Printf("[verify %d] 未排入（%d）：%s", findingID, code, msg)
+			return
+		}
+		if created {
+			log.Printf("[verify %d] 已排入独立验证 #%d", findingID, retest.ID)
+		}
+	}()
 }
 
 // Both tools derive the finding from server-owned conversation context. Tool

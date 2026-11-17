@@ -23,6 +23,18 @@
 
 - 无。
 
+### 漏洞独立验证（P1 / R1.5）
+
+#### 新增的功能
+
+- **上报后自动独立验证**：开启设置项 `finding_auto_verify`（`PUT /api/settings`，默认关）后，`report_finding` 落库会异步排一条独立验证会话。验证复用 retester Agent 与既有的 `finding_retests` 表，新增 `purpose` 列区分 `retest`（人工复测）与 `verify`（自动验证）。
+- **确认状态门禁**：只有 `verify` 会话成功结束且结论为 `reproduced` 时，才会把漏洞从 `pending` 提升为 `confirmed`；`inconclusive`、失败、中断都不改状态。人工复测与人工分诊的原有语义不变（`fixed` 仍按原逻辑置为已修复）。
+- **可配置**：`GET/PUT /api/settings` 增加 `finding_auto_verify`；关闭时行为与之前完全一致，不产生额外 LLM 调用。
+
+#### 修复的问题
+
+- 无。
+
 ## [0.3.15] - 2026-10-07
 
 ### 拦截

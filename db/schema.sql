@@ -1128,6 +1128,19 @@ CREATE INDEX IF NOT EXISTS idx_finding_retests_history ON finding_retests(findin
 CREATE UNIQUE INDEX IF NOT EXISTS idx_finding_retests_active ON finding_retests(finding_id)
     WHERE status IN ('pending','running');
 
+-- P1（R1.5）：复测与独立验证共用一张表，用 purpose 区分语义：
+--   retest = 人工发起的复测，verdict 不改变待处理状态（保留人工分诊权）；
+--   verify = 报告后自动/独立验证，reproduced 才把 pending 提升为 confirmed。
+ALTER TABLE finding_retests ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'retest';
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='ck_finding_retests_purpose') THEN
+        ALTER TABLE finding_retests ADD CONSTRAINT ck_finding_retests_purpose
+            CHECK (purpose IN ('retest','verify'));
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_finding_retests_verify ON finding_retests(finding_id, purpose, status);
+
 -- 删除会话保留复测记录，同时解除尚未结束的复测占用。
 CREATE OR REPLACE FUNCTION stop_deleted_conversation_retest() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

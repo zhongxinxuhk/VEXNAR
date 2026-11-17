@@ -12,6 +12,12 @@ import (
 
 const FindingRetestAgentKey = "retester"
 
+// 复测记录的用途：人工复测 vs 报告后的独立验证（P1 / R1.5）。
+const (
+	RetestPurposeRetest = "retest"
+	RetestPurposeVerify = "verify"
+)
+
 var ErrRetestNotRunning = errors.New("本次复测已结束或尚未开始，请从漏洞详情发起新的复测")
 
 // FindingRetest is an immutable historical test once its conversation turn ends.
@@ -23,6 +29,7 @@ type FindingRetest struct {
 	Status         string          `json:"status"`
 	Verdict        string          `json:"verdict"`
 	Notes          string          `json:"notes"`
+	Purpose        string          `json:"purpose"`
 	Snapshot       json.RawMessage `json:"snapshot,omitempty"`
 	Summary        string          `json:"summary"`
 	Evidence       string          `json:"evidence"`
@@ -32,7 +39,7 @@ type FindingRetest struct {
 	FinishedAt     *time.Time      `json:"finished_at"`
 }
 
-const retestCols = `id, finding_id, conversation_id, status, verdict, notes, summary, evidence, error, created_at, started_at, finished_at`
+const retestCols = `id, finding_id, conversation_id, status, verdict, notes, summary, evidence, error, created_at, started_at, finished_at, purpose`
 
 // ActiveFindingRetest is the small status payload polled by the findings list.
 // Finding IDs use the same string representation as the findings API.
@@ -64,7 +71,7 @@ func (d *DB) ListActiveFindingRetests(ctx context.Context) ([]ActiveFindingRetes
 func scanRetest(row interface{ Scan(...any) error }) (*FindingRetest, error) {
 	r := &FindingRetest{}
 	err := row.Scan(&r.ID, &r.FindingID, &r.ConversationID, &r.Status, &r.Verdict, &r.Notes,
-		&r.Summary, &r.Evidence, &r.Error, &r.CreatedAt, &r.StartedAt, &r.FinishedAt)
+		&r.Summary, &r.Evidence, &r.Error, &r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.Purpose)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -75,6 +82,19 @@ func scanRetest(row interface{ Scan(...any) error }) (*FindingRetest, error) {
 // and persists the first message. A finding row lock deduplicates simultaneous
 // clicks across clients; an existing active run is returned without dispatching.
 func (d *DB) CreateFindingRetest(ctx context.Context, findingID int64, notes string) (*FindingRetest, *Conversation, bool, error) {
+	return d.createFindingRetest(ctx, findingID, notes, RetestPurposeRetest)
+}
+
+// CreateFindingVerification 与人工复测共用一张表、同一套并发去重，只是用途标记为
+// verify：会话成功结束且结论为 reproduced 时，才把 pending 漏洞提升为 confirmed。
+func (d *DB) CreateFindingVerification(ctx context.Context, findingID int64, notes string) (*FindingRetest, *Conversation, bool, error) {
+	return d.createFindingRetest(ctx, findingID, notes, RetestPurposeVerify)
+}
+
+func (d *DB) createFindingRetest(ctx context.Context, findingID int64, notes, purpose string) (*FindingRetest, *Conversation, bool, error) {
+	if purpose != RetestPurposeVerify {
+		purpose = RetestPurposeRetest
+	}
 	tx, err := d.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, false, err
@@ -106,8 +126,8 @@ func (d *DB) CreateFindingRetest(ctx context.Context, findingID int64, notes str
 	if err != nil {
 		return nil, nil, false, err
 	}
-	r, err = scanRetest(tx.QueryRowContext(ctx, `INSERT INTO finding_retests(finding_id,conversation_id,notes,snapshot) VALUES ($1,$2,$3,$4) RETURNING `+retestCols,
-		findingID, c.ID, strings.TrimSpace(notes), snapshot))
+	r, err = scanRetest(tx.QueryRowContext(ctx, `INSERT INTO finding_retests(finding_id,conversation_id,notes,snapshot,purpose) VALUES ($1,$2,$3,$4,$5) RETURNING `+retestCols,
+		findingID, c.ID, strings.TrimSpace(notes), snapshot, purpose))
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -124,6 +144,13 @@ func (d *DB) CreateFindingRetest(ctx context.Context, findingID int64, notes str
 }
 
 func (r *FindingRetest) InitialMessage() string {
+	if r.Purpose == RetestPurposeVerify {
+		msg := fmt.Sprintf("请独立验证漏洞 #%d。先调用 get_finding_retest_context 读取原始证据与约束，但不要直接采信原结论：重新触发一次，只有本次实测复现才算 reproduced；无法触发或环境不允许就写 inconclusive 并说明已检查内容。最后调用 record_finding_retest_result 保存结论，不要修改漏洞本身。", r.FindingID)
+		if r.Notes != "" {
+			msg += "\n\n验证说明：\n" + r.Notes
+		}
+		return msg
+	}
 	msg := fmt.Sprintf("请复测漏洞 #%d。先调用 get_finding_retest_context 读取本会话关联的原始证据与约束，再执行针对性验证，最后调用 record_finding_retest_result 保存结论。", r.FindingID)
 	if r.Notes != "" {
 		msg += "\n\n本次复测补充说明：\n" + r.Notes
@@ -225,11 +252,11 @@ func (d *DB) FinishFindingRetest(id int64, status, reason string) error {
 	if err != nil {
 		return err
 	}
-	var finalStatus, verdict string
+	var finalStatus, verdict, purpose string
 	err = tx.QueryRow(`UPDATE finding_retests SET
 	status=CASE WHEN $2='completed' AND verdict='' THEN 'failed' ELSE $2 END,
 	error=CASE WHEN $2='completed' AND verdict='' THEN 'Agent 未保存复测结论，请查看会话后重新复测' ELSE $3 END,
-	finished_at=now() WHERE id=$1 AND status IN ('pending','running') RETURNING status,verdict`, id, status, reason).Scan(&finalStatus, &verdict)
+	finished_at=now() WHERE id=$1 AND status IN ('pending','running') RETURNING status,verdict,purpose`, id, status, reason).Scan(&finalStatus, &verdict, &purpose)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil // A replay must not overwrite a later manual triage decision.
 	}
@@ -247,6 +274,14 @@ func (d *DB) FinishFindingRetest(id int64, status, reason string) error {
 		// tx.QueryRow/tx.Exec），没有可传递的取消信号，硬加一个 ctx 参数会
 		// 牵动 server 侧调用点与多处测试，超出本次改动的范围。
 		if _, _, _, _, err := SetFindingStatusTx(context.Background(), tx, findingID, FindingFixed); err != nil {
+			return err
+		}
+	}
+	// P1 / R1.5：独立验证复现成功 → 视为已确认；待处理之前的状态不会被回退，
+	// 已经是 confirmed/fixed/误报等人工结论的保持不动（SetFindingStatusTx 内部
+	// 按状态迁移规则处理并登记事件）。
+	if finalStatus == "completed" && verdict == "reproduced" && purpose == RetestPurposeVerify {
+		if _, _, _, _, err := SetFindingStatusTx(context.Background(), tx, findingID, FindingConfirmed); err != nil {
 			return err
 		}
 	}
