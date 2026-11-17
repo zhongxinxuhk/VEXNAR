@@ -2050,5 +2050,7 @@ func (t *ToolSet) PlannerTools() []actool.CoreTool {
 		t.addTaskScope(),
 		// list_untested_assets：按需查本任务范围内未测资产(类型+分页)，自行决定补测。
 		t.listUntestedAssets(),
+		// list_vuln_classes：漏洞类目基线（P0/R1.2）——某资产还有哪些类目没测、怎么测、什么算测到。
+		t.listVulnClasses(),
 	}
 }

@@ -1384,3 +1384,34 @@ CREATE INDEX IF NOT EXISTS idx_notification_deliveries_batch
     ON notification_deliveries(batch_id) WHERE batch_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_notification_deliveries_channel
     ON notification_deliveries(channel_id, id DESC);
+
+-- ---------------------------------------------------------------------------
+-- OAST：带外回连（盲 SSRF / 盲 XXE / 盲命令注入等无回显漏洞的唯一判真手段）。
+-- token 是能力凭据：/oast/{token} 对外无鉴权，靠 32 位十六进制随机串保护；
+-- 读取命中仍需 JWT（工具/接口走 /api）。
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS oast_tokens (
+    token          TEXT PRIMARY KEY,
+    task_id        BIGINT,
+    exploration_id BIGINT,
+    note           TEXT NOT NULL DEFAULT '',
+    hit_count      INTEGER NOT NULL DEFAULT 0,
+    last_hit_at    TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_oast_tokens_task ON oast_tokens(task_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS oast_hits (
+    id          BIGSERIAL PRIMARY KEY,
+    token       TEXT NOT NULL REFERENCES oast_tokens(token) ON DELETE CASCADE,
+    method      TEXT NOT NULL DEFAULT '',
+    host        TEXT NOT NULL DEFAULT '',
+    path        TEXT NOT NULL DEFAULT '',
+    query       TEXT NOT NULL DEFAULT '',
+    remote_addr TEXT NOT NULL DEFAULT '',
+    -- 只保留白名单内的小写头，避免把 Authorization/Cookie 之类的凭据落库。
+    headers     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    body        TEXT NOT NULL DEFAULT '',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_oast_hits_token ON oast_hits(token, id DESC);

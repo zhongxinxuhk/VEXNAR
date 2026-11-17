@@ -40,6 +40,9 @@ type Planner struct {
 	maxTokensFn       func() int                             // resolver: per-reply output cap (nil/0 = send no cap)
 	compactor         *Compactor                             // cold-node compaction (§7); nil = disabled
 
+	// extraTools are host-provided tools (OAST 等) appended to the planner's tool set.
+	extraTools []actool.CoreTool
+
 	// todos keeps ONE plan-scratchpad per task (keyed by exploration id) so the
 	// planner's multi-step plan survives across wake-ups — each Plan() is a fresh
 	// session, but the shared store lets it record a serial exploit chain once and
@@ -115,6 +118,9 @@ func (p *Planner) todoFor(expID int64) *actool.TodoStore {
 	}
 	return s
 }
+
+// SetExtraTools appends host-provided tools (e.g. OAST) to every planning round.
+func (p *Planner) SetExtraTools(extra []actool.CoreTool) { p.extraTools = extra }
 
 // SetKillWork wires the engine's per-work terminate callback so the planner's
 // kill_work tool can stop a single running worker.
@@ -373,6 +379,9 @@ func (p *Planner) Plan(ctx context.Context, taskID int64, as *db.AssetStore, ts 
 	// 领域工具 + 基础默认工具集（Read/Write/Edit/MultiEdit/LS/Glob/Grep/Bash）
 	// 资产覆盖度功能关闭时剔除 add_task_scope/list_untested_assets（不入 prompt）。
 	base := append(tsx.DropCoverageTools(tsx.PlannerTools()), actool.DefaultTools()...)
+	if len(p.extraTools) > 0 {
+		base = append(base, p.extraTools...)
+	}
 	ctx = WithRunInfo(ctx, RunInfo{TaskID: taskID, ExplorationID: explorationID(ts)})
 	tools, def, cleanup := AugmentTools(ctx, "planner", base)
 	defer cleanup()
