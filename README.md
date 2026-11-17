@@ -17,7 +17,7 @@
 
 <br />
 
-[项目仓库](https://github.com/zhongxinxuhk/VEXNAR) · [快速安装](#安装) · [截图预览](#截图预览) · [技术架构](#系统技术架构) · [交流群](#交流群)
+[项目仓库](https://github.com/zhongxinxuhk/VEXNAR) · [快速安装](#安装) · [截图预览](#截图预览) · [技术架构](#系统技术架构)
 
 </div>
 
@@ -33,7 +33,6 @@
 - [配置](#配置)
 - [开发](#开发)
 - [系统技术架构](#系统技术架构)
-- [交流群](#交流群)
 - [许可与免责声明](#许可与免责声明)
 
 ---
@@ -501,17 +500,6 @@ flowchart TB
 
 ---
 
-## 交流群
-
-扫码关注微信公众号 **SecSentry**，在公众号后台私信即可入群交流。
-
-<div align="center">
-
-<img src="screenshots/wx.png" alt="微信公众号 SecSentry" width="480" />
-
-</div>
-
----
 ## 参考
 
 https://github.com/oritera/Cairn
