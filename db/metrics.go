@@ -22,6 +22,12 @@ type TaskMetrics struct {
 	FindingsTotal       int            `json:"findings_total"`
 	FindingsBySeverity  map[string]int `json:"findings_by_severity"`
 	FindingsByVulnclass map[string]int `json:"findings_by_vulnclass"`
+	FindingsByStatus    map[string]int `json:"findings_by_status"`
+	// 独立验证（purpose=verify）的完成情况：只看已结束的会话，避免把在跑的算成结论。
+	VerifySessions      int            `json:"verify_sessions"`
+	VerifyReproduced    int            `json:"verify_reproduced"`
+	VerifyFalsePositive int            `json:"verify_false_positive"`
+	VerifyInconclusive  int            `json:"verify_inconclusive"`
 	Intents             map[string]int `json:"intents"`
 	DoneIntents         int            `json:"done_intents"`
 	NoYieldDone         int            `json:"no_yield_done"`
@@ -55,6 +61,7 @@ func (d *DB) TaskMetrics(ctx context.Context, taskID int64) (*TaskMetrics, error
 		TaskID: taskID, ExplorationID: expID,
 		FindingsBySeverity:  map[string]int{},
 		FindingsByVulnclass: map[string]int{},
+		FindingsByStatus:    map[string]int{},
 		Intents:             map[string]int{},
 		ClassCoverage:       map[string]int{},
 	}
@@ -108,6 +115,38 @@ func (d *DB) TaskMetrics(ctx context.Context, taskID int64) (*TaskMetrics, error
 			secs = 0
 		}
 		m.MTTDSeconds = &secs
+	}
+
+	// 处置状态分布（含人工分诊结果，误报率 = false_positive / findings_total）。
+	srows, err := d.QueryContext(ctx,
+		`SELECT COALESCE(status,''), COUNT(*) FROM findings WHERE task_id=$1 GROUP BY 1`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer srows.Close()
+	for srows.Next() {
+		var st string
+		var n int
+		if err := srows.Scan(&st, &n); err != nil {
+			return nil, err
+		}
+		m.FindingsByStatus[st] = n
+	}
+	if err := srows.Err(); err != nil {
+		return nil, err
+	}
+
+	// 独立验证结论分布：只统计已完成的 verify 会话。
+	if err := d.QueryRowContext(ctx,
+		`SELECT
+		   COUNT(*) FILTER (WHERE r.status='completed'),
+		   COUNT(*) FILTER (WHERE r.status='completed' AND r.verdict='reproduced'),
+		   COUNT(*) FILTER (WHERE r.status='completed' AND r.verdict='false_positive'),
+		   COUNT(*) FILTER (WHERE r.status='completed' AND r.verdict='inconclusive')
+		 FROM finding_retests r JOIN findings f ON f.id=r.finding_id
+		 WHERE f.task_id=$1 AND r.purpose='verify'`, taskID).
+		Scan(&m.VerifySessions, &m.VerifyReproduced, &m.VerifyFalsePositive, &m.VerifyInconclusive); err != nil {
+		return nil, err
 	}
 
 	// 意图状态分布。
