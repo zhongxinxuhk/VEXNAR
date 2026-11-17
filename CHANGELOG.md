@@ -11,6 +11,18 @@
 - **项目更名为 VEXNAR**：名称、可执行文件（`vexnar`）、环境变量前缀（`VEXNAR_`）、升级暂存件（`vexnar.new` / `vexnar.old` / `vexnar.upgrade.json`）、Go module 路径、Docker 镜像与服务名、页面文案与 README 均已统一为 VEXNAR。
 - **升级注意**：环境变量、Cookie（`vexnar_token`）、浏览器本地偏好键、Docker 服务名与镜像名都随更名调整，已有部署需同步更新 `.env` 与 `docker-compose.yml`；数据库 `schema.sql` 结构没有变化，数据可直接沿用（库名/账号如需更换请先迁移）。
 
+### 0day 与攻击链路（P0）
+
+#### 新增的功能
+
+- **新增 OAST 带外回连**：盲 SSRF、盲 XXE、盲命令注入这类没有回显的漏洞，现在可以判真。按任务签发随机 token，回调入口 `GET|POST /oast/<token>`，agent 侧工具 `oast_issue` / `oast_poll` 负责签发与轮询命中；命中记录落 `oast_hits`（请求头走白名单，`Authorization`/`Cookie` 不入库）。公网基址用 `VEXNAR_OAST_BASE` 或 `settings.oast_public_base` 配置。
+- **新增漏洞类目基线**：内置 8 类（SQLi / XSS / SSRF / XXE / SSTI / 越权 IDOR / 文件上传 / JWT），每类带前置条件、探测步骤、成功判据、payload 种子与终止条件；新工具 `list_vuln_classes` 会按资产类型返回基线，并用本任务已确认漏洞标出 `covered`，让 planner 直接看到"还剩哪些类目没测"。该工具只给方向，不替代真实触发。
+- **新增任务度量接口**：`GET /api/tasks/{id}/metrics` 返回 MTTD、按等级/类目的漏洞分布、意图状态分布、无效意图数（跑完但没有任何 fact/finding 下游）与有效率，用于 prompt/工具改动的前后对比。
+
+#### 修复的问题
+
+- 无。
+
 ## [0.3.15] - 2026-10-07
 
 ### 拦截

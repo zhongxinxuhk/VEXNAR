@@ -218,6 +218,8 @@ CGO_ENABLED=0 go build -tags embedui -o vexnar ./cmd/vexnar
 **LLM**：`export ANTHROPIC_API_KEY=sk-...`（或 `OPENAI_API_KEY`），也可在 UI 的「LLM 配置」页填写。
 可选：`VEXNAR_LLM_PROVIDER` / `VEXNAR_LLM_MODEL` / `VEXNAR_LLM_BASE_URL` / `VEXNAR_LLM_PROXY`。
 
+**OAST（带外回连）**：盲 SSRF / 盲 XXE / 盲命令注入靠回调判真。回调地址默认取本机 `http://127.0.0.1:8787`，部署在公网或反代后面时必须显式配置对外可达的基址：`export VEXNAR_OAST_BASE=https://oast.example.com`（也可写进 `settings` 表的 `oast_public_base`）。回调入口是 `GET|POST /oast/<token>`，无需登录，靠随机 token 保护；读取命中走 agent 工具 `oast_poll`。
+
 **并发**：每个任务的 work agent 数在「系统设置」里配置（默认 3）。
 
 **常用参数**：`./start.sh -addr :8787 -proxy :8788`（`-addr` 前端+API，`-proxy` 流量录制代理）。启动脚本会把参数原样透传给 `vexnar`。

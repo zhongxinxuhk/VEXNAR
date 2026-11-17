@@ -682,6 +682,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/task-templates/{id}", s.pgUpdateTaskTemplate)
 	mux.HandleFunc("DELETE /api/task-templates/{id}", s.pgDeleteTaskTemplate)
 	mux.HandleFunc("GET /api/tasks/{id}", s.getTask)
+	mux.HandleFunc("GET /api/tasks/{id}/metrics", s.taskMetrics)
 	mux.HandleFunc("PATCH /api/tasks/{id}", s.updateTaskMetadata)
 	mux.HandleFunc("PATCH /api/tasks/{id}/category", s.updateTaskCategory)
 	// 任务级资产拦截/允许规则
@@ -938,6 +939,9 @@ func (s *Server) Handler() http.Handler {
 	api := cors(s.requireAuth(mux))
 	root := http.NewServeMux()
 	root.Handle("/api/", api)
+	// OAST 带回连：无鉴权，靠未猜中的随机 token 保护；只写不读（读取走 /api 工具）。
+	// 必须在 "/" 之前注册，否则会被前端静态处理器吞掉。
+	root.Handle("/oast/", s.oastHandler())
 	root.Handle("/", s.webuiHandler())
 	return root
 }
