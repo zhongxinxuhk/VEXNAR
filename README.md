@@ -14,7 +14,6 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-AGPL--3.0-A42E2B)
-![Stars](https://img.shields.io/github/stars/zhongxinxuhk/VEXNAR?style=social)
 
 <br />
 
