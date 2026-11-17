@@ -506,6 +506,18 @@ FROM findings WHERE id=$1 FOR UPDATE`, id).
 	}
 	var assets []int64
 	_ = json.Unmarshal(assetIDs, &assets)
+	// R2.2：确认漏洞自动推导能力（带推导链），否定结论撤销其推导出的能力。
+	// 人工登记（origin=explicit）的行不受影响。
+	switch status {
+	case FindingConfirmed:
+		if err := deriveCapabilitiesTx(ctx, tx, id, taskID.Int64, vulnclass, assets); err != nil {
+			return from, true, false, false, err
+		}
+	case FindingFixed, FindingFalsePositive, FindingIgnored, FindingDuplicate:
+		if err := revokeDerivedCapabilitiesTx(ctx, tx, id); err != nil {
+			return from, true, false, false, err
+		}
+	}
 	notified = RecordNotificationEventTx(ctx, tx, notify.EventFindingStatusChanged, id, notify.Snapshot{
 		Kind:       notify.EventFindingStatusChanged,
 		FindingID:  id,

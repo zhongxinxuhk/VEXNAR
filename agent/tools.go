@@ -2059,5 +2059,7 @@ func (t *ToolSet) PlannerTools() []actool.CoreTool {
 		t.listUntestedAssets(),
 		// list_vuln_classes：漏洞类目基线（P0/R1.2）——某资产还有哪些类目没测、怎么测、什么算测到。
 		t.listVulnClasses(),
+		t.listCapabilities(),
+		t.recordCapability(),
 	}
 }

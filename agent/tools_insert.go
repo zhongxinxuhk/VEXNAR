@@ -657,6 +657,8 @@ func (t *ToolSet) WorkerTools() []actool.CoreTool {
 		t.nodeDetail(),
 		// list_vuln_classes：执行前先看该类资产的测试基线与判据，避免只凭直觉打一种 payload。
 		t.listVulnClasses(),
+		t.listCapabilities(),
+		t.recordCapability(),
 		// 以下工具仍【不给】worker，只留给 planner/main（读上下文、跨 work 复盘是规划职责，
 		// worker 只做单条意图的执行与写回）：list_facts / list_companies / list_worker_traces。
 	}
