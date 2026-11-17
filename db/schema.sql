@@ -1141,6 +1141,25 @@ BEGIN
 END $$;
 CREATE INDEX IF NOT EXISTS idx_finding_retests_verify ON finding_retests(finding_id, purpose, status);
 
+-- P1（R1.5 收尾）：独立验证需要区分「复现」与「确认误报」。
+-- 早期安装的 verdict CHECK 是内联自动命名且不含 false_positive，先找到再重建。
+DO $$
+DECLARE cname text;
+BEGIN
+    SELECT conname INTO cname FROM pg_constraint
+     WHERE conrelid='finding_retests'::regclass AND contype='c'
+       AND pg_get_constraintdef(oid) LIKE '%verdict%'
+       AND pg_get_constraintdef(oid) NOT LIKE '%false_positive%';
+    IF cname IS NOT NULL THEN
+        EXECUTE 'ALTER TABLE finding_retests DROP CONSTRAINT '||quote_ident(cname);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                    WHERE conrelid='finding_retests'::regclass AND conname='ck_finding_retests_verdict') THEN
+        ALTER TABLE finding_retests ADD CONSTRAINT ck_finding_retests_verdict
+            CHECK (verdict IN ('','reproduced','fixed','inconclusive','false_positive'));
+    END IF;
+END $$;
+
 -- 删除会话保留复测记录，同时解除尚未结束的复测占用。
 CREATE OR REPLACE FUNCTION stop_deleted_conversation_retest() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN

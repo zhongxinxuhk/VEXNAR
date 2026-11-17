@@ -53,3 +53,29 @@ func TestFindingVerificationGatesConfirmation(t *testing.T) {
 		t.Fatalf("验证 reproduced 后 status = %q，期望 %q", f.Status, FindingConfirmed)
 	}
 }
+
+// 独立验证确认误报时，待处理漏洞应被标记为误报（人工分诊权之外的另一条
+// 可审计路径）；人工复测给同一结论不自动改状态。
+func TestFindingVerificationMarksFalsePositive(t *testing.T) {
+	d, fid := retestDB(t)
+	r, c, _, err := d.CreateFindingVerification(t.Context(), fid, "auto")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.StartFindingRetest(t.Context(), r.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.RecordFindingRetestResult(t.Context(), c.ID, "false_positive", "确认误报", "实际响应已被转义，无脚本执行"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.FinishFindingRetest(r.ID, "completed", ""); err != nil {
+		t.Fatal(err)
+	}
+	f, err := d.GetFinding(fid)
+	if err != nil || f == nil {
+		t.Fatalf("reload finding: %v", err)
+	}
+	if f.Status != FindingFalsePositive {
+		t.Fatalf("status = %q，期望 %q", f.Status, FindingFalsePositive)
+	}
+}

@@ -208,8 +208,8 @@ func (d *DB) StartFindingRetest(ctx context.Context, id int64) (bool, error) {
 // RecordFindingRetestResult never accepts a finding ID: ownership comes from the
 // runtime conversation. Identical retries are safe; a second verdict is refused.
 func (d *DB) RecordFindingRetestResult(ctx context.Context, conversationID int64, verdict, summary, evidence string) error {
-	if verdict != "reproduced" && verdict != "fixed" && verdict != "inconclusive" {
-		return errors.New("verdict 必须为 reproduced / fixed / inconclusive")
+	if verdict != "reproduced" && verdict != "fixed" && verdict != "inconclusive" && verdict != "false_positive" {
+		return errors.New("verdict 必须为 reproduced / fixed / inconclusive / false_positive")
 	}
 	summary, evidence = strings.TrimSpace(summary), strings.TrimSpace(evidence)
 	if summary == "" || evidence == "" {
@@ -280,9 +280,21 @@ func (d *DB) FinishFindingRetest(id int64, status, reason string) error {
 	// P1 / R1.5：独立验证复现成功 → 视为已确认；待处理之前的状态不会被回退，
 	// 已经是 confirmed/fixed/误报等人工结论的保持不动（SetFindingStatusTx 内部
 	// 按状态迁移规则处理并登记事件）。
-	if finalStatus == "completed" && verdict == "reproduced" && purpose == RetestPurposeVerify {
-		if _, _, _, _, err := SetFindingStatusTx(context.Background(), tx, findingID, FindingConfirmed); err != nil {
-			return err
+	if finalStatus == "completed" && purpose == RetestPurposeVerify {
+		// 独立验证给出的是可执行的分类结论：复现→已确认，确认误报→误报。
+		// 只对仍处于待处理的漏洞生效：人工已经分诊过的（已确认/已修复/已忽略等）
+		// 不被自动验证回退或覆盖。
+		target := ""
+		switch verdict {
+		case "reproduced":
+			target = FindingConfirmed
+		case "false_positive":
+			target = FindingFalsePositive
+		}
+		if target != "" {
+			if _, _, _, _, err := SetFindingStatusTx(context.Background(), tx, findingID, target); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit()
