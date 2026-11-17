@@ -1481,3 +1481,46 @@ CREATE TABLE IF NOT EXISTS finding_capabilities (
     PRIMARY KEY (finding_id, capability_id, relation)
 );
 CREATE INDEX IF NOT EXISTS idx_finding_capabilities_cap ON finding_capabilities(capability_id);
+
+-- R2.1 凭据/会话一等资产：凭据是可复用的身份材料，会话是已经建立并可能过期的登录态。
+-- 两者都按任务隔离（一个 worker 拿到，同任务其它 worker 可见），并保留来源漏洞。
+CREATE TABLE IF NOT EXISTS credentials (
+    id                BIGSERIAL PRIMARY KEY,
+    task_id           BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    asset_id          BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+    kind              TEXT NOT NULL DEFAULT 'password', -- password/hash/token/key/basic
+    username          TEXT NOT NULL DEFAULT '',
+    secret            TEXT NOT NULL,
+    scope             TEXT NOT NULL DEFAULT '',         -- 登录入口/域名/设备
+    source            TEXT NOT NULL DEFAULT '',         -- brute/leak/manual/finding
+    source_finding_id BIGINT REFERENCES findings(id) ON DELETE SET NULL,
+    status            TEXT NOT NULL DEFAULT 'active',   -- active/expired/revoked
+    notes             TEXT NOT NULL DEFAULT '',
+    expires_at        TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_credentials_scope
+    ON credentials(task_id, kind, COALESCE(asset_id, 0), COALESCE(NULLIF(scope, ''), '-'), username);
+CREATE INDEX IF NOT EXISTS idx_credentials_task ON credentials(task_id, status);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id                BIGSERIAL PRIMARY KEY,
+    task_id           BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    asset_id          BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+    label             TEXT NOT NULL DEFAULT '',         -- 会话标识（账号/角色/入口）
+    kind              TEXT NOT NULL DEFAULT 'cookie',   -- cookie/bearer/basic/custom
+    headers           JSONB NOT NULL DEFAULT '{}'::jsonb, -- 直接可用的请求头
+    identity          TEXT NOT NULL DEFAULT '',         -- 登录身份/角色
+    source            TEXT NOT NULL DEFAULT '',
+    source_finding_id BIGINT REFERENCES findings(id) ON DELETE SET NULL,
+    status            TEXT NOT NULL DEFAULT 'active',
+    notes             TEXT NOT NULL DEFAULT '',
+    expires_at        TIMESTAMPTZ,
+    last_used_at      TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sessions_scope
+    ON sessions(task_id, COALESCE(asset_id, 0), label);
+CREATE INDEX IF NOT EXISTS idx_sessions_task ON sessions(task_id, status);

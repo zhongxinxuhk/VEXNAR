@@ -2061,5 +2061,7 @@ func (t *ToolSet) PlannerTools() []actool.CoreTool {
 		t.listVulnClasses(),
 		t.listCapabilities(),
 		t.recordCapability(),
+		t.listCredentials(),
+		t.listSessions(),
 	}
 }
