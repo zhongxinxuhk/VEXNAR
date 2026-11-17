@@ -58,6 +58,17 @@ func TestTaskMetrics(t *testing.T) {
 		t.Fatalf("seed edge: %v", err)
 	}
 
+	// 一条已完成的独立验证：指标应把它计入 verify_*，且不改写漏洞行。
+	var fid int64
+	if err := d.QueryRowContext(ctx, `SELECT id FROM findings WHERE task_id=$1 ORDER BY id LIMIT 1`, taskID).Scan(&fid); err != nil {
+		t.Fatalf("pick finding: %v", err)
+	}
+	if _, err := d.ExecContext(ctx,
+		`INSERT INTO finding_retests(finding_id,status,verdict,snapshot,purpose)
+		 VALUES ($1,'completed','reproduced','{}'::jsonb,'verify')`, fid); err != nil {
+		t.Fatalf("seed verify: %v", err)
+	}
+
 	m, err := d.TaskMetrics(ctx, taskID)
 	if err != nil {
 		t.Fatalf("TaskMetrics: %v", err)
@@ -79,6 +90,13 @@ func TestTaskMetrics(t *testing.T) {
 	}
 	if m.YieldRate != 0.5 {
 		t.Errorf("yield_rate = %v，期望 0.5", m.YieldRate)
+	}
+	if m.FindingsByStatus["pending"] != 3 {
+		t.Errorf("findings_by_status = %+v，期望 3 条 pending", m.FindingsByStatus)
+	}
+	if m.VerifySessions != 1 || m.VerifyReproduced != 1 || m.VerifyFalsePositive != 0 {
+		t.Errorf("verify 统计不正确: sessions=%d reproduced=%d fp=%d",
+			m.VerifySessions, m.VerifyReproduced, m.VerifyFalsePositive)
 	}
 }
 
