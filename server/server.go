@@ -172,6 +172,9 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		defer s.cfgMu.Unlock()
 		return s.llmOn
 	})
+	// LLM 层被确认不可用（鉴权失败，或意图重跑额度用完）时，走与用户暂停相同的
+	// 生命周期路径把任务停住，避免 worker 继续领意图把同样的失败刷一遍。
+	s.engine.SetTaskParkHook(s.pauseTaskAfterLLMFailure)
 	// Wire DB-stored prompt templates into the agents (新版方案 §3.3 / §5a). With no
 	// override row, agents keep their built-in defaults — behavior is unchanged.
 	if m.pg != nil {

@@ -149,6 +149,30 @@ func (s *Server) applyTaskControlWithCause(t *Task, action string, pauseCause er
 	return out, nil
 }
 
+// pauseTaskAfterLLMFailure parks a task whose LLM layer is proven unusable. It
+// reuses the user-pause path so persistence, in-flight cancellation and
+// concurrency-slot release stay in one place; a duplicate attempt (several
+// workers failing at once) is treated as already satisfied.
+func (s *Server) pauseTaskAfterLLMFailure(t *Task, cause error) {
+	if t == nil {
+		return
+	}
+	lifecycle := t.lifecycleSnapshot()
+	if lifecycle.Paused || isTerminalStatus(lifecycle.Status) || s.engine.IsPaused(t.ID) {
+		return
+	}
+	if _, err := s.applyTaskControlWithCause(t, "pause", cause); err != nil {
+		if s.engine.IsPaused(t.ID) || isTerminalStatus(t.lifecycleSnapshot().Status) {
+			return
+		}
+		log.Printf("[task] #%s LLM 失败后自动暂停失败: %v", t.ID, err)
+		return
+	}
+	log.Printf("[task] #%s LLM 不可用（鉴权失败或重试用尽），任务已自动暂停，不再领取新意图", t.ID)
+	s.engine.emitActivity(t, db.Activity{Worker: "system", Kind: "text",
+		Summary: "任务已自动暂停：LLM 调用不可用（鉴权失败或重试用尽）。修复模型配置后点“继续”，必要时重跑已 blocked 的意图"})
+}
+
 // intentSummaryOf 取意图 payload 里的 summary,供删除通知在意图节点消失(真删除)前留档。
 func intentSummaryOf(n *db.Node) string {
 	if n == nil {
