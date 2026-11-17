@@ -9,7 +9,7 @@
 #### 变更
 
 - **项目更名为 VEXNAR**：名称、可执行文件（`vexnar`）、环境变量前缀（`VEXNAR_`）、升级暂存件（`vexnar.new` / `vexnar.old` / `vexnar.upgrade.json`）、Go module 路径、Docker 镜像与服务名、页面文案与 README 均已统一为 VEXNAR。
-- **更换系统 Logo**：侧边栏、登录页、初始化页统一为新版 VEXNAR 标识（V 形轨道），应用图标与 favicon 同步替换；登录/初始化页标识在深色主题下改用深色描边，避免浅色面板上看不见。
+- **更换系统 Logo**：侧边栏、登录页、初始化页统一为新版 VEXNAR 标识（V 形轨道），应用图标与 favicon 同步替换；后端启动横幅改为 VEXNAR 字样；登录/初始化页标识在深色主题下改用深色描边，避免浅色面板上看不见。
 - **升级注意**：环境变量、Cookie（`vexnar_token`）、浏览器本地偏好键、Docker 服务名与镜像名都随更名调整，已有部署需同步更新 `.env` 与 `docker-compose.yml`；数据库 `schema.sql` 结构没有变化，数据可直接沿用（库名/账号如需更换请先迁移）。
 
 ### 0day 与攻击链路（P0）
