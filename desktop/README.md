@@ -45,11 +45,22 @@ npm install
 npm run dev
 ```
 
-首次运行会先构建静态前端（`web` → `server/webui/dist`），再以 `-tags embedui` 编译 Go sidecar，最后启动 Tauri。前端和 Go 有改动时需要重新构建；只改 Rust 时可以用：
+首次运行会先构建静态前端（`web` → `server/webui/dist`），再以 `-tags embedui` 编译 Go sidecar，最后启动 Tauri。`scripts/dev.sh` 会**同步**完成这些步骤再启动 Tauri，避免 Tauri 的 `beforeDevCommand` 与 cargo 并发时用到旧 sidecar。前端和 Go 有改动时需要重新构建；只改 Rust 时可以用：
 
 ```bash
 SKIP_WEB=1 npm run dev
 ```
+
+不要直接运行 `npx tauri dev`：它不会先构建 sidecar。统一用 `npm run dev`。
+
+### 在 GoLand 中启动
+
+本机 GoLand 的 Run/Debug 下拉框里已添加两个 npm 配置（`.idea/runConfigurations/`）：
+
+- `VEXNAR Desktop`：完整构建静态前端 + sidecar，再打开 Tauri 窗口。
+- `VEXNAR Desktop (fast)`：设置 `SKIP_WEB=1`，复用已有的 `server/webui/dist`，只重编 sidecar 和 Rust。
+
+选好后点 Run 即可；Tauri 窗口会自行拉起 sidecar 和内置 PostgreSQL。GoLand 的 Debug 按钮只能调试 npm/Node 启动器，Rust 外壳和 Go sidecar 需要分别用 cargo/dlv 调试。`.idea/` 被 git 忽略，这两个配置是本机 IDE 配置，换机器后需要重新添加。
 
 调试构建会自动把 `VEXNAR_CONFIG` 指向仓库根目录的 `config.json`；只有找不到内置 PG 时才会用到它。
 

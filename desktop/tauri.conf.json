@@ -5,7 +5,6 @@
   "identifier": "com.vexnar.desktop",
   "build": {
     "frontendDist": "ui",
-    "beforeDevCommand": "bash scripts/prepare-sidecar.sh",
     "beforeBuildCommand": "bash scripts/prepare-sidecar.sh --release"
   },
   "app": {
