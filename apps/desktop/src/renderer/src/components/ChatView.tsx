@@ -209,7 +209,7 @@ function Composer(): React.JSX.Element {
           </div>
         </div>
         <div className="mt-2 text-center font-mono text-[9px] uppercase tracking-[0.12em] text-muted/30">
-          VEXNAR · local agent runtime
+          {t('chat.localAgentRuntime')}
         </div>
       </div>
     </div>

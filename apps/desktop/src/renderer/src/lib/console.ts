@@ -1,3 +1,5 @@
+import { useI18n } from '@/lib/i18n'
+
 export type TaskStatus = 'created' | 'queued' | 'running' | 'paused' | 'done' | 'failed' | 'timeout'
 export type Severity = 'critical' | 'high' | 'medium' | 'low'
 export type FindingStatus =
@@ -154,7 +156,7 @@ export function formatDate(value?: string): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString(useI18n.getState().locale === 'zh' ? 'zh-CN' : 'en-US', {
     month: 'short',
     day: '2-digit',
     hour: '2-digit',
