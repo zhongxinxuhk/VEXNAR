@@ -31,6 +31,9 @@ web/next-env.d.ts
 .idea/dataSources.local.xml
 .idea/markdown.xml
 
+# 嵌套的本地 IDE 工程（例如单独打开 desktop 目录时生成）
+desktop/.idea/
+
 .vscode/
 *.swp
 *.swo
