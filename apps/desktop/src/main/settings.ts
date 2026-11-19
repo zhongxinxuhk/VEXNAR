@@ -1,0 +1,112 @@
+import { safeStorage } from 'electron'
+import { readSetting, writeSetting } from './db'
+import { defaultWorkspace } from './paths'
+import {
+  publicSettingsSchema,
+  settingsSchema,
+  type PublicSettings,
+  type SettingsInput
+} from '@shared/contracts'
+
+const SETTINGS_KEY = 'desktop'
+
+type StoredSettings = {
+  theme: 'dark' | 'light' | 'system'
+  workspaceRoot: string
+  shell: string
+  model: string
+  baseUrl: string
+  apiKeyCipher?: string
+}
+
+const defaults: StoredSettings = {
+  theme: 'dark',
+  workspaceRoot: defaultWorkspace(),
+  shell: '',
+  model: 'gpt-5-codex',
+  baseUrl: ''
+}
+
+let cache: StoredSettings = { ...defaults }
+
+async function readStored(): Promise<StoredSettings> {
+  const raw = await readSetting(SETTINGS_KEY)
+  if (!raw) return { ...defaults }
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredSettings>
+    const merged = { ...defaults, ...parsed }
+    const validated = settingsSchema.omit({ apiKey: true, clearApiKey: true }).parse(merged)
+    return { ...validated, apiKeyCipher: parsed.apiKeyCipher }
+  } catch {
+    return { ...defaults }
+  }
+}
+
+async function writeStored(value: StoredSettings): Promise<void> {
+  await writeSetting(SETTINGS_KEY, JSON.stringify(value))
+}
+
+function encryptKey(key: string): string {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('当前系统不支持安全存储，无法保存 API Key')
+  }
+  return `enc:${safeStorage.encryptString(key).toString('base64')}`
+}
+
+function decryptKey(cipher: string | undefined): string {
+  if (!cipher) return ''
+  if (!cipher.startsWith('enc:')) return ''
+  try {
+    return safeStorage.decryptString(Buffer.from(cipher.slice(4), 'base64'))
+  } catch {
+    return ''
+  }
+}
+
+function toPublic(stored: StoredSettings): PublicSettings {
+  return publicSettingsSchema.parse({
+    theme: stored.theme,
+    workspaceRoot: stored.workspaceRoot,
+    shell: stored.shell,
+    model: stored.model,
+    baseUrl: stored.baseUrl,
+    hasApiKey: Boolean(stored.apiKeyCipher)
+  })
+}
+
+/** Load once after PostgreSQL is ready; synchronous reads then use the cache. */
+export async function loadSettings(): Promise<void> {
+  cache = await readStored()
+}
+
+export function getSettings(): PublicSettings {
+  return toPublic(cache)
+}
+
+export async function setSettings(input: SettingsInput): Promise<PublicSettings> {
+  const parsed = settingsSchema.parse(input)
+  const stored = { ...cache }
+  stored.theme = parsed.theme
+  stored.workspaceRoot = parsed.workspaceRoot.trim()
+  stored.shell = parsed.shell.trim()
+  stored.model = parsed.model.trim()
+  stored.baseUrl = parsed.baseUrl.trim()
+
+  if (parsed.clearApiKey) {
+    delete stored.apiKeyCipher
+  } else if (parsed.apiKey && parsed.apiKey.trim()) {
+    stored.apiKeyCipher = encryptKey(parsed.apiKey.trim())
+  }
+
+  await writeStored(stored)
+  cache = stored
+  return toPublic(stored)
+}
+
+export function getAgentConfig(): { model: string; baseUrl: string; apiKey: string } {
+  return {
+    model: cache.model,
+    baseUrl: cache.baseUrl,
+    apiKey: decryptKey(cache.apiKeyCipher)
+  }
+}

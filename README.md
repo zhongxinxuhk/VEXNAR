@@ -307,6 +307,14 @@ server {
 
 ## 开发
 
+### 独立 Electron 桌面端
+
+`apps/desktop` 是与 Web/Go 后端解耦的独立桌面 Agent 客户端（Electron + React），不影响现有 `web/`、Go 服务和旧 Tauri `desktop/`。
+
+- 桌面端使用 **内置便携 PostgreSQL**（不是 SQLite）；首次启动自动 `initdb`，退出时清理本地集群。
+- `apps/desktop/resources/pg` 由 GitHub Actions 按平台构建/注入，安装包随平台携带对应 PG。
+- 开发与打包命令见 [`apps/desktop/README.md`](apps/desktop/README.md)。
+
 ### 手动漏洞复测
 
 任务详情的「复测」页签可分页选择本任务的漏洞、查看历次结论和证据，并手动发起复测。启动后保留当前页签，显示转圈图标和「复测中」；确认修复后同步更新漏洞状态。

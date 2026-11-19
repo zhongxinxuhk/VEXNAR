@@ -1,0 +1,68 @@
+import type {
+  AgentEvent,
+  AgentSendInput,
+  AppInfo,
+  DiffPayload,
+  FileNode,
+  GitDiffInput,
+  GitStatus,
+  IdInput,
+  IpcResult,
+  Message,
+  MessageAppendInput,
+  PublicSettings,
+  Session,
+  SessionCreateInput,
+  SessionRenameInput,
+  SettingsInput,
+  TerminalCreateInput,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalResizeInput,
+  TerminalWriteInput,
+  WorkspaceListInput
+} from './contracts'
+
+export type Unsubscribe = () => void
+
+export interface VexnarApi {
+  app: {
+    info: () => Promise<IpcResult<AppInfo>>
+  }
+  settings: {
+    get: () => Promise<IpcResult<PublicSettings>>
+    set: (input: SettingsInput) => Promise<IpcResult<PublicSettings>>
+  }
+  sessions: {
+    list: () => Promise<IpcResult<Session[]>>
+    create: (input: SessionCreateInput) => Promise<IpcResult<Session>>
+    rename: (input: SessionRenameInput) => Promise<IpcResult<Session>>
+    remove: (input: IdInput) => Promise<IpcResult<{ removed: true }>>
+  }
+  messages: {
+    list: (input: IdInput) => Promise<IpcResult<Message[]>>
+    append: (input: MessageAppendInput) => Promise<IpcResult<Message>>
+  }
+  workspace: {
+    list: (input?: WorkspaceListInput) => Promise<IpcResult<FileNode[]>>
+    read: (input: { path: string }) => Promise<IpcResult<{ path: string; content: string }>>
+    choose: () => Promise<IpcResult<string | null>>
+  }
+  git: {
+    status: () => Promise<IpcResult<GitStatus>>
+    diff: (input: GitDiffInput) => Promise<IpcResult<DiffPayload>>
+  }
+  terminal: {
+    create: (input: TerminalCreateInput) => Promise<IpcResult<{ id: string }>>
+    write: (input: TerminalWriteInput) => Promise<IpcResult<{ written: true }>>
+    resize: (input: TerminalResizeInput) => Promise<IpcResult<{ resized: true }>>
+    dispose: (input: IdInput) => Promise<IpcResult<{ disposed: true }>>
+    onData: (listener: (event: TerminalDataEvent) => void) => Unsubscribe
+    onExit: (listener: (event: TerminalExitEvent) => void) => Unsubscribe
+  }
+  agent: {
+    send: (input: AgentSendInput) => Promise<IpcResult<{ accepted: true }>>
+    cancel: () => Promise<IpcResult<{ cancelled: true }>>
+    onEvent: (listener: (event: AgentEvent) => void) => Unsubscribe
+  }
+}
