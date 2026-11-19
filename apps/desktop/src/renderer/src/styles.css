@@ -5,19 +5,20 @@
     ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   --font-mono:
     'SFMono-Regular', ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
-  --color-bg: #08090c;
-  --color-panel: #0d1015;
-  --color-panel-2: #121720;
-  --color-panel-3: #171d28;
-  --color-line: #222a38;
-  --color-line-soft: #1a212c;
-  --color-ink: #e7eaf0;
-  --color-ink-soft: #b8c0cf;
-  --color-muted: #818b9f;
-  --color-accent: #7c9cff;
-  --color-accent-2: #5eead4;
-  --color-danger: #ff6b6b;
-  --color-warn: #f5b95f;
+  --color-bg: #0b0b0c;
+  --color-panel: #111112;
+  --color-panel-2: #171718;
+  --color-panel-3: #202022;
+  --color-line: #2b2b2e;
+  --color-line-soft: #232326;
+  --color-ink: #f4f4f5;
+  --color-ink-soft: #c7c7cc;
+  --color-muted: #8e8e93;
+  --color-accent: #e8e8ea;
+  --color-accent-ink: #09090b;
+  --color-accent-2: #9fe870;
+  --color-danger: #ff6961;
+  --color-warn: #f5c26b;
 }
 
 :root {
@@ -36,8 +37,9 @@
   --color-ink: #161a22;
   --color-ink-soft: #3d4555;
   --color-muted: #6b7485;
-  --color-accent: #3f63d8;
-  --color-accent-2: #0f9f8a;
+  --color-accent: #18181b;
+  --color-accent-ink: #ffffff;
+  --color-accent-2: #17864a;
   --color-danger: #c0392b;
   --color-warn: #a16207;
 }
@@ -55,9 +57,7 @@ body,
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 70% -10%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 60%),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

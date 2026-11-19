@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, KeyRound, Loader2, ShieldCheck } from 'lucide-react'
+import { FolderOpen, KeyRound, Languages, Loader2, ShieldCheck } from 'lucide-react'
 import type { SettingsInput } from '@shared/contracts'
 import { useAppStore } from '@/store/app'
+import { useI18n, useT } from '@/lib/i18n'
 import {
   Badge,
   Button,
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui'
 
 const fieldClass =
-  'flex h-9 w-full rounded-lg border border-line bg-panel-2 px-3 text-sm text-ink outline-none focus:ring-2 focus:ring-accent/50'
+  'flex h-9 w-full rounded-lg border border-line bg-panel-2 px-3 text-sm text-ink outline-none focus:ring-2 focus:ring-accent/40'
 
 export function SettingsDialog(): React.JSX.Element {
   const open = useAppStore((state) => state.settingsOpen)
@@ -23,6 +24,9 @@ export function SettingsDialog(): React.JSX.Element {
   const settings = useAppStore((state) => state.settings)
   const saveSettings = useAppStore((state) => state.saveSettings)
   const info = useAppStore((state) => state.info)
+  const locale = useI18n((state) => state.locale)
+  const setLocale = useI18n((state) => state.setLocale)
+  const t = useT()
   const [draft, setDraft] = useState<SettingsInput>(settings)
   const [apiKey, setApiKey] = useState('')
   const [clearApiKey, setClearApiKey] = useState(false)
@@ -35,7 +39,8 @@ export function SettingsDialog(): React.JSX.Element {
       workspaceRoot: settings.workspaceRoot,
       shell: settings.shell,
       model: settings.model,
-      baseUrl: settings.baseUrl
+      baseUrl: settings.baseUrl,
+      backendUrl: settings.backendUrl
     })
     setApiKey('')
     setClearApiKey(false)
@@ -63,22 +68,19 @@ export function SettingsDialog(): React.JSX.Element {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent className="max-h-[min(720px,90vh)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Desktop settings
-            <Badge variant="accent">independent</Badge>
+            {t('settings.title')}
+            <Badge variant="accent">electron</Badge>
           </DialogTitle>
-          <DialogDescription>
-            These preferences only apply to the Electron desktop client. The web console and Go
-            backend are untouched.
-          </DialogDescription>
+          <DialogDescription>{t('settings.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
             <label className="text-xs text-muted" htmlFor="theme">
-              Theme
+              {t('settings.theme')}
             </label>
             <select
               id="theme"
@@ -86,15 +88,31 @@ export function SettingsDialog(): React.JSX.Element {
               onChange={(event) => update('theme', event.target.value as SettingsInput['theme'])}
               className={fieldClass}
             >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">Follow system</option>
+              <option value="dark">{t('settings.theme.dark')}</option>
+              <option value="light">{t('settings.theme.light')}</option>
+              <option value="system">{t('settings.theme.system')}</option>
             </select>
           </div>
 
-          <div className="grid grid-cols-[120px_1fr] items-start gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-muted" htmlFor="locale">
+              <Languages className="h-3.5 w-3.5" />
+              {t('settings.language')}
+            </label>
+            <select
+              id="locale"
+              value={locale}
+              onChange={(event) => setLocale(event.target.value === 'en' ? 'en' : 'zh')}
+              className={fieldClass}
+            >
+              <option value="zh">{t('app.chinese')}</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-[132px_1fr] items-start gap-3">
             <label className="pt-2 text-xs text-muted" htmlFor="workspace">
-              Workspace
+              {t('settings.workspace')}
             </label>
             <div className="flex gap-2">
               <Input
@@ -104,30 +122,43 @@ export function SettingsDialog(): React.JSX.Element {
                 placeholder="/path/to/project"
                 className="font-mono text-xs"
               />
-              <Button variant="secondary" size="icon" onClick={() => void choose()} aria-label="Choose folder">
+              <Button variant="secondary" size="icon" onClick={() => void choose()} aria-label={t('app.chooseFolder')}>
                 <FolderOpen className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
             <label className="text-xs text-muted" htmlFor="shell">
-              Shell
+              {t('settings.shell')}
             </label>
             <Input
               id="shell"
               value={draft.shell}
               onChange={(event) => update('shell', event.target.value)}
-              placeholder="Leave empty for $SHELL"
+              placeholder={t('settings.shellPlaceholder')}
               className="font-mono text-xs"
             />
           </div>
 
           <div className="my-1 h-px bg-line-soft" />
 
-          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
+            <label className="text-xs text-muted" htmlFor="backendUrl">
+              {t('settings.backendUrl')}
+            </label>
+            <Input
+              id="backendUrl"
+              value={draft.backendUrl}
+              onChange={(event) => update('backendUrl', event.target.value)}
+              placeholder="http://127.0.0.1:8787"
+              className="font-mono text-xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
             <label className="text-xs text-muted" htmlFor="model">
-              Model
+              {t('settings.model')}
             </label>
             <Input
               id="model"
@@ -138,9 +169,9 @@ export function SettingsDialog(): React.JSX.Element {
             />
           </div>
 
-          <div className="grid grid-cols-[120px_1fr] items-center gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-center gap-3">
             <label className="text-xs text-muted" htmlFor="baseUrl">
-              Base URL
+              {t('settings.baseUrl')}
             </label>
             <Input
               id="baseUrl"
@@ -151,9 +182,9 @@ export function SettingsDialog(): React.JSX.Element {
             />
           </div>
 
-          <div className="grid grid-cols-[120px_1fr] items-start gap-3">
+          <div className="grid grid-cols-[132px_1fr] items-start gap-3">
             <label className="pt-2 text-xs text-muted" htmlFor="apiKey">
-              API key
+              {t('settings.apiKey')}
             </label>
             <div>
               <div className="relative">
@@ -166,7 +197,9 @@ export function SettingsDialog(): React.JSX.Element {
                     setApiKey(event.target.value)
                     setClearApiKey(false)
                   }}
-                  placeholder={settings.hasApiKey ? '•••••••• (stored securely)' : 'Optional provider key'}
+                  placeholder={
+                    settings.hasApiKey ? `•••••••• (${t('settings.apiKeyStored')})` : t('settings.apiKeyPlaceholder')
+                  }
                   className="pl-9 font-mono text-xs"
                 />
               </div>
@@ -181,10 +214,10 @@ export function SettingsDialog(): React.JSX.Element {
                     }}
                     className="accent-[var(--color-accent)]"
                   />
-                  Clear stored key
+                  {t('settings.clearApiKey')}
                 </label>
                 <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-muted/70">
-                  <ShieldCheck className="h-3 w-3" /> safeStorage
+                  <ShieldCheck className="h-3 w-3" /> {t('settings.safeStorage')}
                 </span>
               </div>
             </div>
@@ -192,9 +225,13 @@ export function SettingsDialog(): React.JSX.Element {
 
           {!apiKey && !settings.hasApiKey ? (
             <div className="rounded-lg border border-line bg-panel-2/60 px-3 py-2 font-mono text-[10px] leading-5 text-muted">
-              No provider key configured. The agent runtime will use its local inspection fallback.
+              {t('settings.noKey')}
             </div>
           ) : null}
+
+          <div className="rounded-lg border border-line bg-panel-2/50 px-3 py-2 font-mono text-[10px] leading-5 text-muted">
+            {t('settings.backendUrlHint')} · {settings.hasBackendToken ? t('settings.tokenStored') : t('system.noToken')}
+          </div>
         </div>
 
         <DialogFooter>
@@ -202,11 +239,11 @@ export function SettingsDialog(): React.JSX.Element {
             v{info?.version ?? '0.1.0'} · {info?.platform ?? 'desktop'}
           </span>
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t('app.cancel')}
           </Button>
           <Button onClick={() => void save()} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save settings
+            {t('app.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

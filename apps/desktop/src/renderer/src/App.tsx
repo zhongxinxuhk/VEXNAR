@@ -1,21 +1,18 @@
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import {
-  AlertTriangle,
-  Command,
-  PanelRightClose,
-  PanelRightOpen,
-  Settings2,
-  X
-} from 'lucide-react'
+import { AlertTriangle, X } from 'lucide-react'
+import { TopBar } from '@/components/TopBar'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
 import { RightPanel } from '@/components/RightPanel'
 import { SettingsDialog } from '@/components/SettingsDialog'
-import { Button, Tooltip, TooltipProvider } from '@/components/ui'
+import { ConsoleView } from '@/components/console/ConsoleView'
+import { TooltipProvider } from '@/components/ui'
+import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
 
 export default function App(): React.JSX.Element {
+  const t = useT()
   const init = useAppStore((state) => state.init)
   const handleAgentEvent = useAppStore((state) => state.handleAgentEvent)
   const rightOpen = useAppStore((state) => state.rightOpen)
@@ -24,10 +21,7 @@ export default function App(): React.JSX.Element {
   const clearError = useAppStore((state) => state.clearError)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
   const newSession = useAppStore((state) => state.newSession)
-  const settings = useAppStore((state) => state.settings)
-  const sessions = useAppStore((state) => state.sessions)
-  const activeSessionId = useAppStore((state) => state.activeSessionId)
-  const info = useAppStore((state) => state.info)
+  const view = useAppStore((state) => state.view)
 
   useEffect(() => {
     void init()
@@ -56,78 +50,29 @@ export default function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [newSession, setSettingsOpen, toggleRight])
 
-  const session = sessions.find((item) => item.id === activeSessionId)
-
   return (
     <TooltipProvider>
       <div className="flex h-full flex-col">
-        <header className="drag-region flex h-12 shrink-0 items-center gap-3 border-b border-line-soft bg-bg/60 pl-[86px] pr-3">
-          <div className="no-drag flex min-w-0 items-center gap-2 text-xs text-muted">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted/70">
-              vexnar
-            </span>
-            <span className="text-muted/30">/</span>
-            <span className="truncate text-ink-soft">{session?.title ?? 'New chat'}</span>
-            {settings.workspaceRoot ? (
-              <>
-                <span className="text-muted/30">/</span>
-                <span className="truncate font-mono text-[10px] text-muted">
-                  {settings.workspaceRoot}
-                </span>
-              </>
-            ) : null}
-          </div>
-          <div className="no-drag ml-auto flex items-center gap-1">
-            <span className="mr-1 hidden items-center gap-1.5 font-mono text-[10px] text-muted/60 sm:flex">
-              <Command className="h-3 w-3" />N new · <Command className="h-3 w-3" />B panel
-            </span>
-            <Tooltip label="Toggle right panel" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleRight}
-                aria-label="Toggle right panel"
-              >
-                {rightOpen ? (
-                  <PanelRightClose className="h-4 w-4" />
-                ) : (
-                  <PanelRightOpen className="h-4 w-4" />
-                )}
-              </Button>
-            </Tooltip>
-            <Tooltip label="Settings" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSettingsOpen(true)}
-                aria-label="Settings"
-              >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-            <span className="ml-1 hidden font-mono text-[10px] text-muted/40 lg:inline">
-              {info?.version ?? '0.1.0'}
-            </span>
-          </div>
-        </header>
-
+        <TopBar />
         <div className="flex min-h-0 flex-1">
           <Sidebar />
-          <ChatView />
-          <AnimatePresence initial={false}>
-            {rightOpen ? (
-              <motion.div
-                key="right"
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 440, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="h-full shrink-0 overflow-hidden"
-              >
-                <RightPanel />
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+          <main className="flex min-w-0 flex-1">
+            {view === 'chat' ? <ChatView /> : <ConsoleView view={view} />}
+            <AnimatePresence initial={false}>
+              {view === 'chat' && rightOpen ? (
+                <motion.div
+                  key="right"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 408, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="h-full shrink-0 overflow-hidden"
+                >
+                  <RightPanel />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </main>
         </div>
 
         <AnimatePresence>
@@ -144,7 +89,7 @@ export default function App(): React.JSX.Element {
                 type="button"
                 onClick={clearError}
                 className="rounded p-1 text-muted hover:bg-panel-3 hover:text-ink"
-                aria-label="Dismiss"
+                aria-label={t('app.close')}
               >
                 <X className="h-3.5 w-3.5" />
               </button>

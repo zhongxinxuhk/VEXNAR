@@ -2,6 +2,9 @@ import type {
   AgentEvent,
   AgentSendInput,
   AppInfo,
+  BackendLoginInput,
+  BackendRequestInput,
+  BackendStatus,
   DiffPayload,
   FileNode,
   GitDiffInput,
@@ -64,5 +67,11 @@ export interface VexnarApi {
     send: (input: AgentSendInput) => Promise<IpcResult<{ accepted: true }>>
     cancel: () => Promise<IpcResult<{ cancelled: true }>>
     onEvent: (listener: (event: AgentEvent) => void) => Unsubscribe
+  }
+  backend: {
+    status: () => Promise<IpcResult<BackendStatus>>
+    login: (input: BackendLoginInput) => Promise<IpcResult<PublicSettings>>
+    logout: () => Promise<IpcResult<PublicSettings>>
+    request: <T = unknown>(input: BackendRequestInput) => Promise<IpcResult<T>>
   }
 }

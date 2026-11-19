@@ -3,6 +3,8 @@ import type { VexnarApi, Unsubscribe } from '@shared/api'
 import type {
   AgentEvent,
   AgentSendInput,
+  BackendLoginInput,
+  BackendRequestInput,
   IdInput,
   IpcResult,
   MessageAppendInput,
@@ -67,6 +69,12 @@ const api: VexnarApi = {
     send: (input: AgentSendInput) => invoke(IPC.agentSend, input),
     cancel: () => invoke(IPC.agentCancel),
     onEvent: (listener: (event: AgentEvent) => void) => subscribe(IPC.agentEvent, listener)
+  },
+  backend: {
+    status: () => invoke(IPC.backendStatus),
+    login: (input: BackendLoginInput) => invoke(IPC.backendLogin, input),
+    logout: () => invoke(IPC.backendLogout),
+    request: <T = unknown>(input: BackendRequestInput) => invoke<T>(IPC.backendRequest, input)
   }
 }
 
