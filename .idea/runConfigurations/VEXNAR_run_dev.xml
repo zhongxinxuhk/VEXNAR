@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="VEXNAR run dev" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="HKXsec VEXNAR" />
+    <working_directory value="$PROJECT_DIR$" />
+    <go_parameters value="-tags embedui" />
+    <parameters value="-addr 127.0.0.1:8787 -data ./data" />
+    <kind value="PACKAGE" />
+    <package value="github.com/zhongxinxuhk/vexnar/cmd/vexnar" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/vexnar/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
