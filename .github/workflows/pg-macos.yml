@@ -1,0 +1,43 @@
+name: pg-macos
+
+# Builds the trimmed PostgreSQL that ships inside the macOS desktop app.
+# The artifact is consumed by the desktop packaging job (see docs §5.6/§6).
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14 # Apple silicon
+    timeout-minutes: 60
+    env:
+      PG_VERSION: "16.16"
+      PG_ARCH: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PostgreSQL source
+        uses: actions/cache@v4
+        with:
+          path: .pg-build/postgresql-${{ env.PG_VERSION }}.tar.bz2
+          key: pg-src-${{ env.PG_VERSION }}-${{ runner.arch }}
+
+      - name: Build trimmed PG
+        run: bash scripts/ci/build-pg-macos.sh
+
+      - name: Show artifact
+        run: |
+          ls -lh dist/
+          tar -tzf dist/pg-darwin-arm64.tar.gz | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pg-darwin-arm64
+          path: |
+            dist/pg-darwin-arm64.tar.gz
+            dist/pg-darwin-arm64.tar.gz.sha256
+          retention-days: 14

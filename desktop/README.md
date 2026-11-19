@@ -1,23 +1,41 @@
 # VEXNAR Desktop
 
-Tauri v2 外壳，把 Go 后端和 Web 控制台包成一个桌面应用。业务逻辑仍然全部在 `vexnar` 里，这一层只负责：
+Tauri v2 外壳，把 Go 后端、Web 控制台和便携 PostgreSQL 包成一个桌面应用。业务逻辑仍然全部在 `vexnar` 里，这一层负责：
 
-1. 选一个空闲的回环端口；
-2. 拉起 Go sidecar，并把数据目录指到系统应用数据目录；
+1. 选空闲回环端口，必要时首次 `initdb` 并启动内置 PostgreSQL；
+2. 拉起 Go sidecar，把 `VEXNAR_PG_DSN`、数据目录和密钥目录传给它；
 3. 轮询 `GET /api/health`，通过后把窗口导航到本地服务；
-4. 应用退出时终止 sidecar（SIGTERM，5 秒后退强杀）。
+4. 应用退出（含 SIGINT/SIGTERM）时先停 sidecar，再停 PostgreSQL。
 
 ## 目录
 
 ```
 desktop/
   src/main.rs          # Tauri 入口：启动画面 → 健康检查 → 导航
-  src/supervisor.rs    # sidecar 解析、端口、健康探针、退出清理
+  src/supervisor.rs    # sidecar 解析、端口、健康探针、信号与退出清理
+  src/pg.rs            # 便携 PG：initdb、启动、建库、DSN、停止
+  resources/pg/        # 构建产物（gitignored，只有 .keep 入库）
   ui/index.html        # 启动/失败画面
   scripts/prepare-sidecar.sh
+  scripts/fetch-pg.sh
   tests/fake-sidecar.py
   tauri.conf.json
 ```
+
+## 准备内置 PostgreSQL
+
+macOS arm64 的精简 PG 由 CI 或本地脚本构建：
+
+```bash
+# 本地构建（约 1–2 分钟，产物 dist/pg-darwin-arm64.tar.gz）
+bash scripts/ci/build-pg-macos.sh
+# 安装到 desktop/resources/pg
+bash desktop/scripts/fetch-pg.sh
+```
+
+CI 在 `.github/workflows/pg-macos.yml` 里跑同一脚本，上传 `pg-darwin-arm64` artifact。下载后同样用 `fetch-pg.sh <tarball>` 安装。
+
+没有 `resources/pg` 时，应用回退到 `VEXNAR_PG_DSN` 或 `config.json`。
 
 ## 开发运行
 
@@ -33,9 +51,9 @@ npm run dev
 SKIP_WEB=1 npm run dev
 ```
 
-调试构建会自动把 `VEXNAR_CONFIG` 指向仓库根目录的 `config.json`，所以本地开发直接复用现有 PostgreSQL 配置。
+调试构建会自动把 `VEXNAR_CONFIG` 指向仓库根目录的 `config.json`；只有找不到内置 PG 时才会用到它。
 
-## 运行时目录
+## 首次启动与运行时目录
 
 | 平台 | 默认位置 |
 | --- | --- |
@@ -46,10 +64,15 @@ SKIP_WEB=1 npm run dev
 目录内：
 
 - `data/`：SQLite 数据目录（传给 `vexnar -data`）
+- `pgdata/`：内置 PostgreSQL 数据目录
+- `pgpassword`：自动生成的 PG 密码（`0600`）
 - `logs/sidecar.log`：sidecar 的 stdout/stderr
+- `logs/postgres.log`：PostgreSQL 日志
 - `jwt.key`：会话签名密钥（传给 `vexnar -keydir`，刻意不放进可浏览的 `data/`）
 
-可以用 `VEXNAR_HOME` 覆盖整个运行时目录。
+首次启动流程：`initdb`（用户 `vexnar`，host 认证 SCRAM-SHA-256）→ 随机端口启动 `postgres`（只监听 `127.0.0.1`）→ 创建 `vexnar` 数据库 → 生成 DSN → 注入 sidecar。密码和 DSN 不会写进日志。
+
+上次异常退出留下的 `postmaster.pid` 会在下次启动时先清理；SIGINT/SIGTERM 也会走正常停止流程。
 
 ## 环境变量
 
@@ -58,17 +81,25 @@ SKIP_WEB=1 npm run dev
 | `VEXNAR_SIDECAR` | 指定 sidecar 可执行文件，优先于自动查找 |
 | `VEXNAR_HOME` | 覆盖应用数据目录 |
 | `VEXNAR_CONFIG` | 指定 Go 的 `config.json`（调试构建默认指向仓库根） |
-| `VEXNAR_PG_DSN` | 直接给 sidecar 一个 PostgreSQL DSN |
-| `VEXNAR_DESKTOP_SMOKE=1` | 无界面冒烟：启动 sidecar、等健康检查、退出 |
+| `VEXNAR_PG_DSN` | 直接用外部 PostgreSQL，跳过内置 PG |
+| `VEXNAR_PG_BIN` | 指定 PG 的 `bin` 目录（开发/测试） |
+| `VEXNAR_PG_DISABLE=1` | 禁用内置 PG，回退到 `config.json` |
+| `VEXNAR_DESKTOP_SMOKE=1` | 无界面冒烟：启动 PG/sidecar、等健康检查、退出 |
 
 ## 验证
 
 ```bash
 cargo test
-VEXNAR_DESKTOP_SMOKE=1 VEXNAR_SIDECAR="$PWD/tests/fake-sidecar.py" cargo run
+
+# 有内置 PG 时：完整链路（PG → sidecar → /api/health）
+VEXNAR_DESKTOP_SMOKE=1 cargo run
+
+# 没有 PG 时：用桩 sidecar 验证端口/进程管理
+VEXNAR_PG_DISABLE=1 VEXNAR_DESKTOP_SMOKE=1 \
+  VEXNAR_SIDECAR="$PWD/tests/fake-sidecar.py" cargo run
 ```
 
-`fake-sidecar.py` 只实现 `/api/health`，用来在没有数据库时验证端口选择、进程拉起和清理。真实 Go sidecar 需要可用的 PostgreSQL：当前版本还没有内置便携 PG，需要 `VEXNAR_PG_DSN` 或 `config.json`。
+`fake-sidecar.py` 只实现 `/api/health`，用来在没有数据库时验证端口选择、进程拉起和清理。
 
 ## 打包
 
@@ -76,11 +107,12 @@ VEXNAR_DESKTOP_SMOKE=1 VEXNAR_SIDECAR="$PWD/tests/fake-sidecar.py" cargo run
 SKIP_WEB=1 npx tauri build --debug --bundles app
 ```
 
-产物在 `desktop/target/debug/bundle/macos/VEXNAR.app`。`tauri build` 的 `beforeBuildCommand` 默认会重新构建前端；`SKIP_WEB=1` 可复用已有的 `server/webui/dist`。
+产物在 `desktop/target/debug/bundle/macos/VEXNAR.app`，约 80 MB（含 18 MB PG）。`tauri build` 的 `beforeBuildCommand` 默认会重新构建前端；`SKIP_WEB=1` 可复用已有的 `server/webui/dist`。
 
 ## 当前限制
 
-- 未内置 PostgreSQL：便携 PG、`initdb` 与首次启动迁移是下一阶段。
 - 未做代码签名/公证，macOS 上首次打开会被 Gatekeeper 拦截。
-- 未做单实例与崩溃重启；重复启动会各自拉起一个 sidecar。
+- 未做单实例；重复启动会争用同一个 `pgdata`（后启动的实例会停掉前一个的 PG）。
+- PG 大版本升级还没有迁移流程；换 PG major 前需要 `pg_dump`/`pg_restore`。
+- 未做崩溃重启；SIGKILL 留下的 PG 会在下次启动时清理。
 - Agent 界面的 Affect UI 接入尚未开始（见 `docs/客户端化与插件商城方案.md` §5.5）。

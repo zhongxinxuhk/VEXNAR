@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### 桌面客户端
+
+#### 新增的功能
+
+- **macOS arm64 便携 PostgreSQL**：桌面外壳首次启动自动 `initdb`，在随机回环端口启动 `postgres`、创建 `vexnar` 库，并把 DSN 通过 `VEXNAR_PG_DSN` 注入 Go sidecar；退出（窗口关闭 / SIGINT / SIGTERM）时先停 sidecar 再 `pg_ctl -m fast` 停 PG，异常退出留下的 `postmaster.pid` 会在下次启动清理。内置 PG 由 `scripts/ci/build-pg-macos.sh` 构建（CI：`.github/workflows/pg-macos.yml`），裁剪后约 6 MB，并重写 `libpq` 安装名保证可重定位。
+
 ### 品牌
 
 #### 变更
