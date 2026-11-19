@@ -85,6 +85,12 @@ export class TerminalManager {
   }
 
   private resolveShell(configured: string): string {
+    if (process.platform === 'win32') {
+      const candidates = [configured, process.env.ComSpec, 'powershell.exe', 'cmd.exe'].filter(
+        Boolean
+      ) as string[]
+      return candidates.find((candidate) => existsSync(candidate)) ?? process.env.ComSpec ?? 'cmd.exe'
+    }
     const candidates = [configured, process.env.SHELL, '/bin/zsh', '/bin/bash', '/bin/sh'].filter(
       Boolean
     ) as string[]

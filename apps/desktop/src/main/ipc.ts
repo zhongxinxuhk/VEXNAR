@@ -83,8 +83,8 @@ export function registerIpc(services: Services): void {
     })
   )
   handle(IPC.sessionsRename, sessionRenameSchema, (input) => renameSession(input.id, input.title))
-  handle(IPC.sessionsRemove, idSchema, (input) => {
-    removeSession(input.id)
+  handle(IPC.sessionsRemove, idSchema, async (input) => {
+    await removeSession(input.id)
     return { removed: true as const }
   })
 
