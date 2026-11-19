@@ -360,9 +360,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((state) => ({
         error: event.message,
         agentStatus: 'error',
+        busy: false,
         messages: state.messages.map((message) =>
           message.role === 'assistant' && message.streaming
-            ? { ...message, content: message.content + `\n\n运行时错误：${event.message}`, failed: true }
+            ? {
+                ...message,
+                streaming: false,
+                content: message.content + `\n\n运行时错误：${event.message}`,
+                failed: true
+              }
             : message
         )
       }))
