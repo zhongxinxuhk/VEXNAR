@@ -1,0 +1,134 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  --font-mono:
+    'SFMono-Regular', ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+  --color-bg: #08090c;
+  --color-panel: #0d1015;
+  --color-panel-2: #121720;
+  --color-panel-3: #171d28;
+  --color-line: #222a38;
+  --color-line-soft: #1a212c;
+  --color-ink: #e7eaf0;
+  --color-ink-soft: #b8c0cf;
+  --color-muted: #818b9f;
+  --color-accent: #7c9cff;
+  --color-accent-2: #5eead4;
+  --color-danger: #ff6b6b;
+  --color-warn: #f5b95f;
+}
+
+:root {
+  color-scheme: dark;
+  --titlebar-h: 52px;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --color-bg: #f4f5f7;
+  --color-panel: #ffffff;
+  --color-panel-2: #f7f8fa;
+  --color-panel-3: #eef0f4;
+  --color-line: #dfe3ea;
+  --color-line-soft: #e9ecf1;
+  --color-ink: #161a22;
+  --color-ink-soft: #3d4555;
+  --color-muted: #6b7485;
+  --color-accent: #3f63d8;
+  --color-accent-2: #0f9f8a;
+  --color-danger: #c0392b;
+  --color-warn: #a16207;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 60%),
+    var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-muted) 26%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-muted) 44%, transparent);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.xterm {
+  padding: 10px 12px;
+}
+
+.xterm-viewport {
+  background: transparent !important;
+}
+
+.monaco-editor,
+.monaco-editor .overflow-guard {
+  border-radius: 10px;
+}
+
+@keyframes vexnars-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.status-dot {
+  animation: vexnars-pulse 1.8s ease-in-out infinite;
+}

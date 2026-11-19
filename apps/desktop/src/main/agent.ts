@@ -1,0 +1,94 @@
+import { fork, type ChildProcess } from 'node:child_process'
+import { app } from 'electron'
+import path from 'node:path'
+import type { AgentEvent, AgentSendInput } from '@shared/contracts'
+import { agentEventSchema } from '@shared/contracts'
+import { getAgentConfig, getSettings } from './settings'
+
+export class AgentManager {
+  private child: ChildProcess | null = null
+  private ready = false
+  private disposed = false
+
+  constructor(private readonly onEvent: (event: AgentEvent) => void) {}
+
+  send(input: AgentSendInput): { accepted: true } {
+    this.ensureStarted()
+    this.child?.send({ type: 'user_message', sessionId: input.sessionId, text: input.text })
+    return { accepted: true }
+  }
+
+  cancel(): { cancelled: true } {
+    this.child?.send({ type: 'cancel' })
+    return { cancelled: true }
+  }
+
+  /** Push new workspace/model/provider settings into a live runtime. */
+  reconfigure(): void {
+    if (!this.child || !this.child.connected) return
+    const settings = getSettings()
+    const config = getAgentConfig()
+    this.child.send({
+      type: 'init',
+      workspace: settings.workspaceRoot,
+      model: config.model,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey
+    })
+  }
+
+  dispose(): void {
+    this.disposed = true
+    this.ready = false
+    if (!this.child) return
+    this.child.removeAllListeners()
+    this.child.kill()
+    this.child = null
+  }
+
+  private ensureStarted(): void {
+    if (this.child || this.disposed) return
+    const runtime = app.isPackaged
+      ? path.join(process.resourcesPath, 'agent-runtime', 'index.cjs')
+      : path.join(app.getAppPath(), 'src', 'agent-runtime', 'index.cjs')
+    const settings = getSettings()
+    const config = getAgentConfig()
+
+    const child = fork(runtime, [], {
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+    })
+    this.child = child
+
+    child.stdout?.on('data', (chunk: Buffer) => console.log(`[agent] ${chunk.toString().trimEnd()}`))
+    child.stderr?.on('data', (chunk: Buffer) => console.error(`[agent] ${chunk.toString().trimEnd()}`))
+
+    child.on('message', (message) => {
+      const parsed = agentEventSchema.safeParse(message)
+      if (!parsed.success) {
+        console.error('[agent] invalid event', parsed.error.message)
+        return
+      }
+      if (parsed.data.type === 'ready') this.ready = true
+      this.onEvent(parsed.data)
+    })
+
+    child.on('exit', (code, signal) => {
+      this.ready = false
+      this.child = null
+      if (this.disposed) return
+      this.onEvent({
+        type: 'error',
+        message: `Agent Runtime 已退出（code=${code ?? 'null'}, signal=${signal ?? 'null'}）`
+      })
+    })
+
+    child.send({
+      type: 'init',
+      workspace: settings.workspaceRoot,
+      model: config.model,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey
+    })
+  }
+}
