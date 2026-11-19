@@ -60,7 +60,7 @@ SKIP_WEB=1 npm run dev
 - `VEXNAR Desktop`：完整构建静态前端 + sidecar，再打开 Tauri 窗口。
 - `VEXNAR Desktop (fast)`：设置 `SKIP_WEB=1`，复用已有的 `server/webui/dist`，只重编 sidecar 和 Rust。
 
-选好后点 Run 即可；Tauri 窗口会自行拉起 sidecar 和内置 PostgreSQL。GoLand 的 Debug 按钮只能调试 npm/Node 启动器，Rust 外壳和 Go sidecar 需要分别用 cargo/dlv 调试。`.idea/` 被 git 忽略，这两个配置是本机 IDE 配置，换机器后需要重新添加。
+选好后点 Run 即可；Tauri 窗口会自行拉起 sidecar 和内置 PostgreSQL。GoLand 的 Debug 按钮只能调试 npm/Node 启动器，Rust 外壳和 Go sidecar 需要分别用 cargo/dlv 调试。`.idea/runConfigurations/` 已纳入版本控制，队友拉代码后可直接使用；`.idea/workspace.xml` 等本机文件仍被忽略。
 
 调试构建会自动把 `VEXNAR_CONFIG` 指向仓库根目录的 `config.json`；只有找不到内置 PG 时才会用到它。
 
