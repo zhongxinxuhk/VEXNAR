@@ -16,12 +16,14 @@ import {
   Search,
   SquareTerminal
 } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { Badge, Button, ScrollArea, Tooltip } from '@/components/ui'
 import '@/lib/monaco'
 
 function WorkspaceView(): React.JSX.Element {
+  const t = useT()
   const files = useAppStore((state) => state.workspaceFiles)
   const loading = useAppStore((state) => state.workspaceLoading)
   const git = useAppStore((state) => state.git)
@@ -52,19 +54,19 @@ function WorkspaceView(): React.JSX.Element {
       <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
         <div className="min-w-0 flex-1">
           <div className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-            {settings.workspaceRoot ? 'workspace' : 'no workspace'}
+            {settings.workspaceRoot ? t('app.workspace') : t('app.noWorkspace')}
           </div>
           <div className="truncate text-xs text-ink-soft">
-            {settings.workspaceRoot || 'Choose a folder to begin'}
+            {settings.workspaceRoot || t('app.chooseFolder')}
           </div>
         </div>
-        <Tooltip label="Refresh files" side="bottom">
-          <Button variant="ghost" size="icon" onClick={() => void refreshWorkspace()} aria-label="Refresh files">
+        <Tooltip label={t('panel.refreshFiles')} side="bottom">
+          <Button variant="ghost" size="icon" onClick={() => void refreshWorkspace()} aria-label={t('panel.refreshFiles')}>
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
           </Button>
         </Tooltip>
         <Button variant="secondary" size="sm" onClick={() => void chooseWorkspace()}>
-          Choose
+          {t('panel.choose')}
         </Button>
       </div>
 
@@ -76,9 +78,9 @@ function WorkspaceView(): React.JSX.Element {
                 <GitBranch className="h-3.5 w-3.5 text-accent" />
                 <span className="font-mono text-[11px] text-ink-soft">{git.branch}</span>
                 <span className="ml-auto font-mono text-[10px] text-muted">
-                  {git.files.length} changed
+                  {git.files.length} {t('panel.changed')}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => void refreshGit()} aria-label="Refresh git">
+                <Button variant="ghost" size="icon" onClick={() => void refreshGit()} aria-label={t('panel.refreshGit')}>
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               </div>
@@ -117,7 +119,7 @@ function WorkspaceView(): React.JSX.Element {
 
           {visible.length === 0 ? (
             <div className="px-3 py-10 text-center text-xs text-muted">
-              {settings.workspaceRoot ? 'No files to show.' : 'Select a workspace folder.'}
+              {settings.workspaceRoot ? t('panel.noFiles') : t('panel.selectFolder')}
             </div>
           ) : (
             visible.map((file) => {
@@ -167,6 +169,7 @@ function WorkspaceView(): React.JSX.Element {
 }
 
 function TerminalView(): React.JSX.Element {
+  const t = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const settings = useAppStore((state) => state.settings)
 
@@ -183,18 +186,18 @@ function TerminalView(): React.JSX.Element {
       lineHeight: 1.45,
       allowTransparency: true,
       theme: {
-        background: '#0a0c10',
-        foreground: '#d7dce6',
-        cursor: '#7c9cff',
-        selectionBackground: '#2b3650',
-        black: '#1b1f27',
-        red: '#ff6b6b',
-        green: '#5eead4',
-        yellow: '#f5b95f',
-        blue: '#7c9cff',
-        magenta: '#c792ea',
-        cyan: '#89ddff',
-        white: '#d7dce6'
+        background: '#0b0b0c',
+        foreground: '#e7e7ea',
+        cursor: '#e8e8ea',
+        selectionBackground: '#343438',
+        black: '#1b1b1e',
+        red: '#ff6961',
+        green: '#9fe870',
+        yellow: '#f5c26b',
+        blue: '#a5b4fc',
+        magenta: '#d8b4fe',
+        cyan: '#a5f3fc',
+        white: '#e7e7ea'
       }
     })
     const fit = new FitAddon()
@@ -258,16 +261,17 @@ function TerminalView(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
-        <SquareTerminal className="h-3.5 w-3.5 text-accent" />
+        <SquareTerminal className="h-3.5 w-3.5 text-muted" />
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">pty</span>
-        <Badge className="ml-auto">{settings.shell || 'default shell'}</Badge>
+        <Badge className="ml-auto">{settings.shell || t('panel.defaultShell')}</Badge>
       </div>
-      <div ref={containerRef} className="min-h-0 flex-1 bg-[#0a0c10]" />
+      <div ref={containerRef} className="min-h-0 flex-1 bg-[#0b0b0c]" />
     </div>
   )
 }
 
 function DiffView(): React.JSX.Element {
+  const t = useT()
   const diff = useAppStore((state) => state.diff)
   const loading = useAppStore((state) => state.diffLoading)
   const error = useAppStore((state) => state.diffError)
@@ -276,7 +280,7 @@ function DiffView(): React.JSX.Element {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center gap-2 text-xs text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading diff…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t('panel.loadingDiff')}
       </div>
     )
   }
@@ -287,7 +291,7 @@ function DiffView(): React.JSX.Element {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
         <Search className="h-5 w-5 text-muted/50" />
-        <div className="text-xs text-muted">Select a changed file to inspect its diff.</div>
+        <div className="text-xs text-muted">{t('panel.selectDiff')}</div>
       </div>
     )
   }
@@ -326,17 +330,18 @@ function DiffView(): React.JSX.Element {
 }
 
 export function RightPanel(): React.JSX.Element {
+  const t = useT()
   const rightTab = useAppStore((state) => state.rightTab)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const toggleRight = useAppStore((state) => state.toggleRight)
   const tabs = [
-    { id: 'workspace' as const, label: 'Files', icon: Folder },
-    { id: 'terminal' as const, label: 'Terminal', icon: SquareTerminal },
-    { id: 'diff' as const, label: 'Diff', icon: FileCode2 }
+    { id: 'workspace' as const, label: t('panel.files'), icon: Folder },
+    { id: 'terminal' as const, label: t('panel.terminal'), icon: SquareTerminal },
+    { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2 }
   ]
 
   return (
-    <aside className="flex h-full w-[440px] shrink-0 flex-col border-l border-line-soft bg-panel/50">
+    <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-panel/50">
       <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
         <div className="inline-flex items-center gap-1 rounded-lg bg-panel-2 p-1">
           {tabs.map((tab) => {
@@ -359,8 +364,8 @@ export function RightPanel(): React.JSX.Element {
           })}
         </div>
         <div className="ml-auto">
-          <Tooltip label="Hide panel" side="bottom">
-            <Button variant="ghost" size="icon" onClick={toggleRight} aria-label="Hide panel">
+          <Tooltip label={t('app.hidePanel')} side="bottom">
+            <Button variant="ghost" size="icon" onClick={toggleRight} aria-label={t('app.hidePanel')}>
               <PanelRightClose className="h-4 w-4" />
             </Button>
           </Tooltip>

@@ -43,7 +43,7 @@ function createWindow(): void {
     minHeight: 680,
     show: false,
     title: 'VEXNAR',
-    backgroundColor: '#0a0b0e',
+    backgroundColor: '#0b0b0c',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 16 } : undefined,
     webPreferences: {

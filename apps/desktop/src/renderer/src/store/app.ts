@@ -1,7 +1,10 @@
 import { create } from 'zustand'
+import { translate, useI18n } from '@/lib/i18n'
 import type {
   AgentEvent,
   AppInfo,
+  BackendLoginInput,
+  BackendStatus,
   DiffPayload,
   FileNode,
   GitStatus,
@@ -27,9 +30,21 @@ export type ChatMessage = Message & {
 
 type RightTab = 'workspace' | 'terminal' | 'diff'
 type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
+export type AppView =
+  | 'chat'
+  | 'overview'
+  | 'tasks'
+  | 'findings'
+  | 'traffic'
+  | 'assets'
+  | 'commands'
+  | 'system'
 
 type AppState = {
   info: AppInfo | null
+  view: AppView
+  backend: BackendStatus | null
+  backendLoading: boolean
   settings: PublicSettings
   sessions: Session[]
   activeSessionId: string | null
@@ -52,6 +67,11 @@ type AppState = {
   initialized: boolean
 
   init: () => Promise<void>
+  setView: (view: AppView) => void
+  refreshBackend: () => Promise<void>
+  connectBackend: (input: BackendLoginInput) => Promise<boolean>
+  disconnectBackend: () => Promise<void>
+  askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
   newSession: () => Promise<void>
   removeSession: (id: string) => Promise<void>
@@ -75,10 +95,14 @@ const emptySettings: PublicSettings = {
   shell: '',
   model: 'gpt-5-codex',
   baseUrl: '',
-  hasApiKey: false
+  backendUrl: 'http://127.0.0.1:8787',
+  hasApiKey: false,
+  hasBackendToken: false
 }
 
 const api = window.vexnar
+const newChatTitle = (): string => translate(useI18n.getState().locale, 'app.newThread')
+const isDefaultTitle = (title: string): boolean => title === 'New chat' || title === translate('zh', 'app.newThread') || title === translate('en', 'app.newThread')
 
 function applyTheme(theme: PublicSettings['theme']): void {
   const dark =
@@ -93,7 +117,8 @@ function settingsInput(settings: PublicSettings): SettingsInput {
     workspaceRoot: settings.workspaceRoot,
     shell: settings.shell,
     model: settings.model,
-    baseUrl: settings.baseUrl
+    baseUrl: settings.baseUrl,
+    backendUrl: settings.backendUrl
   }
 }
 
@@ -103,6 +128,9 @@ function lastStreaming(messages: ChatMessage[]): ChatMessage | undefined {
 
 export const useAppStore = create<AppState>((set, get) => ({
   info: null,
+  view: 'chat',
+  backend: null,
+  backendLoading: false,
   settings: emptySettings,
   sessions: [],
   activeSessionId: null,
@@ -141,7 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       let sessions = sessionsResult.ok ? sessionsResult.data : []
       if (sessions.length === 0) {
         const created = await api.sessions.create({
-          title: 'New chat',
+          title: newChatTitle(),
           workspace: settings.workspaceRoot
         })
         if (created.ok) sessions = [created.data]
@@ -157,9 +185,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       applyTheme(settings.theme)
       if (sessions[0]) await get().selectSession(sessions[0].id)
       await Promise.all([get().refreshWorkspace(), get().refreshGit()])
+      void get().refreshBackend()
     } finally {
       set({ initializing: false })
     }
+  },
+
+  setView: (view) => set({ view }),
+
+  refreshBackend: async () => {
+    set({ backendLoading: true })
+    const result = await api.backend.status()
+    set({
+      backend: result.ok ? result.data : null,
+      backendLoading: false,
+      error: result.ok ? get().error : result.error
+    })
+  },
+
+  connectBackend: async (input) => {
+    set({ backendLoading: true })
+    const result = await api.backend.login(input)
+    if (!result.ok) {
+      set({ backendLoading: false, error: result.error })
+      return false
+    }
+    set({ settings: result.data, backendLoading: false, error: null })
+    await get().refreshBackend()
+    return true
+  },
+
+  disconnectBackend: async () => {
+    const result = await api.backend.logout()
+    if (result.ok) set({ settings: result.data })
+    await get().refreshBackend()
+  },
+
+  askAgent: async (text) => {
+    set({ view: 'chat' })
+    if (!get().activeSessionId) await get().newSession()
+    await get().send(text)
   },
 
   selectSession: async (id) => {
@@ -183,7 +248,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   newSession: async () => {
     if (get().busy) await get().cancel()
     const workspace = get().settings.workspaceRoot
-    const result = await api.sessions.create({ title: 'New chat', workspace })
+    const result = await api.sessions.create({ title: newChatTitle(), workspace })
     if (!result.ok) {
       set({ error: result.error })
       return
@@ -247,7 +312,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       error: null
     }))
     const current = get().sessions.find((item) => item.id === sessionId)
-    if (current?.title === 'New chat') {
+    if (current && isDefaultTitle(current.title)) {
       const title = trimmed.replace(/\s+/g, ' ').slice(0, 60)
       void api.sessions.rename({ id: sessionId, title }).then((renamed) => {
         if (!renamed.ok) return
@@ -264,7 +329,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         error: result.error,
         messages: state.messages.map((message) =>
           message.id === assistant.id
-            ? { ...message, streaming: false, failed: true, content: `运行时错误：${result.error}` }
+            ? { ...message, streaming: false, failed: true, content: `${translate(useI18n.getState().locale, 'chat.runtimeError')}：${result.error}` }
             : message
         )
       }))
@@ -366,7 +431,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             ? {
                 ...message,
                 streaming: false,
-                content: message.content + `\n\n运行时错误：${event.message}`,
+                content: message.content + `\n\n${translate(useI18n.getState().locale, 'chat.runtimeError')}：${event.message}`,
                 failed: true
               }
             : message

@@ -10,13 +10,16 @@ export const settingsSchema = z.object({
   model: z.string().trim().min(1).max(120).default('gpt-5-codex'),
   baseUrl: z.string().default(''),
   apiKey: z.string().max(4096).optional(),
-  clearApiKey: z.boolean().optional()
+  clearApiKey: z.boolean().optional(),
+  backendUrl: z.string().default('http://127.0.0.1:8787'),
+  backendToken: z.string().max(8192).optional(),
+  clearBackendToken: z.boolean().optional()
 })
 export type SettingsInput = z.infer<typeof settingsSchema>
 
 export const publicSettingsSchema = settingsSchema
-  .omit({ apiKey: true, clearApiKey: true })
-  .extend({ hasApiKey: z.boolean() })
+  .omit({ apiKey: true, clearApiKey: true, backendToken: true, clearBackendToken: true })
+  .extend({ hasApiKey: z.boolean(), hasBackendToken: z.boolean() })
 export type PublicSettings = z.infer<typeof publicSettingsSchema>
 
 export const sessionCreateSchema = z.object({
@@ -81,6 +84,29 @@ export const agentSendSchema = z.object({
   text: z.string().trim().min(1).max(20_000)
 })
 export type AgentSendInput = z.infer<typeof agentSendSchema>
+
+export const backendLoginSchema = z.object({
+  baseUrl: z.string().optional(),
+  username: z.string().trim().min(1).max(200),
+  password: z.string().min(1).max(4096)
+})
+export type BackendLoginInput = z.infer<typeof backendLoginSchema>
+
+export const backendRequestSchema = z.object({
+  path: z.string().min(1).max(4000).regex(/^\//, '路径必须以 / 开头'),
+  method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'),
+  body: z.unknown().optional()
+})
+export type BackendRequestInput = z.infer<typeof backendRequestSchema>
+
+export type BackendStatus = {
+  baseUrl: string
+  connected: boolean
+  authenticated: boolean
+  version?: string
+  service?: string
+  error?: string
+}
 
 export const emptySchema = z.undefined().or(z.null()).optional()
 
@@ -183,5 +209,9 @@ export const IPC = {
   terminalExit: 'terminal:exit',
   agentSend: 'agent:send',
   agentCancel: 'agent:cancel',
-  agentEvent: 'agent:event'
+  agentEvent: 'agent:event',
+  backendStatus: 'backend:status',
+  backendLogin: 'backend:login',
+  backendLogout: 'backend:logout',
+  backendRequest: 'backend:request'
 } as const

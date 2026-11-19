@@ -10,11 +10,11 @@ import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {
-        default: 'bg-accent text-slate-950 hover:bg-accent/90',
+        default: 'bg-accent text-accent-ink hover:bg-accent/90',
         secondary: 'bg-panel-3 text-ink hover:bg-panel-3/80 border border-line',
         ghost: 'text-ink-soft hover:bg-panel-2 hover:text-ink',
         outline: 'border border-line bg-transparent text-ink-soft hover:bg-panel-2 hover:text-ink',

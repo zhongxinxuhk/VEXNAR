@@ -20,10 +20,13 @@ describe('settings contracts', () => {
     const publicSettings = publicSettingsSchema.parse({
       theme: 'system',
       model: 'local-model',
-      hasApiKey: true
+      hasApiKey: true,
+      hasBackendToken: true
     })
     expect(publicSettings.hasApiKey).toBe(true)
+    expect(publicSettings.hasBackendToken).toBe(true)
     expect('apiKey' in publicSettings).toBe(false)
+    expect('backendToken' in publicSettings).toBe(false)
   })
 
   it('rejects an empty model', () => {
