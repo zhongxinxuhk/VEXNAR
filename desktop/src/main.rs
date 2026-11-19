@@ -5,6 +5,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod pg;
 mod supervisor;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -17,6 +18,10 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             app.manage(supervisor::SidecarState::default());
+            app.manage(pg::PgState::default());
+
+            #[cfg(unix)]
+            supervisor::install_signal_cleanup(app.handle().clone());
 
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("VEXNAR")

@@ -30,6 +30,12 @@ pub struct SidecarState(pub Mutex<Option<Child>>);
 pub fn start(app: &tauri::AppHandle) -> Result<String, String> {
     let exe = resolve_sidecar()?;
     let port = free_port()?;
+    let proxy_port = loop {
+        let candidate = free_port()?;
+        if candidate != port {
+            break candidate;
+        }
+    };
     let home = runtime_home(app)?;
     let data_dir = home.join("data");
     let log_dir = home.join("logs");
@@ -37,6 +43,10 @@ pub fn start(app: &tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| format!("创建数据目录失败 {}: {e}", data_dir.display()))?;
     fs::create_dir_all(&log_dir)
         .map_err(|e| format!("创建日志目录失败 {}: {e}", log_dir.display()))?;
+
+    // Start portable PostgreSQL first (unless the user pinned a DSN), then
+    // hand its DSN to the sidecar.
+    let dsn = crate::pg::ensure(app, &home, &log_dir)?;
 
     let log_path = log_dir.join("sidecar.log");
     let log = OpenOptions::new()
@@ -55,6 +65,8 @@ pub fn start(app: &tauri::AppHandle) -> Result<String, String> {
         .arg(&data_dir)
         .arg("-keydir")
         .arg(&home)
+        .arg("-proxy")
+        .arg(format!("127.0.0.1:{proxy_port}"))
         .current_dir(&home)
         .stdin(Stdio::null())
         .stdout(Stdio::from(log))
@@ -70,9 +82,14 @@ pub fn start(app: &tauri::AppHandle) -> Result<String, String> {
         }
     }
 
-    let child = cmd
-        .spawn()
-        .map_err(|e| format!("无法启动 sidecar {}: {e}", exe.display()))?;
+    if let Some(dsn) = dsn.as_deref() {
+        cmd.env("VEXNAR_PG_DSN", dsn);
+    }
+
+    let child = cmd.spawn().map_err(|e| {
+        crate::pg::stop(app);
+        format!("无法启动 sidecar {}: {e}", exe.display())
+    })?;
     app.state::<SidecarState>()
         .0
         .lock()
@@ -108,10 +125,29 @@ pub fn stop(app: &tauri::AppHandle) {
     if let Some(child) = child {
         terminate(child);
     }
+    crate::pg::stop(app);
 }
 
 pub fn smoke_requested() -> bool {
     std::env::var("VEXNAR_DESKTOP_SMOKE").as_deref() == Ok("1")
+}
+
+/// Cleanly stops both local services when the app receives SIGINT/SIGTERM.
+/// The normal window-close path goes through `RunEvent::Exit` instead.
+#[cfg(unix)]
+pub fn install_signal_cleanup(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        use signal_hook::consts::{SIGINT, SIGTERM};
+        let Ok(mut signals) = signal_hook::iterator::Signals::new([SIGINT, SIGTERM]) else {
+            eprintln!("[desktop] 无法注册退出信号处理");
+            return;
+        };
+        for signal in signals.forever() {
+            eprintln!("[desktop] 收到信号 {signal}，正在停止本地服务...");
+            stop(&app);
+            std::process::exit(0);
+        }
+    });
 }
 
 /// Headless check used by CI/local verification: start the sidecar, wait for
@@ -132,9 +168,27 @@ pub fn run_smoke() -> i32 {
 fn smoke() -> Result<(), String> {
     let exe = resolve_sidecar()?;
     let port = free_port()?;
-    let home = std::env::temp_dir().join(format!("vexnar-desktop-smoke-{}", std::process::id()));
+    let proxy_port = loop {
+        let candidate = free_port()?;
+        if candidate != port {
+            break candidate;
+        }
+    };
+    let home = std::env::var_os("VEXNAR_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            std::env::temp_dir().join(format!("vexnar-desktop-smoke-{}", std::process::id()))
+        });
     let data_dir = home.join("data");
     fs::create_dir_all(&data_dir).map_err(|e| format!("创建 smoke 数据目录失败: {e}"))?;
+
+    let mut pg_runtime = if matches!(std::env::var("VEXNAR_PG_DISABLE").as_deref(), Ok("1")) {
+        None
+    } else {
+        crate::pg::dev_bin_dir()
+            .map(|bin| crate::pg::PgRuntime::start(bin, &home, &home.join("logs")))
+            .transpose()?
+    };
 
     let mut cmd = Command::new(&exe);
     cmd.arg("-addr")
@@ -143,10 +197,17 @@ fn smoke() -> Result<(), String> {
         .arg(&data_dir)
         .arg("-keydir")
         .arg(&home)
+        .arg("-proxy")
+        .arg(format!("127.0.0.1:{proxy_port}"))
         .current_dir(&home)
         .stdin(Stdio::null())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
+
+    if let Some(runtime) = pg_runtime.as_ref() {
+        cmd.env("VEXNAR_PG_DSN", runtime.dsn());
+        println!("[smoke] postgres ready on 127.0.0.1:{}", runtime.port());
+    }
 
     let mut child = cmd
         .spawn()
@@ -164,6 +225,9 @@ fn smoke() -> Result<(), String> {
     };
 
     terminate(child);
+    if let Some(mut runtime) = pg_runtime.take() {
+        runtime.stop();
+    }
     result.map(|()| println!("[smoke] sidecar ready on 127.0.0.1:{port}"))
 }
 
