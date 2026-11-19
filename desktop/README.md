@@ -62,6 +62,15 @@ GoLand 的 Run/Debug 下拉框里有两个 npm 配置（`.idea/runConfigurations
 
 选好后点 Run 即可；Tauri 窗口会自行拉起 sidecar 和内置 PostgreSQL。GoLand 的 Debug 按钮只能调试 npm/Node 启动器，Rust 外壳和 Go sidecar 需要分别用 cargo/dlv 调试。`.idea/runConfigurations/` 已纳入版本控制，队友拉代码后可直接使用；`.idea/workspace.xml` 等本机文件仍被忽略。
 
+### 在 RustRover 中编译/测试
+
+用 RustRover 打开 `desktop/` 目录（不是仓库根目录），Run/Debug 下拉框里有两个 Cargo 配置：
+
+- `VEXNAR Desktop Build`：`cargo build --workspace`
+- `VEXNAR Desktop Test`：`cargo test --workspace`
+
+对应配置文件在 `desktop/.idea/runConfigurations/`，已纳入版本控制；`desktop/.idea/workspace.xml` 仍只保留在本机。
+
 调试构建会自动把 `VEXNAR_CONFIG` 指向仓库根目录的 `config.json`；只有找不到内置 PG 时才会用到它。
 
 ## 首次启动与运行时目录
