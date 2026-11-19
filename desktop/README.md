@@ -55,7 +55,7 @@ SKIP_WEB=1 npm run dev
 
 ### 在 GoLand 中启动
 
-本机 GoLand 的 Run/Debug 下拉框里已添加两个 npm 配置（`.idea/runConfigurations/`）：
+GoLand 的 Run/Debug 下拉框里有两个 npm 配置（`.idea/runConfigurations/`，已纳入版本控制）：
 
 - `VEXNAR Desktop`：完整构建静态前端 + sidecar，再打开 Tauri 窗口。
 - `VEXNAR Desktop (fast)`：设置 `SKIP_WEB=1`，复用已有的 `server/webui/dist`，只重编 sidecar 和 Rust。
