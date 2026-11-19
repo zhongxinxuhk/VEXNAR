@@ -163,7 +163,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    set({ activeSessionId: id, messages: [], diff: null, diffError: null })
+    if (get().busy && get().agentSessionId && get().agentSessionId !== id) {
+      await get().cancel()
+    }
+    set({ activeSessionId: id, messages: [], agentSessionId: null, diff: null, diffError: null })
     const result = await api.messages.list({ id })
     if (result.ok) {
       set({
@@ -178,6 +181,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   newSession: async () => {
+    if (get().busy) await get().cancel()
     const workspace = get().settings.workspaceRoot
     const result = await api.sessions.create({ title: 'New chat', workspace })
     if (!result.ok) {
@@ -195,6 +199,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeSession: async (id) => {
+    if (id === get().activeSessionId && get().busy) await get().cancel()
     const result = await api.sessions.remove({ id })
     if (!result.ok) {
       set({ error: result.error })
@@ -208,6 +213,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
     const next = get().activeSessionId
     if (next) await get().selectSession(next)
+    else await get().newSession()
   },
 
   send: async (text) => {

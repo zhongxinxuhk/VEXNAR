@@ -296,6 +296,11 @@ export async function startPortablePostgres(): Promise<PostgresRuntime> {
   child.stderr?.pipe(logStream)
 
   let exited = false
+  let spawnError: Error | null = null
+  child.once('error', (error) => {
+    spawnError = error
+    exited = true
+  })
   child.once('exit', () => {
     exited = true
   })
@@ -330,7 +335,10 @@ export async function startPortablePostgres(): Promise<PostgresRuntime> {
   }
 
   try {
-    await waitReady(port, password, () => exited)
+    await waitReady(port, password, () => {
+      if (spawnError) throw new Error(`postgres 启动失败: ${spawnError.message}`)
+      return exited
+    })
     await ensureDatabase(port, password)
     process.env.VEXNAR_PG_DSN = runtime.dsn
     console.log(`[pg] portable PostgreSQL ready on 127.0.0.1:${port}`)
