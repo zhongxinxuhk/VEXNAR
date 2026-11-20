@@ -11,7 +11,7 @@
  * and no local streaming loop racing the server.
  */
 
-import type { ChatMessage } from '@/store/app'
+import type { ChatMessage, ToolCall } from '@/store/app'
 import type { ImageAttachment, Session } from '@shared/contracts'
 
 export type BackendConversation = {
@@ -97,7 +97,7 @@ export const DEFAULT_AGENT_KEY = 'auto'
  * The app renders a whole answer, not a 200-rune preview: ask the messages
  * endpoint for full detail. The web page keeps lazy-loading details per step.
  */
-const FULL = '&detail=1'
+const FULL = '&detail=1&hide_reasoning=1'
 
 export type BackendProject = {
   id: string
@@ -237,12 +237,12 @@ function toolInput(activity: BackendActivity): unknown {
 
 /**
  * Fold the backend activity stream into the message list ChatView renders.
- * Consecutive text/thinking steps belong to one assistant bubble; tool steps
- * attach to it as collapsible activity. Because the app requests detail=1 the
- * full assistant text is available, not the 200-rune summary.
+ * Consecutive answer fragments and tool steps belong to one assistant bubble.
+ * Thinking rows establish the bubble's identity while the model is working.
  */
 export function toChatMessages(activities: BackendActivity[], sessionId: string): ChatMessage[] {
   const out: ChatMessage[] = []
+  const callsById = new Map<string, ToolCall>()
   let open: ChatMessage | null = null
 
   const assistant = (seq: number): ChatMessage => {
@@ -263,6 +263,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
     switch (item.kind) {
       case 'user': {
         open = null
+        callsById.clear()
         const parsed = parseUserActivity(item)
         out.push({
           id: `u-${item.seq}`,
@@ -280,35 +281,28 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         break
       }
       case 'thinking': {
-        const message = assistant(item.seq)
-        const text = (item.detail || item.summary || '').trim()
-        if (text) {
-          message.toolCalls = message.toolCalls ?? []
-          message.toolCalls.push({
-            id: `think-${item.seq}`,
-            name: '思考',
-            status: 'done',
-            output: text
-          })
-        }
+        assistant(item.seq)
         break
       }
       case 'tool_use': {
         const message = assistant(item.seq)
-        message.toolCalls = message.toolCalls ?? []
-        message.toolCalls.push({
+        const call: ToolCall = {
           id: item.tool_use_id || `t-${item.seq}`,
           name: item.tool || 'tool',
+          worker: item.worker,
+          started: { sequence: item.seq, timestamp: item.ts },
           status: 'running',
           input: toolInput(item)
-        })
+        }
+        message.toolCalls?.push(call)
+        if (item.tool_use_id) callsById.set(item.tool_use_id, call)
         break
       }
       case 'tool_result': {
-        const message = assistant(item.seq)
-        const call = message.toolCalls?.find((entry) => entry.id === item.tool_use_id)
+        const call = callsById.get(item.tool_use_id ?? '')
         if (call) {
           call.status = item.is_error ? 'error' : 'done'
+          call.finished = { sequence: item.seq, timestamp: item.ts }
           call.output = item.detail || item.summary
         }
         break
@@ -333,6 +327,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
         }
         open = null
+        callsById.clear()
         break
       }
       default:

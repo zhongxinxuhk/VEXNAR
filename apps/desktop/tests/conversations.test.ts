@@ -86,7 +86,58 @@ describe('toChatMessages', () => {
     const tool = assistant.toolCalls?.find((call) => call.id === 'tool-1')
     expect(tool).toMatchObject({ name: 'Bash', status: 'done', output: 'a.png\n' })
     expect(tool?.input).toEqual({ command: 'ls' })
-    expect(assistant.toolCalls?.some((call) => call.name === '思考')).toBe(true)
+    expect(assistant.toolCalls).toHaveLength(1)
+    expect(JSON.stringify(assistant)).not.toContain('先列目录')
+  })
+
+  it('preserves the assistant identity when a private reasoning row becomes an answer', () => {
+    const user = step({ kind: 'user', detail: '你好' })
+    const first = step({ kind: 'thinking', summary: 'private summary', detail: 'private detail' })
+    const waiting = toChatMessages([user, first], '1')[1]
+    const replied = toChatMessages([user, first, step({ kind: 'text', detail: '你好！' })], '1')[1]
+    expect(waiting).toMatchObject({ id: replied.id, content: '', toolCalls: [] })
+    expect(replied.content).toBe('你好！')
+    expect(JSON.stringify(waiting)).not.toContain('private')
+  })
+
+  it('pairs out-of-order results with their own calls and does not cross turn boundaries', () => {
+    const messages = toChatMessages(
+      [
+        step({ kind: 'tool_use', tool: 'stat_file', tool_use_id: 'a' }),
+        step({ kind: 'tool_use', tool: 'read_file', tool_use_id: 'b' }),
+        step({ kind: 'tool_result', tool_use_id: 'b', detail: 'missing file', is_error: true }),
+        step({ kind: 'tool_result', tool_use_id: 'a', detail: 'regular file' }),
+        step({ kind: 'result' }),
+        step({ kind: 'user', detail: '检查另一个文件' }),
+        step({ kind: 'tool_result', tool_use_id: 'a', detail: 'unmatched tool result' }),
+        step({ kind: 'text', detail: '完成' })
+      ],
+      '3'
+    )
+    expect(messages[0].toolCalls).toMatchObject([
+      { id: 'a', status: 'done', output: 'regular file' },
+      { id: 'b', status: 'error', output: 'missing file' }
+    ])
+    expect(messages[2].toolCalls).toEqual([])
+  })
+
+  it('retains the recorded worker and timestamps when a tool result arrives', () => {
+    const call = step({ kind: 'tool_use', worker: 'reviewer', tool_use_id: 'read-1' })
+    const result = step({ kind: 'tool_result', worker: 'reviewer', tool_use_id: 'read-1' })
+    const live = toChatMessages([call], '3')[0].toolCalls?.[0]
+    expect(live).toMatchObject({
+      worker: 'reviewer',
+      started: { sequence: call.seq, timestamp: call.ts },
+      status: 'running'
+    })
+    expect(live?.finished).toBeUndefined()
+    const settled = toChatMessages([call, result], '3')[0].toolCalls?.[0]
+    expect(settled).toMatchObject({
+      id: live?.id,
+      started: live?.started,
+      finished: { sequence: result.seq, timestamp: result.ts },
+      status: 'done'
+    })
   })
 
   it('marks a failed turn from the terminal error result', () => {
@@ -134,7 +185,8 @@ describe('toChatMessages', () => {
     expect(messages).toHaveLength(2)
     expect(messages[1].role).toBe('assistant')
     expect(messages[1].content).toBe('你好！有什么需要我帮忙的吗？')
-    expect(messages[1].toolCalls?.map((call) => call.name)).toEqual(['思考'])
+    expect(messages[1].toolCalls).toEqual([])
+    expect(JSON.stringify(messages[1])).not.toContain('Respond briefly')
   })
 
   // 流式回合:正文是 text 行,终态 result 行只带用量。别为一个空 result 再造一条消息。

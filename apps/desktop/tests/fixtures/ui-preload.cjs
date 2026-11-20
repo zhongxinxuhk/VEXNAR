@@ -53,8 +53,16 @@ const conversationActivities = {
   1: [
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:00Z', kind: 'user', summary: '把官网搭起来', detail: JSON.stringify({ text: '把官网搭起来', attachments: [] }) },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:05Z', kind: 'thinking', summary: '先看目录结构', detail: '先看目录结构，再决定用 React 还是静态页。' },
-    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06Z', kind: 'tool_use', tool: 'Bash', tool_use_id: 'tool-1', summary: 'Bash ls', detail: JSON.stringify({ command: 'ls' }) },
-    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:07Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.125Z', kind: 'tool_use', tool: 'Bash', tool_use_id: 'tool-1', summary: 'Bash ls', detail: JSON.stringify({ command: 'ls' }) },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.500Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' },
+    ...Array.from({ length: 119 }, (_, index) => {
+      const tool_use_id = `read-${index}`
+      const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool: 'read_file', tool_use_id }
+      const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: 'read_file', detail: JSON.stringify({ path: `notes-${index}.md` }) }
+      return index === 1
+        ? [call]
+        : [call, { ...activity, seq: ++activitySeq, kind: 'tool_result', summary: 'done', detail: `output ${index}` }]
+    }).flat(),
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:09Z', kind: 'text', summary: '已经搭好官网骨架', detail: '已经搭好官网骨架，并补上交互式架构图和部署脚本。' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:10Z', kind: 'result', summary: '完成', detail: '完成', input_tokens: 3200 }
   ]
@@ -94,8 +102,24 @@ const sessionList = [
     pinned: false
   }
 ]
+let resumeDraft = false
 contextBridge.exposeInMainWorld('__uiFixture', {
-  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort })
+  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort }),
+  startDraft: () => {
+    resumeDraft = true
+    conversationActivities[2] = [
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:00Z', kind: 'user', summary: '显示问候' },
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:01Z', kind: 'text', summary: '你好', detail: '你好' }
+    ]
+  },
+  finishDraft: () => {
+    resumeDraft = false
+    const row = conversationActivities[2].at(-1)
+    row.summary = row.detail = '你好，已恢复到完整答复。'
+    conversationActivities[2].push({
+      seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:02Z', kind: 'result', summary: ''
+    })
+  }
 })
 let settings = {
   theme: 'light',
@@ -363,9 +387,29 @@ contextBridge.exposeInMainWorld('vexnar', {
       const tail = path.match(/^\/conversations\/([^/]+)\/messages/)
       if (tail && method === 'GET') {
         const id = tail[1]
-        const since = Number(new URLSearchParams(path.split('?')[1] || '').get('since') || 0)
-        const items = (conversationActivities[id] || []).filter((item) => item.seq > since)
-        return ok({ items, cursor: items.length ? items[items.length - 1].seq : since, running: false, hasMore: false })
+        const detail = path.match(/\/messages\/(\d+)$/)
+        if (detail) {
+          const row = conversationActivities[id]?.find((item) => item.seq === Number(detail[1]))
+          return ok({ detail: row?.detail || '' })
+        }
+        const query = new URLSearchParams(path.split('?')[1] || '')
+        const since = Number(query.get('since') || 0)
+        const before = Number(query.get('before') || 0)
+        const limit = Number(query.get('limit') || 200)
+        const eligible = (conversationActivities[id] || []).filter(
+          (item) => item.seq > since && (!before || item.seq < before)
+        )
+        const history = !query.has('since')
+        const items = history ? eligible.slice(-limit) : eligible
+        return ok({
+          items,
+          cursor: items.at(-1)?.seq ?? (history ? before : since),
+          running: id === '2' && resumeDraft,
+          live: id === '2' && resumeDraft && history
+            ? { ...items.at(-1), detail: '你好，正在生成答复' }
+            : null,
+          hasMore: history && eligible.length > items.length
+        })
       }
       if (tail && method === 'POST') {
         const id = tail[1]

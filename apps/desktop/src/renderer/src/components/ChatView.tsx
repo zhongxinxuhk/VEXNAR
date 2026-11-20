@@ -37,9 +37,7 @@ import {
 } from './ModelPicker'
 import { useDrafts, emptyDraft } from '@/store/drafts'
 import { useLayout } from '@/store/layout'
-import { ThinkingSteps } from '@/components/ThinkingSteps'
-import { ThinkingBlock } from '@/components/agent-ui/ThinkingBlock'
-import { ToolCallRow } from '@/components/agent-ui/ToolCallRow'
+import { ToolActivity } from '@/components/agent-ui/ToolActivity'
 import { AgentLoading } from '@/components/agent-ui/LoadingMark'
 import { attachmentsSchema, type ImageAttachment } from '@shared/contracts'
 import { useChatSendMode } from '@/lib/chat-send-mode'
@@ -79,55 +77,23 @@ function modelLabel(model: string): string {
   }
 }
 
-// ChatGPT-style thinking strength: the slider edits the ACTIVE LLM profile's
-// reasoning_effort in PostgreSQL, so the web LLM page shows the same value.
-// The five levels match what the Go backend/web page accept; the picker only
-// localises the labels (Light … Ultra) in ModelPicker.
-const toolLabels: Record<string, string> = {
-  read_file: '读取文件',
-  list_files: '列出文件',
-  git_status: 'Git 状态'
-}
-
-function toolTitle(tool: NonNullable<ChatMessage['toolCalls']>[number]): string {
-  const args =
-    tool.input && typeof tool.input === 'object' ? (tool.input as Record<string, unknown>) : {}
-  const command =
-    tool.name === 'git_status'
-      ? 'git status --short --branch'
-      : typeof args.command === 'string'
-        ? args.command
-        : ''
-  return (
-    command ||
-    [toolLabels[tool.name] || tool.name, typeof args.path === 'string' ? args.path : '']
-      .filter(Boolean)
-      .join(' · ')
-  )
-}
-
-function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
+function MessageRow({
+  message,
+  lastUser
+}: {
+  message: ChatMessage
+  lastUser?: ChatMessage
+}): React.JSX.Element {
   const t = useT()
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
   const patchDraft = useDrafts((state) => state.patch)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
-  const messages = useAppStore((state) => state.messages)
   const send = useAppStore((state) => state.send)
   const busy = useAppStore((state) => state.busy)
-  const lastUser = [...messages].reverse().find((item) => item.role === 'user')
   const canRegenerate =
     !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
-  // Reasoning is stored as a `思考` pseudo-tool so the transcript stays
-  // append-only; the view lifts it out of the tool list and gives it its own
-  // capped window instead of counting it as a tool call.
-  const allTools = message.toolCalls ?? []
-  const thinkingText = allTools
-    .filter((tool) => tool.name === '思考')
-    .map((tool) => tool.output ?? '')
-    .filter((value) => value.trim().length > 0)
-    .join('\n\n')
-  const toolCalls = allTools.filter((tool) => tool.name !== '思考')
+  const toolCalls = message.toolCalls ?? []
   // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
   // 后端会先把错误写成 text 行，因此正文里可能夹着 403 原文，这里只保留叙述部分。
   const failureText = message.error ?? message.content
@@ -136,12 +102,6 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
     quotaExhausted !== null
       ? stripFailureText(message.content, failureText)
       : message.content
-  // Reasoning is live only while the turn is still waiting on the model, not
-  // while an answer or a tool result is streaming in.
-  const thinkingActive =
-    message.streaming &&
-    !message.content &&
-    !toolCalls.some((tool) => tool.status === 'running')
   const copy = async (): Promise<void> => {
     // 复制可见正文：余额不足时正文已剥掉 403 原文，不要把报错 JSON 当回答复制走。
     const result = await window.vexnar.app.copyText(visibleContent || message.content)
@@ -195,7 +155,6 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               ))}
             </div>
           ) : null}
-          {thinkingText ? <ThinkingBlock text={thinkingText} streaming={thinkingActive} /> : null}
           {visibleContent ? (
             // 流式时由 CSS 把光标贴在最后一段文字末尾（.answer-streaming）——在
             // Markdown 之后塞 inline-block 会被块级段落挤到下一行，看着像断行。
@@ -205,7 +164,7 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
             />
           ) : message.streaming ||
             message.attachments?.length ||
-            thinkingText ||
+            toolCalls.length ||
             quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}
@@ -232,50 +191,14 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               </div>
             )
           ) : null}
-          {message.streaming && toolCalls.length ? (
-            <div className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-3.5 py-2.5">
-              <ThinkingSteps
-                steps={toolCalls.map((tool, index) => {
-                  const last = index === toolCalls.length - 1
-                  return {
-                    id: tool.id,
-                    label: toolTitle(tool),
-                    status:
-                      tool.status === 'error'
-                        ? 'done'
-                        : last && tool.status === 'running'
-                          ? 'active'
-                          : 'done'
-                  }
-                })}
-              />
-            </div>
+          {toolCalls.length ? (
+            <ToolActivity calls={toolCalls} running={Boolean(message.streaming)} />
           ) : null}
-          {message.streaming && !message.content && !toolCalls.length && !thinkingText ? (
+          {message.streaming && !message.content && toolCalls.length === 0 ? (
             <div className="mt-1">
               <AgentLoading />
             </div>
           ) : null}
-          {!message.streaming && Boolean(toolCalls.length) && (
-            <details className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-2 py-1">
-              <summary className="cursor-pointer px-2 py-1.5 text-xs text-muted">
-                工具活动 · {toolCalls.length} 项
-                {message.streaming ? ' · 运行中' : ''}
-              </summary>
-              <div className="ml-2 border-l border-line-soft pl-2">
-                {toolCalls.map((tool) => (
-                  <ToolCallRow
-                    key={tool.id}
-                    name={tool.name}
-                    summary={toolTitle(tool)}
-                    status={tool.status}
-                    input={tool.input}
-                    output={tool.output}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
         </div>
         {/* 操作行浮在气泡下方：不占气泡高度/宽度，只有鼠标靠近气泡才出现。
             pt-0.5 而非 mt-0.5 —— 行盒子与气泡下沿贴合，指针从气泡滑到图标时
@@ -880,9 +803,14 @@ function Composer(): React.JSX.Element {
 }
 
 export function ChatView(): React.JSX.Element {
+  const t = useT()
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const messages = useAppStore((state) => state.messages)
+  const lastUser = useMemo(() => [...messages].reverse().find((item) => item.role === 'user'), [messages])
+  const hasOlderMessages = useAppStore((state) => state.hasOlderMessages)
+  const loadingOlderMessages = useAppStore((state) => state.loadingOlderMessages)
+  const loadOlderMessages = useAppStore((state) => state.loadOlderMessages)
   const scroll = useRef<HTMLDivElement>(null)
   const following = useRef(true)
   const [away, setAway] = useState(false)
@@ -992,8 +920,21 @@ export function ChatView(): React.JSX.Element {
           }}
         >
           <div className="mx-auto flex w-full max-w-[820px] flex-col gap-6 px-8 pb-6 pt-16">
+            {hasOlderMessages ? (
+              <button
+                type="button"
+                disabled={loadingOlderMessages}
+                onClick={() => {
+                  following.current = false
+                  void loadOlderMessages()
+                }}
+                className="self-center rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:bg-panel-2 disabled:opacity-50"
+              >
+                {t(loadingOlderMessages ? 'chat.loadingHistory' : 'chat.loadHistory')}
+              </button>
+            ) : null}
             {messages.map((message) => (
-              <MessageRow key={message.id} message={message} />
+              <MessageRow key={message.id} message={message} lastUser={lastUser} />
             ))}
           </div>
         </div>

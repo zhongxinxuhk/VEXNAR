@@ -34,9 +34,14 @@ import type {
   SettingsInput
 } from '@shared/contracts'
 
-type ToolCall = {
+export type ToolCallEvent = { sequence: number; timestamp: string }
+
+export type ToolCall = {
   id: string
   name: string
+  worker: string
+  started: ToolCallEvent
+  finished?: ToolCallEvent
   status: 'running' | 'done' | 'error'
   input?: unknown
   output?: string
@@ -121,6 +126,9 @@ type AppState = {
   refreshBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
+  hasOlderMessages: boolean
+  loadingOlderMessages: boolean
+  loadOlderMessages: () => Promise<void>
   newSession: (workspace?: string) => Promise<void>
   switchWorkspace: (workspace: string) => Promise<void>
   taskFocus: ProjectTaskFocus | null
@@ -178,6 +186,7 @@ let pending: { text: string; images: ImageAttachment[] } | null = null
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollSeq = 0
 let pollConversation = ''
+let sessionSelection = 0
 
 function stopPolling(): void {
   pollSeq += 1
@@ -258,8 +267,9 @@ function publish(id: string, running: boolean): void {
 const LIVE_POLL_MS = 150
 const IDLE_POLL_MS = 400
 
-function pollUntilDone(id: string): void {
+function pollUntilDone(id: string, initialLive?: BackendActivity | null): void {
   stopPolling()
+  if (initialLive?.kind === 'text') liveSeq = initialLive.seq
   pollConversation = id
   const seq = pollSeq
   turnActive = true
@@ -268,10 +278,16 @@ function pollUntilDone(id: string): void {
     try {
       const page = await conversations.messages(id, activityCursor)
       if (seq !== pollSeq) return
+      if (page.hasMore && page.cursor > activityCursor) {
+        activities = mergeActivities(activities, page.items)
+        activityCursor = page.cursor
+        pollTimer = setTimeout(() => void tick(), 0)
+        return
+      }
       const incoming = page.live ? [...page.items, page.live] : page.items
       if (incoming.length) activities = mergeActivities(activities, incoming)
       activityCursor = Math.max(activityCursor, page.cursor)
-      if (page.live) liveSeq = page.live.seq
+      if (page.live?.kind === 'text') liveSeq = page.live.seq
       if (page.running) {
         turnActive = true
         publish(id, true)
@@ -282,7 +298,7 @@ function pollUntilDone(id: string): void {
       pending = null
       // The turn just ended: re-read the streamed row once, so the very last
       // fragment (written between the final poll and the seal) is not lost.
-      await settleLiveRow(id)
+      await settleLiveRow(id, seq)
       if (seq !== pollSeq) return
       publish(id, false)
       pollTimer = null
@@ -298,12 +314,13 @@ function pollUntilDone(id: string): void {
 }
 
 /** Replace the streamed row with its sealed text once the turn is over. */
-async function settleLiveRow(id: string): Promise<void> {
+async function settleLiveRow(id: string, poll: number): Promise<void> {
   const seq = liveSeq
   liveSeq = 0
   if (!seq) return
   try {
     const detail = await conversations.detail(id, seq)
+    if (poll !== pollSeq) return
     const row = activities.find((item) => item.seq === seq)
     if (!row || !detail || detail === row.detail) return
     activities = mergeActivities(activities, [{ ...row, detail }])
@@ -363,6 +380,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   taskFocus: null,
   activeSessionId: null,
   messages: [],
+  hasOlderMessages: false,
+  loadingOlderMessages: false,
   agentSessionId: null,
   agentStatus: 'idle',
   busy: false,
@@ -493,6 +512,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectSession: async (id) => {
     if (!get().sessions.some((item) => item.id === id)) return
+    const selection = ++sessionSelection
     set({ taskFocus: null })
     stopPolling()
     pending = null
@@ -502,6 +522,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       activeSessionId: id,
       messages: [],
+      hasOlderMessages: false,
+      loadingOlderMessages: false,
       busy: false,
       agentStatus: 'idle',
       agentSessionId: null,
@@ -512,13 +534,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Same latest-page contract as the web page: one page on open, then the
       // incremental tail while a turn runs.
       const page = await conversations.history(id)
-      if (get().activeSessionId !== id) return
-      activities = page.items
+      if (sessionSelection !== selection || get().activeSessionId !== id) return
+      activities = page.live ? mergeActivities(page.items, [page.live]) : page.items
       activityCursor = page.cursor
       turnActive = page.running
       const usage = lastTurnUsage(activities)
       set({
         messages: renderActivities(id),
+        hasOlderMessages: page.hasMore,
         busy: page.running,
         agentStatus: page.running ? 'streaming' : 'idle',
         ...(usage
@@ -530,9 +553,32 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           : {})
       })
-      if (page.running) pollUntilDone(id)
+      if (page.running) pollUntilDone(id, page.live)
     } catch (error) {
+      if (sessionSelection !== selection || get().activeSessionId !== id) return
       set({ error: error instanceof Error ? error.message : String(error) })
+    }
+  },
+
+  loadOlderMessages: async () => {
+    const { activeSessionId: id, hasOlderMessages, loadingOlderMessages } = get()
+    const before = activities[0]?.seq
+    if (!id || !before || !hasOlderMessages || loadingOlderMessages) return
+    const selection = sessionSelection
+    set({ loadingOlderMessages: true, error: null })
+    try {
+      const page = await conversations.history(id, before)
+      if (sessionSelection !== selection || get().activeSessionId !== id) return
+      const earlier = page.items.filter((row) => row.seq < before)
+      activities = mergeActivities(activities, earlier)
+      set({ messages: renderActivities(id), hasOlderMessages: page.hasMore && earlier.length > 0 })
+    } catch (error) {
+      if (sessionSelection !== selection || get().activeSessionId !== id) return
+      set({ error: error instanceof Error ? error.message : String(error) })
+    } finally {
+      if (sessionSelection === selection && get().activeSessionId === id) {
+        set({ loadingOlderMessages: false })
+      }
     }
   },
 
@@ -561,11 +607,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   newSession: async (workspaceOverride) => {
     if (get().busy) await get().cancel()
-    stopPolling()
-    pending = null
-    activities = []
-    activityCursor = 0
-    turnActive = false
     const workspace = workspaceOverride ?? get().settings.workspaceRoot
     if (workspace !== get().settings.workspaceRoot) {
       const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
@@ -583,10 +624,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         workspace
       )
       const session = toSession(created)
+      sessionSelection++
+      stopPolling()
+      pending = null
+      activities = []
+      activityCursor = 0
+      turnActive = false
       set((state) => ({
         sessions: [session, ...state.sessions],
         activeSessionId: session.id,
         messages: [],
+        hasOlderMessages: false,
+        loadingOlderMessages: false,
         agentSessionId: null,
         busy: false,
         agentStatus: 'idle'

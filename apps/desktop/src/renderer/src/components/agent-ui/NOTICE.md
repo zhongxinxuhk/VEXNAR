@@ -9,7 +9,6 @@ MIT notice is retained below.
 - Activity Heatmap — `<ActivityHeatmap />`
 - Breakdown — `<Breakdown />`
 - Approval Card — `<ApprovalCard />`
-- Thinking Block — `<ThinkingBlock />`
 - Tool Call — `<ToolCallRow />`
 - Loading State — `<AgentLoadingMark />` / `<AgentLoading />`
 

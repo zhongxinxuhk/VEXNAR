@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,10 +37,10 @@ func newLiveTestServer(t *testing.T) *Server {
 	}
 }
 
-func readLivePage(t *testing.T, s *Server, convID int64) map[string]any {
+func readLivePage(t *testing.T, s *Server, convID int64, query string) map[string]any {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet,
-		fmt.Sprintf("/api/conversations/%d/messages?since=0&detail=1", convID), nil)
+		fmt.Sprintf("/api/conversations/%d/messages?%s", convID, query), nil)
 	req.SetPathValue("id", fmt.Sprintf("%d", convID))
 	rec := httptest.NewRecorder()
 	s.pgConversationMessages(rec, req)
@@ -76,7 +77,7 @@ func TestConversationMessagesPublishesLiveAnswer(t *testing.T) {
 	s.chatMu.Unlock()
 
 	live.Push("text", "你好！")
-	page := readLivePage(t, s, conv.ID)
+	page := readLivePage(t, s, conv.ID, "since=0&detail=1")
 	if page["running"] != true {
 		t.Fatalf("running=%v, want true", page["running"])
 	}
@@ -94,7 +95,7 @@ func TestConversationMessagesPublishesLiveAnswer(t *testing.T) {
 	// A fragment that arrives inside the write interval must still be visible:
 	// the snapshot reads memory, not the throttled row.
 	live.Push("text", "你好！我是 Auto。")
-	page = readLivePage(t, s, conv.ID)
+	page = readLivePage(t, s, conv.ID, "since=0&detail=1")
 	liveRow = page["live"].(map[string]any)
 	if liveRow["detail"] != "你好！我是 Auto。" {
 		t.Fatalf("live detail=%q, want the newest fragment", liveRow["detail"])
@@ -102,7 +103,7 @@ func TestConversationMessagesPublishesLiveAnswer(t *testing.T) {
 
 	// Sealing publishes the final text and stops advertising a live row.
 	live.Finish()
-	page = readLivePage(t, s, conv.ID)
+	page = readLivePage(t, s, conv.ID, "since=0&detail=1")
 	if page["live"] != nil {
 		t.Fatalf("live=%v after Finish, want nil", page["live"])
 	}
@@ -129,7 +130,7 @@ func TestConversationMessagesPublishesLiveAnswer(t *testing.T) {
 	delete(s.chatBusy, key)
 	delete(s.chatLive, key)
 	s.chatMu.Unlock()
-	page = readLivePage(t, s, conv.ID)
+	page = readLivePage(t, s, conv.ID, "since=0&detail=1")
 	if page["running"] != false || page["live"] != nil {
 		t.Fatalf("running=%v live=%v, want a finished turn", page["running"], page["live"])
 	}
@@ -168,5 +169,130 @@ func TestConvLiveTextKindSwitchSealsRows(t *testing.T) {
 	}
 	if rows[1].Kind != "text" || rows[1].Detail != "想好了。" {
 		t.Fatalf("answer row=%+v", rows[1])
+	}
+}
+
+func TestConversationMessagesHidesReasoningInHistoryAndLiveTail(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "reasoning-visibility", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+
+	key := s.convBusyKey(conv.ID)
+	live := newConvLiveText(s.m.pg, conv.ID, "auto")
+	s.chatBusy[key] = true
+	s.chatLive[key] = live
+	live.Push("thinking", "private reasoning")
+
+	for _, query := range []string{"detail=1", "since=0&detail=1"} {
+		original := readLivePage(t, s, conv.ID, query)
+		projected := readLivePage(t, s, conv.ID, query+"&hide_reasoning=1")
+		got, err := json.Marshal(projected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(got), "private reasoning") {
+			t.Fatalf("reasoning leaked for query %q", query)
+		}
+		if projected["cursor"] != original["cursor"] || projected["running"] != true {
+			t.Fatalf("changed stream position or running state for %q", query)
+		}
+		for _, row := range []map[string]any{
+			projected["live"].(map[string]any),
+			projected["items"].([]any)[0].(map[string]any),
+		} {
+			if row["kind"] != "thinking" || row["seq"] == nil || row["summary"] != "" || row["detail"] != nil {
+				t.Fatalf("unexpected reasoning marker: %+v", row)
+			}
+		}
+		if original["live"].(map[string]any)["detail"] != "private reasoning" {
+			t.Fatal("existing transcript request lost details")
+		}
+	}
+
+	live.Push("text", "public answer")
+	page := readLivePage(t, s, conv.ID, "since=0&detail=1&hide_reasoning=1")
+	if page["live"].(map[string]any)["detail"] != "public answer" {
+		t.Fatal("reasoning filter changed the answer stream")
+	}
+	live.Finish()
+}
+
+func TestConversationMessagesPaginatesBacklogAfterTurnEnds(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "large transcript", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+	for i := range 1001 {
+		if _, err := s.m.pg.AppendConvActivity(conv.ID, db.Activity{
+			Worker: "auto", Kind: "text", Summary: fmt.Sprintf("fragment %d", i),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first := readLivePage(t, s, conv.ID, "since=0")
+	items := first["items"].([]any)
+	if len(items) != 1000 || first["hasMore"] != true || first["running"] != false {
+		t.Fatalf("first page count=%d hasMore=%v running=%v", len(items), first["hasMore"], first["running"])
+	}
+	if first["cursor"] != items[len(items)-1].(map[string]any)["seq"] {
+		t.Fatal("cursor skipped the extra row")
+	}
+	last := readLivePage(t, s, conv.ID, fmt.Sprintf("since=%.0f", first["cursor"]))
+	items = last["items"].([]any)
+	if len(items) != 1 || last["hasMore"] != false {
+		t.Fatalf("last page count=%d hasMore=%v", len(items), last["hasMore"])
+	}
+	if got := items[0].(map[string]any)["summary"]; got != "fragment 1000" {
+		t.Fatalf("last activity summary=%q", got)
+	}
+}
+
+func TestConversationMessagesPreservesToolEventTimestampPrecision(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "tool timestamps", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+
+	events := []struct {
+		kind string
+		at   time.Time
+	}{
+		{"tool_use", time.Date(2026, 11, 20, 10, 0, 0, 125456000, time.UTC)},
+		{"tool_result", time.Date(2026, 11, 20, 10, 0, 0, 500456000, time.UTC)},
+	}
+	for _, event := range events {
+		id, err := s.m.pg.AppendConvActivity(conv.ID, db.Activity{
+			Kind: event.kind, Worker: "auto", Tool: "read_file", ToolUseID: "read-1",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = s.m.pg.Exec("UPDATE conversation_activities SET created_at=$1 WHERE conversation_id=$2 AND id=$3",
+			event.at, conv.ID, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, query := range []string{"detail=1", "since=0&detail=1"} {
+		page := readLivePage(t, s, conv.ID, query)
+		rows := page["items"].([]any)
+		if len(rows) != len(events) {
+			t.Fatalf("got %d events for %q", len(rows), query)
+		}
+		for i, row := range rows {
+			activity := row.(map[string]any)
+			ts, err := time.Parse(time.RFC3339Nano, activity["ts"].(string))
+			if err != nil || !ts.Equal(events[i].at) || activity["worker"] != "auto" || activity["tool_use_id"] != "read-1" {
+				t.Fatalf("invalid event %d for %q: %+v (parse error=%v)", i, query, activity, err)
+			}
+		}
 	}
 }

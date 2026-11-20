@@ -410,6 +410,23 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	// but the desktop app renders whole answers immediately and cannot afford one
 	// /messages/{seq} round-trip per step.
 	withDetail := q.Get("detail") == "1"
+	hideReasoning := q.Get("hide_reasoning") == "1"
+	projectActivity := func(row db.Activity) ActivityDTO {
+		dto := activityDTO(row)
+		dto.TS = row.CreatedAt.Format(time.RFC3339Nano)
+		if hideReasoning && dto.Kind == "thinking" {
+			// Preserve the cursor and activity kind without disclosing model reasoning.
+			return ActivityDTO{Seq: dto.Seq, Worker: dto.Worker, TS: dto.TS, Kind: dto.Kind}
+		}
+		return dto
+	}
+	projectItems := func(rows []db.Activity) []ActivityDTO {
+		items := make([]ActivityDTO, len(rows))
+		for i, row := range rows {
+			items[i] = projectActivity(row)
+		}
+		return items
+	}
 	s.chatMu.Lock()
 	running := s.chatBusy[s.convBusyKey(c.ID)]
 	sink := s.chatLive[s.convBusyKey(c.ID)]
@@ -420,28 +437,34 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	var live *ActivityDTO
 	if running && sink != nil {
 		if row, ok := sink.Snapshot(); ok {
-			dto := activityDTO(row)
+			dto := projectActivity(row)
 			live = &dto
 		}
 	}
 
 	// Incremental tail: ?since=N returns steps after id N (ASC) — used by the live
-	// poll and the post-send fetch. A generous cap so a burst is never dropped.
+	// poll and the post-send fetch. Read one extra row to detect a backlog.
 	if sv := q.Get("since"); sv != "" {
 		since, _ := strconv.ParseInt(sv, 10, 64)
+		pageSize := min(max(limit, 1000), 5000)
 		var items []db.Activity
 		var cursor int64
 		var err error
 		if withDetail {
-			items, cursor, err = pg.ConvActivityListDetail(c.ID, since, max(limit, 1000))
+			items, cursor, err = pg.ConvActivityListDetail(c.ID, since, pageSize+1)
 		} else {
-			items, cursor, err = pg.ConvActivityList(c.ID, since, max(limit, 1000))
+			items, cursor, err = pg.ConvActivityList(c.ID, since, pageSize+1)
 		}
 		if err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}
-		writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": false})
+		hasMore := len(items) > pageSize
+		if hasMore {
+			items = items[:pageSize]
+			cursor = items[pageSize-1].ID
+		}
+		writeJSON(w, 200, map[string]any{"items": projectItems(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
 		return
 	}
 
@@ -465,7 +488,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	if n := len(items); n > 0 {
 		cursor = items[n-1].ID
 	}
-	writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
+	writeJSON(w, 200, map[string]any{"items": projectItems(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
 }
 
 // pgConversationMsgDetail lazily returns one step's full detail blob.

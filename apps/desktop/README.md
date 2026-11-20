@@ -62,6 +62,14 @@ Agent Runtime        Go sidecar (bundled `vexnar`)
 - Electron 主进程只持有 Go sidecar 的随机回环端口与每次启动随机令牌；渲染层和 Agent Runtime 都拿不到上游 API Key。
 - Agent Runtime 通过 `child_process.fork` 启动，使用主进程下发的回环网关地址访问 `/api/desktop/openai/v1/chat/completions`。
 
+### 聊天记录与工具活动
+
+桌面对话通过主进程 IPC 调用 Go 的 `GET /api/conversations/{id}/messages`。首次打开读取最近一页，选择「加载更早消息」后以最早序号为游标向前读取。运行中的对话以 `since` 游标读取新记录，同序号的流式回复会被更新。收到 `hasMore` 后客户端继续读取积压记录，直至追上后端。
+
+- 历史页和增量流都请求 `hide_reasoning=1`。Go 在这两种响应中仅返回 `thinking` 活动的序号、类型、时间和执行者等标识，桌面对话据此显示等待状态。
+- 工具活动按回合折叠，每页最多渲染 25 条。展开单条调用可查阅执行者、调用与结果事件的序号和时间、输入与输出。记录间隔按两条事件的持久化时间计算。执行结束后，缺少结果事件的调用标记为「未记录结果」。
+- 验收包括 `go test ./server -run 'TestConversationMessages'`（需要测试 PostgreSQL）、`npm run typecheck`、`npm test` 和 `npm run test:ui`。Electron UI 用固定会话数据验证界面交互，Go 测试验证实际 PostgreSQL 持久化和 HTTP 响应。
+
 ## 便携 PostgreSQL
 
 桌面端**始终使用 PostgreSQL**。SQLite 仅作为历史实现被移除，不提供回退。
