@@ -28,6 +28,7 @@ import { motion } from 'motion/react'
 import { consoleRequest } from '@/lib/console'
 import { recordEffort } from '@/lib/insight'
 import { useT } from '@/lib/i18n'
+import { parseQuotaShortfall, stripFailureText } from '@/lib/quota-error'
 import { AccessMenu, ContextBar } from './ChatControls'
 import {
   EFFORT_LEVELS,
@@ -46,6 +47,7 @@ import { useAppStore, type ChatMessage } from '@/store/app'
 import { basename, cn } from '@/lib/utils'
 import { Tooltip } from '@/components/ui'
 import { Markdown } from '@/components/Markdown'
+import { QuotaNotice } from '@/components/QuotaNotice'
 import { CloudMark } from '@/components/brand'
 
 const menuContent =
@@ -126,6 +128,14 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
     .filter((value) => value.trim().length > 0)
     .join('\n\n')
   const toolCalls = allTools.filter((tool) => tool.name !== '思考')
+  // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
+  // 后端会先把错误写成 text 行，因此正文里可能夹着 403 原文，这里只保留叙述部分。
+  const failureText = message.error ?? message.content
+  const quotaExhausted = message.failed ? parseQuotaShortfall(failureText) : null
+  const visibleContent =
+    quotaExhausted !== null
+      ? stripFailureText(message.content, failureText)
+      : message.content
   // Reasoning is live only while the turn is still waiting on the model, not
   // while an answer or a tool result is streaming in.
   const thinkingActive =
@@ -133,7 +143,8 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
     !message.content &&
     !toolCalls.some((tool) => tool.status === 'running')
   const copy = async (): Promise<void> => {
-    const result = await window.vexnar.app.copyText(message.content)
+    // 复制可见正文：余额不足时正文已剥掉 403 原文，不要把报错 JSON 当回答复制走。
+    const result = await window.vexnar.app.copyText(visibleContent || message.content)
     if (result.ok) {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
@@ -144,11 +155,12 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className={cn('group flex w-full', isUser ? 'justify-end' : 'justify-start')}
+      className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
     >
+      {/* group 落在气泡容器上：悬停气泡才浮出操作行，行本身不参与布局 */}
       <div
         className={cn(
-          'min-w-0',
+          'group relative min-w-0',
           isUser ? 'max-w-[78%]' : 'w-full max-w-[760px]'
         )}
       >
@@ -184,68 +196,41 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
             </div>
           ) : null}
           {thinkingText ? <ThinkingBlock text={thinkingText} streaming={thinkingActive} /> : null}
-          {message.content ? (
-            <Markdown content={message.content} />
-          ) : message.streaming || message.attachments?.length || thinkingText ? null : (
+          {visibleContent ? (
+            // 流式时由 CSS 把光标贴在最后一段文字末尾（.answer-streaming）——在
+            // Markdown 之后塞 inline-block 会被块级段落挤到下一行，看着像断行。
+            <Markdown
+              content={visibleContent}
+              className={message.streaming ? 'answer-streaming' : undefined}
+            />
+          ) : message.streaming ||
+            message.attachments?.length ||
+            thinkingText ||
+            quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}
-          {message.streaming && message.content ? (
-            <span className="stream-caret ml-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] rounded-[1px] bg-ink/70" />
-          ) : null}
-          {message.content && !message.streaming ? (
-            <div
-              className={cn(
-                'mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100',
-                isUser ? 'justify-end' : 'justify-start'
-              )}
-            >
-              <button
-                type="button"
-                aria-label="复制消息"
-                title={copied ? '已复制' : '复制'}
-                onClick={() => void copy()}
-                className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
-              {canRegenerate ? (
-                <button
-                  type="button"
-                  aria-label="重新生成"
-                  title="重新生成"
-                  onClick={() => void send(lastUser!.content)}
-                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-              {isUser && activeSessionId ? (
-                <button
-                  type="button"
-                  aria-label="在输入框编辑"
-                  title="在输入框编辑"
-                  onClick={() => patchDraft(activeSessionId, { text: message.content })}
-                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
           {message.failed ? (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
-              <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
-              {lastUser?.content ? (
-                <button
-                  type="button"
-                  onClick={() => void send(lastUser.content)}
-                  disabled={busy}
-                  className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
-                >
-                  重试
-                </button>
-              ) : null}
-            </div>
+            quotaExhausted ? (
+              <QuotaNotice
+                error={failureText}
+                onRetry={lastUser?.content ? () => void send(lastUser.content) : undefined}
+                retrying={busy}
+              />
+            ) : (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
+                <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
+                {lastUser?.content ? (
+                  <button
+                    type="button"
+                    onClick={() => void send(lastUser.content)}
+                    disabled={busy}
+                    className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
+                  >
+                    重试
+                  </button>
+                ) : null}
+              </div>
+            )
           ) : null}
           {message.streaming && toolCalls.length ? (
             <div className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-3.5 py-2.5">
@@ -292,6 +277,52 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
             </details>
           )}
         </div>
+        {/* 操作行浮在气泡下方：不占气泡高度/宽度，只有鼠标靠近气泡才出现。
+            pt-0.5 而非 mt-0.5 —— 行盒子与气泡下沿贴合，指针从气泡滑到图标时
+            不会经过 2px 的空档把 group-hover 断掉。 */}
+        {message.content && !message.streaming ? (
+          <div
+            className={cn(
+              'pointer-events-none absolute top-full z-10 flex items-start gap-0.5 pt-0.5',
+              'opacity-0 transition-opacity duration-150',
+              'group-hover:pointer-events-auto group-hover:opacity-100',
+              'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+              isUser ? 'right-0' : 'left-0'
+            )}
+          >
+            <button
+              type="button"
+              aria-label="复制消息"
+              title={copied ? '已复制' : '复制'}
+              onClick={() => void copy()}
+              className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </button>
+            {canRegenerate ? (
+              <button
+                type="button"
+                aria-label="重新生成"
+                title="重新生成"
+                onClick={() => void send(lastUser!.content)}
+                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            ) : null}
+            {isUser && activeSessionId ? (
+              <button
+                type="button"
+                aria-label="在输入框编辑"
+                title="在输入框编辑"
+                onClick={() => patchDraft(activeSessionId, { text: message.content })}
+                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </motion.div>
   )

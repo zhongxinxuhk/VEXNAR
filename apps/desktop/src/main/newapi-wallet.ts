@@ -5,6 +5,7 @@
 import type {
   NewApiPaymentResult,
   NewApiPlan,
+  NewApiSubscription,
   NewApiTopupInfo,
   NewApiTopupMethod
 } from '@shared/contracts'
@@ -85,6 +86,34 @@ function parseDiscount(value: unknown): Record<string, number> {
   return result
 }
 
+/** /api/subscription/self → 当前生效的订阅额度。 */
+export function parseSubscriptionSelf(payload: unknown): NewApiSubscription[] {
+  const root = asRecord(payload)
+  if (!root || root.success === false) return []
+  const data = asObject(root.data)
+  const subscriptions: NewApiSubscription[] = []
+  for (const item of asArray(data.subscriptions)) {
+    const wrapper = asRecord(item)
+    if (!wrapper) continue
+    const subscription = asRecord(wrapper.subscription) ?? wrapper
+    const status = String(subscription.status ?? '').trim()
+    if (status && status !== 'active') continue
+    const id = Math.trunc(finiteNumber(subscription.id))
+    const planId = Math.trunc(finiteNumber(subscription.plan_id))
+    if (id <= 0 && planId <= 0) continue
+    subscriptions.push({
+      id,
+      planId,
+      amountTotal: Math.max(0, finiteNumber(subscription.amount_total)),
+      amountUsed: Math.max(0, finiteNumber(subscription.amount_used)),
+      status,
+      upgradeGroup: String(subscription.upgrade_group ?? '').trim(),
+      endTime: Math.max(0, finiteNumber(subscription.end_time))
+    })
+  }
+  return subscriptions
+}
+
 /** /api/user/topup/info → 归一化充值配置。 */
 export function parseTopupInfo(payload: unknown): NewApiTopupInfo {
   const root = asRecord(payload)
@@ -156,7 +185,12 @@ export function paymentUrl(url: string, params: Record<string, string>): string 
   }
 }
 
-/** 把 ePay 下单结果归一化成应用内二维码支付会话。 */
+/**
+ * 把 ePay 下单结果归一化成应用内二维码支付会话。
+ *
+ * 扫码打开的是平台后端生成的已签名收银台地址；ZPay/ePay 的异步通知由平台服务端接收并
+ * 入账。桌面端不持有商户密钥、不伪造回调，只负责展示二维码和轮询账户结果。
+ */
 export function buildPaymentSession(
   target: PaymentTarget,
   fallback: { amount: number; method: string; currency?: string }

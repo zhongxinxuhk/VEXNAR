@@ -15,6 +15,7 @@ import type {
   NewApiRedeemInput,
   NewApiState,
   NewApiSubscribeInput,
+  NewApiSubscription,
   NewApiToken,
   NewApiTopupPayInput,
   NewApiTopupQuote,
@@ -55,6 +56,7 @@ import {
   parsePaymentTarget,
   parseRedeemResult,
   parseSubscriptionPlans,
+  parseSubscriptionSelf,
   parseTopupInfo,
   parseTopupQuote
 } from './newapi-wallet'
@@ -152,6 +154,7 @@ export class NewApiManager {
     authenticated: false,
     user: null,
     quota: null,
+    subscriptions: [],
     token: null,
     accessToken: null,
     accessTokenError: null,
@@ -875,6 +878,16 @@ export class NewApiManager {
     const statusData = statusResult.ok ? statusPayload?.data : undefined
     this.statusCache = statusData ?? {}
 
+    let subscriptions: NewApiSubscription[] = []
+    try {
+      const result = await this.authRequest('/api/subscription/self')
+      if (result.status === 401) throw new SessionExpiredError('登录已过期')
+      if (result.ok) subscriptions = parseSubscriptionSelf(result.json)
+    } catch (error) {
+      if (error instanceof SessionExpiredError) throw error
+      // 订阅接口未启用或暂不可用时，订阅额度按 0 展示。
+    }
+
     let token: NewApiToken | null = null
     let tokenError: string | null = null
     let accessToken: NewApiAccessToken | null = null
@@ -925,16 +938,14 @@ export class NewApiManager {
       tokenError = errorMessage(error)
     }
 
-    const quota: NewApiQuota = quotaFromUser(
-      rawUser,
-      this.statusCache,
-      Boolean(token?.unlimitedQuota)
-    )
+    // 余额始终取当前账户余额；App-managed API Key 的 unlimited_quota 不代表账户余额。
+    const quota: NewApiQuota = quotaFromUser(rawUser, this.statusCache)
     this.update({
       stage: 'ready',
       authenticated: true,
       user,
       quota,
+      subscriptions,
       token,
       accessToken,
       accessTokenError,
@@ -1293,6 +1304,7 @@ export class NewApiManager {
       authenticated: false,
       user: null,
       quota: null,
+      subscriptions: [],
       token: null,
       accessToken: null,
       accessTokenError: null,

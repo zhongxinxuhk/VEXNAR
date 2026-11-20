@@ -129,6 +129,17 @@ const newapi = {
     usdExchangeRate: 1,
     displayInCurrency: false
   },
+  subscriptions: [
+    {
+      id: 11,
+      planId: 3,
+      amountTotal: 120000000,
+      amountUsed: 12000000,
+      status: 'active',
+      upgradeGroup: 'research',
+      endTime: Date.now() + 86400000
+    }
+  ],
   models: ['test-model'],
   token: null,
   accessToken: {

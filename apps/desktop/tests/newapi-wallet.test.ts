@@ -9,6 +9,7 @@ import {
   parsePaymentTarget,
   parseRedeemResult,
   parseSubscriptionPlans,
+  parseSubscriptionSelf,
   parseTopupInfo,
   parseTopupQuote
 } from '../src/main/newapi-wallet'
@@ -89,6 +90,48 @@ describe('subscription plans', () => {
 
   it('returns no plans when the platform did not enable subscriptions', () => {
     expect(parseSubscriptionPlans({ success: true, data: [] })).toEqual([])
+  })
+})
+
+describe('active subscriptions', () => {
+  it('unwraps active subscription envelopes and normalizes quota fields', () => {
+    expect(
+      parseSubscriptionSelf({
+        success: true,
+        data: {
+          subscriptions: [
+            {
+              subscription: {
+                id: 7,
+                plan_id: 2,
+                amount_total: 8000000,
+                amount_used: 1200000,
+                status: 'active',
+                upgrade_group: 'pro',
+                end_time: 1800000000
+              }
+            },
+            { subscription: { id: 8, plan_id: 3, status: 'expired' } },
+            { subscription: { id: 0, plan_id: 0 } }
+          ]
+        }
+      })
+    ).toEqual([
+      {
+        id: 7,
+        planId: 2,
+        amountTotal: 8000000,
+        amountUsed: 1200000,
+        status: 'active',
+        upgradeGroup: 'pro',
+        endTime: 1800000000
+      }
+    ])
+  })
+
+  it('returns an empty list when subscriptions are unavailable', () => {
+    expect(parseSubscriptionSelf({ success: true, data: {} })).toEqual([])
+    expect(parseSubscriptionSelf({ success: false, message: 'forbidden' })).toEqual([])
   })
 })
 

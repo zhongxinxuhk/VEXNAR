@@ -247,6 +247,7 @@ export function PaymentDialog({
     [finish, refreshNewApi, t]
   )
 
+  // ePay 的 notify 由平台服务端处理；这里只观察账户余额/分组变化，避免在客户端持有商户密钥。
   useEffect(() => {
     if (phase !== 'qr') return
     const timer = window.setInterval(() => {
@@ -319,8 +320,10 @@ export function PaymentDialog({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || phase === 'processing') return
+      if (event.key !== 'Escape') return
+      // 始终拦住 Escape，避免支付处理中把底层钱包弹窗一起关掉。
       event.stopPropagation()
+      if (phase === 'processing') return
       onClose()
     }
     window.addEventListener('keydown', onKeyDown, true)
@@ -519,7 +522,12 @@ export function PaymentDialog({
           </div>
 
           {phase === 'qr' ? (
-            <div className="mt-3">
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-3"
+            >
               <div className="relative mx-auto grid h-[178px] w-[178px] place-items-center rounded-2xl border border-line bg-white p-2 shadow-sm">
                 {qr ? (
                   <img src={qr} alt={t('wallet.qr.title')} className="h-full w-full rounded-lg object-contain" draggable={false} />
@@ -597,7 +605,7 @@ export function PaymentDialog({
                   </Button>
                 )}
               </div>
-            </div>
+            </motion.div>
           ) : (
             <>
               <div className="mt-3 space-y-1.5 border-t border-line-soft pt-2.5 text-[10px]">
@@ -624,7 +632,7 @@ export function PaymentDialog({
                     ? t('wallet.redeemSuccess', { amount: successAmount })
                     : intent.kind === 'plan'
                       ? t('wallet.plan.subscribed')
-                      : t('wallet.success.hint')}
+                      : t('wallet.success.topupHint')}
                 </div>
               ) : error ? (
                 <div className="mt-2 rounded-lg bg-danger/10 px-2.5 py-2 text-[10px] leading-4 text-danger">

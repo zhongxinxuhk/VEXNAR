@@ -23,7 +23,7 @@ import wechatIcon from '@/assets/payment/wechat.svg'
 import type { NewApiPlan, NewApiQuota, NewApiWallet } from '@shared/contracts'
 import { useI18n, useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/store/app'
+import { useAppStore, type WalletTab } from '@/store/app'
 import { PaymentDialog, type PaymentIntent } from './PaymentDialog'
 import {
   Button,
@@ -37,8 +37,6 @@ import {
   TabsList,
   TabsTrigger
 } from './ui'
-
-type Tab = 'topup' | 'plans' | 'redeem'
 
 function PaymentMethodIcon({ type }: { type: string }): React.JSX.Element {
   if (type === 'alipay') {
@@ -90,19 +88,42 @@ function discountRate(wallet: NewApiWallet | null, amount: number): number {
   return typeof rate === 'number' && rate > 0 && rate <= 1 ? rate : 1
 }
 
+/**
+ * 订阅套餐卡片按窗体宽度排版：窄窗少列、宽窗最多 5 列。
+ *
+ * 固定 4 列会在窄窗里把卡片压成两行高、把第 5 个套餐挤出可视区；这里先由
+ * 卡片轨道宽度算出能放下几列，再按列宽渲染，窗口变化时由 ResizeObserver 重排。
+ */
+const PLAN_GAP = 10
+const PLAN_MIN_CARD = 164
+const PLAN_MAX_CARD = 216
+const PLAN_MAX_PER_VIEW = 5
+/** 首帧还没量到宽度时的回退值：按对话框最大宽度估算。 */
+const PLAN_FALLBACK_WIDTH = 880
+
 export function WalletDialog({
   open,
-  onOpenChange
+  onOpenChange,
+  tab: requestedTab,
+  onTabChange
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Deep link from the quota notice: open directly on top-up or plans. */
+  tab?: WalletTab
+  onTabChange?: (tab: WalletTab) => void
 }): React.JSX.Element {
   const t = useT()
   const locale = useI18n((state) => state.locale)
   const newApi = useAppStore((state) => state.newApi)
   const refreshNewApi = useAppStore((state) => state.refreshNewApi)
   const quota = newApi?.quota ?? null
-  const [tab, setTab] = useState<Tab>('topup')
+  const [internalTab, setInternalTab] = useState<WalletTab>('topup')
+  const tab = requestedTab ?? internalTab
+  const setTab = (next: WalletTab): void => {
+    setInternalTab(next)
+    onTabChange?.(next)
+  }
   const [wallet, setWallet] = useState<NewApiWallet | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -118,14 +139,15 @@ export function WalletDialog({
   const [redeemError, setRedeemError] = useState<string | null>(null)
   const [checkout, setCheckout] = useState<PaymentIntent | null>(null)
   const [planIndex, setPlanIndex] = useState(0)
+  const [plansWidth, setPlansWidth] = useState(0)
   const planTrackRef = useRef<HTMLDivElement | null>(null)
   const reduceMotion = useReducedMotion()
 
   const pane = (children: React.ReactNode, center = false): React.JSX.Element => (
     <motion.div
-      initial={reduceMotion ? false : { opacity: 0, y: 7 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0 : 0.12, ease: [0.22, 1, 0.36, 1] }}
       className={cn('min-h-full', center && 'flex flex-col justify-center')}
     >
       {children}
@@ -235,6 +257,52 @@ export function WalletDialog({
   }
 
   const plans = wallet?.plans ?? []
+  const planTrackWidth = plansWidth || PLAN_FALLBACK_WIDTH
+  // 能容纳几列（2–5）；套餐更少时不强行撑满，卡片宽度另有上限。
+  const planSlots = Math.max(
+    2,
+    Math.min(
+      PLAN_MAX_PER_VIEW,
+      Math.floor((planTrackWidth + PLAN_GAP) / (PLAN_MIN_CARD + PLAN_GAP))
+    )
+  )
+  const plansPerView = Math.max(1, Math.min(plans.length || 1, planSlots))
+  const planCardWidth = Math.min(
+    PLAN_MAX_CARD,
+    Math.max(
+      PLAN_MIN_CARD,
+      Math.floor((planTrackWidth - PLAN_GAP * (plansPerView - 1)) / plansPerView)
+    )
+  )
+  const lastPlanStart = Math.max(0, plans.length - plansPerView)
+  const planPages = lastPlanStart + 1
+
+  // 卡片轨道经 Radix TabsContent 延迟挂载，父组件的 layout effect 抓不到 ref，
+  // 因此用 callback ref：节点一挂上就测量并观察，切走时断开。
+  const planResizeRef = useRef<ResizeObserver | null>(null)
+  const attachPlanTrack = useCallback((node: HTMLDivElement | null) => {
+    planResizeRef.current?.disconnect()
+    planResizeRef.current = null
+    planTrackRef.current = node
+    if (!node) return
+    const measure = (): void => setPlansWidth(node.clientWidth)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    planResizeRef.current = observer
+  }, [])
+
+  useEffect(() => () => planResizeRef.current?.disconnect(), [])
+
+  // 列数变化后把滚动位置对齐到新列宽，避免停留在半张卡片上。
+  useEffect(() => {
+    const track = planTrackRef.current
+    if (!track) return
+    const next = Math.min(planIndex, lastPlanStart)
+    if (next !== planIndex) setPlanIndex(next)
+    const card = track.children[next] as HTMLElement | undefined
+    if (card) track.scrollLeft = card.offsetLeft - track.offsetLeft
+  }, [plansPerView, plans.length, open, tab, lastPlanStart])
   const accountLabel =
     newApi?.user?.displayName || newApi?.user?.username || t('quota.notLoggedIn')
 
@@ -321,7 +389,7 @@ export function WalletDialog({
     if (!track) return
     const cards = Array.from(track.children) as HTMLElement[]
     if (cards.length === 0) return
-    const lastStart = Math.max(0, cards.length - 3)
+    const lastStart = Math.max(0, cards.length - plansPerView)
     const next = Math.max(0, Math.min(lastStart, planIndex + direction))
     track.scrollTo({ left: cards[next].offsetLeft - track.offsetLeft, behavior: 'smooth' })
     setPlanIndex(next)
@@ -343,18 +411,23 @@ export function WalletDialog({
       <DialogContent
         aria-describedby="wallet-description"
         className="flex h-[min(560px,92vh)] w-[min(940px,calc(100vw-40px))] flex-col gap-0 overflow-hidden rounded-[24px] border-line bg-bg p-0 codex-popover"
+        onPointerDownOutside={(event) => {
+          if (checkout) event.preventDefault()
+        }}
+        onEscapeKeyDown={(event) => {
+          if (checkout) event.preventDefault()
+        }}
       >
-        <div className="flex items-start gap-2.5 border-b border-line-soft px-5 pb-3 pt-4 pr-12">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
-            <Wallet className="h-[18px] w-[18px]" />
+        <div className="flex items-center gap-2.5 border-b border-line-soft px-5 py-3 pr-12">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-accent/10 text-accent">
+            <Wallet className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
-            <DialogTitle className="text-[17px] leading-5">{t('wallet.title')}</DialogTitle>
-            <DialogDescription id="wallet-description" className="mt-0.5 text-[10.5px]">
-              {t('wallet.subtitle')}
-              {newApi?.user ? ` · ${newApi.user.displayName || newApi.user.username}` : ''}
-            </DialogDescription>
-          </div>
+          {/* 标题与副标题只留给读屏：界面上直接从标签页开始，避免重复占一行。 */}
+          <DialogTitle className="sr-only">{t('wallet.title')}</DialogTitle>
+          <DialogDescription id="wallet-description" className="sr-only">
+            {t('wallet.subtitle')}
+            {newApi?.user ? ` · ${newApi.user.displayName || newApi.user.username}` : ''}
+          </DialogDescription>
           <div className="ml-auto flex items-center gap-2.5">
             <div className="text-right">
               <div className="text-[9.5px] text-muted">{t('wallet.balance')}</div>
@@ -376,7 +449,7 @@ export function WalletDialog({
 
         <Tabs
           value={tab}
-          onValueChange={(value) => setTab(value as Tab)}
+          onValueChange={(value) => setTab(value as WalletTab)}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="px-5 pt-3">
@@ -467,78 +540,74 @@ export function WalletDialog({
                         </div>
                       </section>
 
-                      <section>
-                        <div className="text-[10.5px] font-medium uppercase tracking-wide text-muted">
-                          {t('wallet.customAmount')}
+                      {/* 自定义金额收窄，付款方式并排放在右侧，省掉一整行高度。 */}
+                      <section className="grid items-start gap-3 sm:grid-cols-[minmax(0,224px)_minmax(0,1fr)] sm:gap-4">
+                        <div className="max-w-[224px]">
+                          <div className="text-[10.5px] font-medium uppercase tracking-wide text-muted">
+                            {t('wallet.customAmount')}
+                          </div>
+                          <div className="mt-1.5 flex h-9 items-center gap-2 rounded-lg border border-line bg-panel-2 px-2.5 focus-within:ring-2 focus-within:ring-accent/40">
+                            <span className="text-[14px] text-muted">¥</span>
+                            <input
+                              value={customAmount}
+                              onChange={(event) => changeCustomAmount(event.target.value)}
+                              inputMode="numeric"
+                              placeholder={String(minTopup)}
+                              aria-label={t('wallet.customAmount')}
+                              className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted/60"
+                            />
+                            <span className="shrink-0 text-[9px] text-muted">
+                              {t('wallet.minHint', { min: minTopup })}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mt-1.5 flex h-9 items-center gap-2 rounded-lg border border-line bg-panel-2 px-2.5 focus-within:ring-2 focus-within:ring-accent/40">
-                          <span className="text-[14px] text-muted">¥</span>
-                          <input
-                            value={customAmount}
-                            onChange={(event) => changeCustomAmount(event.target.value)}
-                            inputMode="numeric"
-                            placeholder={String(minTopup)}
-                            aria-label={t('wallet.customAmount')}
-                            className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-muted/60"
-                          />
-                          <span className="shrink-0 text-[9.5px] text-muted">
-                            {t('wallet.minHint', { min: minTopup })}
-                          </span>
-                        </div>
-                      </section>
 
-                      <section>
-                        <div className="text-[10.5px] font-medium uppercase tracking-wide text-muted">
-                          {t('wallet.paymentMethod')}
-                        </div>
-                        {wallet.topup.methods.length > 0 ? (
-                          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                            {wallet.topup.methods.map((item) => {
-                              const disabled = item.minTopup > amount
-                              const active = method === item.type
-                              return (
-                                <button
-                                  key={item.type}
-                                  type="button"
-                                  disabled={disabled}
-                                  title={
-                                    disabled
-                                      ? t('wallet.minHint', { min: item.minTopup })
-                                      : item.name
-                                  }
-                                  onClick={() => {
-                                    setMethod(item.type)
-                                    setActionError(null)
-                                  }}
-                                  className={cn(
-                                    'flex min-h-[46px] items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45',
-                                    active
-                                      ? 'border-accent bg-accent/8 ring-1 ring-accent/30'
-                                      : 'border-line bg-panel/60 hover:bg-panel-2'
-                                  )}
-                                >
-                                  <span className="grid h-6 w-6 shrink-0 place-items-center overflow-visible rounded-md bg-white text-muted ring-1 ring-black/5">
-                                    <PaymentMethodIcon type={item.type} />
-                                  </span>
-                                  <span className="min-w-0">
-                                    <span className="block truncate text-[11.5px] text-ink">
+                        <div>
+                          <div className="text-[10.5px] font-medium uppercase tracking-wide text-muted">
+                            {t('wallet.paymentMethod')}
+                          </div>
+                          {wallet.topup.methods.length > 0 ? (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              {wallet.topup.methods.map((item) => {
+                                const disabled = item.minTopup > amount
+                                const active = method === item.type
+                                return (
+                                  <button
+                                    key={item.type}
+                                    type="button"
+                                    disabled={disabled}
+                                    title={
+                                      disabled
+                                        ? t('wallet.minHint', { min: item.minTopup })
+                                        : item.name
+                                    }
+                                    onClick={() => {
+                                      setMethod(item.type)
+                                      setActionError(null)
+                                    }}
+                                    className={cn(
+                                      'flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+                                      active
+                                        ? 'border-accent bg-accent/8 ring-1 ring-accent/30'
+                                        : 'border-line bg-panel/60 hover:bg-panel-2'
+                                    )}
+                                  >
+                                    <span className="grid h-6 w-6 shrink-0 place-items-center overflow-visible rounded-md bg-white text-muted ring-1 ring-black/5">
+                                      <PaymentMethodIcon type={item.type} />
+                                    </span>
+                                    <span className="max-w-[132px] truncate text-[11.5px] text-ink">
                                       {item.name}
                                     </span>
-                                    {item.minTopup > 1 ? (
-                                      <span className="block text-[9px] text-muted">
-                                        {t('wallet.minHint', { min: item.minTopup })}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div className="mt-1.5 rounded-lg border border-line-soft bg-panel/60 px-3 py-2.5 text-[10.5px] leading-5 text-muted">
-                            {t('wallet.noMethods')}
-                          </div>
-                        )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className="mt-1.5 rounded-lg border border-line-soft bg-panel/60 px-3 py-2.5 text-[10.5px] leading-5 text-muted">
+                              {t('wallet.noMethods')}
+                            </div>
+                          )}
+                        </div>
                       </section>
 
                       {!wallet.topup.onlineEnabled ? (
@@ -610,7 +679,7 @@ export function WalletDialog({
                   )}
                 </TabsContent>
 
-                <TabsContent value="plans" className="mt-0 flex h-full flex-col justify-center">
+                <TabsContent value="plans" className="mt-0 flex h-full flex-col">
                   {pane(
                   <>
                   <div className="flex items-start justify-between gap-3">
@@ -623,7 +692,7 @@ export function WalletDialog({
                       </div>
                       <div className="mt-0.5 text-[10px] text-muted">{t('wallet.plansHint')}</div>
                     </div>
-                    {plans.length > 3 ? (
+                    {plans.length > plansPerView ? (
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
@@ -635,12 +704,12 @@ export function WalletDialog({
                           <ChevronLeft className="h-3.5 w-3.5" />
                         </button>
                         <span className="min-w-7 text-center text-[9.5px] tabular-nums text-muted">
-                          {planIndex + 1}/{plans.length}
+                          {Math.min(planIndex, lastPlanStart) + 1}/{planPages}
                         </span>
                         <button
                           type="button"
                           aria-label={t('wallet.carousel.next')}
-                          disabled={planIndex >= Math.max(0, plans.length - 3)}
+                          disabled={planIndex >= lastPlanStart}
                           onClick={() => scrollPlans(1)}
                           className="grid h-7 w-7 place-items-center rounded-full border border-line text-muted transition-colors hover:bg-panel-2 hover:text-ink disabled:opacity-30"
                         >
@@ -659,7 +728,7 @@ export function WalletDialog({
                   ) : (
                     <>
                       <div
-                        ref={planTrackRef}
+                        ref={attachPlanTrack}
                         onScroll={syncPlanIndex}
                         onWheel={(event) => {
                           if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
@@ -685,8 +754,9 @@ export function WalletDialog({
                                   setSelectedPlan(plan.id)
                                 }
                               }}
+                              style={{ width: planCardWidth }}
                               className={cn(
-                                'flex h-[228px] w-[calc((100%-20px)/3)] shrink-0 snap-start cursor-pointer flex-col rounded-xl border p-3 text-left transition-all',
+                                'flex h-[184px] shrink-0 snap-start cursor-pointer flex-col rounded-xl border p-2.5 text-left transition-[border-color,background-color,box-shadow]',
                                 active
                                   ? 'border-accent bg-accent/6 shadow-[0_8px_24px_-18px_rgb(47_111_235/0.55)] ring-1 ring-accent/25'
                                   : 'border-line bg-panel/50 hover:bg-panel-2/70'
@@ -694,10 +764,16 @@ export function WalletDialog({
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                  <div className="truncate text-[12px] font-semibold text-ink">
+                                  <div
+                                    className="truncate text-[12px] font-semibold text-ink"
+                                    title={plan.title}
+                                  >
                                     {plan.title}
                                   </div>
-                                  <div className="mt-0.5 line-clamp-1 text-[9.5px] leading-4 text-muted">
+                                  <div
+                                    className="mt-0.5 line-clamp-1 text-[9.5px] leading-4 text-muted"
+                                    title={plan.subtitle || t('wallet.plansHint')}
+                                  >
                                     {plan.subtitle || t('wallet.plansHint')}
                                   </div>
                                 </div>
@@ -708,8 +784,8 @@ export function WalletDialog({
                                 ) : null}
                               </div>
 
-                              <div className="mt-2.5 flex items-baseline gap-1">
-                                <span className="text-[21px] font-semibold leading-6 tracking-tight text-ink">
+                              <div className="mt-2 flex items-baseline gap-1">
+                                <span className="text-[19px] font-semibold leading-5 tracking-tight text-ink">
                                   {money(plan.priceAmount, plan.currency)}
                                 </span>
                                 <span className="text-[9.5px] text-muted">
@@ -717,7 +793,7 @@ export function WalletDialog({
                                 </span>
                               </div>
 
-                              <div className="mt-2 space-y-1 border-t border-line-soft pt-2 text-[9.5px] text-muted">
+                              <div className="mt-1.5 space-y-0.5 border-t border-line-soft pt-1.5 text-[9px] text-muted">
                                 <div className="flex items-center justify-between gap-2">
                                   <span>{t('wallet.plan.quota')}</span>
                                   <span className="truncate text-ink-soft">
@@ -761,9 +837,9 @@ export function WalletDialog({
                           <ShieldCheck className="h-3 w-3" />
                           {t('wallet.plan.methodHint')}
                         </span>
-                        {plans.length > 3 ? (
+                        {plans.length > plansPerView ? (
                           <div className="flex items-center gap-1">
-                            {Array.from({ length: Math.max(1, plans.length - 2) }, (_, index) => (
+                            {Array.from({ length: planPages }, (_, index) => (
                               <button
                                 key={index}
                                 type="button"
@@ -771,7 +847,7 @@ export function WalletDialog({
                                 onClick={() => scrollPlans(index - planIndex)}
                                 className={cn(
                                   'h-1.5 rounded-full transition-all',
-                                  index === Math.min(planIndex, Math.max(0, plans.length - 3))
+                                  index === Math.min(planIndex, lastPlanStart)
                                     ? 'w-4 bg-ink/60'
                                     : 'w-1.5 bg-line hover:bg-muted/50'
                                 )}
@@ -786,8 +862,7 @@ export function WalletDialog({
                   {actionError ? (
                     <div className="mt-2 text-[10px] text-danger">{actionError}</div>
                   ) : null}
-                  </>,
-                  true
+                  </>
                   )}
                 </TabsContent>
 

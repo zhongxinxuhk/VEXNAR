@@ -57,7 +57,7 @@ describe("NewAPI token helpers", () => {
         page: 1,
         page_size: 100,
         total: 1,
-        items: [{ id: 7, name: "App-managed", remain_quota: 12 }],
+        items: [{ id: 7, name: "App-managed", remain_quota: 12, group: "pro" }],
       },
     });
     expect(tokens).toHaveLength(1);
@@ -65,10 +65,11 @@ describe("NewAPI token helpers", () => {
       id: 7,
       name: "App-managed",
       remain_quota: 12,
+      group: "pro",
     });
-    expect(
-      tokenFromRecord({ ...tokens[0], key: "abcdefghijkl" }).maskedKey,
-    ).toContain("...");
+    const token = tokenFromRecord({ ...tokens[0], key: "abcdefghijkl" });
+    expect(token.maskedKey).toContain("...");
+    expect(token.group).toBe("pro");
   });
 });
 
@@ -87,6 +88,8 @@ describe("NewAPI quota helpers", () => {
     expect(quota.requestCount).toBe(3);
     expect(quota.quotaPerUnit).toBe(500000);
     expect(quota.displayInCurrency).toBe(true);
+    // 账户余额不能继承 App-managed API Key 的 unlimited_quota。
+    expect(quota.unlimited).toBe(false);
   });
 });
 

@@ -50,6 +50,7 @@ export const newApiTokenSchema = z.object({
   id: z.number().int(),
   name: z.string().default('App-managed'),
   maskedKey: z.string().default(''),
+  group: z.string().default(''),
   unlimitedQuota: z.boolean().default(false),
   remainQuota: z.number().default(0),
   usedQuota: z.number().default(0)
@@ -66,6 +67,18 @@ export const newApiQuotaSchema = z.object({
   unlimited: z.boolean().default(false)
 })
 export type NewApiQuota = z.infer<typeof newApiQuotaSchema>
+
+/** 当前生效的订阅。额度单位与 NewApiQuota 一致，展示前按 quotaPerUnit 换算。 */
+export const newApiSubscriptionSchema = z.object({
+  id: z.number().int().default(0),
+  planId: z.number().int().default(0),
+  amountTotal: z.number().default(0),
+  amountUsed: z.number().default(0),
+  status: z.string().default(''),
+  upgradeGroup: z.string().default(''),
+  endTime: z.number().default(0)
+})
+export type NewApiSubscription = z.infer<typeof newApiSubscriptionSchema>
 
 /**
  * 中转平台（NewAPI）消费日志的一行。登录用户的 /api/log/self 接口返回记录，
@@ -242,6 +255,7 @@ export const newApiStateSchema = z.object({
   authenticated: z.boolean(),
   user: newApiUserSchema.nullable().default(null),
   quota: newApiQuotaSchema.nullable().default(null),
+  subscriptions: z.array(newApiSubscriptionSchema).default([]),
   token: newApiTokenSchema.nullable().default(null),
   accessToken: newApiAccessTokenSchema.nullable().default(null),
   accessTokenError: z.string().nullable().default(null),

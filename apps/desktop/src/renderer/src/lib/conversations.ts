@@ -50,6 +50,12 @@ export type MessagePage = {
   cursor: number
   running: boolean
   hasMore: boolean
+  /**
+   * The row a running turn is still writing (the answer so far). It keeps the
+   * same seq for the whole run and only its text grows, so a client merges it by
+   * seq instead of appending — that is what makes the reply stream.
+   */
+  live?: BackendActivity | null
 }
 
 export type ChatAttachment = { name: string; path: string; size: number; abs?: string }
@@ -66,6 +72,23 @@ const request = async <T>(
 
 const items = <T>(page: { items?: T[] } | undefined | null): T[] =>
   Array.isArray(page?.items) ? page.items : []
+
+/**
+ * Merge transcript rows by seq. A live answer row is delivered repeatedly with
+ * the same seq while its text grows, so appending would duplicate it; replacing
+ * keeps exactly one copy and always the newest text.
+ */
+export function mergeActivities(
+  current: BackendActivity[],
+  incoming: (BackendActivity | null | undefined)[]
+): BackendActivity[] {
+  const rows = incoming.filter((row): row is BackendActivity => Boolean(row))
+  if (rows.length === 0) return current
+  const bySeq = new Map<number, BackendActivity>()
+  for (const row of current) bySeq.set(row.seq, row)
+  for (const row of rows) bySeq.set(row.seq, row)
+  return [...bySeq.values()].sort((left, right) => left.seq - right.seq)
+}
 
 /** Agent key a new desktop conversation starts on ("auto" is a builtin agent). */
 export const DEFAULT_AGENT_KEY = 'auto'
@@ -291,10 +314,23 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         break
       }
       case 'result': {
+        // 成功回合的最终答复只在两种地方之一：被 sink 逐段写进 text 行的实时答案，
+        // 或（没有流式时）该 result 行本身。只取 detail：summary 是 400 字的截断预览，
+        // 用它当正文会在已流式的情况下多出半句话。
+        const answer = item.is_error ? (item.detail || item.summary || '').trim() : (item.detail || '').trim()
         if (item.is_error) {
           const message = assistant(item.seq)
-          if (!message.content.trim()) message.content = item.detail || item.summary
+          if (!message.content.trim()) message.content = answer
           message.failed = true
+          // Keep the upstream rejection even when narration already streamed:
+          // the view classifies "out of balance" from this text, not from the
+          // partial answer that happens to precede it.
+          message.error = answer || message.content
+        } else if (answer) {
+          const message = assistant(item.seq)
+          const text = message.content.trim()
+          // 中间叙述已经作为 text 步骤进了同一条消息 → 接在后面；已包含则不重复。
+          if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
         }
         open = null
         break

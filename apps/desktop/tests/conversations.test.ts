@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   lastTurnUsage,
+  mergeActivities,
   parseUserActivity,
   toChatMessages,
   toSession,
@@ -98,6 +99,99 @@ describe('toChatMessages', () => {
     )
     expect(messages[1]).toMatchObject({ role: 'assistant', failed: true })
     expect(messages[1].content).toContain('401')
+    expect(messages[1].error).toContain('401')
+  })
+
+  it('keeps the upstream error apart from narration that already streamed', () => {
+    const error =
+      'openai-responses: status 403: {"error":{"code":"insufficient_user_quota","message":"Not enough quota"}}'
+    const messages = toChatMessages(
+      [
+        step({ kind: 'user', detail: 'hi' }),
+        step({ kind: 'text', detail: '我先看一下目录。' }),
+        step({ kind: 'result', is_error: true, summary: error, detail: error })
+      ],
+      '4'
+    )
+    // 部分正文照常显示，403 原文留在 error 上，供配额提示卡识别与「错误详情」展开。
+    expect(messages[1].content).toBe('我先看一下目录。')
+    expect(messages[1].failed).toBe(true)
+    expect(messages[1].error).toContain('insufficient_user_quota')
+  })
+
+  // 后端把「与终态文本相同的流式增量」去重掉了，成功回合的正文只落在 result 行
+  // （agent/capture.go）。客户端不取 result.detail 就会整轮没有回复。
+  it('renders the answer that only exists on the successful result step', () => {
+    const messages = toChatMessages(
+      [
+        step({ kind: 'user', detail: '你好' }),
+        step({ kind: 'thinking', detail: 'The user just said "你好" again. Respond briefly.' }),
+        step({ kind: 'usage', input_tokens: 10, output_tokens: 5 }),
+        step({ kind: 'result', summary: '你好！有什么需要我帮忙的吗？', detail: '你好！有什么需要我帮忙的吗？' })
+      ],
+      '655'
+    )
+    expect(messages).toHaveLength(2)
+    expect(messages[1].role).toBe('assistant')
+    expect(messages[1].content).toBe('你好！有什么需要我帮忙的吗？')
+    expect(messages[1].toolCalls?.map((call) => call.name)).toEqual(['思考'])
+  })
+
+  // 流式回合:正文是 text 行,终态 result 行只带用量。别为一个空 result 再造一条消息。
+  it('closes a streamed turn without adding an empty answer', () => {
+    const messages = toChatMessages(
+      [
+        step({ kind: 'user', detail: '你好' }),
+        step({ kind: 'text', detail: '你好！我是 Auto。' }),
+        step({ kind: 'result', input_tokens: 12, output_tokens: 6 })
+      ],
+      '10'
+    )
+    expect(messages).toHaveLength(2)
+    expect(messages[1].role).toBe('assistant')
+    expect(messages[1].content).toBe('你好！我是 Auto。')
+  })
+
+  it('appends the terminal answer after narration but never duplicates it', () => {
+    const withNarration = toChatMessages(
+      [
+        step({ kind: 'user', detail: '看下目录' }),
+        step({ kind: 'text', detail: '我先看一下目录。' }),
+        step({ kind: 'result', detail: '目录里只有 a.png。' })
+      ],
+      '8'
+    )
+    expect(withNarration[1].content).toBe('我先看一下目录。\n\n目录里只有 a.png。')
+
+    const alreadyStreamed = toChatMessages(
+      [
+        step({ kind: 'user', detail: '看下目录' }),
+        step({ kind: 'text', detail: '目录里只有 a.png。' }),
+        step({ kind: 'result', detail: '目录里只有 a.png。' })
+      ],
+      '9'
+    )
+    expect(alreadyStreamed[1].content).toBe('目录里只有 a.png。')
+  })
+})
+
+describe('mergeActivities', () => {
+  // 流式答复是同一 seq 的一行,文本持续变长。追加会重复,替换才是一份最新的。
+  it('replaces a growing row instead of appending it twice', () => {
+    const first = mergeActivities([], [step({ kind: 'text', seq: 42, detail: '你' })])
+    expect(first).toHaveLength(1)
+    const grown = mergeActivities(first, [{ ...first[0], detail: '你好，我是 Auto。' }])
+    expect(grown).toHaveLength(1)
+    expect(grown[0].detail).toBe('你好，我是 Auto。')
+  })
+
+  it('keeps rows ordered by seq and skips empty input', () => {
+    const merged = mergeActivities(
+      [step({ seq: 5 }), step({ seq: 1 })],
+      [null, step({ seq: 3 }), undefined]
+    )
+    expect(merged.map((row) => row.seq)).toEqual([1, 3, 5])
+    expect(mergeActivities(merged, [null, undefined])).toBe(merged)
   })
 })
 

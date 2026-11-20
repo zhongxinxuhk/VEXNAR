@@ -412,7 +412,18 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	withDetail := q.Get("detail") == "1"
 	s.chatMu.Lock()
 	running := s.chatBusy[s.convBusyKey(c.ID)]
+	sink := s.chatLive[s.convBusyKey(c.ID)]
 	s.chatMu.Unlock()
+	// `live` is the row the running turn is still writing (the answer so far). It
+	// changes id-once, text-many: clients merge it by seq into what they already
+	// hold, which is what makes the reply stream instead of appearing at the end.
+	var live *ActivityDTO
+	if running && sink != nil {
+		if row, ok := sink.Snapshot(); ok {
+			dto := activityDTO(row)
+			live = &dto
+		}
+	}
 
 	// Incremental tail: ?since=N returns steps after id N (ASC) — used by the live
 	// poll and the post-send fetch. A generous cap so a burst is never dropped.
@@ -430,7 +441,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 			writeErr(w, 500, err.Error())
 			return
 		}
-		writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "hasMore": false})
+		writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": false})
 		return
 	}
 
@@ -454,7 +465,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	if n := len(items); n > 0 {
 		cursor = items[n-1].ID
 	}
-	writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "hasMore": hasMore})
+	writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
 }
 
 // pgConversationMsgDetail lazily returns one step's full detail blob.
@@ -613,6 +624,7 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 		s.chatMu.Lock()
 		delete(s.chatBusy, busyKey)
 		delete(s.chatCancel, busyKey)
+		delete(s.chatLive, busyKey)
 		s.chatMu.Unlock()
 	}()
 	// Only the first turn executes a historical retest. Follow-up conversation
@@ -672,9 +684,18 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
 		}
 	}
+	// Stream the answer: the sink grows a transcript row in place, and the poll
+	// endpoint hands that row to clients as `live` while the turn is running.
+	live := newConvLiveText(pg, c.ID, c.AgentKey)
+	s.chatMu.Lock()
+	if s.chatLive == nil { // tests build Server literals without the map
+		s.chatLive = map[string]*convLiveText{}
+	}
+	s.chatLive[busyKey] = live
+	s.chatMu.Unlock()
 	// On a manual stop ctx is cancelled; Chat already emits a clean "已手动停止"
 	// step, so skip the raw-error entry — only surface genuine failures.
-	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit); err != nil {
+	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit, live); err != nil {
 		finishReason = err.Error()
 		if ctx.Err() == nil {
 			_, _ = pg.AppendConvActivity(c.ID, db.Activity{Worker: c.AgentKey, Kind: "text", IsError: true,

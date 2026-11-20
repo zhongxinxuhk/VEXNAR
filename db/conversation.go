@@ -285,6 +285,16 @@ RETURNING id`, convID, utf8Clean(a.Worker), utf8Clean(a.Kind), utf8Clean(a.Tool)
 	return id, err
 }
 
+// UpdateConvActivityText rewrites the text of a row that is still being written
+// (a live chat answer). Only summary/detail change: kind, worker and created_at
+// are immutable, so a client that already rendered this seq only has to replace
+// the text it is showing.
+func (d *DB) UpdateConvActivityText(convID, id int64, summary, detail string) error {
+	_, err := d.Exec(`UPDATE conversation_activities SET summary=$3, detail=$4 WHERE id=$1 AND conversation_id=$2`,
+		id, convID, utf8Clean(summary), utf8Clean(detail))
+	return err
+}
+
 // ConvActivityList returns a conversation's steps after sinceID (exclusive) with
 // the summary-only column set (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityList(convID, sinceID int64, limit int) ([]Activity, int64, error) {

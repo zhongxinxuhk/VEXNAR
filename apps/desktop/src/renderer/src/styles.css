@@ -245,8 +245,33 @@ button {
   }
 }
 
-.stream-caret {
+/*
+ * 流式答复的光标：挂在最后一段文字（或最后一个列表项）的末尾，跟真实输入光标
+ * 一样贴在字符后面。用 ::after 而不是额外节点——块级段落会把 inline-block 挤到
+ * 下一行，读起来像断行。
+ */
+.answer-streaming > div:last-child > :last-child:not(ul):not(ol)::after,
+.answer-streaming > div:last-child > ul:last-child > li:last-child::after,
+.answer-streaming > div:last-child > ol:last-child > li:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 12px;
+  margin-left: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.65;
+  vertical-align: -2px;
   animation: codex-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answer-streaming > div:last-child > :last-child:not(ul):not(ol)::after,
+  .answer-streaming > div:last-child > ul:last-child > li:last-child::after,
+  .answer-streaming > div:last-child > ol:last-child > li:last-child::after {
+    animation: none;
+    opacity: 0.45;
+  }
 }
 /*
  * 液态玻璃顶栏：两层玻璃叠加做「渐进模糊」——

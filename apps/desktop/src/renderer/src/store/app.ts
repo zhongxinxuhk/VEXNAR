@@ -9,6 +9,7 @@ import {
   projects as projectApi,
   DEFAULT_AGENT_KEY,
   lastTurnUsage,
+  mergeActivities,
   toChatMessages,
   toSession,
   uploadImages,
@@ -44,11 +45,15 @@ export type ChatMessage = Message & {
   toolCalls?: ToolCall[]
   streaming?: boolean
   failed?: boolean
+  /** Upstream failure text for a failed turn (kept apart from any streamed text). */
+  error?: string
   /** Uploaded (non-image-previewable) files attached to a human turn. */
   files?: { name: string; size: number }[]
 }
 
 type RightTab = 'workspace' | 'terminal' | 'diff'
+/** Wallet dialog tabs; the quota notice deep-links to `topup` / `plans`. */
+export type WalletTab = 'topup' | 'plans' | 'redeem'
 type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
 export type SettingsSection = 'general' | 'appearance' | 'workspace' | 'model' | 'runtime'
 export type AppView =
@@ -88,6 +93,12 @@ type AppState = {
   rightOpen: boolean
   settingsOpen: boolean
   settingsSection: SettingsSection
+  /** Wallet dialog is app-wide: the quota notice and the rail both open it. */
+  walletOpen: boolean
+  walletTab: WalletTab
+  openWallet: (tab?: WalletTab) => void
+  setWalletOpen: (open: boolean) => void
+  setWalletTab: (tab: WalletTab) => void
   workspaceFiles: FileNode[]
   workspaceLoading: boolean
   git: GitStatus | null
@@ -155,6 +166,8 @@ const newChatTitle = (): string => translate(useI18n.getState().locale, 'app.new
 let activities: BackendActivity[] = []
 let activityCursor = 0
 let turnActive = false
+/** seq of the row the running turn is still writing (0 = none). */
+let liveSeq = 0
 let pending: { text: string; images: ImageAttachment[] } | null = null
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollSeq = 0
@@ -163,6 +176,7 @@ let pollConversation = ''
 function stopPolling(): void {
   pollSeq += 1
   pollConversation = ''
+  liveSeq = 0
   if (pollTimer) {
     clearTimeout(pollTimer)
     pollTimer = null
@@ -228,7 +242,16 @@ function publish(id: string, running: boolean): void {
  * Poll /conversations/{id}/messages until the backend reports the turn is done.
  * This is the same transport the web /chat page uses — no second SSE loop and no
  * local assistant stream that could drift from the stored transcript.
+ *
+ * The poll runs fast while the model is actively writing because the backend
+ * streams the answer through `live`: one transcript row whose text grows.
+ * Merging it by seq gives token-by-token rendering even though the transport is
+ * plain polling. While a tool runs (no live text) it backs off, so a long turn
+ * doesn't turn into thousands of requests.
  */
+const LIVE_POLL_MS = 150
+const IDLE_POLL_MS = 400
+
 function pollUntilDone(id: string): void {
   stopPolling()
   pollConversation = id
@@ -239,18 +262,22 @@ function pollUntilDone(id: string): void {
     try {
       const page = await conversations.messages(id, activityCursor)
       if (seq !== pollSeq) return
-      if (page.items.length) {
-        activities = [...activities, ...page.items]
-        activityCursor = Math.max(activityCursor, page.cursor)
-      }
+      const incoming = page.live ? [...page.items, page.live] : page.items
+      if (incoming.length) activities = mergeActivities(activities, incoming)
+      activityCursor = Math.max(activityCursor, page.cursor)
+      if (page.live) liveSeq = page.live.seq
       if (page.running) {
         turnActive = true
         publish(id, true)
-        pollTimer = setTimeout(() => void tick(), 900)
+        pollTimer = setTimeout(() => void tick(), page.live ? LIVE_POLL_MS : IDLE_POLL_MS)
         return
       }
       turnActive = false
       pending = null
+      // The turn just ended: re-read the streamed row once, so the very last
+      // fragment (written between the final poll and the seal) is not lost.
+      await settleLiveRow(id)
+      if (seq !== pollSeq) return
       publish(id, false)
       pollTimer = null
       void refreshSessions()
@@ -261,7 +288,22 @@ function pollUntilDone(id: string): void {
       pollTimer = setTimeout(() => void tick(), 1500)
     }
   }
-  pollTimer = setTimeout(() => void tick(), 250)
+  pollTimer = setTimeout(() => void tick(), 120)
+}
+
+/** Replace the streamed row with its sealed text once the turn is over. */
+async function settleLiveRow(id: string): Promise<void> {
+  const seq = liveSeq
+  liveSeq = 0
+  if (!seq) return
+  try {
+    const detail = await conversations.detail(id, seq)
+    const row = activities.find((item) => item.seq === seq)
+    if (!row || !detail || detail === row.detail) return
+    activities = mergeActivities(activities, [{ ...row, detail }])
+  } catch {
+    // The next history load will pick the sealed row up; nothing to repair here.
+  }
 }
 
 /** Refresh titles/pin order/updated timestamps from the shared conversation list. */
@@ -324,6 +366,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   contextUsage: {},
   settingsOpen: false,
   settingsSection: 'general',
+  walletOpen: false,
+  walletTab: 'topup',
+  openWallet: (tab = 'topup') => set({ walletOpen: true, walletTab: tab }),
+  setWalletOpen: (open) => set({ walletOpen: open }),
+  setWalletTab: (tab) => set({ walletTab: tab }),
   workspaceFiles: [],
   workspaceLoading: false,
   git: null,
@@ -612,7 +659,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: result.error })
       return false
     }
-    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, accessToken: null, accessTokenError: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() }, usage: null })
+    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, subscriptions: [], token: null, accessToken: null, accessTokenError: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() }, usage: null })
     return true
   },
 

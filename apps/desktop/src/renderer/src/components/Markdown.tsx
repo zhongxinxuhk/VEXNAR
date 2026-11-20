@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -307,10 +307,17 @@ function BlockView({ block }: { block: Block }): React.JSX.Element | null {
  * It intentionally handles only fenced code, inline code and bold text so the
  * transcript stays readable without shipping a full Markdown pipeline.
  */
-export function Markdown({ content }: { content: string }): React.JSX.Element {
+export const Markdown = memo(function Markdown({
+  content,
+  className
+}: {
+  content: string
+  /** 仅用于承载展示态（如流式光标 .answer-streaming），不参与解析。 */
+  className?: string
+}): React.JSX.Element {
   const segments = content.split('```')
   return (
-    <div className="min-w-0">
+    <div className={cn('min-w-0', className)}>
       {segments.map((segment, index) => {
         if (index % 2 === 1) {
           const newline = segment.indexOf('\n')
@@ -329,4 +336,4 @@ export function Markdown({ content }: { content: string }): React.JSX.Element {
       })}
     </div>
   )
-}
+})
