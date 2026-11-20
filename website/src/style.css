@@ -55,8 +55,8 @@
 .reading-progress { position: absolute; inset: auto 0 0; height: 2px; transform-origin: left; background: linear-gradient(90deg, #7ce6ff, #7787ff); pointer-events: none; }
 main:focus { outline: none; }
 .page-transition { animation: page-in .4s ease-out both; }
-.hero { isolation: isolate; }
-.hero-ambient { position: absolute; inset: -5% -10%; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 75% 45%, #2769b825, transparent 45%), radial-gradient(ellipse at 15% 10%, #17316915, transparent 50%); animation: ambient 12s ease-in-out infinite alternate; }
+.hero { isolation: isolate; overflow: hidden; }
+.hero-ambient { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 75% 45%, #2769b825, transparent 45%), radial-gradient(ellipse at 15% 10%, #17316915, transparent 50%); animation: ambient 12s ease-in-out infinite alternate; }
 .orbit-stage { min-width: 0; }
 .orbit { width: 100%; transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition: transform .25s ease-out; overflow: clip; }
 .orbit-paths { position: absolute; inset: 0; height: 100%; width: 100%; fill: none; }
