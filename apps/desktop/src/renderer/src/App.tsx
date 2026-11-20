@@ -157,6 +157,23 @@ export default function App(): React.JSX.Element {
   const newApi = useAppStore((state) => state.newApi)
   const setNewApi = useAppStore((state) => state.setNewApi)
 
+  // 滚动条「平时隐藏、滚动时出现」：捕获阶段给滚动容器打 .is-scrolling，停 700ms 后移除
+  useEffect(() => {
+    let timer: number | undefined
+    const onScroll = (event: Event): void => {
+      const target = event.target
+      if (!(target instanceof HTMLElement)) return
+      target.classList.add('is-scrolling')
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => target.classList.remove('is-scrolling'), 700)
+    }
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true })
+      window.clearTimeout(timer)
+    }
+  }, [])
+
   useEffect(() => {
     let disposed = false
     void window.vexnar.newapi.bootstrap().then((result) => {
