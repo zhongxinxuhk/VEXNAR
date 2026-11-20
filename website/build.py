@@ -5,6 +5,7 @@
 """Build a dependency-free, multipage GitHub Pages website from public metadata."""
 import datetime
 import html
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -43,6 +44,8 @@ def build():
     if OUT.exists(): shutil.rmtree(OUT)
     shutil.copytree(ROOT / 'assets', OUT / 'assets')
     for name in ['style.css', 'app.js']: shutil.copy(ROOT / name, OUT / name)
+    css_version = hashlib.sha256((OUT / 'style.css').read_bytes()).hexdigest()[:12]
+    js_version = hashlib.sha256((OUT / 'app.js').read_bytes()).hexdigest()[:12]
     (OUT / '.nojekyll').touch()
     (OUT / 'data.json').write_text(json.dumps({'updated_at': stamp, 'releases': [{'tag_name': r['tag_name'], 'html_url': r['html_url']} for r in data['releases']], 'counts': {key: len(data[key]) for key in ['branches', 'commits', 'contributors']}}, ensure_ascii=False), encoding='utf-8')
     stars = data['repo']['stargazers_count']
@@ -71,7 +74,7 @@ def build():
         intro='' if name=='index' else f'<section class="page-intro"><div class="eyebrow">{subtitles[name][0]}</div><h1>{subtitles[name][1]}</h1><p>{subtitles[name][2]}</p><div class="snapshot">GitHub 公开数据快照 · {stamp}</div></section>'
         doc=f'''<!doctype html>
 {header}
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#07090e"><meta name="description" content="VEXNAR 官方网站：AI 自主渗透测试系统，探索图、资产图、证据追溯与人在环路。客户端下载、版本更新与开源协作动态。"><meta property="og:title" content="VEXNAR · {title}"><meta property="og:description" content="洞察攻击面，让每一步都有据可循。"><meta property="og:type" content="website"><title>{title} · VEXNAR — AI 自主安全探索</title><link rel="icon" href="assets/logo.png"><link rel="stylesheet" href="style.css"><script src="app.js" defer></script></head><body><a class="skip" href="#main">跳转到正文</a><header class="header"><div class="nav-shell"><a class="brand" href="index.html" aria-label="VEXNAR 首页"><img src="assets/logo.png" alt="" width="34" height="34"><span>VEXNAR</span></a><button class="menu-toggle" aria-label="打开导航菜单" aria-expanded="false" aria-controls="navigation">☰</button><nav id="navigation" aria-label="主导航">{nav}</nav>{link(REPO,"GitHub","github-link")}</div></header><main id="main">{intro}{contents[name]}</main><footer><div class="footer-top"><a class="brand" href="index.html"><img src="assets/logo.png" alt="" width="30" height="30">VEXNAR</a><p>探索有迹。验证有据。</p><a href="{REPO}" target="_blank" rel="noopener noreferrer">GitHub</a><a href="{REPO}/blob/main/LICENSE">AGPL-3.0-or-later</a></div><div class="footer-bottom"><span>© 2026 xuzhongxin · VEXNAR</span><span>AI 自主安全探索 · 开源共建</span></div></footer></body></html>'''
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#07090e"><meta name="description" content="VEXNAR 官方网站：AI 自主渗透测试系统，探索图、资产图、证据追溯与人在环路。客户端下载、版本更新与开源协作动态。"><meta property="og:title" content="VEXNAR · {title}"><meta property="og:description" content="洞察攻击面，让每一步都有据可循。"><meta property="og:type" content="website"><title>{title} · VEXNAR — AI 自主安全探索</title><link rel="icon" href="assets/logo.png"><link rel="stylesheet" href="style.css?v={css_version}"><script src="app.js?v={js_version}" defer></script></head><body><a class="skip" href="#main">跳转到正文</a><header class="header"><div class="nav-shell"><a class="brand" href="index.html" aria-label="VEXNAR 首页"><img src="assets/logo.png" alt="" width="34" height="34"><span>VEXNAR</span></a><button class="menu-toggle" aria-label="打开导航菜单" aria-expanded="false" aria-controls="navigation">☰</button><nav id="navigation" aria-label="主导航">{nav}</nav>{link(REPO,"GitHub","github-link")}</div></header><main id="main">{intro}{contents[name]}</main><footer><div class="footer-top"><a class="brand" href="index.html"><img src="assets/logo.png" alt="" width="30" height="30">VEXNAR</a><p>探索有迹。验证有据。</p><a href="{REPO}" target="_blank" rel="noopener noreferrer">GitHub</a><a href="{REPO}/blob/main/LICENSE">AGPL-3.0-or-later</a></div><div class="footer-bottom"><span>© 2026 xuzhongxin · VEXNAR</span><span>AI 自主安全探索 · 开源共建</span></div></footer></body></html>'''
         (OUT / (name+'.html')).write_text(doc, encoding='utf-8')
     shutil.copy(OUT/'index.html', OUT/'404.html')
     (OUT/'robots.txt').write_text('User-agent: *\nAllow: /\nSitemap: https://zhongxinxuhk.github.io/VEXNAR/sitemap.xml\n')
