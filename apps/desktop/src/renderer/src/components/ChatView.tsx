@@ -12,10 +12,12 @@ import {
   Check,
   ChevronDown,
   CircleGauge,
+  Copy,
   Folder,
   Loader2,
   Mic,
   PanelRight,
+  Pencil,
   Plus,
   Square,
   SquareTerminal,
@@ -150,12 +152,22 @@ function ToolCard({
 function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
   const t = useT()
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+  const patchDraft = useDrafts((state) => state.patch)
+  const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const copy = async (): Promise<void> => {
+    const result = await window.vexnar.app.copyText(message.content)
+    if (result.ok) {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    }
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
+      className={cn('group flex w-full', isUser ? 'justify-end' : 'justify-start')}
     >
       <div
         className={cn(
@@ -188,6 +200,35 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
           )}
           {message.streaming ? (
             <span className="stream-caret ml-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] rounded-[1px] bg-ink/70" />
+          ) : null}
+          {message.content && !message.streaming ? (
+            <div
+              className={cn(
+                'mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100',
+                isUser ? 'justify-end' : 'justify-start'
+              )}
+            >
+              <button
+                type="button"
+                aria-label="复制消息"
+                title={copied ? '已复制' : '复制'}
+                onClick={() => void copy()}
+                className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+              {isUser && activeSessionId ? (
+                <button
+                  type="button"
+                  aria-label="在输入框编辑"
+                  title="在输入框编辑"
+                  onClick={() => patchDraft(activeSessionId, { text: message.content })}
+                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
           ) : null}
           {message.failed ? (
             <div className="mt-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
