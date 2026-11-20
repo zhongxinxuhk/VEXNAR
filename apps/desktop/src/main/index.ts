@@ -61,7 +61,7 @@ function createWindow(): void {
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
-    minWidth: 1000,
+    minWidth: 860,
     minHeight: 680,
     show: false,
     title: 'VEXNAR',

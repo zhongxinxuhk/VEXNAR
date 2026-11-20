@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto'
 import { closeSync, existsSync, mkdirSync, openSync, renameSync, statSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
-import type { BackendRequestInput, BackendStatus } from '@shared/contracts'
+import type { BackendRequestInput, BackendStatus, BackendUploadInput, BackendUploadResult } from '@shared/contracts'
 
 const READY_TIMEOUT_MS = 45_000
 const REQUEST_TIMEOUT_MS = 30_000
@@ -16,6 +16,8 @@ const REQUEST_TIMEOUT_MS = 30_000
 export type LLMStatus = {
   configured: boolean
   provider: string
+  /** Wire format the Go backend is using ('openai-responses' by default). */
+  format?: string
   model: string
   base_url: string
   key_set: boolean
@@ -25,12 +27,16 @@ export type AgentBackendConfig = {
   model: string
   baseUrl: string
   apiKey: string
+  /** Selected wire format; the runtime picks /responses or /chat/completions. */
+  format: string
 }
 
 export type ConfigureLLMInput = {
   baseUrl: string
   apiKey: string
   model: string
+  /** Defaults to openai-responses — the format the NewAPI platform serves. */
+  provider?: 'openai' | 'openai-responses'
 }
 
 type HealthPayload = { ok?: boolean; service?: string; version?: string }
@@ -110,6 +116,7 @@ export class BackendManager {
   private baseUrl = ''
   private token = ''
   private model = ''
+  private format = 'openai-responses'
   private logPath = ''
   private logFd: number | null = null
   private stopping = false
@@ -227,8 +234,45 @@ export class BackendManager {
     )
   }
 
+  /**
+   * Multipart upload to the Go backend (the same /api/chat/upload route the web
+   * client uses). The renderer never learns the backend URL or token; it hands
+   * bytes to the main process, which performs the authenticated request.
+   */
+  async upload(input: BackendUploadInput): Promise<BackendUploadResult> {
+    if (!this.ready) throw new Error('Go 后端尚未启动')
+    const route = input.path.startsWith('/api/') ? input.path : `/api${input.path}`
+    const form = new FormData()
+    for (const file of input.files) {
+      const bytes = Buffer.from(file.base64, 'base64')
+      form.append('file', new Blob([new Uint8Array(bytes)], { type: file.type }), file.name)
+    }
+    const response = await fetch(`${this.baseUrl}${route}`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'x-vexnar-desktop-token': this.token
+      },
+      body: form,
+      signal: AbortSignal.timeout(120_000)
+    })
+    const text = await response.text()
+    if (!response.ok) throw new Error(readError(text, response.status))
+    try {
+      return JSON.parse(text) as BackendUploadResult
+    } catch {
+      throw new Error('上传响应不是合法 JSON')
+    }
+  }
+
   async llmStatus(): Promise<LLMStatus> {
-    return this.call<LLMStatus>('/api/desktop/llm', { method: 'GET' })
+    const status = await this.call<LLMStatus>('/api/desktop/llm', { method: 'GET' })
+    // The Go backend is authoritative for model + format. Mirroring them here
+    // keeps the runtime in step with whatever the web page shows for the same
+    // PostgreSQL row, instead of trusting the locally cached settings.
+    if (status?.format) this.format = status.format
+    if (status?.model) this.model = status.model
+    return status
   }
 
   async configureLLM(input: ConfigureLLMInput): Promise<LLMStatus> {
@@ -236,11 +280,19 @@ export class BackendManager {
     const apiKey = input.apiKey.trim()
     const model = input.model.trim()
     if (!baseUrl || !apiKey || !model) throw new Error('模型连接配置不完整')
+    // Responses is the platform's primary protocol; the Go backend stores this
+    // exact format in PostgreSQL and both the app and the web page read it back.
     const status = await this.call<LLMStatus>('/api/desktop/llm/configure', {
       method: 'POST',
-      body: { provider: 'openai', base_url: baseUrl, api_key: apiKey, model }
+      body: {
+        provider: input.provider ?? 'openai-responses',
+        base_url: baseUrl,
+        api_key: apiKey,
+        model
+      }
     })
     this.model = model
+    if (status?.format) this.format = status.format
     return status
   }
 
@@ -298,7 +350,8 @@ export class BackendManager {
     return {
       model: model?.trim() || this.model,
       baseUrl: `${this.baseUrl}/api/desktop/openai/v1`,
-      apiKey: this.token
+      apiKey: this.token,
+      format: this.format
     }
   }
 

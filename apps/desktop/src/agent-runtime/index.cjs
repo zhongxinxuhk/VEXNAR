@@ -27,6 +27,9 @@ const state = {
   model: '',
   baseUrl: '',
   apiKey: '',
+  // Wire format selected by the Go backend. Responses is the default: the
+  // platform (NewAPI) reaches its full reasoning surface only on /v1/responses.
+  format: 'openai-responses',
   accessMode: 'full'
 }
 
@@ -176,7 +179,153 @@ async function localReply(text) {
   }
 }
 
-async function llmReply(text, attachments = [], networkApproved = false, accessMode = 'full', reasoningEffort) {
+function systemPrompt(accessMode) {
+  return `You are the VEXNAR desktop agent. Be concise, technical and actionable. Current execution environment: this computer. Workspace: ${state.workspace || '(none selected)'}. Access mode: ${accessMode}. Do not claim to have executed tools or read files unless tool evidence is supplied.`
+}
+
+// NewAPI 中转对 reasoning 的透传字段取决于上游协议：
+//   /v1/responses   → reasoning.effort
+//   /v1/chat/completions → reasoning_effort
+// wire 值集合为 minimal/low/medium/high/xhigh/max（不含 off，关闭走 thinking 字段）。
+// 不在此做静默降级：把 max 悄悄换成 high 会让 UI 档位失真，上游不支持时应在
+// NewAPI 渠道用 param_override 改写，或由网关自身做档位映射。
+const REASONING_EFFORT_WIRE_VALUES = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+
+function reasoningField(reasoningEffort) {
+  if (!REASONING_EFFORT_WIRE_VALUES.includes(reasoningEffort)) return null
+  return state.format === 'openai-responses'
+    ? { reasoning: { effort: reasoningEffort } }
+    : { reasoning_effort: reasoningEffort }
+}
+
+// Responses takes a flat `input` array whose content parts are input_text /
+// input_image, and the system prompt travels in top-level `instructions`.
+function responsesBody(accessMode, text, attachments, reasoningEffort) {
+  const content = []
+  if (text) content.push({ type: 'input_text', text })
+  for (const image of attachments) {
+    content.push({ type: 'input_image', image_url: image.dataUrl })
+  }
+  return {
+    model: state.model,
+    instructions: systemPrompt(accessMode),
+    input: content.length ? [{ role: 'user', content }] : [],
+    stream: true,
+    store: false,
+    ...(reasoningField(reasoningEffort) ?? {})
+  }
+}
+
+function chatBody(accessMode, text, attachments, reasoningEffort) {
+  return {
+    model: state.model,
+    stream: true,
+    stream_options: { include_usage: true },
+    ...(reasoningField(reasoningEffort) ?? {}),
+    messages: [
+      { role: 'system', content: systemPrompt(accessMode) },
+      {
+        role: 'user',
+        content: attachments.length
+          ? [
+              ...(text ? [{ type: 'text', text }] : []),
+              ...attachments.map((image) => ({ type: 'image_url', image_url: { url: image.dataUrl } }))
+            ]
+          : text
+      }
+    ]
+  }
+}
+
+// readSSE walks an SSE body line by line and hands each (event, data) pair to
+// onFrame. The event name is optional: the Responses API repeats the
+// discriminator inside the JSON `type` field, so both are passed along.
+async function readSSE(response, onFrame) {
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let event = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) {
+        event = ''
+        continue
+      }
+      if (trimmed.startsWith('event:')) {
+        event = trimmed.slice(6).trim()
+        continue
+      }
+      if (!trimmed.startsWith('data:')) continue
+      const payload = trimmed.slice(5).trim()
+      if (!payload || payload === '[DONE]') continue
+      let json
+      try {
+        json = JSON.parse(payload)
+      } catch {
+        continue // SSE comment / keepalive, not a frame
+      }
+      onFrame(event, json)
+    }
+  }
+}
+
+function trackUsage(promptTokens) {
+  if (!cancelled && Number.isSafeInteger(promptTokens) && promptTokens >= 0) {
+    send({ type: 'context_usage', model: state.model, promptTokens })
+  }
+}
+
+async function responsesReply(text, attachments, networkApproved, accessMode, reasoningEffort) {
+  const base = state.baseUrl.replace(/\/+$/, '')
+  const url = base.endsWith('/responses') ? base : `${base}/responses`
+  const controller = new AbortController()
+  currentAbort = controller
+  const response = await fetch(url, {
+    method: 'POST',
+    signal: controller.signal,
+    headers: {
+      'content-type': 'application/json',
+      accept: 'text/event-stream',
+      authorization: `Bearer ${state.apiKey}`,
+      'x-vexnar-desktop-token': state.apiKey,
+      'x-vexnar-user-approved': networkApproved ? '1' : '0'
+    },
+    body: JSON.stringify(responsesBody(accessMode, text, attachments, reasoningEffort))
+  })
+  if (!response.ok || !response.body) {
+    throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`)
+  }
+  let received = false
+  await readSSE(response, (event, json) => {
+    const kind = event || json?.type || ''
+    switch (kind) {
+      case 'response.output_text.delta':
+        if (typeof json?.delta === 'string' && json.delta) {
+          received = true
+          emitDelta(json.delta)
+        }
+        break
+      case 'response.completed':
+      case 'response.incomplete':
+        trackUsage(json?.response?.usage?.input_tokens)
+        break
+      case 'response.failed':
+      case 'error':
+        throw new Error(json?.error?.message || json?.message || '模型返回失败')
+      default:
+        break
+    }
+  })
+  if (!received) emitDelta('(模型没有返回内容)')
+}
+
+async function chatReply(text, attachments, networkApproved, accessMode, reasoningEffort) {
   const base = state.baseUrl.replace(/\/+$/, '')
   const url = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`
   const controller = new AbortController()
@@ -190,23 +339,15 @@ async function llmReply(text, attachments = [], networkApproved = false, accessM
       'x-vexnar-desktop-token': state.apiKey,
       'x-vexnar-user-approved': networkApproved ? '1' : '0'
     },
-    body: JSON.stringify({
-      model: state.model,
-      stream: true,
-      ...(includeUsage ? { stream_options: { include_usage: true } } : {}),
-      ...(['low', 'medium', 'high'].includes(reasoningEffort) ? { reasoning_effort: reasoningEffort } : {}),
-      messages: [
-        {
-          role: 'system',
-          content:
-            `You are the VEXNAR desktop agent. Be concise, technical and actionable. Current execution environment: this computer. Workspace: ${state.workspace || '(none selected)'}. Access mode: ${accessMode}. Do not claim to have executed tools or read files unless tool evidence is supplied.`
-        },
-        { role: 'user', content: attachments.length ? [
-          ...(text ? [{ type: 'text', text }] : []),
-          ...attachments.map((image) => ({ type: 'image_url', image_url: { url: image.dataUrl } }))
-        ] : text }
-      ]
-    })
+    body: JSON.stringify(
+      includeUsage
+        ? chatBody(accessMode, text, attachments, reasoningEffort)
+        : (() => {
+            const body = chatBody(accessMode, text, attachments, reasoningEffort)
+            delete body.stream_options
+            return body
+          })()
+    )
   })
   let response = await request(true)
   if (response.status === 400) {
@@ -217,39 +358,23 @@ async function llmReply(text, attachments = [], networkApproved = false, accessM
   if (!response.ok || !response.body) {
     throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`)
   }
-
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
   let received = false
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('data:')) continue
-      const payload = trimmed.slice(5).trim()
-      if (!payload || payload === '[DONE]') continue
-      try {
-        const json = JSON.parse(payload)
-        const promptTokens = json?.usage?.prompt_tokens
-        if (!cancelled && Number.isSafeInteger(promptTokens) && promptTokens >= 0) {
-          send({ type: 'context_usage', model: state.model, promptTokens })
-        }
-        const delta = json?.choices?.[0]?.delta?.content
-        if (typeof delta === 'string' && delta) {
-          received = true
-          emitDelta(delta)
-        }
-      } catch {
-        // Ignore non-JSON SSE comments/keepalives.
-      }
+  await readSSE(response, (_event, json) => {
+    trackUsage(json?.usage?.prompt_tokens)
+    const delta = json?.choices?.[0]?.delta?.content
+    if (typeof delta === 'string' && delta) {
+      received = true
+      emitDelta(delta)
     }
-  }
+  })
   if (!received) emitDelta('(模型没有返回内容)')
+}
+
+async function llmReply(text, attachments = [], networkApproved = false, accessMode = 'full', reasoningEffort) {
+  if (state.format === 'openai-responses') {
+    return responsesReply(text, attachments, networkApproved, accessMode, reasoningEffort)
+  }
+  return chatReply(text, attachments, networkApproved, accessMode, reasoningEffort)
 }
 
 async function handleUserMessage(sessionId, text, attachments = [], networkApproved = false, accessMode = 'full', reasoningEffort) {
@@ -285,6 +410,7 @@ process.on('message', (message) => {
     state.model = String(message.model || '')
     state.baseUrl = String(message.baseUrl || '')
     state.apiKey = String(message.apiKey || '')
+    state.format = String(message.format || 'openai-responses')
     send({ type: 'ready' })
     return
   }

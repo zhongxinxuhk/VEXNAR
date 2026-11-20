@@ -679,3 +679,205 @@ body.is-resizing .sidebar-shell {
     visibility 0s linear 240ms;
 }
 
+
+/* 模型选择浮层（复刻 ChatGPT/Codex 的 model picker）：
+   面板 254px、轨道 24px、thumb 28px、档位点 4px，
+   填充为 chart-blue → chart-purple 渐变，星点做慢速闪烁。 */
+.model-picker-panel {
+  background: var(--color-bg);
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 6%),
+    0 8px 16px -4px rgb(0 0 0 / 12%),
+    0 24px 48px -24px rgb(0 0 0 / 24%);
+  transform-origin: bottom right;
+  animation: model-picker-in 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* 只做轻微缩放淡入：带位移会让滑块看起来在“滑”，
+   与「打开即停在当前档位」的预期冲突。 */
+@keyframes model-picker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 高度直接切换：隐藏窗口会暂停 CSS transition，高度停在旧值导致列表被裁，
+   面板尺寸也足够小，硬切不影响观感。内容本身仍有淡入位移。 */
+.model-picker-views {
+  transition: none;
+}
+
+.model-picker-view {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.model-picker-view[data-active='false'] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* 填充层由 canvas 星空铺满，CSS 只负责裁剪与吸附动画。 */
+.model-picker-fill {
+  background: #30343a;
+  transition: clip-path 300ms cubic-bezier(0.22, 1.35, 0.36, 1);
+}
+
+/* 拖动时填充必须瞬时跟随，松手后才允许吸附动画。 */
+.model-picker-slider[data-dragging='true'] .model-picker-fill {
+  transition: none;
+}
+
+/* 色阶刻度：极低透明度铺在轨道上，仅作强度方向提示。 */
+.model-picker-rail-tiers {
+  opacity: 0.14;
+  mix-blend-mode: multiply;
+}
+
+[data-theme='dark'] .model-picker-rail-tiers {
+  opacity: 0.18;
+  mix-blend-mode: screen;
+}
+
+.model-picker-slider[data-dragging='true'] .model-picker-fill {
+  filter: saturate(1.12) brightness(1.03);
+}
+
+.model-picker-spark {
+  animation: model-picker-twinkle 3s ease-in-out infinite;
+}
+
+@keyframes model-picker-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.model-picker-tick {
+  transition:
+    transform 120ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease;
+  transform: translate(-50%, -50%);
+}
+
+.model-picker-tick-active {
+  transform: translate(-50%, -50%) scale(1.35);
+}
+
+.model-picker-tick:hover {
+  transform: translate(-50%, -50%) scale(2);
+}
+
+/* thumb 由 JS 直接写 translate3d，外层只做定位与合成层提升。 */
+.model-picker-thumb {
+  top: 50%;
+  left: 0;
+  transform: translate3d(0, -50%, 0);
+  scale: var(--jelly-press, 1);
+  will-change: transform, scale;
+  transition: scale 320ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+/* 果冻：横向拉伸、纵向压缩、倾斜与非对称圆角，全部由 --jelly-* 驱动。
+   thumb 外观取自 reference 组件：26px、#fafafa、1px 10% 描边、0 1px 3px 阴影。 */
+.model-picker-thumb-dot {
+  background: #fafafa;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 13%);
+  transform-origin: center;
+  border-radius: var(--jelly-left, 50%) var(--jelly-right, 50%)
+    var(--jelly-right, 50%) var(--jelly-left, 50%) / 50%;
+  transform: translateX(var(--jelly-offset, 0px))
+    skewX(var(--jelly-skew, 0deg))
+    scale(var(--jelly-x, 1), var(--jelly-y, 1));
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+  will-change: transform, border-radius;
+}
+
+.model-picker-slider:not([data-dragging='true']):hover .model-picker-thumb-dot {
+  border-color: color-mix(in srgb, var(--color-ink) 20%, transparent);
+}
+
+.model-picker-slider[data-maximum='true'] .model-picker-thumb-dot {
+  box-shadow:
+    0 0 10px rgb(168 85 247 / 55%),
+    0 0 22px rgb(168 85 247 / 28%),
+    0 1px 3px rgb(0 0 0 / 14%);
+}
+
+/* 满档时隐藏未选中的档位点，避免和 thumb 叠在轨道右端。 */
+.model-picker-slider[data-maximum='true'] .model-picker-tick {
+  opacity: 0;
+}
+
+.model-picker-slider[data-maximum='true'] .model-picker-tick-active {
+  opacity: 1;
+}
+
+.model-picker-slider[data-dragging='true'] .model-picker-thumb-dot {
+  box-shadow:
+    0 0 2px rgb(0 0 0 / 10%),
+    0 3px 8px rgb(0 0 0 / 18%);
+}
+
+.model-picker-list {
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+.model-picker-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.model-picker-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+[data-theme='dark'] .model-picker-panel {
+  box-shadow:
+    0 0 0 0.5px rgb(255 255 255 / 8%),
+    0 8px 16px -4px rgb(0 0 0 / 40%),
+    0 24px 48px -24px rgb(0 0 0 / 60%);
+}
+
+/*
+ * Motif-style loading mark: a 3×3 grid whose cells light up along a diagonal
+ * wave. CSS-only so a waiting transcript never re-renders at 60fps.
+ */
+@keyframes agent-loading-wave {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: scale(0.72);
+  }
+  38% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.agent-loading-cell {
+  animation: agent-loading-wave 1.35s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-loading-cell {
+    animation: none;
+    opacity: 0.55;
+  }
+}

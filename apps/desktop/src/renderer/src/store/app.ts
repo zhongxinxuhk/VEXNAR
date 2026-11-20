@@ -4,13 +4,20 @@
 
 import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
+import {
+  conversations,
+  DEFAULT_AGENT_KEY,
+  lastTurnUsage,
+  toChatMessages,
+  toSession,
+  uploadImages,
+  type BackendActivity
+} from '@/lib/conversations'
 import { defaultNewApiAuthMethods } from '@shared/contracts'
 import type {
-  AgentEvent,
   AppInfo,
   AvatarColor,
   ImageAttachment,
-  ReasoningEffort,
   BackendStatus,
   DiffPayload,
   FileNode,
@@ -35,6 +42,8 @@ export type ChatMessage = Message & {
   toolCalls?: ToolCall[]
   streaming?: boolean
   failed?: boolean
+  /** Uploaded (non-image-previewable) files attached to a human turn. */
+  files?: { name: string; size: number }[]
 }
 
 type RightTab = 'workspace' | 'terminal' | 'diff'
@@ -45,6 +54,7 @@ export type AppView =
   | 'profile'
   | 'schedules'
   | 'overview'
+  | 'approvals'
   | 'tasks'
   | 'plugins'
   | 'findings'
@@ -99,9 +109,8 @@ type AppState = {
   removeSession: (id: string) => Promise<void>
   pinSession: (id: string, pinned: boolean) => Promise<void>
   contextUsage: Record<string, { model: string; promptTokens: number }>
-  send: (text: string, attachments?: ImageAttachment[], reasoningEffort?: ReasoningEffort) => Promise<boolean>
+  send: (text: string, attachments?: ImageAttachment[]) => Promise<boolean>
   cancel: () => Promise<void>
-  handleAgentEvent: (event: AgentEvent) => void
   saveSettings: (input: SettingsInput) => Promise<boolean>
   setNewApi: (state: NewApiState) => void
   refreshNewApi: () => Promise<void>
@@ -133,7 +142,134 @@ const emptySettings: PublicSettings = {
 
 const api = window.vexnar
 const newChatTitle = (): string => translate(useI18n.getState().locale, 'app.newThread')
-const isDefaultTitle = (title: string): boolean => title === 'New chat' || title === translate('zh', 'app.newThread') || title === translate('en', 'app.newThread')
+
+/**
+ * Live transcript buffer for the open conversation. The Go backend is the only
+ * transcript store; the app keeps the raw activity rows so a poll can rebuild
+ * the rendered list without drifting from what the web /chat page shows.
+ */
+let activities: BackendActivity[] = []
+let activityCursor = 0
+let turnActive = false
+let pending: { text: string; images: ImageAttachment[] } | null = null
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let pollSeq = 0
+let pollConversation = ''
+
+function stopPolling(): void {
+  pollSeq += 1
+  pollConversation = ''
+  if (pollTimer) {
+    clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+/** Rebuild the visible transcript from the backend activity buffer. */
+function renderActivities(sessionId: string): ChatMessage[] {
+  const messages = toChatMessages(activities, sessionId)
+  // Drop the optimistic bubble once the server's persisted human turn arrives.
+  if (pending) {
+    const sent = [...messages].reverse().find((message) => message.role === 'user')
+    if (sent && sent.content.trim() === pending.text.trim()) pending = null
+  }
+  if (pending) {
+    messages.push({
+      id: `pending-user-${sessionId}`,
+      sessionId,
+      role: 'user',
+      content: pending.text,
+      createdAt: Date.now(),
+      ...(pending.images.length ? { attachments: pending.images } : {})
+    })
+  }
+  if (turnActive) {
+    const last = messages[messages.length - 1]
+    if (last && last.role === 'assistant') last.streaming = true
+    else
+      messages.push({
+        id: `pending-assistant-${sessionId}`,
+        sessionId,
+        role: 'assistant',
+        content: '',
+        createdAt: Date.now(),
+        streaming: true,
+        toolCalls: []
+      })
+  }
+  return messages
+}
+
+/** Push the activity buffer into the store for the conversation on screen. */
+function publish(id: string, running: boolean): void {
+  const state = useAppStore.getState()
+  if (state.activeSessionId !== id) return
+  const usage = lastTurnUsage(activities)
+  useAppStore.setState({
+    messages: renderActivities(id),
+    busy: running,
+    agentStatus: running ? 'streaming' : 'idle',
+    ...(usage
+      ? {
+          contextUsage: {
+            ...state.contextUsage,
+            [id]: { model: state.settings.model, promptTokens: usage.promptTokens }
+          }
+        }
+      : {})
+  })
+}
+
+/**
+ * Poll /conversations/{id}/messages until the backend reports the turn is done.
+ * This is the same transport the web /chat page uses — no second SSE loop and no
+ * local assistant stream that could drift from the stored transcript.
+ */
+function pollUntilDone(id: string): void {
+  stopPolling()
+  pollConversation = id
+  const seq = pollSeq
+  turnActive = true
+  const tick = async (): Promise<void> => {
+    if (seq !== pollSeq || pollConversation !== id) return
+    try {
+      const page = await conversations.messages(id, activityCursor)
+      if (seq !== pollSeq) return
+      if (page.items.length) {
+        activities = [...activities, ...page.items]
+        activityCursor = Math.max(activityCursor, page.cursor)
+      }
+      if (page.running) {
+        turnActive = true
+        publish(id, true)
+        pollTimer = setTimeout(() => void tick(), 900)
+        return
+      }
+      turnActive = false
+      pending = null
+      publish(id, false)
+      pollTimer = null
+      void refreshSessions()
+    } catch {
+      if (seq !== pollSeq) return
+      // Transient (backend restarting, short DB hiccup): retry with the same
+      // cursor instead of dropping the turn from the UI.
+      pollTimer = setTimeout(() => void tick(), 1500)
+    }
+  }
+  pollTimer = setTimeout(() => void tick(), 250)
+}
+
+/** Refresh titles/pin order/updated timestamps from the shared conversation list. */
+async function refreshSessions(): Promise<void> {
+  try {
+    const workspace = useAppStore.getState().settings.workspaceRoot
+    const sessions = (await conversations.list()).map((item) => toSession(item, workspace))
+    useAppStore.setState({ sessions })
+  } catch {
+    // cosmetic refresh — a transient failure must not clear the sidebar
+  }
+}
 
 function applyTheme(theme: PublicSettings['theme']): void {
   const dark =
@@ -153,10 +289,6 @@ function settingsInput(settings: PublicSettings): SettingsInput {
     newApiModels: settings.newApiModels,
     baseUrl: settings.baseUrl
   }
-}
-
-function lastStreaming(messages: ChatMessage[]): ChatMessage | undefined {
-  return [...messages].reverse().find((message) => message.role === 'assistant' && message.streaming)
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -198,23 +330,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (get().initializing || get().initialized) return
     set({ initializing: true })
     try {
-      const [infoResult, settingsResult, sessionsResult] = await Promise.all([
-      api.app.info(),
-      api.settings.get(),
-      api.sessions.list()
-    ])
+      const [infoResult, settingsResult] = await Promise.all([
+        api.app.info(),
+        api.settings.get()
+      ])
       if (!settingsResult.ok) {
         set({ error: settingsResult.error })
         return
       }
       const settings = settingsResult.data
-      let sessions = sessionsResult.ok ? sessionsResult.data : []
-      if (sessions.length === 0) {
-        const created = await api.sessions.create({
-          title: newChatTitle(),
-          workspace: settings.workspaceRoot
-        })
-        if (created.ok) sessions = [created.data]
+      // Transcripts live in PostgreSQL behind the Go backend, shared verbatim
+      // with the web /chat page. The app keeps no second session store.
+      let sessions: Session[] = []
+      let sessionsError: string | null = null
+      try {
+        sessions = (await conversations.list()).map((item) =>
+          toSession(item, settings.workspaceRoot)
+        )
+      } catch (error) {
+        sessionsError = error instanceof Error ? error.message : String(error)
+      }
+      if (!sessions.length && !sessionsError) {
+        try {
+          const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle())
+          sessions = [toSession(created, settings.workspaceRoot)]
+        } catch (error) {
+          sessionsError = error instanceof Error ? error.message : String(error)
+        }
       }
       set({
         info: infoResult.ok ? infoResult.data : null,
@@ -222,7 +364,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessions,
         activeSessionId: sessions[0]?.id ?? null,
         initialized: true,
-        error: sessionsResult.ok ? null : sessionsResult.error
+        error: sessionsError
       })
       applyTheme(settings.theme)
       if (sessions[0]) await get().selectSession(sessions[0].id)
@@ -276,277 +418,157 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    if (get().busy && get().agentSessionId && get().agentSessionId !== id) {
-      await get().cancel()
-    }
-    const session = get().sessions.find((item) => item.id === id)
-    if (!session) return
-    const contextChanged = session.workspace !== get().settings.workspaceRoot
-    if (contextChanged) {
-      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: session.workspace })
-      if (!saved.ok) { set({ error: saved.error }); return }
-      set({ settings: saved.data })
-    }
-    set({ activeSessionId: id, messages: [], agentSessionId: null, diff: null, diffError: null })
-    const result = await api.messages.list({ id })
-    if (result.ok) {
+    if (!get().sessions.some((item) => item.id === id)) return
+    stopPolling()
+    pending = null
+    activities = []
+    activityCursor = 0
+    turnActive = false
+    set({
+      activeSessionId: id,
+      messages: [],
+      busy: false,
+      agentStatus: 'idle',
+      agentSessionId: null,
+      diff: null,
+      diffError: null
+    })
+    try {
+      // Same latest-page contract as the web page: one page on open, then the
+      // incremental tail while a turn runs.
+      const page = await conversations.history(id)
+      if (get().activeSessionId !== id) return
+      activities = page.items
+      activityCursor = page.cursor
+      turnActive = page.running
+      const usage = lastTurnUsage(activities)
       set({
-        messages: result.data.map((message) => ({
-          ...message,
-          toolCalls: message.toolCalls
-        }))
+        messages: renderActivities(id),
+        busy: page.running,
+        agentStatus: page.running ? 'streaming' : 'idle',
+        ...(usage
+          ? {
+              contextUsage: {
+                ...get().contextUsage,
+                [id]: { model: get().settings.model, promptTokens: usage.promptTokens }
+              }
+            }
+          : {})
       })
-    } else {
-      set({ error: result.error })
+      if (page.running) pollUntilDone(id)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
-    if (contextChanged) await Promise.all([get().refreshWorkspace(), get().refreshGit()])
   },
 
   newSession: async (workspaceOverride) => {
     if (get().busy) await get().cancel()
+    stopPolling()
+    pending = null
+    activities = []
+    activityCursor = 0
+    turnActive = false
     const workspace = workspaceOverride ?? get().settings.workspaceRoot
     if (workspace !== get().settings.workspaceRoot) {
       const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
-      if (!saved.ok) { set({ error: saved.error }); return }
+      if (!saved.ok) {
+        set({ error: saved.error })
+        return
+      }
       set({ settings: saved.data })
       await Promise.all([get().refreshWorkspace(), get().refreshGit()])
     }
-    const result = await api.sessions.create({ title: newChatTitle(), workspace })
-    if (!result.ok) {
-      set({ error: result.error })
-      return
+    try {
+      const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle())
+      const session = toSession(created, workspace)
+      set((state) => ({
+        sessions: [session, ...state.sessions],
+        activeSessionId: session.id,
+        messages: [],
+        agentSessionId: null,
+        busy: false,
+        agentStatus: 'idle'
+      }))
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
-    set((state) => ({
-      sessions: [result.data, ...state.sessions],
-      activeSessionId: result.data.id,
-      messages: [],
-      agentSessionId: null,
-      busy: false,
-      agentStatus: 'idle'
-    }))
   },
 
   pinSession: async (id, pinned) => {
-    const result = await api.sessions.pin({ id, pinned })
-    if (!result.ok) {
-      set({ error: result.error })
-      return
+    try {
+      await conversations.pin(id, pinned)
+      await refreshSessions()
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
-    set((state) => ({
-      sessions: state.sessions.map((session) => (session.id === id ? result.data : session))
-    }))
   },
 
   removeSession: async (id) => {
-    if (id === get().activeSessionId && get().busy) await get().cancel()
-    const result = await api.sessions.remove({ id })
-    if (!result.ok) {
-      set({ error: result.error })
+    const wasActive = id === get().activeSessionId
+    if (wasActive) {
+      stopPolling()
+      turnActive = false
+      pending = null
+    }
+    try {
+      await conversations.remove(id)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
       return
     }
-    set((state) => {
-      const sessions = state.sessions.filter((session) => session.id !== id)
-      const activeSessionId =
-        state.activeSessionId === id ? (sessions[0]?.id ?? null) : state.activeSessionId
-      return { sessions, activeSessionId, messages: activeSessionId === state.activeSessionId ? state.messages : [] }
-    })
-    const next = get().activeSessionId
-    if (next) await get().selectSession(next)
-    else await get().newSession()
+    const sessions = get().sessions.filter((session) => session.id !== id)
+    set({ sessions })
+    if (wasActive) {
+      if (sessions[0]) await get().selectSession(sessions[0].id)
+      else await get().newSession()
+    }
   },
 
-  send: async (text, attachments = [], reasoningEffort) => {
+  send: async (text, attachments = []) => {
     const trimmed = text.trim()
     const sessionId = get().activeSessionId
     if ((!trimmed && attachments.length === 0) || !sessionId || get().busy) return false
 
-    const userResult = await api.messages.append({
-      sessionId,
-      role: 'user',
-      content: trimmed,
-      attachments
-    })
-    if (!userResult.ok) {
-      set({ error: userResult.error })
-      return false
-    }
-    const assistant: ChatMessage = {
-      id: `stream-${Date.now()}`,
-      sessionId,
-      role: 'assistant',
-      content: '',
-      createdAt: Date.now(),
-      streaming: true,
-      toolCalls: []
-    }
-    set((state) => ({
-      messages: [...state.messages, userResult.data, assistant],
+    // Optimistic bubble: the server persists the human turn within the same
+    // request, and the first poll replaces this with the stored activity row.
+    pending = { text: trimmed, images: attachments }
+    turnActive = true
+    set({
+      messages: renderActivities(sessionId),
       busy: true,
       agentStatus: 'streaming',
       agentSessionId: sessionId,
       error: null
-    }))
-    const current = get().sessions.find((item) => item.id === sessionId)
-    if (current && isDefaultTitle(current.title)) {
-      const title = (trimmed || attachments[0]?.name || '图片').replace(/\s+/g, ' ').slice(0, 60)
-      void api.sessions.rename({ id: sessionId, title }).then((renamed) => {
-        if (!renamed.ok) return
-        set((state) => ({
-          sessions: state.sessions.map((item) => (item.id === sessionId ? renamed.data : item))
-        }))
-      })
-    }
-    const result = await api.agent.send({ sessionId, text: trimmed, attachments, reasoningEffort })
-    if (!result.ok) {
-      set((state) => ({
+    })
+    try {
+      // Images travel through the same /api/chat/upload route the web page uses,
+      // then the message carries their relative paths to the Go conversation.
+      const files = await uploadImages(sessionId, attachments)
+      await conversations.send(sessionId, trimmed, files)
+      pollUntilDone(sessionId)
+      return true
+    } catch (error) {
+      pending = null
+      turnActive = false
+      set({
         busy: false,
         agentStatus: 'error',
-        error: result.error,
-        messages: state.messages.map((message) =>
-          message.id === assistant.id
-            ? { ...message, streaming: false, failed: true, content: `${translate(useI18n.getState().locale, 'chat.runtimeError')}：${result.error}` }
-            : message
-        )
-      }))
+        error: error instanceof Error ? error.message : String(error),
+        messages: renderActivities(sessionId)
+      })
+      return false
     }
-    return result.ok
   },
 
   cancel: async () => {
-    await api.agent.cancel()
-    const messages = get().messages
-    const streaming = lastStreaming(messages)
-    set({
-      busy: false,
-      agentStatus: 'idle',
-      messages: messages.map((message) =>
-        message.id === streaming?.id ? { ...message, streaming: false } : message
-      )
-    })
-    if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
-      await api.messages.append({
-        sessionId: streaming.sessionId,
-        role: 'assistant',
-        content: streaming.content,
-        toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
-      })
-    }
-  },
-
-  handleAgentEvent: (event) => {
-    const sessionId = get().agentSessionId
+    const sessionId = get().activeSessionId
     if (!sessionId) return
-    if (event.type === 'ready') {
-      if (get().agentStatus === 'idle') set({ agentStatus: 'ready' })
-      return
-    }
-    if (event.type === 'assistant_delta') {
-      set((state) => {
-        const messages = [...state.messages]
-        let index = messages.findIndex((message) => message.role === 'assistant' && message.streaming)
-        if (index < 0) {
-          messages.push({
-            id: `stream-${Date.now()}`,
-            sessionId,
-            role: 'assistant',
-            content: '',
-            createdAt: Date.now(),
-            streaming: true,
-            toolCalls: []
-          })
-          index = messages.length - 1
-        }
-        messages[index] = {
-          ...messages[index],
-          content: messages[index].content + event.text
-        }
-        return { messages, agentStatus: 'streaming' }
-      })
-      return
-    }
-    if (event.type === 'tool_start') {
-      set((state) => {
-        const messages = [...state.messages]
-        const index = messages.findIndex((message) => message.role === 'assistant' && message.streaming)
-        if (index >= 0) {
-          const toolCalls = [...(messages[index].toolCalls ?? [])]
-          toolCalls.push({
-            id: event.id,
-            name: event.name,
-            status: 'running',
-            input: event.input
-          })
-          messages[index] = { ...messages[index], toolCalls }
-        }
-        return { messages }
-      })
-      return
-    }
-    if (event.type === 'tool_end') {
-      set((state) => ({
-        messages: state.messages.map((message) => {
-          if (message.role !== 'assistant') return message
-          return {
-            ...message,
-            toolCalls: (message.toolCalls ?? []).map((tool) =>
-              tool.id === event.id
-                ? { ...tool, status: event.ok ? 'done' : 'error', output: event.output }
-                : tool
-            )
-          }
-        })
-      }))
-      return
-    }
-    if (event.type === 'error') {
-      set((state) => ({
-        error: event.message,
-        agentStatus: 'error',
-        busy: false,
-        messages: state.messages.map((message) =>
-          message.role === 'assistant' && message.streaming
-            ? {
-                ...message,
-                streaming: false,
-                content: message.content + `\n\n${translate(useI18n.getState().locale, 'chat.runtimeError')}：${event.message}`,
-                failed: true
-              }
-            : message
-        )
-      }))
-      return
-    }
-    if (event.type === 'context_usage') {
-      const id = get().agentSessionId
-      if (id) set((state) => ({ contextUsage: { ...state.contextUsage, [id]: event } }))
-      return
-    }
-    if (event.type === 'assistant_done') {
-      const streaming = lastStreaming(get().messages)
-      set((state) => ({
-        busy: false,
-        agentStatus: 'idle',
-        messages: state.messages.map((message) =>
-          message.id === streaming?.id ? { ...message, streaming: false } : message
-        )
-      }))
-      if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
-        void api.messages
-          .append({
-            sessionId: streaming.sessionId,
-            role: 'assistant',
-            content: streaming.content,
-            toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
-          })
-          .then((result) => {
-            if (!result.ok) return
-            set((state) => ({
-              messages: state.messages.map((message) =>
-                message.id === streaming.id ? { ...message, id: result.data.id } : message
-              )
-            }))
-          })
-      }
+    try {
+      // The poller keeps running: the backend cancels the turn and flips
+      // `running` to false on the next tick, keeping the stop button honest.
+      await conversations.stop(sessionId)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
   },
 
@@ -586,19 +608,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const result = await api.workspace.choose()
     if (!result.ok || !result.data) return
     const path = result.data
-    const settings = get().settings
     const saved = await get().saveSettings({
-      ...settingsInput(settings),
+      ...settingsInput(get().settings),
       workspaceRoot: path
     })
     if (!saved) return
+    // The workspace is a local editing context now, not a conversation key: the
+    // Go backend conversation stays the same, and every sidebar row re-tags to
+    // the new project path.
     set({ view: 'chat' })
-    const existing = get().sessions.find((session) => session.workspace === path)
-    if (existing) {
-      await get().selectSession(existing.id)
-      return
-    }
-    await get().newSession()
+    void refreshSessions()
   },
 
   refreshWorkspace: async () => {

@@ -2,111 +2,509 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useState } from 'react'
-import { Activity, Bug, ChevronRight, CircleDot, Network, Target } from 'lucide-react'
-import { useT } from '@/lib/i18n'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Activity, Bot, Bug, Network, RefreshCw, Target, Zap } from 'lucide-react'
+import { consoleRequest, type Finding, type Stats, type Task, type TrafficExchange } from '@/lib/console'
+import {
+  activeProfileId,
+  ASSET_TYPE_COLORS,
+  assetTypeRows,
+  compactNumber,
+  dailyFromLedger,
+  dailyFromLegacy,
+  fetchFastSources,
+  fetchSlowSources,
+  foldLedgerTokens,
+  foldLegacyTokens,
+  formatClock,
+  formatTokens,
+  profileIdsByName,
+  summarizeBuckets,
+  totalAssets,
+  type ActivityItem,
+  type AgentRow,
+  type ConversationTokenRow,
+  type DashboardSettings,
+  type InterceptItem,
+  type LLMProfileRow,
+  type McpRow,
+  type SkillRow,
+  type TokenRangeDays,
+  type TokenSource,
+  type TokenTab,
+  type ToolRow,
+  type UsageResponse
+} from '@/lib/dashboard'
+import { useI18n, useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
-import { cn } from '@/lib/utils'
-import { Button, ScrollArea } from '@/components/ui'
-import { consoleRequest, type Finding, type FindingsPage, type FindingStats, type Severity, type Stats, type Task, type TrafficPage } from '@/lib/console'
-import { BackendGate, ErrorRow, LoadingRow, PageHeader, RefreshButton, SeverityBadge, StatusBadge } from './common'
+import { ScrollArea } from '@/components/ui'
+import { BackendGate, PageHeader, RefreshButton } from './common'
+import { ActivityPanel, FindingsPanel } from './overview/Feeds'
+import { AssetsPanel, SystemPanel, TrafficPanel } from './overview/LowerPanels'
+import { EnginePill, LiveDot, RuntimeMetric, SegmentedBar, StatCard } from './overview/Primitives'
+import { TaskTable } from './overview/TaskTable'
+import { TokenPanel } from './overview/TokenPanel'
 
-function Metric({ label, value, icon, hint }: { label: string; value: React.ReactNode; icon: React.ReactNode; hint?: string }): React.JSX.Element {
-  return <div className="rounded-xl border border-line bg-panel-2/50 p-4"><div className="flex items-center gap-2 text-muted">{icon}<span className="text-[11px]">{label}</span></div><div className="mt-3 text-2xl font-semibold tracking-tight text-ink">{value}</div>{hint ? <div className="mt-1 font-mono text-[10px] text-muted/70">{hint}</div> : null}</div>
+type OverviewState = {
+  stats: Stats | null
+  settings: DashboardSettings | null
+  pending: InterceptItem[]
+  activity: ActivityItem[]
+  conversationTokens: ConversationTokenRow[]
+  findings: { total: number; pending: number; critical: number; high: number; medium: number; low: number } | null
+  recentFindings: Finding[]
+  tasks: Task[]
+  traffic: TrafficExchange[]
+  trafficTotal: number
+  trafficEnabled: boolean
+  agents: AgentRow[]
+  mcpServers: McpRow[]
+  skills: SkillRow[]
+  tools: ToolRow[]
+  profiles: LLMProfileRow[]
+  usage: UsageResponse
+}
+
+const INITIAL_STATE: OverviewState = {
+  stats: null,
+  settings: null,
+  pending: [],
+  activity: [],
+  conversationTokens: [],
+  findings: null,
+  recentFindings: [],
+  tasks: [],
+  traffic: [],
+  trafficTotal: 0,
+  trafficEnabled: false,
+  agents: [],
+  mcpServers: [],
+  skills: [],
+  tools: [],
+  profiles: [],
+  usage: {}
+}
+
+type Phase = {
+  fastLoading: boolean
+  syncedAt: number | null
+  error: string | null
+}
+
+const INITIAL_PHASE: Phase = { fastLoading: true, syncedAt: null, error: null }
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export function OverviewView(): React.JSX.Element {
   const t = useT()
+  const locale = useI18n((state) => state.locale)
   const backend = useAppStore((state) => state.backend)
   const setView = useAppStore((state) => state.setView)
-  const [state, setState] = useState<{ stats: Stats | null; tasks: Task[]; findings: FindingStats | null; recentFindings: Finding[]; assets: number; traffic: number; loading: boolean; error: string | null }>({ stats: null, tasks: [], findings: null, recentFindings: [], assets: 0, traffic: 0, loading: true, error: null })
-  const [nonce, setNonce] = useState(0)
+  const connected = Boolean(backend?.connected)
 
+  const [data, setData] = useState<OverviewState>(INITIAL_STATE)
+  const [phase, setPhase] = useState<Phase>(INITIAL_PHASE)
+  const [refreshing, setRefreshing] = useState(false)
+  const [nonce, setNonce] = useState(0)
+  const [tokenSource, setTokenSource] = useState<TokenSource>('old')
+  const [tokenTab, setTokenTab] = useState<TokenTab>('all')
+  const [tokenDays, setTokenDays] = useState<TokenRangeDays>(30)
+  const taskSignature = useRef('')
+
+  // Task history is the largest payload; poll it on its own so a slow task list
+  // can never hold back the other panels (same split the web dashboard uses).
   useEffect(() => {
-    if (!backend?.connected) return
-    let active = true
-    setState((previous) => ({ ...previous, loading: true, error: null }))
-    Promise.all([
-      consoleRequest<Stats>('/stats'),
-      consoleRequest<{ tasks: Task[] }>('/tasks'),
-      consoleRequest<FindingStats>('/exploration/findings/stats'),
-      consoleRequest<Record<string, number>>('/assets/counts'),
-      consoleRequest<TrafficPage>('/traffic?page=0&size=1'),
-      consoleRequest<FindingsPage>('/exploration/findings?page=1&limit=5')
-    ])
-      .then(([stats, tasks, findings, assets, traffic, recent]) => {
-        if (!active) return
-        setState({ stats, tasks: tasks.tasks ?? [], findings, recentFindings: recent.items ?? [], assets: Object.values(assets ?? {}).reduce((sum, value) => sum + Number(value || 0), 0), traffic: traffic.total ?? traffic.count ?? 0, loading: false, error: null })
-      })
-      .catch((error: unknown) => {
-        if (active) setState((previous) => ({ ...previous, loading: false, error: error instanceof Error ? error.message : String(error) }))
-      })
-    return () => { active = false }
-  }, [backend?.connected, nonce])
+    if (!connected) return
+    let alive = true
+    let busy = false
+    taskSignature.current = ''
+    const load = async (): Promise<void> => {
+      if (busy) return
+      busy = true
+      try {
+        const response = await consoleRequest<{ tasks?: Task[] }>('/tasks')
+        if (!alive) return
+        const tasks = response?.tasks ?? []
+        const signature = JSON.stringify(tasks)
+        if (signature !== taskSignature.current) {
+          taskSignature.current = signature
+          setData((previous) => ({ ...previous, tasks }))
+        }
+      } catch {
+        // Transient errors are retried by the next tick; keep the stale list.
+      } finally {
+        busy = false
+      }
+    }
+    void load()
+    const timer = window.setInterval(() => void load(), 5000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [connected, nonce])
+
+  // Fast lane (5s): stats, findings, activity, approvals, token ledger.
+  useEffect(() => {
+    if (!connected) return
+    let alive = true
+    let busy = false
+    const load = async (): Promise<void> => {
+      if (busy) return
+      busy = true
+      try {
+        const sources = await fetchFastSources()
+        if (!alive) return
+        setData((previous) => ({ ...previous, ...sources }))
+        setPhase((previous) => ({ ...previous, fastLoading: false, error: null, syncedAt: Date.now() }))
+        setRefreshing(false)
+      } catch (error) {
+        if (!alive) return
+        setPhase((previous) => ({ ...previous, fastLoading: false, error: errorMessage(error) }))
+        setRefreshing(false)
+      } finally {
+        busy = false
+      }
+    }
+    setPhase((previous) => ({ ...previous, fastLoading: true }))
+    void load()
+    const timer = window.setInterval(() => void load(), 5000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [connected, nonce])
+
+  // Slow lane (15s): traffic, agents, MCP, skills, tools, profiles, usage.
+  useEffect(() => {
+    if (!connected) return
+    let alive = true
+    let busy = false
+    const load = async (): Promise<void> => {
+      if (busy) return
+      busy = true
+      try {
+        const sources = await fetchSlowSources()
+        if (!alive) return
+        setData((previous) => ({ ...previous, ...sources }))
+      } catch {
+        // Keep the previous inventory snapshot.
+      } finally {
+        busy = false
+      }
+    }
+    void load()
+    const timer = window.setInterval(() => void load(), 15000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [connected, nonce])
+
+  // ── derived ───────────────────────────────────────────────────────────────
+
+  const { tasks } = data
+  const tasksByStatus = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const task of tasks) map[task.status] = (map[task.status] ?? 0) + 1
+    return map
+  }, [tasks])
+
+  const runningTasks = tasksByStatus.running ?? 0
+  const queuedTasks = tasksByStatus.queued ?? 0
+  const pausedTasks = tasksByStatus.paused ?? 0
+  const doneTasks = tasksByStatus.done ?? 0
+
+  const findingTotals = data.findings
+  const criticalFindings = findingTotals?.critical ?? 0
+  const highFindings = findingTotals?.high ?? 0
+  const mediumFindings = findingTotals?.medium ?? 0
+  const lowFindings = findingTotals?.low ?? 0
+  const pendingFindings = findingTotals?.pending ?? 0
+
+  const assetCounts = data.stats?.asset_counts
+  const assets = data.stats?.assets ?? totalAssets(assetCounts)
+  const assetRows = useMemo(() => assetTypeRows(assetCounts), [assetCounts])
+  const captureOn = data.settings?.traffic_capture ?? data.trafficEnabled
+  const trafficTotal = data.stats?.traffic ?? data.trafficTotal
+
+  const activeProfile = data.profiles.find((profile) => profile.is_default)
+  const defaultProfileId = useMemo(() => activeProfileId(data.profiles), [data.profiles])
+  const idsByName = useMemo(() => profileIdsByName(data.profiles), [data.profiles])
+  const legacyBuckets = useMemo(
+    () => foldLegacyTokens(tasks, data.conversationTokens, defaultProfileId),
+    [tasks, data.conversationTokens, defaultProfileId]
+  )
+  const ledgerBuckets = useMemo(
+    () => foldLedgerTokens(data.usage, idsByName, defaultProfileId),
+    [data.usage, idsByName, defaultProfileId]
+  )
+  const buckets = tokenSource === 'new' ? ledgerBuckets : legacyBuckets
+  const tokenTotals = useMemo(() => summarizeBuckets(buckets, tokenTab), [buckets, tokenTab])
+  const dailyTokens = useMemo(
+    () =>
+      tokenSource === 'new'
+        ? dailyFromLedger(data.usage, tokenDays, tokenTab, idsByName, defaultProfileId)
+        : dailyFromLegacy(tasks, data.conversationTokens, tokenDays, tokenTab, defaultProfileId),
+    [tokenSource, data.usage, tokenDays, tokenTab, idsByName, defaultProfileId, tasks, data.conversationTokens]
+  )
+  // The heatmap always looks at a full year; the chart range switch must not
+  // shorten it, or the calendar would stop being a calendar.
+  const heatmapTokens = useMemo(
+    () =>
+      tokenSource === 'new'
+        ? dailyFromLedger(data.usage, 365, tokenTab, idsByName, defaultProfileId)
+        : dailyFromLegacy(tasks, data.conversationTokens, 365, tokenTab, defaultProfileId),
+    [tokenSource, data.usage, tokenTab, idsByName, defaultProfileId, tasks, data.conversationTokens]
+  )
+
+  const enabledAgents = data.agents.filter((agent) => agent.enabled).length
+  const enabledTools = data.tools.filter((tool) => tool.enabled).length
+  const enabledMcp = data.mcpServers.filter((server) => server.enabled).length
+  const engineMode = data.stats?.engine_mode ?? 'idle'
+  const initialLoading = phase.fastLoading && data.stats === null
+
+  const refresh = (): void => {
+    setRefreshing(true)
+    setNonce((value) => value + 1)
+  }
 
   if (!backend?.connected) return <BackendGate />
-  const activeTasks = state.tasks.filter((task) => ['running', 'queued', 'paused'].includes(task.status)).length
-  const recent = [...state.tasks].sort((a, b) => (b.updated_at ?? b.created_at ?? '').localeCompare(a.updated_at ?? a.created_at ?? '')).slice(0, 6)
-  const max = Math.max(1, ...(['critical', 'high', 'medium', 'low'] as Severity[]).map((item) => state.findings?.[item] ?? 0))
+
+  const tokenIn = Math.max(0, tokenTotals.input - tokenTotals.cacheRead)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      <PageHeader title={t('overview.title')} subtitle={t('overview.subtitle')} actions={<RefreshButton onClick={() => setNonce((value) => value + 1)} loading={state.loading} />} />
+      <PageHeader
+        title={t('overview.title')}
+        subtitle={t('overview.subtitle')}
+        actions={
+          <div className="flex items-center gap-3">
+            <span className="hidden items-center gap-1.5 font-mono text-[10px] text-muted sm:flex">
+              {phase.error ? <span className="size-1.5 rounded-full bg-danger" /> : <LiveDot />}
+              {phase.error
+                ? phase.syncedAt
+                  ? t('overview.syncStale', { time: formatClock(phase.syncedAt, locale) })
+                  : t('overview.syncFailed')
+                : phase.syncedAt
+                  ? t('overview.updatedAt', { time: formatClock(phase.syncedAt, locale) })
+                  : t('overview.syncing')}
+            </span>
+            <RefreshButton onClick={refresh} loading={refreshing || initialLoading} />
+          </div>
+        }
+      />
+
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-6">
-          {state.error ? <ErrorRow message={state.error} retry={() => setNonce((value) => value + 1)} /> : null}
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric label={t('overview.activeTasks')} value={activeTasks} icon={<Target className="h-3.5 w-3.5" />} hint={t('overview.taskTotal', { count: state.tasks.length })} />
-            <Metric label={t('overview.findings')} value={state.findings?.total ?? 0} icon={<Bug className="h-3.5 w-3.5" />} hint={t('overview.criticalCount', { count: state.findings?.critical ?? 0 })} />
-            <Metric label={t('overview.assets')} value={state.assets} icon={<Network className="h-3.5 w-3.5" />} />
-            <Metric label={t('overview.traffic')} value={state.traffic} icon={<Activity className="h-3.5 w-3.5" />} />
-          </div>
-
-          <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-            <section className="rounded-xl border border-line bg-panel/40">
-              <div className="flex items-center justify-between border-b border-line-soft px-4 py-3"><h2 className="text-xs font-semibold text-ink">{t('overview.recentTasks')}</h2><Button variant="ghost" size="sm" onClick={() => setView('tasks')}>{t('nav.tasks')}</Button></div>
-              {state.loading && recent.length === 0 ? <LoadingRow label={t('app.loading')} /> : recent.length === 0 ? <div className="px-4 py-10 text-center text-xs text-muted">{t('overview.noData')}</div> : (
-                <div className="divide-y divide-line-soft">
-                  {recent.map((task) => (
-                    <button key={task.id} type="button" onClick={() => setView('tasks')} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-panel-2/60">
-                      <CircleDot className="h-3.5 w-3.5 shrink-0 text-muted" />
-                      <div className="min-w-0 flex-1"><div className="truncate text-xs font-medium text-ink-soft">{task.name || task.description || task.id}</div><div className="mt-0.5 truncate font-mono text-[10px] text-muted">{task.goal || task.id}</div></div>
-                      <StatusBadge status={task.status} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-xl border border-line bg-panel/40">
-              <div className="border-b border-line-soft px-4 py-3"><h2 className="text-xs font-semibold text-ink">{t('overview.severity')}</h2></div>
-              {state.findings ? <div className="space-y-3 p-4">
-                {(['critical', 'high', 'medium', 'low'] as Severity[]).map((severity) => {
-                  const value = state.findings?.[severity] ?? 0
-                  return <div key={severity}><div className="mb-1 flex items-center justify-between"><SeverityBadge severity={severity} /><span className="font-mono text-[11px] text-muted">{value}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-panel-3"><div className={cn('h-full rounded-full', severity === 'critical' ? 'bg-danger' : severity === 'high' ? 'bg-warn' : severity === 'medium' ? 'bg-accent' : 'bg-muted/50')} style={{ width: `${Math.max(4, (value / max) * 100)}%` }} /></div></div>
-                })}
-              </div> : <LoadingRow label={t('app.loading')} />}
-            </section>
-          </div>
-
-          <section className="mt-5 overflow-hidden rounded-xl border border-line bg-panel/40">
-            <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
-              <h2 className="text-xs font-semibold text-ink">{t('overview.recentFindings')}</h2>
-              <Button variant="ghost" size="sm" onClick={() => setView('findings')}>{t('nav.findings')}</Button>
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3.5 p-4 xl:p-6">
+          {phase.error ? (
+            <div className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger/5 px-4 py-2.5">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-danger" />
+              <span className="min-w-0 flex-1 break-words font-mono text-[10.5px] leading-5 text-danger">{phase.error}</span>
+              <button
+                type="button"
+                onClick={refresh}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-danger transition-colors hover:bg-danger/10"
+              >
+                <RefreshCw className="h-3 w-3" />
+                {t('app.retry')}
+              </button>
             </div>
-            {state.recentFindings.length === 0 ? <div className="px-4 py-8 text-center text-xs text-muted">{t('overview.noData')}</div> : (
-              <div className="divide-y divide-line-soft">
-                {state.recentFindings.map((finding) => (
-                  <button key={finding.id} type="button" onClick={() => setView('findings')} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-panel-2/60">
-                    <SeverityBadge severity={finding.severity} />
-                    <span className="min-w-0 flex-1 truncate text-xs text-ink-soft">{finding.name || finding.vulnclass}</span>
-                    <span className="hidden max-w-[40%] truncate font-mono text-[10px] text-muted sm:block">{finding.assets?.[0]?.label ?? finding.vulnclass}</span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
-                  </button>
-                ))}
+          ) : null}
+
+          {/* Agent runtime strip: the shared backend state at a glance. */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line bg-gradient-to-r from-panel-2/80 via-panel/50 to-transparent px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="grid size-6 place-items-center rounded-md border border-accent/20 bg-accent/10 text-accent">
+                <Bot className="h-3.5 w-3.5" />
+              </span>
+              <span className="text-[9.5px] font-semibold tracking-[0.12em] text-muted">
+                {t('overview.runtime')}
+              </span>
+            </div>
+            <span className="hidden h-4 w-px bg-line sm:block" />
+            <RuntimeMetric label={t('overview.engine')} value={<EnginePill mode={engineMode} compact />} />
+            <RuntimeMetric
+              label={t('overview.model')}
+              value={<span className="font-mono text-[10px]">{activeProfile?.model || '—'}</span>}
+            />
+            <RuntimeMetric
+              label={t('overview.agents')}
+              value={
+                <span className="tabular-nums">
+                  {enabledAgents}
+                  <span className="text-muted"> / {data.agents.length}</span>
+                </span>
+              }
+            />
+            <RuntimeMetric
+              label={t('overview.tools')}
+              value={
+                <span className="tabular-nums">
+                  {enabledTools}
+                  <span className="text-muted"> / {data.tools.length}</span>
+                </span>
+              }
+            />
+            <RuntimeMetric
+              label={t('overview.mcp')}
+              value={
+                <span className="tabular-nums">
+                  {enabledMcp}
+                  <span className="text-muted"> / {data.mcpServers.length}</span>
+                </span>
+              }
+            />
+            <RuntimeMetric label={t('overview.skills')} value={<span className="tabular-nums">{data.skills.length}</span>} />
+            <span className="ml-auto hidden font-mono text-[9px] text-muted/70 xl:block">{t('overview.runtimeHint')}</span>
+          </div>
+
+          {/* Row 1 — five stat cards. */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+            <StatCard
+              label={t('overview.activeTasks')}
+              icon={<Target className="h-3.5 w-3.5" />}
+              tone="accent"
+              value={initialLoading ? '—' : runningTasks}
+              suffix={`/ ${tasks.length}`}
+              live={runningTasks > 0}
+            >
+              <SegmentedBar
+                segments={[
+                  { value: runningTasks, className: 'bg-accent' },
+                  { value: queuedTasks, className: 'bg-amber-400' },
+                  { value: pausedTasks, className: 'bg-warn' },
+                  { value: doneTasks, className: 'bg-accent-2' }
+                ]}
+              />
+              <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px]">
+                {runningTasks > 0 ? <span className="text-accent">{t('overview.breakRunning', { count: runningTasks })}</span> : null}
+                {queuedTasks > 0 ? <span className="text-amber-500">{t('overview.breakQueued', { count: queuedTasks })}</span> : null}
+                {pausedTasks > 0 ? <span className="text-warn">{t('overview.breakPaused', { count: pausedTasks })}</span> : null}
+                {doneTasks > 0 ? <span className="text-accent-2">{t('overview.breakDone', { count: doneTasks })}</span> : null}
+                {tasks.length === 0 ? <span className="text-muted">{t('overview.noTasks')}</span> : null}
               </div>
-            )}
-          </section>
+            </StatCard>
+
+            <StatCard
+              label={t('overview.findings')}
+              icon={<Bug className="h-3.5 w-3.5" />}
+              tone="danger"
+              value={initialLoading ? '—' : findingTotals?.total ?? 0}
+            >
+              <SegmentedBar
+                segments={[
+                  { value: criticalFindings, className: 'bg-danger' },
+                  { value: highFindings, className: 'bg-warn' },
+                  { value: mediumFindings, className: 'bg-accent' },
+                  { value: lowFindings, className: 'bg-muted/40' }
+                ]}
+              />
+              <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px]">
+                <span className="text-danger">{t('severity.critical')} {criticalFindings}</span>
+                <span className="text-warn">{t('severity.high')} {highFindings}</span>
+                <span className="text-accent">{t('severity.medium')} {mediumFindings}</span>
+                <span className="text-muted">{t('severity.low')} {lowFindings}</span>
+                {pendingFindings > 0 ? <span className="text-amber-500">{t('overview.pendingShort', { count: pendingFindings })}</span> : null}
+              </div>
+            </StatCard>
+
+            <StatCard
+              label={t('overview.assets')}
+              icon={<Network className="h-3.5 w-3.5" />}
+              tone="violet"
+              value={initialLoading ? '—' : assets}
+            >
+              <SegmentedBar
+                segments={assetRows.map((row) => ({
+                  value: row.count,
+                  className: ASSET_TYPE_COLORS[row.type] ?? 'bg-muted/40'
+                }))}
+              />
+              <div className="truncate text-[10px] text-muted">{t('overview.assetsShared')}</div>
+            </StatCard>
+
+            <StatCard
+              label={t('overview.traffic')}
+              icon={<Activity className="h-3.5 w-3.5" />}
+              tone="cyan"
+              value={initialLoading ? '—' : trafficTotal.toLocaleString()}
+              live={captureOn}
+            >
+              <div className="flex items-center gap-1.5 text-[10px] text-muted">
+                {captureOn ? (
+                  <>
+                    <LiveDot />
+                    <span>{t('overview.trafficRecording')}</span>
+                  </>
+                ) : (
+                  <span>{t('overview.captureOff')}</span>
+                )}
+              </div>
+            </StatCard>
+
+            <StatCard
+              label={t('overview.tokenUsage')}
+              icon={<Zap className="h-3.5 w-3.5" />}
+              tone="warn"
+              value={initialLoading ? '—' : formatTokens(tokenTotals.input + tokenTotals.output)}
+            >
+              <SegmentedBar
+                segments={[
+                  { value: tokenIn, className: 'bg-blue-500' },
+                  { value: tokenTotals.cacheRead, className: 'bg-emerald-500' },
+                  { value: tokenTotals.output, className: 'bg-violet-500' }
+                ]}
+              />
+              <div className="truncate text-[10px] text-muted">
+                {t('overview.tokenIO', {
+                  input: compactNumber(tokenTotals.input),
+                  cache: compactNumber(tokenTotals.cacheRead),
+                  output: compactNumber(tokenTotals.output)
+                })}
+              </div>
+            </StatCard>
+          </div>
+
+          {/* Row 2 — LLM token usage. */}
+          <TokenPanel
+            profiles={data.profiles}
+            buckets={buckets}
+            totals={tokenTotals}
+            daily={dailyTokens}
+            heatmapDays={heatmapTokens}
+            source={tokenSource}
+            tab={tokenTab}
+            days={tokenDays}
+            loading={initialLoading}
+            onSourceChange={setTokenSource}
+            onTabChange={setTokenTab}
+            onDaysChange={setTokenDays}
+          />
+
+          {/* Row 3 — activity stream and findings. */}
+          <div className="grid gap-3 lg:grid-cols-2">
+            <ActivityPanel items={data.activity} onOpenTasks={() => setView('tasks')} />
+            <FindingsPanel findings={data.recentFindings} onOpenAll={() => setView('findings')} />
+          </div>
+
+          {/* Row 4 — recent tasks. */}
+          <TaskTable tasks={tasks} onOpenTasks={() => setView('tasks')} />
+
+          {/* Row 5 — inventory, traffic and system health. */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <AssetsPanel counts={assetCounts} />
+            <TrafficPanel exchanges={data.traffic} total={trafficTotal} />
+            <SystemPanel
+              stats={data.stats}
+              settings={data.settings}
+              activeProfile={activeProfile}
+              pending={data.pending}
+              onReview={() => setView('approvals')}
+            />
+          </div>
         </div>
       </ScrollArea>
     </div>

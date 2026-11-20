@@ -65,6 +65,18 @@ const EFFORT_LEVELS: { value: string; label: string }[] = [
   { value: "max", label: "max" },
 ];
 
+// 配置卡上的协议徽标用短名：Responses / Chat Completions / Anthropic。不同
+// 协议决定后端追加哪条端点路径，运维一眼能看出当前激活配置走的是哪条链路。
+const FORMAT_LABELS: Record<string, string> = {
+  "openai-responses": "Responses",
+  openai: "Chat Completions",
+  anthropic: "Anthropic",
+};
+
+function formatLabel(format: string): string {
+  return FORMAT_LABELS[format] ?? format;
+}
+
 function cooldownText(secs: number) {
   if (secs <= 0) return "";
   if (secs < 60) return `${secs}s`;
@@ -311,7 +323,7 @@ function ProfileSheet({
 }) {
   const isNew = !profile;
   const [name, setName] = React.useState("");
-  const [format, setFormat] = React.useState<"anthropic" | "openai" | "openai-responses">("anthropic");
+  const [format, setFormat] = React.useState<"anthropic" | "openai" | "openai-responses">("openai-responses");
   const [model, setModel] = React.useState("");
   const [baseUrl, setBaseUrl] = React.useState("");
   const [proxy, setProxy] = React.useState("");
@@ -340,7 +352,13 @@ function ProfileSheet({
   React.useEffect(() => {
     if (!open) return;
     setName(profile?.name ?? "");
-    setFormat(profile?.format === "openai" || profile?.format === "openai-responses" ? profile.format : "anthropic");
+    const storedFormat = profile?.format;
+    // 新建默认 Responses：平台的推理与工具能力只在 /v1/responses 上完整可用。
+    setFormat(
+      storedFormat === "openai" || storedFormat === "openai-responses" || storedFormat === "anthropic"
+        ? storedFormat
+        : "openai-responses",
+    );
     setModel(profile?.model ?? "");
     setBaseUrl(profile?.base_url ?? "");
     setProxy(profile?.proxy ?? "");
@@ -423,12 +441,19 @@ function ProfileSheet({
     if (saving) return;
     setSaving(true);
     try {
+      // 只存 API 根地址：协议路径由 provider 自己拼，存成 .../v1/responses 会
+      // 让下一次请求变成 .../v1/responses/responses。后端还会再归一化一次。
+      let normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, "");
+      if (format === "openai-responses") normalizedBaseUrl = normalizedBaseUrl.replace(/\/responses$/, "");
+      else if (format === "openai") normalizedBaseUrl = normalizedBaseUrl.replace(/\/chat\/completions$/, "");
+      else normalizedBaseUrl = normalizedBaseUrl.replace(/\/v1\/messages$/, "");
+      setBaseUrl(normalizedBaseUrl);
       const { id } = await api.saveLLMProfile({
         ...(profile ? { id: Number(profile.id) } : {}),
         name: name.trim(),
         format,
         model: model.trim(),
-        base_url: baseUrl.trim(),
+        base_url: normalizedBaseUrl,
         proxy: proxy.trim(),
         api_key: apiKey,
         rate_per_second: Number(rps) || 0,
@@ -557,10 +582,16 @@ function ProfileSheet({
             <Input
               id="p-base-url"
               className="font-mono"
-              placeholder="https://api.openai.com/v1"
+              placeholder="https://api.sec.hn.cn/v1"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
             />
+            <p className="text-muted-foreground text-xs">
+              只填到 API 根路径（如 <span className="font-mono">https://api.sec.hn.cn/v1</span>）。
+              协议路径由后端拼接：Responses 会自动追加 <span className="font-mono">/responses</span>，
+              Chat Completions 追加 <span className="font-mono">/chat/completions</span>。
+              末尾的端点路径保存时会被去掉。
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -916,7 +947,7 @@ export default function LLMPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="truncate font-medium text-sm">{p.name}</span>
                           <Badge variant="outline" className="uppercase">
-                            {p.format}
+                            {formatLabel(p.format)}
                           </Badge>
                           <Badge variant="outline" className={cn("ml-auto", h.cls)} title={h.hint}>
                             {h.label}

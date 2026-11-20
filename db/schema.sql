@@ -204,7 +204,7 @@ ALTER TABLE exploration_nodes ADD COLUMN IF NOT EXISTS delete_reason TEXT;
 -- a node most recently went from "has a live downstream branch" to none (NULL = hot).
 ALTER TABLE exploration_nodes ADD COLUMN IF NOT EXISTS content_version  INT    NOT NULL DEFAULT 0;
 ALTER TABLE exploration_nodes ADD COLUMN IF NOT EXISTS cold_since_round BIGINT;
--- ck_node_kind: existing installs predate the 'digest' kind — recreate to allow it.
+-- ck_node_kind: existing installations predate the 'digest' kind — recreate to allow it.
 DO $$
 BEGIN
     IF EXISTS (
@@ -439,6 +439,24 @@ ALTER TABLE llm_profiles ADD  CONSTRAINT llm_profiles_max_tokens_check
 -- 自定义会话头名；补旧库。默认 '' = 不发送，旧配置行为不变。
 ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS session_header_key TEXT NOT NULL DEFAULT '';
 
+-- 平台托管配置统一走 Responses 协议。平台只在 /v1/responses 上提供完整的推理
+-- 与工具能力；旧版本登录时按 openai(Chat Completions) 写入，这里一次性升级。
+-- 幂等：改完即不再匹配，重复启动不会反复改写。
+UPDATE llm_profiles SET format='openai-responses'
+WHERE format='openai' AND COALESCE(base_url,'') LIKE 'https://api.sec.hn.cn/v1%';
+-- 托管行统一命名，让 app 与 web 一眼看出配置来源（仅在不会撞名时改名）。
+UPDATE llm_profiles p SET name='newapi'
+WHERE p.name='default'
+  AND COALESCE(p.base_url,'') LIKE 'https://api.sec.hn.cn/v1%'
+  AND NOT EXISTS (SELECT 1 FROM llm_profiles x WHERE x.name='newapi');
+
+-- 旧版本允许把完整端点写进 base_url；协议路径由 provider 自己拼，存成
+-- .../v1/responses 会让下一次请求变成 .../v1/responses/responses。这里把历史上
+-- 存错的三种端点后缀一次性剥掉，只留 API 根。幂等：改完即不再匹配。
+UPDATE llm_profiles
+SET base_url = regexp_replace(rtrim(base_url, '/'), '/(responses|chat/completions|v1/messages)$', '')
+WHERE base_url ~ '/(responses|chat/completions|v1/messages)/?$';
+
 -- 单配置的重试覆盖（见 docs/LLM重试设计.md）。三组各自一对「次数 + 固定间隔」，
 -- 语义统一：次数 0=沿用全局默认、-1=关闭该层重试、>0=用该值；间隔 0=沿用该层的
 -- 默认指数退避、>0=改用这个固定毫秒数。全部默认 0，所以旧库/旧配置行为不变。
@@ -492,7 +510,7 @@ CREATE TABLE IF NOT EXISTS llm_profile_health (
 -- =====================================================================
 -- D. 任务层
 -- =====================================================================
--- Global task categories are intentionally independent from task templates.
+-- Global task categories are intentionally independent of task templates.
 -- Deleting a category only moves its tasks back to the uncategorized bucket.
 CREATE TABLE IF NOT EXISTS task_categories (
     id         BIGSERIAL PRIMARY KEY,

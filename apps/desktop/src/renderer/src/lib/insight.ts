@@ -9,10 +9,12 @@
 const EFFORT_KEY = 'vexnar.insight.effort'
 
 export const EFFORT_LABELS: Record<string, string> = {
-  default: '由模型决定',
-  low: '低',
+  default: '默认',
+  low: '轻度',
   medium: '中',
-  high: '高'
+  high: '高',
+  xhigh: '极高',
+  max: 'Max'
 }
 
 export type EffortCounts = Record<string, number>

@@ -19,6 +19,7 @@ import {
   Puzzle,
   Settings,
   Shield,
+  ShieldAlert,
   SquareCheckBig,
   SquareTerminal,
   Target
@@ -80,6 +81,7 @@ export function IconRail(): React.JSX.Element {
 
   const consoleItems: Array<{ id: AppView; label: string; icon: typeof LayoutDashboard }> = [
     { id: 'overview', label: t('nav.overview'), icon: LayoutDashboard },
+    { id: 'approvals', label: t('nav.approvals'), icon: ShieldAlert },
     { id: 'tasks', label: t('nav.tasks'), icon: Target },
     { id: 'findings', label: t('nav.findings'), icon: Bug },
     { id: 'traffic', label: t('nav.traffic'), icon: Activity },

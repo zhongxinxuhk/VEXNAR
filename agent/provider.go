@@ -195,6 +195,24 @@ func FromEnv() (Config, bool) {
 	return c, true
 }
 
+// NormalizeBaseURL reduces a pasted endpoint URL to the API root that the
+// provider expects. Providers append the wire path themselves, so storing a full
+// endpoint ("https://api.sec.hn.cn/v1/responses") would make the next request
+// "…/v1/responses/responses".
+//
+// All known endpoint suffixes are stripped regardless of the provider argument:
+// operators paste full URLs from documentation, and picking the wrong format in
+// the UI must still save a usable root instead of silently doubling the path.
+// provider is kept in the signature because callers pass it and future formats
+// may need provider-specific handling.
+func NormalizeBaseURL(provider, raw string) string {
+	b := strings.TrimSpace(raw)
+	for _, suffix := range []string{"/chat/completions", "/v1/messages", "/responses"} {
+		b = strings.TrimSuffix(strings.TrimRight(b, "/"), suffix)
+	}
+	return strings.TrimRight(b, "/")
+}
+
 // ConfigFrom builds a Config from UI-provided strings (provider defaults to
 // anthropic; model defaults per provider). Inputs are trimmed and the base URL
 // is normalized to the API base the provider expects (the provider appends the
@@ -202,7 +220,7 @@ func FromEnv() (Config, bool) {
 func ConfigFrom(provider, model, baseURL, apiKey, proxy string) Config {
 	c := Config{
 		Model:   strings.TrimSpace(model),
-		BaseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
+		BaseURL: NormalizeBaseURL(provider, baseURL),
 		APIKey:  strings.TrimSpace(apiKey),
 		Proxy:   strings.TrimSpace(proxy),
 		Stream:  true, // 默认流式;调用方按 profile 覆盖
@@ -210,22 +228,16 @@ func ConfigFrom(provider, model, baseURL, apiKey, proxy string) Config {
 	switch strings.TrimSpace(provider) {
 	case "openai":
 		c.Format = llm.FormatOpenAI
-		// provider appends "/chat/completions"; tolerate a full endpoint URL.
-		c.BaseURL = strings.TrimRight(strings.TrimSuffix(c.BaseURL, "/chat/completions"), "/")
 		if c.Model == "" {
 			c.Model = "gpt-4o"
 		}
 	case "openai-responses":
 		c.Format = llm.FormatOpenAIResponses
-		// provider appends "/responses"; tolerate a full endpoint URL.
-		c.BaseURL = strings.TrimRight(strings.TrimSuffix(c.BaseURL, "/responses"), "/")
 		if c.Model == "" {
 			c.Model = "gpt-5"
 		}
 	default:
 		c.Format = llm.FormatAnthropic
-		// provider appends "/v1/messages".
-		c.BaseURL = strings.TrimRight(strings.TrimSuffix(c.BaseURL, "/v1/messages"), "/")
 		if c.Model == "" {
 			c.Model = "claude-opus-4-8"
 		}

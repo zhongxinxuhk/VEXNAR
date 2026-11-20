@@ -4,6 +4,7 @@
 
 import type { AppView } from '@/store/app'
 import { OverviewView } from './OverviewView'
+import { ApprovalsView } from './ApprovalsView'
 import { TasksView } from './TasksView'
 import { FindingsView } from './FindingsView'
 import { TrafficView } from './TrafficView'
@@ -15,6 +16,8 @@ export function ConsoleView({ view }: { view: Exclude<AppView, 'chat'> }): React
   switch (view) {
     case 'overview':
       return <OverviewView />
+    case 'approvals':
+      return <ApprovalsView />
     case 'tasks':
       return <TasksView />
     case 'findings':

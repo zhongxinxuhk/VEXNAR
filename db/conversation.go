@@ -251,10 +251,24 @@ RETURNING id`, convID, utf8Clean(a.Worker), utf8Clean(a.Kind), utf8Clean(a.Tool)
 // ConvActivityList returns a conversation's steps after sinceID (exclusive) with
 // the summary-only column set (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityList(convID, sinceID int64, limit int) ([]Activity, int64, error) {
+	return d.convActivityList(convID, sinceID, limit, false)
+}
+
+// ConvActivityListDetail is ConvActivityList including the full Detail blob.
+// The desktop app asks for it so a full assistant answer renders immediately
+// instead of one lazy /messages/{seq} request per step.
+func (d *DB) ConvActivityListDetail(convID, sinceID int64, limit int) ([]Activity, int64, error) {
+	return d.convActivityList(convID, sinceID, limit, true)
+}
+
+func (d *DB) convActivityList(convID, sinceID int64, limit int, withDetail bool) ([]Activity, int64, error) {
 	if limit <= 0 {
 		limit = 500
 	}
-	const cols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+	cols := convActivityCols
+	if withDetail {
+		cols += `, COALESCE(detail,'')`
+	}
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMIT $3`, convID, sinceID, limit)
 	if err != nil {
@@ -264,9 +278,8 @@ FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMI
 	out := []Activity{}
 	cursor := sinceID
 	for rows.Next() {
-		var a Activity
-		if err := rows.Scan(&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
-			&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens); err != nil {
+		a := Activity{}
+		if err := scanActivityRow(rows, &a, withDetail); err != nil {
 			return nil, sinceID, err
 		}
 		if a.ID > cursor {
@@ -283,10 +296,22 @@ FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMI
 // exist before the returned window, so the client can stop loading earlier history
 // on scroll-up. Summary-only columns (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityPage(convID, before int64, limit int) ([]Activity, bool, error) {
+	return d.convActivityPage(convID, before, limit, false)
+}
+
+// ConvActivityPageDetail is ConvActivityPage including the full Detail blob.
+func (d *DB) ConvActivityPageDetail(convID, before int64, limit int) ([]Activity, bool, error) {
+	return d.convActivityPage(convID, before, limit, true)
+}
+
+func (d *DB) convActivityPage(convID, before int64, limit int, withDetail bool) ([]Activity, bool, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	const cols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+	cols := convActivityCols
+	if withDetail {
+		cols += `, COALESCE(detail,'')`
+	}
 	// fetch one extra row to detect whether older history remains before this window.
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities
@@ -298,9 +323,8 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 	defer rows.Close()
 	desc := []Activity{}
 	for rows.Next() {
-		var a Activity
-		if err := rows.Scan(&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
-			&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens); err != nil {
+		a := Activity{}
+		if err := scanActivityRow(rows, &a, withDetail); err != nil {
 			return nil, false, err
 		}
 		desc = append(desc, a)
@@ -318,6 +342,20 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 		out[len(desc)-1-i] = a
 	}
 	return out, hasMore, nil
+}
+
+// convActivityCols is the summary-only column list shared by both readers; the
+// detail variant appends the Detail blob. Keep the order in sync with
+// scanActivityRow.
+const convActivityCols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+
+func scanActivityRow(rows *sql.Rows, a *Activity, withDetail bool) error {
+	dest := []any{&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
+		&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens}
+	if withDetail {
+		dest = append(dest, &a.Detail)
+	}
+	return rows.Scan(dest...)
 }
 
 // ConvActivityDetail lazily returns the full detail blob for one step.

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import type { SettingsInput } from '@shared/contracts'
 import { useChatSendMode } from '@/lib/chat-send-mode'
+import { consoleRequest } from '@/lib/console'
 import { useAppStore } from '@/store/app'
 import { useI18n, useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,28 @@ import {
   type SystemGroup
 } from './SystemSettings'
 import { UpdateButton, UpdateDetails } from './UpdateNotice'
+
+// 协议短名与后端/网页同一套叫法：Responses / Chat Completions / Anthropic。
+function formatLabel(format?: string): string {
+  switch (format) {
+    case 'openai-responses':
+      return 'Responses'
+    case 'openai':
+      return 'Chat Completions'
+    case 'anthropic':
+      return 'Anthropic'
+    default:
+      return format || '未知协议'
+  }
+}
+
+const EFFORT_TEXT: Record<string, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+  xhigh: '极高',
+  max: '最高'
+}
 
 const pages = [
   {
@@ -153,6 +176,20 @@ export function SettingsDialog(): React.JSX.Element {
   const newApi = useAppStore((state) => state.newApi)
   const info = useAppStore((state) => state.info)
   const backend = useAppStore((state) => state.backend)
+  // Active LLM profile as the Go backend / PostgreSQL see it. The web LLM page
+  // reads the same row, so showing it here proves both surfaces agree.
+  const [llmStatus, setLlmStatus] = useState<{
+    configured?: boolean
+    format?: string
+    model?: string
+    reasoning_effort?: string
+  } | null>(null)
+  useEffect(() => {
+    if (!open) return
+    void consoleRequest<typeof llmStatus>('/desktop/llm')
+      .then((status) => setLlmStatus(status))
+      .catch(() => setLlmStatus(null))
+  }, [open])
   const locale = useI18n((state) => state.locale)
   const setLocale = useI18n((state) => state.setLocale)
   const t = useT()
@@ -545,6 +582,22 @@ export function SettingsDialog(): React.JSX.Element {
                   </Row>
                   <Row label="Go 服务状态">
                     {backend?.connected ? '已连接' : backend?.error || '未连接'}
+                  </Row>
+                  <Row
+                    label="当前激活配置"
+                    hint="与 web 控制台共用同一份 PostgreSQL 配置"
+                  >
+                    {llmStatus?.configured
+                      ? `${formatLabel(llmStatus.format)} · ${llmStatus.model ?? ''}`
+                      : '未配置（登录后自动写入）'}
+                  </Row>
+                  <Row
+                    label="思考强度"
+                    hint="在输入框右下角的模型菜单里调节"
+                  >
+                    {llmStatus?.reasoning_effort
+                      ? EFFORT_TEXT[llmStatus.reasoning_effort] ?? llmStatus.reasoning_effort
+                      : '由模型决定'}
                   </Row>
                 </>
               )}

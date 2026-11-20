@@ -24,15 +24,30 @@ export interface Task {
   goal: string
   status: TaskStatus
   paused?: boolean
+  queued?: boolean
   active?: boolean
   in_flight?: number
   findings?: { critical: number; high: number; medium: number; low: number }
   last_activity?: string
   updated_at?: string
   created_at?: string
+  created_unix?: number
+  completed_unix?: number
+  last_activity_unix?: number
   goals_total?: number
   goals_met?: number
   engine_mode?: string
+  stalled?: boolean
+  /** Whole-task token consumption, used by the overview token ledger. */
+  tokens?: {
+    input_tokens: number
+    output_tokens: number
+    cache_read_tokens: number
+    cache_write_tokens: number
+  }
+  /** LLM profile pinned to this task; absent/null = the active default profile. */
+  llm_profile_id?: number | null
+  llm_profile_ids?: number[]
 }
 
 export interface Stats {
@@ -40,6 +55,10 @@ export interface Stats {
   findings_confirmed: number
   engine_mode?: string
   llm_configured?: boolean
+  /** Shared asset index grouped by type (root_domain / subdomain / ip / ...). */
+  asset_counts?: Record<string, number>
+  traffic?: number
+  traffic_enabled?: boolean
 }
 
 export interface FindingStats {

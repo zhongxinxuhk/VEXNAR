@@ -26,7 +26,6 @@ import { defaultNewApiAuthMethods } from '@shared/contracts'
 function WorkspaceApp(): React.JSX.Element {
   const t = useT()
   const init = useAppStore((state) => state.init)
-  const handleAgentEvent = useAppStore((state) => state.handleAgentEvent)
   const rightOpen = useAppStore((state) => state.rightOpen)
   const toggleRight = useAppStore((state) => state.toggleRight)
   const error = useAppStore((state) => state.error)
@@ -45,8 +44,6 @@ function WorkspaceApp(): React.JSX.Element {
   useEffect(() => {
     void init()
   }, [init])
-
-  useEffect(() => window.vexnar.agent.onEvent(handleAgentEvent), [handleAgentEvent])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

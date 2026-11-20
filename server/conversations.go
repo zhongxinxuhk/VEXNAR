@@ -314,6 +314,10 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	}
 	q := r.URL.Query()
 	limit := atoiDefault(q.Get("limit"), 200)
+	// detail=1 includes each step's full text. The web transcript lazy-loads it,
+	// but the desktop app renders whole answers immediately and cannot afford one
+	// /messages/{seq} round-trip per step.
+	withDetail := q.Get("detail") == "1"
 	s.chatMu.Lock()
 	running := s.chatBusy[s.convBusyKey(c.ID)]
 	s.chatMu.Unlock()
@@ -322,7 +326,14 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	// poll and the post-send fetch. A generous cap so a burst is never dropped.
 	if sv := q.Get("since"); sv != "" {
 		since, _ := strconv.ParseInt(sv, 10, 64)
-		items, cursor, err := pg.ConvActivityList(c.ID, since, max(limit, 1000))
+		var items []db.Activity
+		var cursor int64
+		var err error
+		if withDetail {
+			items, cursor, err = pg.ConvActivityListDetail(c.ID, since, max(limit, 1000))
+		} else {
+			items, cursor, err = pg.ConvActivityList(c.ID, since, max(limit, 1000))
+		}
 		if err != nil {
 			writeErr(w, 500, err.Error())
 			return
@@ -335,7 +346,14 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	// the page of older steps ending before id N. hasMore lets the client stop
 	// loading earlier history once the top of the thread is reached.
 	before, _ := strconv.ParseInt(q.Get("before"), 10, 64)
-	items, hasMore, err := pg.ConvActivityPage(c.ID, before, limit)
+	var items []db.Activity
+	var hasMore bool
+	var err error
+	if withDetail {
+		items, hasMore, err = pg.ConvActivityPageDetail(c.ID, before, limit)
+	} else {
+		items, hasMore, err = pg.ConvActivityPage(c.ID, before, limit)
+	}
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return

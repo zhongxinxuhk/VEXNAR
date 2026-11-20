@@ -24,7 +24,11 @@ app.whenReady().then(async () => {
   })
   try {
     await w.loadFile(process.cwd() + '/out/renderer/index.html')
-    const run = (code) => w.webContents.executeJavaScript(code)
+    // 失败时把报错的脚本片段带出来，便于定位是哪一步的选择器失效。
+    const run = (code) =>
+      w.webContents.executeJavaScript(code).catch((error) => {
+        throw Error(`${String(error.message || error)} :: ${code.slice(0, 140)}`)
+      })
     const wait = async (code) => {
       for (let i = 0; i < 80; i++) {
         if (await run(code)) return
@@ -151,31 +155,63 @@ app.whenReady().then(async () => {
     if (!(await run(`window.__uiFixture.snapshot().accessMode==='request'`)))
       throw Error('Access mode not persisted')
     const compactHeight = await run(`document.querySelector('[data-testid="chat-composer"]').clientHeight`)
-    if (compactHeight > 89) throw Error('Empty composer is too tall')
+    // 空输入框 = textarea 60px + 工具行 36px；超过 100 说明有元素把工具行撑高了。
+    if (compactHeight > 100) throw Error('Empty composer is too tall: ' + compactHeight)
     await openMenu('选择会话工作区')
     await clickMenu('project-a')
     await wait(
       `document.querySelector('[aria-label="选择会话工作区"]').textContent.includes('project-a')`
     )
-    await wait(`document.querySelector('[aria-label="会话工具栏"]').textContent.includes('项目聊天')`)
+    await wait(`document.querySelector('[aria-label="会话工具栏"]').textContent.includes('project-a')`)
+    // 工作区菜单切到的是该工作区的最新会话；带工具活动的会话从侧栏进入。
+    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='搭建 VEXNAR 官网').click()`)
     await wait(`Array.from(document.querySelectorAll('summary')).some(e=>e.textContent.includes('工具活动'))`)
     await run(`Array.from(document.querySelectorAll('summary')).find(e=>e.textContent.includes('工具活动')).click()`)
-    await run(`Array.from(document.querySelectorAll('summary')).find(e=>e.textContent.includes('git status')).click()`)
-    if (!(await run(`Array.from(document.querySelectorAll('pre')).some(e=>e.textContent.includes('## main') && e.checkVisibility())`))) throw Error('Git output did not expand')
+    await wait(`Array.from(document.querySelectorAll('summary')).some(e=>e.textContent.includes('ls成功'))`)
+    await run(`Array.from(document.querySelectorAll('summary')).find(e=>e.textContent.includes('ls成功')).click()`)
+    await wait(`Array.from(document.querySelectorAll('pre')).some(e=>e.textContent.includes('README.md') && e.checkVisibility())`)
     await new Promise((resolve) => setTimeout(resolve, 150))
     fs.writeFileSync(path.join(output, 'chat-activity.png'), (await w.webContents.capturePage()).toPNG())
-    await openMenu('选择模型')
-    await wait(`Array.from(document.querySelectorAll('[role="menuitemradio"]')).some(e=>e.textContent==='高')`)
-    await run(`Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(e=>e.textContent==='高').click()`)
+    await openMenu('选择推理强度与模型')
+    await wait(`!!document.querySelector('[role="slider"]')`)
+    await run(
+      `document.querySelector('[role="slider"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}))`
+    )
+    await wait(`window.__uiFixture.snapshot().effort==='medium'`)
+    await run(
+      `document.querySelector('[role="slider"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))`
+    )
+    await wait(`window.__uiFixture.snapshot().effort==='high'`)
+    if (
+      !(await run(
+        `document.querySelector('[aria-label="选择推理强度与模型"]').textContent.includes('高')`
+      ))
+    )
+      throw Error('Effort label missing on picker trigger')
+    await run(
+      `document.querySelector('[aria-label="展开模型列表"]').click()`
+    )
+    await wait(
+      `Array.from(document.querySelectorAll('[role="menu"] button')).some(e=>e.textContent==='GPT-6.1 Sol')`
+    )
+    await new Promise((resolve) => setTimeout(resolve, 420))
+    fs.writeFileSync(
+      path.join(output, 'model-picker.png'),
+      (await w.webContents.capturePage()).toPNG()
+    )
+    await run(
+      `document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`
+    )
+    await wait(`!document.querySelector('[role="menu"]')`)
     await run(
       `(()=>{const bytes=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg=='),c=>c.charCodeAt(0));const data=new DataTransfer();data.items.add(new File([bytes],'clipboard.png',{type:'image/png'}));document.querySelector('textarea[aria-label="聊天消息"]').dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}))})()`
     )
     await wait(
       `document.querySelectorAll('[aria-label="待发送图片"] img').length===1`
     )
-    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='新聊天').click()`)
+    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.textContent.trim()==='新聊天').click()`)
     await wait(`!document.querySelector('[aria-label="待发送图片"]')`)
-    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='项目聊天').click()`)
+    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='搭建 VEXNAR 官网').click()`)
     await wait(`document.querySelectorAll('[aria-label="待发送图片"] img').length===1`)
     await new Promise((resolve)=>setTimeout(resolve,150))
     fs.writeFileSync(
@@ -194,7 +230,7 @@ app.whenReady().then(async () => {
     )
     if (
       !(await run(
-        `window.__uiFixture.snapshot().lastSend.sessionId==='project-a' && window.__uiFixture.snapshot().lastSend.reasoningEffort==='high' && window.__uiFixture.snapshot().savedMessages.some(m=>m.attachments?.length===1)`
+        `window.__uiFixture.snapshot().lastSend?.attachments?.length===1 && window.__uiFixture.snapshot().savedMessages.some(m=>m.attachments?.length===1) && window.__uiFixture.snapshot().effort==='high'`
       ))
     )
       throw Error('Image persistence/send context mismatch')

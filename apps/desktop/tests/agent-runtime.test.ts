@@ -136,7 +136,9 @@ it('sends pasted image content and approval through the configured loopback gate
       workspace: '/fixture/project',
       model: 'vision',
       baseUrl: `http://127.0.0.1:${address.port}/v1`,
-      apiKey: 'loopback-fixture'
+      apiKey: 'loopback-fixture',
+      // This fixture asserts the Chat Completions wire format explicitly.
+      format: 'openai'
     })
     const done = waitForEvent(child, (event) => event.type === 'assistant_done')
     const usage = waitForEvent(child, (event) => event.type === 'context_usage')
@@ -189,3 +191,66 @@ it('sends pasted image content and approval through the configured loopback gate
     gateway.close()
   }
 })
+
+
+it('defaults to the Responses protocol and streams response.output_text.delta', async () => {
+  const { createServer } = await import('node:http')
+  let captured: Record<string, any> | null = null
+  let path = ''
+  const gateway = createServer(async (request, response) => {
+    path = request.url ?? ''
+    const chunks: Buffer[] = []
+    for await (const part of request) chunks.push(Buffer.from(part))
+    captured = JSON.parse(Buffer.concat(chunks).toString())
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    response.end(
+      'event: response.output_text.delta\ndata: {"type":"response.output_text.delta","delta":"hello from responses"}\n\n' +
+        'event: response.completed\ndata: {"type":"response.completed","response":{"usage":{"input_tokens":33}}}\n\n'
+    )
+  })
+  await new Promise<void>((resolve) => gateway.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = gateway.address() as { port: number }
+    const child = startRuntime()
+    await waitForEvent(child, (event) => event.type === 'ready')
+    // No format field: the runtime must fall back to Responses (the NewAPI
+    // platform's full reasoning surface lives on /v1/responses).
+    child.send({
+      type: 'init',
+      workspace: '/fixture/project',
+      model: 'gpt-5-codex',
+      baseUrl: `http://127.0.0.1:${address.port}/v1`,
+      apiKey: 'loopback-fixture'
+    })
+    const deltas: string[] = []
+    const onMessage = (event: AgentEvent): void => {
+      if (event.type === 'assistant_delta') deltas.push(event.text)
+    }
+    child.on('message', onMessage)
+    const done = waitForEvent(child, (event) => event.type === 'assistant_done')
+    const usage = waitForEvent(child, (event) => event.type === 'context_usage')
+    child.send({
+      type: 'user_message',
+      sessionId: 'responses',
+      text: 'hello',
+      accessMode: 'full',
+      networkApproved: true,
+      reasoningEffort: 'high'
+    })
+    const [usageEvent] = await Promise.all([usage, done])
+    child.off('message', onMessage)
+    expect(usageEvent).toMatchObject({ type: 'context_usage', promptTokens: 33 })
+    expect(deltas.join('')).toBe('hello from responses')
+    expect(path).toBe('/v1/responses')
+    const body = captured as unknown as Record<string, any>
+    expect(body.model).toBe('gpt-5-codex')
+    expect(body.instructions).toContain('/fixture/project')
+    expect(body.input[0].content).toEqual([{ type: 'input_text', text: 'hello' }])
+    expect(body.reasoning).toEqual({ effort: 'high' })
+    expect(body.stream).toBe(true)
+    expect(body.store).toBe(false)
+  } finally {
+    gateway.closeAllConnections()
+    gateway.close()
+  }
+}, 15000)
