@@ -31,12 +31,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Build website with public GitHub metadata
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install React build dependencies
+        working-directory: website
+        run: npm ci
+      - name: Prepare public GitHub metadata
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 website/build.py
+        run: python3 website/scripts/prepare_data.py
+      - name: Build and pre-render React pages
+        working-directory: website
+        run: npm run build
       - name: Verify Pages routes and assets
-        run: python3 website/check.py
+        working-directory: website
+        run: npm run check
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

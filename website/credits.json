@@ -521,6 +521,20 @@
       "logo_kind": "项目 Logo（Simple Icons）",
       "logo_source": "https://github.com/simple-icons/simple-icons/blob/16.24.1/icons/simpleicons.svg",
       "note": ""
+    },
+    {
+      "name": "Vite",
+      "github": "https://github.com/vitejs/vite",
+      "author": "Evan You 与 Vite 贡献者",
+      "category": "UI 与交互",
+      "kind": "直接使用",
+      "usage": "React 官方网站的模块构建、开发预览和静态资源打包。",
+      "license": "MIT",
+      "license_url": "https://github.com/vitejs/vite/blob/main/LICENSE",
+      "logo": "https://github.com/vitejs.png?size=128",
+      "logo_kind": "维护者标识",
+      "logo_source": "https://github.com/vitejs",
+      "note": ""
     }
   ]
 }
