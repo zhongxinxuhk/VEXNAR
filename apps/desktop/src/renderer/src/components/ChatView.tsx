@@ -827,6 +827,7 @@ export function ChatView(): React.JSX.Element {
   const following = useRef(true)
   const [away, setAway] = useState(false)
   const toggleRight = useAppStore((state) => state.toggleRight)
+  const rightOpen = useAppStore((state) => state.rightOpen)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const session = useMemo(
     () => sessions.find((item) => item.id === activeSessionId),
@@ -865,7 +866,9 @@ export function ChatView(): React.JSX.Element {
           // 整条顶栏可拖动窗口；交互控件各自 no-drag。
           // 侧栏收起时顶栏从开关右侧 (x=130) 起——物理上不与窗口控件重叠，
           // 不再依赖透明安全区：透明元素在原生拖动区计算里不可靠，会把点击吃成拖动。
-          'chat-glass drag-region absolute top-0 z-20 flex h-11 items-center gap-2 px-4',
+          // 顶层 no-drag + 只在标题/中段空白放 drag-region：
+          // 拖动区与按钮彻底分离，避免按钮被原生拖动区吞掉点击
+          'chat-glass no-drag absolute top-0 z-20 flex h-11 items-center gap-2 px-4',
           'transition-[left] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
           sidebarOpen ? 'inset-x-0' : 'left-[130px] right-0'
         )}
@@ -892,11 +895,16 @@ export function ChatView(): React.JSX.Element {
             </div>
           )}
         </div>
+        <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
         <button
           type="button"
           onClick={toggleRight}
           aria-label="切换右侧面板"
-          className="no-drag ml-auto grid size-7 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-panel-2"
+          aria-pressed={rightOpen}
+          className={cn(
+            'no-drag grid size-7 shrink-0 place-items-center rounded-lg transition-colors',
+            rightOpen ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2'
+          )}
         >
           <PanelRight className="size-4" />
         </button>
