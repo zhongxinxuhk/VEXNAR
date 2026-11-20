@@ -96,7 +96,7 @@ function WorkspaceApp(): React.JSX.Element {
           <Sidebar />
         </div>
       )}
-      {bare || !sidebarOpen ? null : <SidebarResizeHandle />}
+      {bare ? null : <SidebarResizeHandle />}
 
       <main className={`relative flex min-w-0 flex-1 overflow-hidden ${view === 'chat' ? '-mt-11' : ''}`}>
         {view === 'chat' ? (

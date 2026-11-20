@@ -105,36 +105,64 @@ function NavArrow({
   )
 }
 
-export function SidebarResizeHandle(): React.JSX.Element | null {
+export function SidebarResizeHandle(): React.JSX.Element {
   const width = useLayout((state) => state.sidebarWidth)
   const setWidth = useLayout((state) => state.setWidth)
   const open = useLayout((state) => state.sidebarOpen)
-  if (!open) return null
+  const setSidebarOpen = useLayout((state) => state.setSidebarOpen)
+
+  // 单一手柄两种状态：展开时左右拖拽调宽（拖过阈值直接收起）；
+  // 收起后停在图标栏右缘，向右拖过阈值恢复并让宽度跟随指针。
   return (
     <div
       role="separator"
       aria-label="调整聊天列表宽度"
       aria-orientation="vertical"
-      aria-valuenow={width}
+      aria-valuenow={open ? width : 0}
       aria-valuemin={200}
       aria-valuemax={420}
       tabIndex={0}
-      onDoubleClick={() => setWidth(248)}
+      onDoubleClick={() => {
+        setSidebarOpen(true)
+        setWidth(248)
+      }}
       onKeyDown={(event) => {
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
           event.preventDefault()
+          if (!open) {
+            setSidebarOpen(true)
+            return
+          }
           setWidth(width + (event.key === 'ArrowRight' ? 16 : -16))
         }
-        if (event.key === 'Home') setWidth(200)
-        if (event.key === 'End') setWidth(420)
+        if (event.key === 'Home') {
+          setSidebarOpen(true)
+          setWidth(200)
+        }
+        if (event.key === 'End') {
+          setSidebarOpen(true)
+          setWidth(420)
+        }
       }}
       onPointerDown={(event) => {
         event.preventDefault()
         const target = event.currentTarget
         const start = event.clientX
         target.setPointerCapture(event.pointerId)
-        const move = (e: PointerEvent): void =>
-          setWidth(width + e.clientX - start)
+        const move = (e: PointerEvent): void => {
+          const dx = e.clientX - start
+          if (open) {
+            const next = width + dx
+            if (next < 170) {
+              setSidebarOpen(false)
+              return
+            }
+            setWidth(next)
+          } else if (dx > 36) {
+            setSidebarOpen(true)
+            setWidth(Math.max(200, e.clientX - 52))
+          }
+        }
         const done = (): void => {
           target.removeEventListener('pointermove', move)
           target.removeEventListener('pointerup', done)
@@ -144,7 +172,13 @@ export function SidebarResizeHandle(): React.JSX.Element | null {
         target.addEventListener('pointerup', done)
         target.addEventListener('pointercancel', done)
       }}
-      className="no-drag relative z-30 -ml-[3px] -mr-[3px] w-[6px] shrink-0 cursor-col-resize touch-none outline-none before:absolute before:inset-y-0 before:left-[2px] before:w-[2px] hover:before:bg-ink/15 focus-visible:before:bg-accent"
+      className={cn(
+        'no-drag relative z-30 shrink-0 cursor-col-resize touch-none outline-none',
+        'before:absolute before:inset-y-0 before:left-1/2 before:w-[2px] before:-translate-x-1/2',
+        open
+          ? '-mx-[3px] w-[6px] before:bg-transparent hover:before:bg-ink/15 focus-visible:before:bg-accent'
+          : '-mx-[4px] w-[8px] before:bg-transparent hover:before:bg-ink/15 focus-visible:before:bg-accent'
+      )}
     />
   )
 }

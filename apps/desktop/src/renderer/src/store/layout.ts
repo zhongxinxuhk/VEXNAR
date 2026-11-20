@@ -14,12 +14,28 @@ export const railPins = (Array.isArray(JSON.parse(storedPins || '[]'))
 export const useLayout = create<{
   sidebarWidth: number
   sidebarOpen: boolean
+  lastSidebarWidth: number
   railPins: string[]
   setWidth: (width: number) => void
+  setSidebarOpen: (open: boolean) => void
   toggleSidebar: () => void
   toggleRailPin: (id: string) => void
 }>((set) => ({
   railPins,
+  lastSidebarWidth: Math.min(420, Math.max(200, stored)),
+  // 拖拽把手：向左拖过阈值直接收起；收起后向右拖过阈值恢复（宽度跟随指针）
+  setSidebarOpen: (open) =>
+    set((state) => {
+      if (open) {
+        const width = Math.min(420, Math.max(200, state.lastSidebarWidth || 248))
+        localStorage.setItem('vexnar.sidebar-width', String(width))
+        return { sidebarOpen: true, sidebarWidth: width }
+      }
+      return {
+        sidebarOpen: false,
+        lastSidebarWidth: Math.min(420, Math.max(200, state.sidebarWidth))
+      }
+    }),
   // 图钉：钉住顺序即图标栏从上到下的顺序；取消后剩余项向上靠齐
   toggleRailPin: (id) =>
     set((state) => {
