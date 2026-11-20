@@ -31,6 +31,7 @@ export type Unsubscribe = () => void
 export interface VexnarApi {
   app: {
     info: () => Promise<IpcResult<AppInfo>>
+    copyText: (text: string) => Promise<IpcResult<{ copied: true }>>
   }
   settings: {
     get: () => Promise<IpcResult<PublicSettings>>

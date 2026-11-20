@@ -17,14 +17,16 @@ const fieldClass =
   'flex h-8 w-full rounded-lg border border-line bg-bg px-2.5 text-[12.5px] text-ink outline-none transition-shadow focus:ring-2 focus:ring-accent/25'
 
 function Section({
+  id,
   title,
   children
 }: {
+  id?: string
   title: string
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <section className="border-t border-line-soft pt-4 first:border-t-0 first:pt-0">
+    <section id={id} className="scroll-mt-4 border-t border-line-soft pt-4 first:border-t-0 first:pt-0">
       <h3 className="mb-2.5 text-[11px] font-medium text-muted">{title}</h3>
       <div className="space-y-2.5">{children}</div>
     </section>
@@ -54,6 +56,7 @@ export function SettingsDialog(): React.JSX.Element {
   const open = useAppStore((state) => state.settingsOpen)
   const setOpen = useAppStore((state) => state.setSettingsOpen)
   const settings = useAppStore((state) => state.settings)
+  const settingsSection = useAppStore((state) => state.settingsSection)
   const saveSettings = useAppStore((state) => state.saveSettings)
   const info = useAppStore((state) => state.info)
   const locale = useI18n((state) => state.locale)
@@ -68,6 +71,8 @@ export function SettingsDialog(): React.JSX.Element {
     if (!open) return
     setDraft({
       theme: settings.theme,
+      displayName: settings.displayName,
+      avatarColor: settings.avatarColor,
       workspaceRoot: settings.workspaceRoot,
       shell: settings.shell,
       model: settings.model,
@@ -76,6 +81,15 @@ export function SettingsDialog(): React.JSX.Element {
     setApiKey('')
     setClearApiKey(false)
   }, [open, settings])
+
+  useEffect(() => {
+    if (!open) return
+    const frame = requestAnimationFrame(() => {
+      const id = settingsSection === 'general' ? 'settings-top' : `settings-${settingsSection}`
+      document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, settingsSection])
 
   const update = <K extends keyof SettingsInput>(key: K, value: SettingsInput[K]): void => {
     setDraft((previous) => ({ ...previous, [key]: value }))
@@ -104,8 +118,8 @@ export function SettingsDialog(): React.JSX.Element {
           <DialogTitle className="text-[15px] font-semibold">{t('settings.title')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <Section title={t('app.appearance')}>
+        <div id="settings-top" className="space-y-4">
+          <Section id="settings-appearance" title={t('app.appearance')}>
             <Row label={t('settings.theme')} htmlFor="theme">
               <select
                 id="theme"
@@ -131,7 +145,7 @@ export function SettingsDialog(): React.JSX.Element {
             </Row>
           </Section>
 
-          <Section title={t('settings.workspaceSection')}>
+          <Section id="settings-workspace" title={t('settings.workspaceSection')}>
             <Row label={t('settings.workspace')} htmlFor="workspace">
               <div className="flex gap-1.5">
                 <Input
@@ -163,7 +177,7 @@ export function SettingsDialog(): React.JSX.Element {
             </Row>
           </Section>
 
-          <Section title={t('settings.modelSection')}>
+          <Section id="settings-model" title={t('settings.modelSection')}>
             <Row label={t('settings.model')} htmlFor="model">
               <Input
                 id="model"
@@ -228,7 +242,7 @@ export function SettingsDialog(): React.JSX.Element {
             ) : null}
           </Section>
 
-          <Section title={t('settings.runtimeSection')}>
+          <Section id="settings-runtime" title={t('settings.runtimeSection')}>
             <p className="rounded-lg bg-panel px-2.5 py-2 text-[11.5px] leading-5 text-muted">
               {t('settings.aboutLine')}
             </p>

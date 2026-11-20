@@ -249,6 +249,8 @@ function Composer(): React.JSX.Element {
     if (model === settings.model) return
     void saveSettings({
       theme: settings.theme,
+      displayName: settings.displayName,
+      avatarColor: settings.avatarColor,
       workspaceRoot: settings.workspaceRoot,
       shell: settings.shell,
       model,

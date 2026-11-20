@@ -13,15 +13,15 @@ import {
   Network,
   Settings,
   Shield,
+  Sparkles,
   SquareCheckBig,
   SquareTerminal,
   Target
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
-import { useI18n } from '@/lib/i18n'
 import { useAppStore, type AppView } from '@/store/app'
 import { cn } from '@/lib/utils'
-import { BrandGlyph } from '@/components/brand'
+import { ProfileMenu } from '@/components/ProfileMenu'
 import { Tooltip } from '@/components/ui'
 
 const menuContent =
@@ -60,8 +60,6 @@ function RailButton({
 
 export function IconRail(): React.JSX.Element {
   const t = useT()
-  const locale = useI18n((state) => state.locale)
-  const setLocale = useI18n((state) => state.setLocale)
   const view = useAppStore((state) => state.view)
   const setView = useAppStore((state) => state.setView)
   const sessions = useAppStore((state) => state.sessions)
@@ -71,8 +69,8 @@ export function IconRail(): React.JSX.Element {
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
-  const saveSettings = useAppStore((state) => state.saveSettings)
-  const settings = useAppStore((state) => state.settings)
+  const rightOpen = useAppStore((state) => state.rightOpen)
+  const toggleRight = useAppStore((state) => state.toggleRight)
   const info = useAppStore((state) => state.info)
 
   const mac =
@@ -86,16 +84,6 @@ export function IconRail(): React.JSX.Element {
     { id: 'assets', label: t('nav.assets'), icon: Network },
     { id: 'commands', label: t('nav.commands'), icon: SquareTerminal }
   ]
-
-  const toggleTheme = (): void => {
-    void saveSettings({
-      theme: settings.theme === 'dark' ? 'light' : 'dark',
-      workspaceRoot: settings.workspaceRoot,
-      shell: settings.shell,
-      model: settings.model,
-      baseUrl: settings.baseUrl
-    })
-  }
 
   return (
     <aside className="relative z-20 flex w-[56px] shrink-0 flex-col items-center border-r border-line-soft bg-panel">
@@ -217,42 +205,6 @@ export function IconRail(): React.JSX.Element {
       <div className="mt-[136px]" />
 
       <nav className="flex flex-col items-center gap-1.5">
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button
-              type="button"
-              aria-label={t('rail.account')}
-              className="no-drag grid h-8 w-8 place-items-center rounded-[9px] text-muted transition-colors hover:bg-panel-3/70 hover:text-ink"
-            >
-              <BrandGlyph className="h-[20px] w-[20px]" />
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content side="right" align="end" sideOffset={10} className={menuContent}>
-              <div className="px-2.5 pb-2 pt-1.5">
-                <div className="text-[12.5px] font-medium text-ink">{t('app.name')}</div>
-                <div className="mt-0.5 text-[11px] text-muted">{t('app.about')}</div>
-              </div>
-              <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-              <DropdownMenu.Item className={menuItem} onSelect={() => setSettingsOpen(true)}>
-                <Settings className="h-4 w-4 text-muted" strokeWidth={1.8} />
-                {t('app.settings')}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item
-                className={menuItem}
-                onSelect={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
-              >
-                <span className="w-4 text-center font-mono text-[11px] text-muted">文</span>
-                {locale === 'zh' ? 'English' : '中文'}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item className={menuItem} onSelect={toggleTheme}>
-                <span className="w-4 text-center font-mono text-[11px] text-muted">◐</span>
-                {t('app.appearance')}
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-
         <RailButton label={t('rail.workspace')} onClick={() => void chooseWorkspace()}>
           <FolderClosed className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>
@@ -270,18 +222,15 @@ export function IconRail(): React.JSX.Element {
         </RailButton>
       </nav>
 
-      <div className="mt-auto flex flex-col items-center gap-2.5 pb-3">
-        <RailButton label={t('rail.settings')} onClick={() => setSettingsOpen(true)}>
-          <Settings className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </RailButton>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label={t('rail.account')}
-          className="no-drag grid h-7 w-7 place-items-center rounded-full bg-[#d97736] text-[10.5px] font-semibold text-white shadow-sm transition-transform hover:scale-105"
+      <div className="mt-auto flex flex-col items-center gap-7 pb-3">
+        <RailButton
+          label={t('profile.companion')}
+          active={rightOpen}
+          onClick={toggleRight}
         >
-          V
-        </button>
+          <Sparkles className="h-[19px] w-[19px]" strokeWidth={1.8} />
+        </RailButton>
+        <ProfileMenu />
       </div>
     </aside>
   )
