@@ -234,13 +234,16 @@ app.whenReady().then(async () => {
     await new Promise((resolve) => setTimeout(resolve, 150))
     fs.writeFileSync(path.join(output, 'chat-activity.png'), (await w.webContents.capturePage()).toPNG())
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按时间线查看').click()`)
-    const timeline = `(${activity}).parentElement.querySelector('ol[aria-label="按时间线查看"]')`
-    await wait(`(${timeline})?.children.length===25`)
+    const viewport = `(${activity}).parentElement.querySelector('[role="region"][aria-label="按时间线查看"]')`
+    const timeline = `(${viewport}).querySelector('ol')`
+    await wait(`(${viewport})?.querySelectorAll('li').length===15`)
     await wait(`(()=>{const [a,b,c,d]=[...(${timeline}).children].map(e=>e.textContent);return a.includes('调用Bash') && b.includes('调用read_filereader') && c.includes('结果 · 成功read_filereader') && c.includes('对应调用 #4') && d.includes('结果 · 成功Bash') && d.includes('对应调用 #3')})()`)
-    await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='下一页').click()`)
-    await wait(`(${activity}).parentElement.textContent.includes('第 26–50 项，共 239 项')`)
+    await run(`(${viewport}).scrollTop=25*32`)
+    await wait(`(${activity}).parentElement.textContent.includes('第 26–35 项，共 239 项') && (${timeline}).children.length<=19`)
     await run(`[...(${timeline}).querySelectorAll('button')].find(e=>e.textContent==='对应调用 #8').click()`)
-    await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 239 项') && document.activeElement.matches('ol > li') && document.activeElement.firstElementChild.textContent==='#8'`)
+    await wait(`document.activeElement.matches('ol > li') && document.activeElement.firstElementChild.textContent==='#8'`)
+    await run(`(${viewport}).scrollTop=(${viewport}).scrollHeight`)
+    await wait(`(${timeline}).lastElementChild.getAttribute('aria-posinset')==='239' && (${timeline}).children.length<=19`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 120 项')`)
     const changeDraft = (value) => run(`(()=>{const field=document.querySelector('[data-testid="chat-composer"] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}))})()`)
@@ -334,7 +337,7 @@ app.whenReady().then(async () => {
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, timeline navigation, execution work view and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, virtual timeline navigation, execution work view and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

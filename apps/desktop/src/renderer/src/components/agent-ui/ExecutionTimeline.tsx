@@ -1,0 +1,115 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { useLayoutEffect, useRef, useState } from 'react'
+import { useT } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
+import type { ToolTraceEvent } from '@/store/app'
+import { ToolEventTime } from './ToolCallRow'
+
+const ROW_HEIGHT = 32
+const WINDOW_ROWS = 10
+const OVERSCAN = 4
+
+const labels = {
+  invoked: 'chat.toolInvoked',
+  done: 'chat.toolResultDone',
+  error: 'chat.toolResultError'
+} as const
+
+export function ExecutionTimeline({ events }: { events: ToolTraceEvent[] }): React.JSX.Element {
+  const t = useT()
+  const viewport = useRef<HTMLDivElement>(null)
+  const pendingFocus = useRef<number | null>(null)
+  const focusedRow = useRef<HTMLLIElement>(null)
+  const [highlight, setHighlight] = useState<number | null>(null)
+  const [scrollTop, setScrollTop] = useState(0)
+  const maxOffset = Math.max(0, events.length - WINDOW_ROWS) * ROW_HEIGHT
+  const firstVisible = Math.floor(Math.min(scrollTop, maxOffset) / ROW_HEIGHT)
+  const firstRendered = Math.max(0, firstVisible - OVERSCAN)
+  const lastRendered = Math.min(events.length, firstVisible + WINDOW_ROWS + OVERSCAN + 1)
+
+  useLayoutEffect(() => {
+    if (pendingFocus.current !== null && focusedRow.current) {
+      focusedRow.current.focus({ preventScroll: true })
+      pendingFocus.current = null
+    }
+  }, [highlight, firstRendered, lastRendered])
+
+  const jumpToCall = (sequence: number): void => {
+    const index = events.findIndex((event) => event.sequence === sequence)
+    const element = viewport.current
+    if (index < 0 || !element) return
+    const nextOffset = Math.min(index * ROW_HEIGHT, maxOffset)
+    element.scrollTop = nextOffset
+    setScrollTop(element.scrollTop)
+    if (highlight === sequence && focusedRow.current) {
+      focusedRow.current.focus({ preventScroll: true })
+      return
+    }
+    pendingFocus.current = sequence
+    setHighlight(sequence)
+  }
+
+  return (
+    <div className="ml-2 border-l border-line-soft">
+      <div
+        ref={viewport}
+        role="region"
+        tabIndex={0}
+        aria-label={t('chat.toolTimeline')}
+        className="overflow-y-auto overscroll-contain [overflow-anchor:none]"
+        style={{ height: Math.min(events.length, WINDOW_ROWS) * ROW_HEIGHT }}
+        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+      >
+        <ol className="relative" style={{ height: events.length * ROW_HEIGHT }}>
+          {events.slice(firstRendered, lastRendered).map((event, offset) => {
+            const related = event.relatedCallSequence
+            const index = firstRendered + offset
+            return (
+              <li
+                key={event.sequence}
+                ref={event.sequence === highlight ? focusedRow : undefined}
+                aria-setsize={events.length}
+                aria-posinset={index + 1}
+                tabIndex={-1}
+                style={{ top: index * ROW_HEIGHT, height: ROW_HEIGHT }}
+                className={cn(
+                  'absolute inset-x-0 flex items-center gap-2 overflow-hidden border-b border-line-soft px-2 text-[11px] focus-visible:outline focus-visible:outline-inset',
+                  event.sequence === highlight && 'bg-panel-2'
+                )}
+              >
+                <span className="shrink-0 font-mono text-muted">#{event.sequence}</span>
+                <span className={cn('shrink-0 font-medium', event.outcome === 'error' ? 'text-danger' : 'text-ink-soft')}>
+                  {t(labels[event.outcome])}
+                </span>
+                <span title={event.tool} className="min-w-0 flex-1 truncate font-mono text-ink">{event.tool}</span>
+                {event.worker ? <span title={event.worker} className="hidden min-w-0 max-w-24 truncate text-muted sm:inline">{event.worker}</span> : null}
+                {related !== undefined ? (
+                  <button
+                    type="button"
+                    onClick={() => jumpToCall(related)}
+                    className="shrink-0 rounded px-1 text-accent underline-offset-2 hover:underline focus-visible:underline"
+                  >
+                    {t('chat.toolRelatedCall', { sequence: related })}
+                  </button>
+                ) : null}
+                <span className="hidden shrink-0 text-muted md:inline">
+                  <ToolEventTime timestamp={event.timestamp} />
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+      <p className="px-2 py-1 text-[11px] text-muted">
+        {t('chat.toolPage', {
+          start: firstVisible + 1,
+          end: Math.min(firstVisible + WINDOW_ROWS, events.length),
+          total: events.length
+        })}
+      </p>
+    </div>
+  )
+}
