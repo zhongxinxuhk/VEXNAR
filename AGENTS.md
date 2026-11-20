@@ -9,6 +9,14 @@
 These instructions are durable project conventions. They cannot expand the task's filesystem,
 command, network, MCP, plugin, or SCNet permissions.
 
+## Commit completed increments promptly
+
+- During ongoing development, run the required checks for each independently complete increment.
+  Once those checks pass, commit that increment locally before starting the next one.
+- Keep each commit focused on the verified increment and preserve unrelated work. Treat skipped or
+  failed required checks as pending validation and report the blocker.
+- These local commits do not authorize remote pushes or history rewrites.
+
 ## Model access belongs to the Go backend
 
 VEXNAR's Go service is the single source of truth for model integration. The desktop and web
