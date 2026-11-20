@@ -241,6 +241,16 @@ app.whenReady().then(async () => {
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 239 项') && document.activeElement.matches('ol > li') && document.activeElement.firstElementChild.textContent==='#8'`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 120 项')`)
+    const changeDraft = (value) => run(`(()=>{const field=document.querySelector('[data-testid="chat-composer"] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await changeDraft('保留这份草稿')
+    await run(`[...document.querySelectorAll('[aria-label="会话视图"] button')].find(e=>e.textContent==='执行记录').click()`)
+    await wait(`document.querySelector('section[aria-label="执行记录"] summary')?.textContent.includes('工具活动 · 120 项')`)
+    if (await run(`document.querySelector('[data-testid="chat-composer"], section[aria-label="最终答复"]') !== null`)) throw Error('Execution work view includes conversation controls or answer body')
+    await run(`[...document.querySelectorAll('[aria-label="会话视图"] button')].find(e=>e.textContent==='对话').click()`)
+    await wait(`document.querySelector('section[aria-label="最终答复"]')?.textContent.includes('已经搭好官网骨架')`)
+    await wait(`document.querySelector('[data-testid="chat-composer"] textarea')?.value==='保留这份草稿'`)
+    await changeDraft('')
+
     await openMenu('选择推理强度与模型')
     await wait(`!!document.querySelector('[role="slider"]')`)
     await run(
@@ -322,7 +332,7 @@ app.whenReady().then(async () => {
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, timeline navigation and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, timeline navigation, execution work view and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

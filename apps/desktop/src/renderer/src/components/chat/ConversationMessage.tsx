@@ -5,8 +5,7 @@
 import { useState } from 'react'
 import { Check, Copy, Paperclip, Pencil, RefreshCw } from 'lucide-react'
 import { motion } from 'motion/react'
-import { AgentLoading } from '@/components/agent-ui/LoadingMark'
-import { ToolActivity, executionStatusLabels } from '@/components/agent-ui/ToolActivity'
+import { ConversationExecution } from './ConversationExecution'
 import { Markdown } from '@/components/Markdown'
 import { QuotaNotice } from '@/components/QuotaNotice'
 import { useI18n, useT } from '@/lib/i18n'
@@ -32,13 +31,8 @@ export function ConversationMessage({
   const busy = useAppStore((state) => state.busy)
   const canRegenerate =
     !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
-  const toolCalls = message.toolCalls ?? []
-  const toolEvents = message.toolEvents ?? []
+  const hasTrace = (message.toolEvents?.length ?? 0) > 0
   const execution = message.execution
-  const status = message.streaming ? 'running' : message.failed ? 'failed' : execution?.completedAt !== undefined ? 'completed' : 'unknown'
-  const elapsed = execution?.startedAt !== undefined && execution.completedAt !== undefined
-    ? execution.completedAt - execution.startedAt
-    : NaN
   const startedAt = isUser ? message.createdAt : execution?.startedAt
   const time = typeof startedAt === 'number' && Number.isFinite(startedAt) ? new Date(startedAt) : null
   // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
@@ -82,23 +76,7 @@ export function ConversationMessage({
             </time>
           ) : null}
         </header>
-        {toolEvents.length > 0 ? (
-          <div className="mb-2">
-            <ToolActivity
-              conversationId={message.sessionId}
-              calls={toolCalls}
-              events={toolEvents}
-              running={Boolean(message.streaming)}
-              executionStatus={status}
-              elapsedMs={Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : undefined}
-            />
-          </div>
-        ) : null}
-        {message.streaming && !message.content && toolEvents.length === 0 ? (
-          <div className="mt-1">
-            <AgentLoading label={t(executionStatusLabels.running)} />
-          </div>
-        ) : null}
+        {isUser ? null : <ConversationExecution message={message} />}
         <div
           className={cn(
             'text-[13px] leading-[1.75]',
@@ -141,7 +119,7 @@ export function ConversationMessage({
             </section>
           ) : message.streaming ||
             message.attachments?.length ||
-            toolEvents.length ||
+            hasTrace ||
             quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}

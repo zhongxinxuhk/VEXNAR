@@ -36,6 +36,8 @@ import { useChatSendMode } from '@/lib/chat-send-mode'
 import { useAppStore } from '@/store/app'
 import { basename, cn } from '@/lib/utils'
 import { Tooltip } from '@/components/ui'
+import { ConversationExecution } from '@/components/chat/ConversationExecution'
+import { ToolEventTime } from '@/components/agent-ui/ToolCallRow'
 import { ConversationMessage } from '@/components/chat/ConversationMessage'
 import { CloudMark } from '@/components/brand'
 
@@ -631,6 +633,9 @@ export function ChatView(): React.JSX.Element {
   const scroll = useRef<HTMLDivElement>(null)
   const following = useRef(true)
   const [away, setAway] = useState(false)
+  const [workView, setWorkView] = useState(false)
+  const executionMessages = useMemo(() => messages.filter((message) =>
+    message.role === 'assistant' && (message.execution || message.streaming)), [messages])
   const toggleRight = useAppStore((state) => state.toggleRight)
   const rightOpen = useAppStore((state) => state.rightOpen)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
@@ -651,6 +656,7 @@ export function ChatView(): React.JSX.Element {
   useLayoutEffect(() => {
     following.current = true
     setAway(false)
+    setWorkView(false)
   }, [activeSessionId])
 
   const jumpToLatest = (): void => {
@@ -660,7 +666,7 @@ export function ChatView(): React.JSX.Element {
 
   useLayoutEffect(() => {
     if (following.current) jumpToLatest()
-  }, [messages, activeSessionId])
+  }, [messages, activeSessionId, workView])
 
   return (
     <section
@@ -711,6 +717,25 @@ export function ChatView(): React.JSX.Element {
           )}
         </div>
         <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
+        {activeSessionId && messages.length > 0 ? (
+          <div role="group" aria-label={t('chat.conversationViews')} className="no-drag flex shrink-0 gap-0.5 rounded-lg bg-panel/80 p-0.5">
+            {([false, true] as const).map((execution) => (
+              <button
+                key={String(execution)}
+                type="button"
+                aria-pressed={workView === execution}
+                onClick={() => {
+                  following.current = true
+                  setAway(false)
+                  setWorkView(execution)
+                }}
+                className="rounded-md px-2 py-1 text-[11px] text-muted hover:bg-panel-2 aria-pressed:bg-bg aria-pressed:text-ink"
+              >
+                {t(execution ? 'chat.workView' : 'chat.conversationView')}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {rightOpen ? null : (
           <button
             type="button"
@@ -750,7 +775,21 @@ export function ChatView(): React.JSX.Element {
                 {t(loadingOlderMessages ? 'chat.loadingHistory' : 'chat.loadHistory')}
               </button>
             ) : null}
-            {messages.map((message) => (
+            {workView ? (
+              <section aria-label={t('chat.workView')} className="grid gap-4">
+                {executionMessages.length > 0 ? executionMessages.map((message) => (
+                  <article key={message.id} className="rounded-xl border border-line-soft bg-panel/25 px-3 py-2.5">
+                    <header className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-ink-soft">
+                      <h2 className="font-medium">{message.execution?.worker || t('chat.assistantMessage')}</h2>
+                      {message.execution?.startedAt !== undefined ? (
+                        <ToolEventTime timestamp={new Date(message.execution.startedAt).toISOString()} />
+                      ) : null}
+                    </header>
+                    <ConversationExecution message={message} workView />
+                  </article>
+                )) : <p className="py-12 text-center text-sm text-muted">{t('chat.workViewEmpty')}</p>}
+              </section>
+            ) : messages.map((message) => (
               <ConversationMessage key={message.id} message={message} lastUser={lastUser} />
             ))}
           </div>
@@ -767,7 +806,7 @@ export function ChatView(): React.JSX.Element {
             <ArrowDown className="size-4" />
           </button>
         )}
-        <Composer />
+        {workView ? null : <Composer />}
       </div>
     </section>
   )
