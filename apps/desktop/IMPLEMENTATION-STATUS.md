@@ -24,3 +24,25 @@
 ## 自动化验收
 
 `conversation-qa.yml` 在 GitHub 的 Windows x64、Linux x64 和 macOS arm64 运行器定义桌面类型检查和单元测试。macOS 额外执行固定数据 Electron 回归，Linux 另用 PostgreSQL 17 服务执行会话测试，官网执行构建和内容契约测试。当前已验证本地测试与工作流静态检查，GitHub 托管三平台运行尚未验收。
+
+## 聊天 UI 重构核对
+
+现有路径从 Go 写入 PostgreSQL 会话活动开始，桌面通过主进程 IPC 按序号读取历史和增量记录。原界面把答复和工具展示放在同一个消息组件；重构后，组件依赖为：
+
+```mermaid
+flowchart TD
+    DB["PostgreSQL 会话活动"] --> API["Go 会话 API"]
+    API --> Store["桌面会话投影"]
+    Store --> Timeline["Conversation / Message Timeline"]
+    Timeline --> Message["ConversationMessage"]
+    Message --> Answer["会话正文与最终答复"]
+    Message --> Trace["执行摘要与 ToolActivity"]
+    Trace --> Groups["类别 / MCP 来源 / 调用"]
+    Trace --> Events["按序号的调用与结果时间线"]
+    Trace --> Details["按需读取脱敏详情"]
+    Details --> API
+```
+
+- 已交付并验证：消息层级与可访问标签、实际回合摘要、工具类别和 MCP 来源分组、筛选、排序、跨页关联、详情按需脱敏及长输出分段。
+- 当前会话活动中有事件序号、调用 ID、执行者、时间与结果状态。类别是依据工具名称或命名空间的展示映射。实际 Skill 父子关系、Browser / Software Session ID、DAG 依赖和执行器级重试或恢复需要后端保存相应事件，目前仍待实施。历史消息中的实际模型标签与单独 Work Mode 仍未交付。
+- 大记录由批量 DTO 传递元数据，调用列表每页最多 25 条，展开详情按 8,192 个 UTF-16 单元分段渲染。未建立独立虚拟滚动组件，也未对生产负载作性能结论。

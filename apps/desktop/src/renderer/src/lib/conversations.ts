@@ -39,7 +39,7 @@ export type BackendActivity = {
   tool_use_id?: string
   is_error?: boolean
   summary: string
-  /** Present only when the request asks for detail=1 (the app always does). */
+  /** Present when the selected response projection includes this row body. */
   detail?: string
   input_tokens?: number
   output_tokens?: number
@@ -95,9 +95,9 @@ export const DEFAULT_AGENT_KEY = 'auto'
 
 /**
  * The app renders a whole answer, not a 200-rune preview: ask the messages
- * endpoint for full detail. The web page keeps lazy-loading details per step.
+ * endpoint for answer detail and tool event metadata. Tool payloads load separately.
  */
-const FULL = '&detail=1&hide_reasoning=1'
+const FULL = '&trace=1'
 
 export type BackendProject = {
   id: string
@@ -165,6 +165,10 @@ export const conversations = {
     request<{ detail?: string }>(`/conversations/${id}/messages/${seq}`, 'GET').then(
       (r) => r.detail ?? ''
     ),
+  traceDetail: (id: string, seq: number) =>
+    request<{ detail: string }>(`/conversations/${id}/messages/${seq}?trace=1`, 'GET').then(
+      (r) => r.detail
+    ),
   send: (id: string, message: string, attachments: ChatAttachment[] = []) =>
     request<{ status: string }>(`/conversations/${id}/messages`, 'POST', {
       message,
@@ -223,16 +227,6 @@ export function parseUserActivity(activity: BackendActivity): {
     // plain text turn — fall through
   }
   return { text: raw, files: [] }
-}
-
-function toolInput(activity: BackendActivity): unknown {
-  const raw = activity.detail?.trim()
-  if (!raw) return activity.summary
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return raw
-  }
 }
 
 /**
@@ -300,8 +294,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           name: item.tool || 'tool',
           worker: item.worker,
           started: { sequence: item.seq, timestamp: item.ts },
-          status: 'running',
-          input: toolInput(item)
+          status: 'running'
         }
         message.toolCalls?.push(call)
         message.toolEvents?.push({
@@ -324,7 +317,6 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         if (call) {
           call.status = outcome
           call.finished = event
-          call.output = item.detail || item.summary
         }
         break
       }

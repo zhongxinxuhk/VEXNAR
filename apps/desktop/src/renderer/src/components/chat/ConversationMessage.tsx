@@ -85,6 +85,7 @@ export function ConversationMessage({
         {toolEvents.length > 0 ? (
           <div className="mb-2">
             <ToolActivity
+              conversationId={message.sessionId}
               calls={toolCalls}
               events={toolEvents}
               running={Boolean(message.streaming)}

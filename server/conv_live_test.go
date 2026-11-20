@@ -296,3 +296,81 @@ func TestConversationMessagesPreservesToolEventTimestampPrecision(t *testing.T) 
 		}
 	}
 }
+
+func TestConversationMessagesTraceLoadsOnlyRedactedToolDetails(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "trace payload", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+
+	events := []db.Activity{
+		{Worker: "auto", Kind: "thinking", Detail: "private thought"},
+		{Worker: "auto", Kind: "tool_use", Tool: "read_file", ToolUseID: "t1",
+			Summary: "sensitive summary", Detail: `{"path":"README.md","headers":{"X-API-Key":"fixture-secret"},"nested":[{"password":"fixture-password"}]}`},
+		{Worker: "auto", Kind: "tool_result", Tool: "read_file", ToolUseID: "t1",
+			Detail: "Authorization: Bearer fixture-bearer\n" + strings.Repeat("long output\n", 2000)},
+		{Worker: "auto", Kind: "text", Detail: "public answer"},
+	}
+	var ids []int64
+	for _, event := range events {
+		id, err := s.m.pg.AppendConvActivity(conv.ID, event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	for _, query := range []string{"trace=1", "since=0&trace=1"} {
+		page := readLivePage(t, s, conv.ID, query)
+		rows := page["items"].([]any)
+		for _, row := range rows[:3] {
+			body := row.(map[string]any)
+			if body["summary"] != "" || body["detail"] != nil {
+				t.Fatalf("trace list leaked a payload for %q: %+v", query, body)
+			}
+		}
+		if rows[3].(map[string]any)["detail"] != "public answer" {
+			t.Fatal("trace list omitted the answer")
+		}
+	}
+
+	fetch := func(seq int64) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/conversations/%d/messages/%d?trace=1", conv.ID, seq), nil)
+		req.SetPathValue("id", fmt.Sprint(conv.ID))
+		req.SetPathValue("seq", fmt.Sprint(seq))
+		rec := httptest.NewRecorder()
+		s.pgConversationMsgDetail(rec, req)
+		return rec
+	}
+	for _, seq := range []int64{ids[0], ids[3], 0} {
+		if rec := fetch(seq); rec.Code != http.StatusNotFound {
+			t.Fatalf("non-tool activity %d returned %d", seq, rec.Code)
+		}
+	}
+	for i, suffix := range []string{"README.md", "long output"} {
+		rec := fetch(ids[i+1])
+		body := rec.Body.String()
+		if rec.Code != http.StatusOK || strings.Contains(body, "fixture-") ||
+			!strings.Contains(body, "[REDACTED]") || !strings.Contains(body, suffix) {
+			t.Fatalf("unexpected redacted tool response %d", rec.Code)
+		}
+	}
+}
+
+func TestConversationMessagesTraceMasksPrivateKeyAndCredentialFormats(t *testing.T) {
+	body := "postgres://fixture:fixture-pass@localhost/log\n" +
+		"ghp_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\n" +
+		"-----BEGIN PRIVATE KEY-----\nfixture-key\n-----END PRIVATE KEY-----\nreport complete"
+	safe := redactTrace(body)
+	for _, secret := range []string{"fixture-pass", "ghp_", "fixture-key"} {
+		if strings.Contains(safe, secret) {
+			t.Fatalf("trace retained %q", secret)
+		}
+	}
+	if !strings.Contains(safe, "postgres://fixture:[REDACTED]@localhost/log") ||
+		!strings.Contains(safe, "report complete") {
+		t.Fatalf("trace lost surrounding context: %q", safe)
+	}
+}

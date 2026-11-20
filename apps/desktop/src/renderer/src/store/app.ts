@@ -50,8 +50,6 @@ export type ToolCall = {
   started: ToolCallEvent
   finished?: ToolCallEvent
   status: 'running' | 'done' | 'error'
-  input?: unknown
-  output?: string
 }
 
 export type ChatMessage = Message & {

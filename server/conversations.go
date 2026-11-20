@@ -6,6 +6,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -410,13 +411,18 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	// but the desktop app renders whole answers immediately and cannot afford one
 	// /messages/{seq} round-trip per step.
 	withDetail := q.Get("detail") == "1"
-	hideReasoning := q.Get("hide_reasoning") == "1"
+	trace := q.Get("trace") == "1"
+	hideReasoning := trace || q.Get("hide_reasoning") == "1"
 	projectActivity := func(row db.Activity) ActivityDTO {
 		dto := activityDTO(row)
 		dto.TS = row.CreatedAt.Format(time.RFC3339Nano)
 		if hideReasoning && dto.Kind == "thinking" {
 			// Preserve the cursor and activity kind without disclosing model reasoning.
 			return ActivityDTO{Seq: dto.Seq, Worker: dto.Worker, TS: dto.TS, Kind: dto.Kind}
+		}
+		if trace && (dto.Kind == "tool_use" || dto.Kind == "tool_result") {
+			dto.Summary, dto.Detail = "", ""
+			dto.Metadata = nil
 		}
 		return dto
 	}
@@ -450,7 +456,9 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 		var items []db.Activity
 		var cursor int64
 		var err error
-		if withDetail {
+		if trace {
+			items, cursor, err = pg.ConvActivityListTrace(c.ID, since, pageSize+1)
+		} else if withDetail {
 			items, cursor, err = pg.ConvActivityListDetail(c.ID, since, pageSize+1)
 		} else {
 			items, cursor, err = pg.ConvActivityList(c.ID, since, pageSize+1)
@@ -475,7 +483,9 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	var items []db.Activity
 	var hasMore bool
 	var err error
-	if withDetail {
+	if trace {
+		items, hasMore, err = pg.ConvActivityPageTrace(c.ID, before, limit)
+	} else if withDetail {
 		items, hasMore, err = pg.ConvActivityPageDetail(c.ID, before, limit)
 	} else {
 		items, hasMore, err = pg.ConvActivityPage(c.ID, before, limit)
@@ -500,6 +510,19 @@ func (s *Server) pgConversationMsgDetail(w http.ResponseWriter, r *http.Request)
 	seq, ok := pathInt(r, "seq")
 	if !ok {
 		writeErr(w, 400, "bad seq")
+		return
+	}
+	if r.URL.Query().Get("trace") == "1" {
+		detail, err := pg.ConvToolTraceDetail(c.ID, seq)
+		if err == sql.ErrNoRows {
+			writeErr(w, 404, "tool activity not found")
+			return
+		}
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, 200, map[string]any{"detail": redactTrace(detail)})
 		return
 	}
 	detail, err := pg.ConvActivityDetail(c.ID, seq)

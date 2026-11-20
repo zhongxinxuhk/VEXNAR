@@ -4,7 +4,6 @@
 //
 // Pattern adapted from Motif's Loading State (MIT). See ./NOTICE.md.
 
-import { useEffect, useState } from 'react'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +30,7 @@ export function AgentLoadingMark({ className }: { className?: string }): React.J
   )
 }
 
-/** The mark, a word for what is happening, and how long it has been happening. */
+/** A compact waiting state shown while the backend reports an active turn. */
 export function AgentLoading({
   label,
   className
@@ -40,20 +39,11 @@ export function AgentLoading({
   className?: string
 }): React.JSX.Element {
   const t = useT()
-  const [seconds, setSeconds] = useState(0)
-  useEffect(() => {
-    const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-
   return (
     <div className={cn('flex items-center gap-2 text-[12px] text-muted', className)}>
       <AgentLoadingMark className="text-accent" />
       <span role="status" className="min-w-0 truncate">
         {label ?? t('chat.thinking')}
-      </span>
-      <span aria-hidden="true" className="font-mono text-[10px] tabular-nums text-muted/80">
-        {seconds}s
       </span>
     </div>
   )

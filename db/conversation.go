@@ -54,19 +54,19 @@ GROUP BY c.id`)
 // Conversation is one ChatGPT-style chat thread bound to an agent key. It lives
 // independent of the pentest exploration graph — see schema.sql §I.
 type Conversation struct {
-	ID           int64      `json:"id"`
-	AgentKey     string     `json:"agent_key"`
-	Title        string     `json:"title"`
-	LLMProfileID *int64     `json:"llm_profile_id,omitempty"`
+	ID           int64  `json:"id"`
+	AgentKey     string `json:"agent_key"`
+	Title        string `json:"title"`
+	LLMProfileID *int64 `json:"llm_profile_id,omitempty"`
 	// ProjectID is the owning project. NULL means the thread is unassigned and
 	// must stay out of every project's list until it is bound explicitly.
 	ProjectID *int64 `json:"project_id,omitempty"`
 	// Workspace is the working directory recorded at creation time.
 	Workspace string     `json:"workspace"`
 	Pinned    bool       `json:"pinned"`
-	PinnedAt     *time.Time `json:"pinned_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	PinnedAt  *time.Time `json:"pinned_at,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 // ConversationPatch updates only the fields whose pointers are non-nil.
@@ -298,24 +298,26 @@ func (d *DB) UpdateConvActivityText(convID, id int64, summary, detail string) er
 // ConvActivityList returns a conversation's steps after sinceID (exclusive) with
 // the summary-only column set (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityList(convID, sinceID int64, limit int) ([]Activity, int64, error) {
-	return d.convActivityList(convID, sinceID, limit, false)
+	return d.convActivityList(convID, sinceID, limit, false, false)
 }
 
 // ConvActivityListDetail is ConvActivityList including the full Detail blob.
 // The desktop app asks for it so a full assistant answer renders immediately
 // instead of one lazy /messages/{seq} request per step.
 func (d *DB) ConvActivityListDetail(convID, sinceID int64, limit int) ([]Activity, int64, error) {
-	return d.convActivityList(convID, sinceID, limit, true)
+	return d.convActivityList(convID, sinceID, limit, true, false)
 }
 
-func (d *DB) convActivityList(convID, sinceID int64, limit int, withDetail bool) ([]Activity, int64, error) {
+// ConvActivityListTrace returns answer detail and tool activity metadata.
+func (d *DB) ConvActivityListTrace(convID, sinceID int64, limit int) ([]Activity, int64, error) {
+	return d.convActivityList(convID, sinceID, limit, true, true)
+}
+
+func (d *DB) convActivityList(convID, sinceID int64, limit int, withDetail, trace bool) ([]Activity, int64, error) {
 	if limit <= 0 {
 		limit = 500
 	}
-	cols := convActivityCols
-	if withDetail {
-		cols += `, COALESCE(detail,'')`
-	}
+	cols := conversationActivityColumns(withDetail, trace)
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMIT $3`, convID, sinceID, limit)
 	if err != nil {
@@ -343,22 +345,24 @@ FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMI
 // exist before the returned window, so the client can stop loading earlier history
 // on scroll-up. Summary-only columns (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityPage(convID, before int64, limit int) ([]Activity, bool, error) {
-	return d.convActivityPage(convID, before, limit, false)
+	return d.convActivityPage(convID, before, limit, false, false)
 }
 
 // ConvActivityPageDetail is ConvActivityPage including the full Detail blob.
 func (d *DB) ConvActivityPageDetail(convID, before int64, limit int) ([]Activity, bool, error) {
-	return d.convActivityPage(convID, before, limit, true)
+	return d.convActivityPage(convID, before, limit, true, false)
 }
 
-func (d *DB) convActivityPage(convID, before int64, limit int, withDetail bool) ([]Activity, bool, error) {
+// ConvActivityPageTrace returns answer detail and tool activity metadata.
+func (d *DB) ConvActivityPageTrace(convID, before int64, limit int) ([]Activity, bool, error) {
+	return d.convActivityPage(convID, before, limit, true, true)
+}
+
+func (d *DB) convActivityPage(convID, before int64, limit int, withDetail, trace bool) ([]Activity, bool, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	cols := convActivityCols
-	if withDetail {
-		cols += `, COALESCE(detail,'')`
-	}
+	cols := conversationActivityColumns(withDetail, trace)
 	// fetch one extra row to detect whether older history remains before this window.
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities
@@ -395,6 +399,24 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 // detail variant appends the Detail blob. Keep the order in sync with
 // scanActivityRow.
 const convActivityCols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+
+func conversationActivityColumns(withDetail, trace bool) string {
+	if trace {
+		return convActivityCols + `, CASE WHEN kind IN ('tool_use','tool_result','thinking') THEN '' ELSE COALESCE(detail,'') END`
+	}
+	if withDetail {
+		return convActivityCols + `, COALESCE(detail,'')`
+	}
+	return convActivityCols
+}
+
+// ConvToolTraceDetail reads a tool event inside the owning conversation.
+func (d *DB) ConvToolTraceDetail(convID, id int64) (string, error) {
+	var detail string
+	err := d.QueryRow(`SELECT COALESCE(detail, summary, '') FROM conversation_activities
+WHERE id=$1 AND conversation_id=$2 AND kind IN ('tool_use','tool_result')`, id, convID).Scan(&detail)
+	return detail, err
+}
 
 func scanActivityRow(rows *sql.Rows, a *Activity, withDetail bool) error {
 	dest := []any{&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,

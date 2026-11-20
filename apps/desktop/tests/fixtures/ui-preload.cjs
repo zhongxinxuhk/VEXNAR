@@ -56,7 +56,7 @@ const conversationActivities = {
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.125Z', kind: 'tool_use', tool: 'Bash', tool_use_id: 'tool-1', summary: 'Bash ls', detail: JSON.stringify({ command: 'ls' }) },
     { seq: ++activitySeq, worker: 'reader', ts: '2026-11-20T10:00:06.250Z', kind: 'tool_use', tool: 'read_file', tool_use_id: 'read-0', detail: '{"path":"notes-0.md"}' },
     { seq: ++activitySeq, worker: 'reader', ts: '2026-11-20T10:00:06.375Z', kind: 'tool_result', tool: 'read_file', tool_use_id: 'read-0', detail: 'output 0' },
-    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.500Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.500Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' + 'log line\n'.repeat(2400) + 'END_OF_OUTPUT' },
     ...Array.from({ length: 118 }, (_, offset) => {
       const index = offset + 1
       const tool_use_id = `read-${index}`
@@ -121,8 +121,10 @@ const sessionList = [
   }
 ]
 let resumeDraft = false
+let copiedTrace = ''
+let traceReads = 0
 contextBridge.exposeInMainWorld('__uiFixture', {
-  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort }),
+  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads }),
   startDraft: () => {
     resumeDraft = true
     conversationActivities[2] = [
@@ -226,6 +228,10 @@ const update = {
 }
 contextBridge.exposeInMainWorld('vexnar', {
   app: {
+    copyText: (text) => {
+      copiedTrace = text
+      return ok({ copied: true })
+    },
     info: () =>
       ok({
         version: '1.0.0',
@@ -407,9 +413,10 @@ contextBridge.exposeInMainWorld('vexnar', {
       const tail = path.match(/^\/conversations\/([^/]+)\/messages/)
       if (tail && method === 'GET') {
         const id = tail[1]
-        const detail = path.match(/\/messages\/(\d+)$/)
+        const detail = path.match(/\/messages\/(\d+)(?:\?|$)/)
         if (detail) {
           const row = conversationActivities[id]?.find((item) => item.seq === Number(detail[1]))
+          if (path.endsWith('?trace=1')) traceReads++
           return ok({ detail: row?.detail || '' })
         }
         const query = new URLSearchParams(path.split('?')[1] || '')
@@ -422,7 +429,11 @@ contextBridge.exposeInMainWorld('vexnar', {
         const history = !query.has('since')
         const items = history ? eligible.slice(-limit) : eligible
         return ok({
-          items,
+          items: query.get('trace') === '1'
+            ? items.map((item) => ['thinking', 'tool_use', 'tool_result'].includes(item.kind)
+              ? { ...item, summary: '', detail: undefined }
+              : item)
+            : items,
           cursor: items.at(-1)?.seq ?? (history ? before : since),
           running: id === '2' && resumeDraft,
           live: id === '2' && resumeDraft && history

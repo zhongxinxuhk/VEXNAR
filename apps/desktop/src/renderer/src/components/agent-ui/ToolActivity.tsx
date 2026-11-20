@@ -52,36 +52,15 @@ const traceEventLabels = {
   error: 'chat.toolResultError'
 } as const
 
-const toolLabels: Record<string, string> = {
-  read_file: '读取文件',
-  list_files: '列出文件',
-  git_status: 'Git 状态'
-}
-
-function toolTitle(tool: ToolCall): string {
-  const args =
-    tool.input && typeof tool.input === 'object' ? (tool.input as Record<string, unknown>) : {}
-  const command =
-    tool.name === 'git_status'
-      ? 'git status --short --branch'
-      : typeof args.command === 'string'
-        ? args.command
-        : ''
-  return (
-    command ||
-    [toolLabels[tool.name] || tool.name, typeof args.path === 'string' ? args.path : '']
-      .filter(Boolean)
-      .join(' · ')
-  )
-}
-
 export function ToolActivity({
+  conversationId,
   calls,
   events,
   running,
   executionStatus,
   elapsedMs
 }: {
+  conversationId: string
   calls: ToolCall[]
   events: ToolTraceEvent[]
   running: boolean
@@ -341,7 +320,7 @@ export function ToolActivity({
                             {source ? <p className="px-2 py-1 text-[11px] font-mono text-muted">{source}</p> : null}
                             <div className={source ? 'ml-2 border-l border-line-soft pl-1' : undefined}>
                               {rows.map(({ call, status }) => (
-                                <ToolCallRow key={call.id} call={call} summary={toolTitle(call)} status={status} />
+                                <ToolCallRow key={call.id} conversationId={conversationId} call={call} status={status} />
                               ))}
                             </div>
                           </div>
@@ -352,7 +331,7 @@ export function ToolActivity({
                 })
               ) : (
                 pageCalls.map(({ call, status }) => (
-                  <ToolCallRow key={call.id} call={call} summary={toolTitle(call)} status={status} />
+                  <ToolCallRow key={call.id} conversationId={conversationId} call={call} status={status} />
                 ))
               )}
             </div>

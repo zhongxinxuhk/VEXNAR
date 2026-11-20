@@ -5,6 +5,8 @@
 import { describe, expect, it } from "vitest";
 import {
   agentEventSchema,
+  copyTextSchema,
+  MAX_COPY_TEXT_LENGTH,
   messageAppendSchema,
   newApiLoginSchema,
   newApiStateSchema,
@@ -123,3 +125,10 @@ describe('image message contracts', () => {
     expect(messageAppendSchema.safeParse({ sessionId: 's', role: 'user', content: '', attachments: Array(7).fill(image) }).success).toBe(false)
   })
 })
+
+describe("clipboard contracts", () => {
+  it("accepts long trace output and bounds the IPC write", () => {
+    expect(copyTextSchema.safeParse("x".repeat(22_000)).success).toBe(true);
+    expect(copyTextSchema.safeParse("x".repeat(MAX_COPY_TEXT_LENGTH + 1)).success).toBe(false);
+  });
+});

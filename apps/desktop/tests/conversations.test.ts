@@ -85,8 +85,9 @@ describe('toChatMessages', () => {
     expect(assistant.content).toBe('目录里有 a.png')
     expect(assistant.sessionId).toBe('7')
     const tool = assistant.toolCalls?.find((call) => call.id === 'tool-1')
-    expect(tool).toMatchObject({ name: 'Bash', status: 'done', output: 'a.png\n' })
-    expect(tool?.input).toEqual({ command: 'ls' })
+    expect(tool).toMatchObject({ name: 'Bash', status: 'done' })
+    expect(tool).not.toHaveProperty('input')
+    expect(tool).not.toHaveProperty('output')
     expect(assistant.toolCalls).toHaveLength(1)
     expect(JSON.stringify(assistant)).not.toContain('先列目录')
   })
@@ -130,8 +131,8 @@ describe('toChatMessages', () => {
       '3'
     )
     expect(messages[0].toolCalls).toMatchObject([
-      { id: 'a', status: 'done', output: 'regular file' },
-      { id: 'b', status: 'error', output: 'missing file' }
+      { id: 'a', status: 'done' },
+      { id: 'b', status: 'error' }
     ])
     expect(messages[2].toolCalls).toEqual([])
     expect(messages[0].toolEvents).toMatchObject([

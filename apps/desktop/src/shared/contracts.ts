@@ -453,7 +453,8 @@ export type BackendStatus = {
 
 export const emptySchema = z.undefined().or(z.null()).optional()
 
-export const copyTextSchema = z.string().min(1).max(20_000)
+export const MAX_COPY_TEXT_LENGTH = 1024 * 1024
+export const copyTextSchema = z.string().min(1).max(MAX_COPY_TEXT_LENGTH)
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
