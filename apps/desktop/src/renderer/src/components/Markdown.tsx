@@ -12,7 +12,7 @@ function Inline({ text }: { text: string }): React.JSX.Element {
           return (
             <code
               key={index}
-              className="rounded border border-line bg-panel-2 px-1 py-0.5 font-mono text-[0.92em] text-accent-2"
+              className="rounded bg-panel-2 px-1 py-0.5 font-mono text-[0.92em] text-ink"
             >
               {part.slice(1, -1)}
             </code>
@@ -40,8 +40,8 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
     window.setTimeout(() => setCopied(false), 1200)
   }
   return (
-    <div className="my-2.5 overflow-hidden rounded-xl border border-line bg-bg">
-      <div className="flex items-center gap-2 border-b border-line-soft bg-panel-2/60 px-3 py-1.5">
+    <div className="my-3 overflow-hidden rounded-xl border border-line bg-panel/30">
+      <div className="flex items-center gap-2 border-b border-line-soft bg-panel/70 px-3 py-1.5">
         <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
           {language || 'code'}
         </span>

@@ -31,9 +31,12 @@ export async function initDb(dsn: string): Promise<void> {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       workspace TEXT NOT NULL DEFAULT '',
+      pinned BOOLEAN NOT NULL DEFAULT FALSE,
       created_at BIGINT NOT NULL,
       updated_at BIGINT NOT NULL
     );
+
+    ALTER TABLE sessions ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE;
 
     CREATE TABLE IF NOT EXISTS messages (
       id TEXT PRIMARY KEY,
@@ -64,6 +67,7 @@ type SessionRow = {
   id: string
   title: string
   workspace: string
+  pinned: boolean
   created_at: string | number
   updated_at: string | number
 }
@@ -81,6 +85,7 @@ function toSession(row: SessionRow): Session {
     id: row.id,
     title: row.title,
     workspace: row.workspace,
+    pinned: Boolean(row.pinned),
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at)
   }
@@ -98,7 +103,7 @@ function toMessage(row: MessageRow): Message {
 
 export async function listSessions(): Promise<Session[]> {
   const result = await getPool().query<SessionRow>(
-    'SELECT id, title, workspace, created_at, updated_at FROM sessions ORDER BY updated_at DESC'
+    'SELECT id, title, workspace, pinned, created_at, updated_at FROM sessions ORDER BY pinned DESC, updated_at DESC'
   )
   return result.rows.map(toSession)
 }
@@ -109,7 +114,7 @@ export async function createSession(input: SessionCreateInput): Promise<Session>
   const result = await getPool().query<SessionRow>(
     `INSERT INTO sessions (id, title, workspace, created_at, updated_at)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, title, workspace, created_at, updated_at`,
+     RETURNING id, title, workspace, pinned, created_at, updated_at`,
     [id, input.title, input.workspace, now, now]
   )
   return toSession(result.rows[0])
@@ -119,8 +124,18 @@ export async function renameSession(id: string, title: string): Promise<Session>
   const result = await getPool().query<SessionRow>(
     `UPDATE sessions SET title = $2, updated_at = $3
      WHERE id = $1
-     RETURNING id, title, workspace, created_at, updated_at`,
+     RETURNING id, title, workspace, pinned, created_at, updated_at`,
     [id, title, Date.now()]
+  )
+  if (!result.rows[0]) throw new Error('会话不存在')
+  return toSession(result.rows[0])
+}
+
+export async function setSessionPinned(id: string, pinned: boolean): Promise<Session> {
+  const result = await getPool().query<SessionRow>(
+    `UPDATE sessions SET pinned = $2 WHERE id = $1
+     RETURNING id, title, workspace, pinned, created_at, updated_at`,
+    [id, pinned]
   )
   if (!result.rows[0]) throw new Error('会话不存在')
   return toSession(result.rows[0])

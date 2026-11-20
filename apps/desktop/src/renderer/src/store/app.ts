@@ -3,7 +3,6 @@ import { translate, useI18n } from '@/lib/i18n'
 import type {
   AgentEvent,
   AppInfo,
-  BackendLoginInput,
   BackendStatus,
   DiffPayload,
   FileNode,
@@ -69,12 +68,11 @@ type AppState = {
   init: () => Promise<void>
   setView: (view: AppView) => void
   refreshBackend: () => Promise<void>
-  connectBackend: (input: BackendLoginInput) => Promise<boolean>
-  disconnectBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
   newSession: () => Promise<void>
   removeSession: (id: string) => Promise<void>
+  pinSession: (id: string, pinned: boolean) => Promise<void>
   send: (text: string) => Promise<void>
   cancel: () => Promise<void>
   handleAgentEvent: (event: AgentEvent) => void
@@ -90,14 +88,12 @@ type AppState = {
 }
 
 const emptySettings: PublicSettings = {
-  theme: 'dark',
+  theme: 'light',
   workspaceRoot: '',
   shell: '',
   model: 'gpt-5-codex',
   baseUrl: '',
-  backendUrl: 'http://127.0.0.1:8787',
-  hasApiKey: false,
-  hasBackendToken: false
+  hasApiKey: false
 }
 
 const api = window.vexnar
@@ -117,8 +113,7 @@ function settingsInput(settings: PublicSettings): SettingsInput {
     workspaceRoot: settings.workspaceRoot,
     shell: settings.shell,
     model: settings.model,
-    baseUrl: settings.baseUrl,
-    backendUrl: settings.backendUrl
+    baseUrl: settings.baseUrl
   }
 }
 
@@ -139,7 +134,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   agentStatus: 'idle',
   busy: false,
   rightTab: 'workspace',
-  rightOpen: true,
+  rightOpen: false,
   settingsOpen: false,
   workspaceFiles: [],
   workspaceLoading: false,
@@ -203,24 +198,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  connectBackend: async (input) => {
-    set({ backendLoading: true })
-    const result = await api.backend.login(input)
-    if (!result.ok) {
-      set({ backendLoading: false, error: result.error })
-      return false
-    }
-    set({ settings: result.data, backendLoading: false, error: null })
-    await get().refreshBackend()
-    return true
-  },
-
-  disconnectBackend: async () => {
-    const result = await api.backend.logout()
-    if (result.ok) set({ settings: result.data })
-    await get().refreshBackend()
-  },
-
   askAgent: async (text) => {
     set({ view: 'chat' })
     if (!get().activeSessionId) await get().newSession()
@@ -260,6 +237,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       agentSessionId: null,
       busy: false,
       agentStatus: 'idle'
+    }))
+  },
+
+  pinSession: async (id, pinned) => {
+    const result = await api.sessions.pin({ id, pinned })
+    if (!result.ok) {
+      set({ error: result.error })
+      return
+    }
+    set((state) => ({
+      sessions: state.sessions.map((session) => (session.id === id ? result.data : session))
     }))
   },
 
@@ -482,11 +470,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   chooseWorkspace: async () => {
     const result = await api.workspace.choose()
     if (!result.ok || !result.data) return
+    const path = result.data
     const settings = get().settings
-    await get().saveSettings({
+    const saved = await get().saveSettings({
       ...settingsInput(settings),
-      workspaceRoot: result.data
+      workspaceRoot: path
     })
+    if (!saved) return
+    set({ view: 'chat' })
+    const existing = get().sessions.find((session) => session.workspace === path)
+    if (existing) {
+      await get().selectSession(existing.id)
+      return
+    }
+    await get().newSession()
   },
 
   refreshWorkspace: async () => {

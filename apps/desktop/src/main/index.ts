@@ -2,10 +2,10 @@ import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
 import os from 'node:os'
 import path from 'node:path'
 import { AgentManager } from './agent'
-import { closeDb, createSession, initDb, listSessions } from './db'
+import { closeDb, initDb } from './db'
 import { registerIpc } from './ipc'
 import { startPortablePostgres, type PostgresRuntime } from './pg'
-import { loadSettings, getSettings } from './settings'
+import { loadSettings } from './settings'
 import { TerminalManager } from './terminal'
 import { runSmoke } from './smoke'
 import { IPC } from '@shared/contracts'
@@ -37,15 +37,15 @@ const agent = new AgentManager((event) => emit(IPC.agentEvent, event))
 
 function createWindow(): void {
   const window = new BrowserWindow({
-    width: 1440,
-    height: 920,
-    minWidth: 1080,
+    width: 1280,
+    height: 860,
+    minWidth: 1000,
     minHeight: 680,
     show: false,
     title: 'VEXNAR',
-    backgroundColor: '#0b0b0c',
+    backgroundColor: '#f7f7f8',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: process.platform === 'darwin' ? { x: 16, y: 16 } : undefined,
+    trafficLightPosition: process.platform === 'darwin' ? { x: 18, y: 16 } : undefined,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -56,6 +56,7 @@ function createWindow(): void {
   mainWindow = window
 
   window.once('ready-to-show', () => window.show())
+
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null
   })
@@ -77,11 +78,6 @@ function createWindow(): void {
   }
 }
 
-async function ensureSession(): Promise<void> {
-  if ((await listSessions()).length > 0) return
-  await createSession({ title: 'New chat', workspace: getSettings().workspaceRoot })
-}
-
 async function boot(): Promise<void> {
   postgres = await startPortablePostgres()
   await initDb(postgres.dsn)
@@ -98,7 +94,6 @@ async function boot(): Promise<void> {
     terminal,
     getWindow: () => mainWindow
   })
-  await ensureSession()
   createWindow()
 
   app.on('activate', () => {

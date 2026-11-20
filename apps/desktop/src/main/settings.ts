@@ -16,18 +16,15 @@ type StoredSettings = {
   shell: string
   model: string
   baseUrl: string
-  backendUrl: string
   apiKeyCipher?: string
-  backendTokenCipher?: string
 }
 
 const defaults: StoredSettings = {
-  theme: 'dark',
+  theme: 'light',
   workspaceRoot: defaultWorkspace(),
   shell: '',
   model: 'gpt-5-codex',
-  baseUrl: '',
-  backendUrl: 'http://127.0.0.1:8787'
+  baseUrl: ''
 }
 
 let cache: StoredSettings = { ...defaults }
@@ -38,13 +35,10 @@ async function readStored(): Promise<StoredSettings> {
   try {
     const parsed = JSON.parse(raw) as Partial<StoredSettings>
     const merged = { ...defaults, ...parsed }
-    const validated = settingsSchema
-      .omit({ apiKey: true, clearApiKey: true, backendToken: true, clearBackendToken: true })
-      .parse(merged)
+    const validated = settingsSchema.omit({ apiKey: true, clearApiKey: true }).parse(merged)
     return {
       ...validated,
-      apiKeyCipher: parsed.apiKeyCipher,
-      backendTokenCipher: parsed.backendTokenCipher
+      apiKeyCipher: parsed.apiKeyCipher
     }
   } catch {
     return { ...defaults }
@@ -79,9 +73,7 @@ function toPublic(stored: StoredSettings): PublicSettings {
     shell: stored.shell,
     model: stored.model,
     baseUrl: stored.baseUrl,
-    backendUrl: stored.backendUrl,
-    hasApiKey: Boolean(stored.apiKeyCipher),
-    hasBackendToken: Boolean(stored.backendTokenCipher)
+    hasApiKey: Boolean(stored.apiKeyCipher)
   })
 }
 
@@ -102,18 +94,11 @@ export async function setSettings(input: SettingsInput): Promise<PublicSettings>
   stored.shell = parsed.shell.trim()
   stored.model = parsed.model.trim()
   stored.baseUrl = parsed.baseUrl.trim()
-  stored.backendUrl = parsed.backendUrl.trim() || defaults.backendUrl
 
   if (parsed.clearApiKey) {
     delete stored.apiKeyCipher
   } else if (parsed.apiKey && parsed.apiKey.trim()) {
     stored.apiKeyCipher = encryptSecret(parsed.apiKey.trim(), 'API Key')
-  }
-
-  if (parsed.clearBackendToken) {
-    delete stored.backendTokenCipher
-  } else if (parsed.backendToken && parsed.backendToken.trim()) {
-    stored.backendTokenCipher = encryptSecret(parsed.backendToken.trim(), '后端 Token')
   }
 
   await writeStored(stored)
@@ -127,26 +112,4 @@ export function getAgentConfig(): { model: string; baseUrl: string; apiKey: stri
     baseUrl: cache.baseUrl,
     apiKey: decryptSecret(cache.apiKeyCipher)
   }
-}
-
-export function getBackendConfig(): { baseUrl: string; token: string } {
-  return {
-    baseUrl: cache.backendUrl || defaults.backendUrl,
-    token: decryptSecret(cache.backendTokenCipher)
-  }
-}
-
-export async function setBackendSession(baseUrl: string, token: string): Promise<void> {
-  const stored = { ...cache }
-  stored.backendUrl = baseUrl.trim() || defaults.backendUrl
-  if (token.trim()) stored.backendTokenCipher = encryptSecret(token.trim(), '后端 Token')
-  await writeStored(stored)
-  cache = stored
-}
-
-export async function clearBackendSession(): Promise<void> {
-  const stored = { ...cache }
-  delete stored.backendTokenCipher
-  await writeStored(stored)
-  cache = stored
 }

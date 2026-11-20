@@ -1,35 +1,59 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
-  ArrowUp,
+  AudioLines,
   Check,
   ChevronDown,
-  CircleStop,
-  Code2,
-  FileSearch,
-  GitPullRequest,
+  Folder,
   Loader2,
-  ShieldAlert,
-  Sparkles,
+  Mic,
+  Monitor,
+  MoreHorizontal,
+  Plus,
+  ShieldCheck,
+  Square,
   Wrench,
   X
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import type { Locale } from '@/lib/i18n'
-import { useI18n, useT } from '@/lib/i18n'
+import { useT } from '@/lib/i18n'
 import { useAppStore, type ChatMessage } from '@/store/app'
-import { cn, formatTime } from '@/lib/utils'
-import { Badge, Button, ScrollArea } from '@/components/ui'
+import { basename, cn } from '@/lib/utils'
+import { Tooltip } from '@/components/ui'
 import { Markdown } from '@/components/Markdown'
+import { CloudMark } from '@/components/brand'
+
+const menuContent =
+  'z-50 min-w-[188px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
+const menuItem =
+  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
+
+const MODEL_OPTIONS = ['gpt-5-codex', 'gpt-5', 'gpt-4.1', 'o4-mini'] as const
+
+function modelLabel(model: string): string {
+  switch (model) {
+    case 'gpt-5-codex':
+      return 'GPT-5 Codex'
+    case 'gpt-5':
+      return 'GPT-5'
+    case 'gpt-4.1':
+      return 'GPT-4.1'
+    case 'o4-mini':
+      return 'o4-mini'
+    default:
+      return model
+  }
+}
 
 function ToolCard({ tool }: { tool: NonNullable<ChatMessage['toolCalls']>[number] }): React.JSX.Element {
   const t = useT()
   const running = tool.status === 'running'
   return (
-    <details className="group mt-2 overflow-hidden rounded-lg border border-line bg-panel-2/60">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-soft">
+    <details className="group mt-2 overflow-hidden rounded-lg border border-line bg-panel/60">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-1.5 text-[12px] text-ink-soft">
         <Wrench className="h-3.5 w-3.5 text-muted" />
-        <span className="font-mono">{tool.name}</span>
-        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-muted">
+        <span className="font-mono text-[11.5px]">{tool.name}</span>
+        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] text-muted">
           {running ? (
             <>
               <Loader2 className="h-3 w-3 animate-spin" /> {t('chat.running')}
@@ -47,7 +71,7 @@ function ToolCard({ tool }: { tool: NonNullable<ChatMessage['toolCalls']>[number
         </span>
       </summary>
       {tool.output ? (
-        <pre className="max-h-64 overflow-auto border-t border-line-soft bg-bg/50 p-3 font-mono text-[11px] leading-relaxed text-muted">
+        <pre className="max-h-64 overflow-auto border-t border-line-soft bg-bg/60 p-3 font-mono text-[11px] leading-relaxed text-muted">
           {tool.output}
         </pre>
       ) : null}
@@ -60,23 +84,18 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
   const isUser = message.role === 'user'
   return (
     <motion.div
-      initial={{ opacity: 0, y: 5 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.16, ease: 'easeOut' }}
-      className={cn('flex w-full gap-3', isUser ? 'justify-end' : 'justify-start')}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
     >
-      {!isUser ? (
-        <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-line bg-panel-2 font-mono text-[10px] font-semibold text-ink-soft">
-          V
-        </div>
-      ) : null}
-      <div className={cn('min-w-0', isUser ? 'max-w-[80%]' : 'max-w-[88%] flex-1')}>
+      <div className={cn('min-w-0', isUser ? 'max-w-[78%]' : 'w-full max-w-[760px]')}>
         <div
           className={cn(
-            'text-[13px] leading-6',
+            'text-[13px] leading-[1.75]',
             isUser
-              ? 'rounded-2xl rounded-tr-md border border-line bg-panel-3 px-3.5 py-2 text-ink'
-              : 'text-ink-soft'
+              ? 'rounded-[16px] bg-panel px-4 py-2.5 text-ink'
+              : 'text-ink'
           )}
         >
           {message.content ? (
@@ -85,64 +104,66 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
             <div className="text-muted">…</div>
           )}
           {message.streaming ? (
-            <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-ink" />
+            <span className="stream-caret ml-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] rounded-[1px] bg-ink/70" />
           ) : null}
           {message.failed ? (
-            <div className="mt-2 rounded-md border border-danger/20 bg-danger/10 px-2.5 py-1.5 font-mono text-[11px] text-danger">
+            <div className="mt-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
               {t('chat.runtimeError')}
             </div>
           ) : null}
           {message.toolCalls?.map((tool) => <ToolCard key={tool.id} tool={tool} />)}
         </div>
-        {!isUser ? (
-          <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted/60">
-            <span>{t('chat.agent').toLowerCase()}</span>
-            <span>·</span>
-            <span>{formatTime(message.createdAt)}</span>
-          </div>
-        ) : null}
       </div>
     </motion.div>
   )
 }
 
-const SUGGESTIONS = [
-  { icon: FileSearch, titleKey: 'chat.suggestion.inspect', promptKey: 'chat.prompt.inspect' },
-  { icon: GitPullRequest, titleKey: 'chat.suggestion.review', promptKey: 'chat.prompt.review' },
-  { icon: Code2, titleKey: 'chat.suggestion.architecture', promptKey: 'chat.prompt.architecture' },
-  { icon: ShieldAlert, titleKey: 'chat.suggestion.findings', promptKey: 'chat.prompt.findings' }
-] as const
-
 function EmptyState(): React.JSX.Element {
   const t = useT()
-  const send = useAppStore((state) => state.send)
+  const settings = useAppStore((state) => state.settings)
+  const sessions = useAppStore((state) => state.sessions)
+  const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
+  const session = sessions.find((item) => item.id === activeSessionId)
+  const project = basename(session?.workspace || settings.workspaceRoot || '')
+  const title = project
+    ? t('chat.buildTitle', { project })
+    : t('chat.buildTitleNoProject')
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-10">
-      <div className="mb-6 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted/70">
-        <Sparkles className="h-3.5 w-3.5" />
-        VEXNAR AGENT
-      </div>
-      <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-ink">{t('chat.emptyTitle')}</h1>
-      <p className="mt-3 max-w-lg text-[13px] leading-6 text-muted">{t('chat.emptyBody')}</p>
-      <div className="mt-7 grid gap-2 sm:grid-cols-2">
-        {SUGGESTIONS.map((item) => {
-          const Icon = item.icon
-          return (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 pb-0 pt-14">
+      <CloudMark className="h-[52px] w-[52px] text-[#c6c7cb]" />
+      <h1 className="mt-6 max-w-[760px] text-center text-[26px] font-normal leading-snug tracking-[-0.015em] text-ink">
+        {project ? (
+          <>
+            {title.split(project)[0]}
             <button
-              key={item.titleKey}
               type="button"
-              onClick={() => void send(t(item.promptKey))}
-              className="group flex items-start gap-3 rounded-xl border border-line bg-panel/40 p-3.5 text-left transition-colors hover:border-line hover:bg-panel-2"
+              onClick={() => void chooseWorkspace()}
+              className="underline decoration-dotted decoration-[1.5px] underline-offset-[6px] decoration-ink/50 transition-colors hover:decoration-ink"
             >
-              <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md border border-line bg-panel-2 text-muted transition-colors group-hover:text-ink">
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              <span className="text-xs font-medium leading-5 text-ink-soft group-hover:text-ink">{t(item.titleKey)}</span>
+              {project}
             </button>
-          )
-        })}
-      </div>
+            {title.split(project).slice(1).join(project)}
+          </>
+        ) : (
+          title
+        )}
+      </h1>
     </div>
+  )
+}
+
+function AccessChip(): React.JSX.Element {
+  const t = useT()
+  return (
+    <span
+      title={t('composer.accessHint')}
+      className="flex h-7 items-center gap-1.5 rounded-md px-1 text-[12px] text-[#c2410c]"
+    >
+      <ShieldCheck className="h-[15px] w-[15px]" strokeWidth={1.9} />
+      {t('composer.fullAccess')}
+    </span>
   )
 }
 
@@ -152,15 +173,33 @@ function Composer(): React.JSX.Element {
   const cancel = useAppStore((state) => state.cancel)
   const busy = useAppStore((state) => state.busy)
   const settings = useAppStore((state) => state.settings)
+  const saveSettings = useAppStore((state) => state.saveSettings)
+  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
+  const setRightTab = useAppStore((state) => state.setRightTab)
+  const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
+  const sessions = useAppStore((state) => state.sessions)
+  const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const session = sessions.find((item) => item.id === activeSessionId)
+  const project = basename(session?.workspace || settings.workspaceRoot || '') || t('app.noWorkspace')
+
   const [text, setText] = useState('')
+  const [listening, setListening] = useState(false)
+  const [voiceHint, setVoiceHint] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     const element = ref.current
     if (!element) return
     element.style.height = '0px'
-    element.style.height = `${Math.min(element.scrollHeight, 180)}px`
+    element.style.height = `${Math.min(element.scrollHeight, 200)}px`
   }, [text])
+
+  useEffect(() => {
+    if (!voiceHint) return
+    const timer = window.setTimeout(() => setVoiceHint(''), 2400)
+    return () => window.clearTimeout(timer)
+  }, [voiceHint])
 
   const submit = (): void => {
     if (!text.trim() || busy) return
@@ -169,47 +208,213 @@ function Composer(): React.JSX.Element {
     void send(value)
   }
 
+  const toggleVoice = (): void => {
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    const Recognition =
+      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
+        .SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition
+    if (!Recognition) {
+      setVoiceHint(t('composer.voiceUnsupported'))
+      return
+    }
+    const recognition = new Recognition()
+    recognition.lang = document.documentElement.lang || 'zh-CN'
+    recognition.interimResults = false
+    recognition.continuous = false
+    recognition.onresult = (event: any) => {
+      let final = ''
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        if (event.results[index].isFinal) final += event.results[index][0].transcript
+      }
+      if (final.trim()) {
+        setText((previous) => (previous.trim() ? `${previous.trim()} ${final.trim()}` : final.trim()))
+      }
+    }
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => {
+      setListening(false)
+      setVoiceHint(t('composer.voiceUnsupported'))
+    }
+    recognitionRef.current = recognition
+    setListening(true)
+    recognition.start()
+  }
+
+  const pickModel = (model: string): void => {
+    if (model === settings.model) return
+    void saveSettings({
+      theme: settings.theme,
+      workspaceRoot: settings.workspaceRoot,
+      shell: settings.shell,
+      model,
+      baseUrl: settings.baseUrl
+    })
+  }
+
   return (
-    <div className="shrink-0 bg-bg px-5 pb-5 pt-2">
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-2xl border border-line bg-panel/80 shadow-2xl shadow-black/15 transition-colors focus-within:border-muted/50">
-          <textarea
-            ref={ref}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                submit()
-              }
-            }}
-            rows={1}
-            placeholder={t('chat.placeholder')}
-            className="block max-h-[180px] min-h-[58px] w-full resize-none bg-transparent px-4 pt-4 text-[13px] leading-6 text-ink outline-none placeholder:text-muted/70"
-          />
-          <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-            <span className="flex items-center gap-1.5 rounded-md border border-line bg-panel-2 px-2 py-1 font-mono text-[10px] text-muted">
-              <span className={cn('h-1.5 w-1.5 rounded-full', settings.hasApiKey ? 'bg-accent-2' : 'bg-muted/50')} />
-              {settings.model}
+    <div className="shrink-0 px-6 pb-3 pt-2">
+      <div className="mx-auto w-full max-w-[800px]">
+        <div className="rounded-[19px] bg-[var(--codex-composer)] p-[7px] codex-composer-shadow">
+          <div className="flex h-[30px] items-center gap-0.5 px-1 text-[12px] text-ink-soft">
+            <span className="flex h-7 items-center gap-1.5 rounded-md px-1.5">
+              <Monitor className="h-[14px] w-[14px] text-ink-soft" strokeWidth={1.8} />
+              {t('app.computer')}
             </span>
-            <span className="hidden font-mono text-[10px] text-muted/60 sm:inline">
-              {settings.hasApiKey ? t('chat.providerKey') : t('chat.localRuntime')}
-            </span>
-            <span className="ml-auto hidden font-mono text-[10px] text-muted/40 sm:inline">{t('chat.newline')}</span>
-            {busy ? (
-              <Button variant="secondary" size="sm" className="h-8 rounded-lg" onClick={() => void cancel()}>
-                <CircleStop className="h-3.5 w-3.5" />
-                {t('chat.stop')}
-              </Button>
-            ) : (
-              <Button size="icon" className="h-8 w-8 rounded-lg" onClick={submit} disabled={!text.trim()} aria-label={t('chat.send')}>
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-            )}
+            <button
+              type="button"
+              onClick={() => void chooseWorkspace()}
+              className="flex h-7 max-w-[220px] items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-black/[0.04]"
+            >
+              <Folder className="h-[14px] w-[14px] text-ink-soft" strokeWidth={1.8} />
+              <span className="truncate">{project}</span>
+            </button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label={t('composer.more')}
+                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-black/[0.04] hover:text-ink"
+                >
+                  <MoreHorizontal className="h-[15px] w-[15px]" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content side="top" align="start" sideOffset={8} className={menuContent}>
+                  <DropdownMenu.Item className={menuItem} onSelect={() => void chooseWorkspace()}>
+                    <Folder className="h-3.5 w-3.5 text-muted" />
+                    {t('rail.workspace')}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    className={menuItem}
+                    onSelect={() => {
+                      setRightTab('workspace')
+                    }}
+                  >
+                    <Monitor className="h-3.5 w-3.5 text-muted" />
+                    {t('rail.docs')}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+                  <DropdownMenu.Item className={menuItem} onSelect={() => setSettingsOpen(true)}>
+                    {t('app.settings')}
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
-        </div>
-        <div className="mt-2 text-center font-mono text-[9px] uppercase tracking-[0.12em] text-muted/30">
-          {t('chat.localAgentRuntime')}
+
+          <div className="rounded-[13px] bg-[var(--codex-composer-inner)] ring-1 ring-black/[0.055]">
+            <textarea
+              ref={ref}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  submit()
+                }
+              }}
+              rows={1}
+              placeholder={t('composer.placeholder')}
+              className="block max-h-[200px] min-h-[84px] w-full resize-none bg-transparent px-3.5 pb-1 pt-3 text-[13px] leading-[1.6] text-ink outline-none placeholder:text-muted/85"
+            />
+            <div className="flex h-[38px] items-center gap-1.5 px-2 pb-2">
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t('composer.more')}
+                    className="grid h-7 w-7 place-items-center rounded-md text-ink-soft transition-colors hover:bg-panel-2"
+                  >
+                    <Plus className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content side="top" align="start" sideOffset={8} className={menuContent}>
+                    <DropdownMenu.Item className={menuItem} onSelect={() => void chooseWorkspace()}>
+                      {t('rail.workspace')}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className={menuItem} onSelect={() => setRightTab('workspace')}>
+                      {t('rail.docs')}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className={menuItem} onSelect={() => setRightTab('diff')}>
+                      {t('rail.changes')}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+
+              <AccessChip />
+
+              <div className="ml-auto flex items-center gap-1">
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] text-ink-soft transition-colors hover:bg-panel-2"
+                    >
+                      {modelLabel(settings.model)}
+                      <ChevronDown className="h-3 w-3 text-muted" strokeWidth={2} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content side="top" align="end" sideOffset={8} className={menuContent}>
+                      {MODEL_OPTIONS.map((model) => (
+                        <DropdownMenu.Item
+                          key={model}
+                          className={cn(menuItem, model === settings.model && 'bg-panel-2 text-ink')}
+                          onSelect={() => pickModel(model)}
+                        >
+                          <span className="flex-1">{modelLabel(model)}</span>
+                          {model === settings.model ? <Check className="h-3.5 w-3.5" /> : null}
+                        </DropdownMenu.Item>
+                      ))}
+                      <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+                      <DropdownMenu.Item className={menuItem} onSelect={() => setSettingsOpen(true)}>
+                        {t('settings.modelSection')}
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
+
+                <Tooltip label={voiceHint || t('composer.voice')} side="top">
+                  <button
+                    type="button"
+                    onClick={toggleVoice}
+                    aria-label={t('composer.voice')}
+                    className={cn(
+                      'grid h-7 w-7 place-items-center rounded-md transition-colors hover:bg-panel-2',
+                      listening ? 'bg-[#c2410c]/10 text-[#c2410c]' : 'text-ink-soft'
+                    )}
+                  >
+                    <Mic className="h-[16px] w-[16px]" strokeWidth={1.8} />
+                  </button>
+                </Tooltip>
+
+                <button
+                  type="button"
+                  onClick={() => (busy ? void cancel() : submit())}
+                  disabled={!busy && !text.trim()}
+                  aria-label={busy ? t('chat.stop') : t('chat.send')}
+                  className={cn(
+                    'ml-0.5 grid h-8 w-8 place-items-center rounded-full text-white transition-all',
+                    busy ? 'bg-[#2b2d31]' : 'bg-[#2f6feb] hover:bg-[#2a63d4]',
+                    !busy && !text.trim() && 'cursor-default opacity-90'
+                  )}
+                >
+                  {busy ? (
+                    <Square className="h-3 w-3 fill-current" />
+                  ) : (
+                    <AudioLines className="h-[17px] w-[17px]" strokeWidth={2} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -221,8 +426,6 @@ export function ChatView(): React.JSX.Element {
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const messages = useAppStore((state) => state.messages)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const locale: Locale = useI18n((state) => state.locale)
-  const t = useT()
 
   const session = useMemo(
     () => sessions.find((item) => item.id === activeSessionId),
@@ -231,26 +434,28 @@ export function ChatView(): React.JSX.Element {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, locale])
+  }, [messages])
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col bg-bg/30">
+    <section className="relative flex min-w-0 flex-1 flex-col bg-bg">
+      <div className="drag-region absolute inset-x-0 top-0 z-10 h-[38px]" />
+
       {messages.length === 0 ? (
         <EmptyState />
       ) : (
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-5 py-5">
-            <div className="mb-1 flex items-center gap-2 border-b border-line-soft pb-3 text-[11px] text-muted">
-              <span className="font-medium text-ink-soft">{session?.title ?? t('app.newThread')}</span>
-              <span className="font-mono text-[10px] text-muted/50">{t('chat.localRuntime')}</span>
-            </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-[820px] flex-col gap-6 px-8 pb-6 pt-[64px]">
+            {session ? (
+              <div className="mb-1 text-center text-[12px] font-medium text-muted/80">{session.title}</div>
+            ) : null}
             {messages.map((message) => (
               <MessageRow key={message.id} message={message} />
             ))}
             <div ref={bottomRef} className="h-1" />
           </div>
-        </ScrollArea>
+        </div>
       )}
+
       <Composer />
     </section>
   )

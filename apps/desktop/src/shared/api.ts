@@ -2,7 +2,6 @@ import type {
   AgentEvent,
   AgentSendInput,
   AppInfo,
-  BackendLoginInput,
   BackendRequestInput,
   BackendStatus,
   DiffPayload,
@@ -16,6 +15,7 @@ import type {
   PublicSettings,
   Session,
   SessionCreateInput,
+  SessionPinInput,
   SessionRenameInput,
   SettingsInput,
   TerminalCreateInput,
@@ -40,6 +40,7 @@ export interface VexnarApi {
     list: () => Promise<IpcResult<Session[]>>
     create: (input: SessionCreateInput) => Promise<IpcResult<Session>>
     rename: (input: SessionRenameInput) => Promise<IpcResult<Session>>
+    pin: (input: SessionPinInput) => Promise<IpcResult<Session>>
     remove: (input: IdInput) => Promise<IpcResult<{ removed: true }>>
   }
   messages: {
@@ -70,8 +71,6 @@ export interface VexnarApi {
   }
   backend: {
     status: () => Promise<IpcResult<BackendStatus>>
-    login: (input: BackendLoginInput) => Promise<IpcResult<PublicSettings>>
-    logout: () => Promise<IpcResult<PublicSettings>>
     request: <T = unknown>(input: BackendRequestInput) => Promise<IpcResult<T>>
   }
 }

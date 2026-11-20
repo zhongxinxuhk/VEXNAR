@@ -1,156 +1,472 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
-  Activity,
-  Bug,
+  ArrowUpDown,
+  Bell,
+  ChevronDown,
   ChevronRight,
-  FolderOpen,
-  LayoutDashboard,
-  MessageSquarePlus,
-  Network,
+  Folder,
+  MoreHorizontal,
+  Pin,
+  PinOff,
   Plus,
   Search,
-  Settings2,
-  SquareTerminal,
-  Target,
-  Trash2
+  SquarePen,
+  Trash2,
+  X
 } from 'lucide-react'
-import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n'
-import { useAppStore, type AppView } from '@/store/app'
-import { basename, cn, formatTime } from '@/lib/utils'
-import { Button, ScrollArea, Tooltip } from '@/components/ui'
+import { useAppStore } from '@/store/app'
+import { basename, cn } from '@/lib/utils'
+import type { Session } from '@shared/contracts'
 
-const nav: Array<{ id: AppView; icon: typeof LayoutDashboard; key: MessageKey }> = [
-  { id: 'overview', icon: LayoutDashboard, key: 'nav.overview' },
-  { id: 'tasks', icon: Target, key: 'nav.tasks' },
-  { id: 'findings', icon: Bug, key: 'nav.findings' },
-  { id: 'traffic', icon: Activity, key: 'nav.traffic' },
-  { id: 'assets', icon: Network, key: 'nav.assets' },
-  { id: 'commands', icon: SquareTerminal, key: 'nav.commands' },
-  { id: 'system', icon: Settings2, key: 'nav.system' }
-]
+const menuContent =
+  'z-50 min-w-[168px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
+const menuItem =
+  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
+const menuLabel = 'px-2.5 pb-1 pt-1.5 text-[10.5px] font-medium text-muted'
+
+function projectName(path: string, fallback: string): string {
+  if (!path) return fallback
+  return basename(path) || path
+}
+
+function SessionRow({
+  session,
+  active,
+  pinned
+}: {
+  session: Session
+  active: boolean
+  pinned?: boolean
+}): React.JSX.Element {
+  const t = useT()
+  const selectSession = useAppStore((state) => state.selectSession)
+  const setView = useAppStore((state) => state.setView)
+  const pinSession = useAppStore((state) => state.pinSession)
+  const removeSession = useAppStore((state) => state.removeSession)
+
+  return (
+    <div
+      className={cn(
+        'group relative flex h-[30px] items-center rounded-[7px] pl-[42px] pr-1',
+        active ? 'text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          setView('chat')
+          void selectSession(session.id)
+        }}
+        className="min-w-0 flex-1 truncate text-left text-[12.5px] leading-[30px]"
+        title={session.title}
+      >
+        {session.title}
+      </button>
+
+      {pinned ? (
+        <Pin className="mr-1 h-3 w-3 shrink-0 text-muted/70" strokeWidth={1.8} />
+      ) : null}
+
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            type="button"
+            aria-label={t('app.more')}
+            onClick={(event) => event.stopPropagation()}
+            className={cn(
+              'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted opacity-0 transition-opacity hover:bg-panel-3 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100',
+            )}
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content side="right" align="start" sideOffset={6} className={menuContent}>
+            <DropdownMenu.Item
+              className={menuItem}
+              onSelect={() => void pinSession(session.id, !session.pinned)}
+            >
+              {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+              {session.pinned ? t('app.unpin') : t('app.pin')}
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+            <DropdownMenu.Item
+              className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
+              onSelect={() => void removeSession(session.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {t('app.delete')}
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </div>
+  )
+}
+
+type Project = {
+  path: string
+  name: string
+  sessions: Session[]
+  latest: number
+}
 
 export function Sidebar(): React.JSX.Element {
   const t = useT()
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const view = useAppStore((state) => state.view)
-  const backend = useAppStore((state) => state.backend)
-  const selectSession = useAppStore((state) => state.selectSession)
-  const newSession = useAppStore((state) => state.newSession)
-  const removeSession = useAppStore((state) => state.removeSession)
-  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
-  const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
-  const setView = useAppStore((state) => state.setView)
   const settings = useAppStore((state) => state.settings)
-  const [hovered, setHovered] = useState<string | null>(null)
+  const info = useAppStore((state) => state.info)
+  const backend = useAppStore((state) => state.backend)
+  const newSession = useAppStore((state) => state.newSession)
+  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
+  const selectSession = useAppStore((state) => state.selectSession)
+  const setView = useAppStore((state) => state.setView)
+  const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
+
+  const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
-  const filteredSessions = useMemo(() => {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [showAllChats, setShowAllChats] = useState<Set<string>>(new Set())
+  const [showAllProjects, setShowAllProjects] = useState(false)
+  const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
+  const searchRef = useRef<HTMLInputElement>(null)
+  const lastAutoExpand = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (searching) searchRef.current?.focus()
+  }, [searching])
+
+  useEffect(() => {
+    const current = sessions.find((session) => session.id === activeSessionId)
+    const key = current?.workspace ?? settings.workspaceRoot
+    if (lastAutoExpand.current === key) return
+    lastAutoExpand.current = key
+    setExpanded((previous) => new Set(previous).add(key))
+  }, [activeSessionId, sessions, settings.workspaceRoot])
+
+  const pinned = useMemo(
+    () => sessions.filter((session) => session.pinned).sort((a, b) => b.updatedAt - a.updatedAt),
+    [sessions]
+  )
+
+  const projects = useMemo(() => {
+    const fallback = t('app.noWorkspace')
+    const grouped = new Map<string, Project>()
+    for (const session of sessions) {
+      if (session.pinned) continue
+      const path = session.workspace || settings.workspaceRoot || ''
+      const current = grouped.get(path)
+      if (current) {
+        current.sessions.push(session)
+        current.latest = Math.max(current.latest, session.updatedAt)
+      } else {
+        grouped.set(path, {
+          path,
+          name: projectName(path, path ? fallback : fallback),
+          sessions: [session],
+          latest: session.updatedAt
+        })
+      }
+    }
+    const list = [...grouped.values()]
+    for (const project of list) project.sessions.sort((a, b) => b.updatedAt - a.updatedAt)
+    list.sort((a, b) => {
+      if (a.path === settings.workspaceRoot) return -1
+      if (b.path === settings.workspaceRoot) return 1
+      if (sortMode === 'name') return a.name.localeCompare(b.name)
+      return b.latest - a.latest
+    })
+    return list
+  }, [sessions, settings.workspaceRoot, sortMode, t])
+
+  const filtered = useMemo(() => {
     const value = query.trim().toLowerCase()
-    return sessions.filter((session) => !value || session.title.toLowerCase().includes(value))
+    if (!value) return []
+    return sessions.filter(
+      (session) =>
+        session.title.toLowerCase().includes(value) ||
+        projectName(session.workspace, '').toLowerCase().includes(value)
+    )
   }, [sessions, query])
 
+  const toggleProject = (path: string): void => {
+    setExpanded((previous) => {
+      const next = new Set(previous)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
+    })
+  }
+
+  const toggleAllChats = (path: string): void => {
+    setShowAllChats((previous) => {
+      const next = new Set(previous)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
+    })
+  }
+
+  const createProject = async (): Promise<void> => {
+    await chooseWorkspace()
+  }
+
+  const visibleProjects = showAllProjects ? projects : projects.slice(0, 4)
+  const mac =
+    (info?.platform ?? (navigator.userAgent.includes('Mac') ? 'darwin' : '')) === 'darwin'
+
   return (
-    <aside className="flex w-[252px] shrink-0 flex-col border-r border-line-soft bg-panel/35">
-      <div className="space-y-2 px-3 pb-3 pt-3">
-        <Button className="w-full justify-between bg-panel-3 text-ink hover:bg-panel-3/80" variant="secondary" onClick={() => void newSession()}>
-          <span className="flex items-center gap-2"><Plus className="h-4 w-4" />{t('app.newThread')}</span>
-          <span className="font-mono text-[10px] text-muted">⌘N</span>
-        </Button>
-        <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-panel-2/60 px-2.5">
-          <Search className="h-3.5 w-3.5 shrink-0 text-muted" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('app.searchThreads')}
-            className="min-w-0 flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-muted/70"
-          />
-        </div>
-      </div>
-
-      <nav className="space-y-0.5 px-2 pb-2">
-        <div className="px-2 pb-1 pt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">{t('app.workspaceNav')}</div>
-        <button
-          type="button"
-          onClick={() => setView('chat')}
-          className={cn('flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors', view === 'chat' ? 'bg-panel-3 text-ink' : 'text-ink-soft hover:bg-panel-2')}
-        >
-          <MessageSquarePlus className="h-3.5 w-3.5 text-muted" />
-          {t('nav.chat')}
-        </button>
-        {nav.map((item) => {
-          const Icon = item.icon
-          return (
+    <aside className="relative z-10 flex w-[248px] shrink-0 flex-col border-r border-line-soft bg-panel">
+      <div
+        className={cn(
+          'drag-region flex shrink-0 items-center gap-1.5 pl-4 pr-2',
+          mac ? 'h-[84px] pt-[42px]' : 'h-[52px]'
+        )}
+      >
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
             <button
-              key={item.id}
               type="button"
-              onClick={() => setView(item.id)}
-              className={cn('flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors', view === item.id ? 'bg-panel-3 text-ink' : 'text-ink-soft hover:bg-panel-2')}
+              className="no-drag flex items-center gap-0.5 rounded-md py-0.5 text-[14px] font-semibold tracking-[-0.01em] text-ink outline-none hover:text-black"
             >
-              <Icon className="h-3.5 w-3.5 text-muted" />
-              {t(item.key)}
-              {item.id === 'overview' && backend?.connected ? <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent-2" /> : null}
+              {t('app.name')}
+              <ChevronDown className="mt-[1px] h-3.5 w-3.5 text-muted" strokeWidth={2} />
             </button>
-          )
-        })}
-      </nav>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content side="bottom" align="start" sideOffset={6} className={menuContent}>
+              <DropdownMenu.Item className={menuItem} onSelect={() => setSettingsOpen(true)}>
+                {t('app.settings')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Item className={menuItem} onSelect={() => void chooseWorkspace()}>
+                {t('rail.workspace')}
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+              <DropdownMenu.Item className={menuItem} disabled>
+                {t('app.about')}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
 
-      <div className="mx-3 h-px bg-line-soft" />
-
-      <div className="flex items-center justify-between px-4 pb-1.5 pt-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">{t('app.threads')}</span>
-        <span className="font-mono text-[10px] text-muted/40">{filteredSessions.length}</span>
+        <div className="no-drag ml-auto flex items-center gap-0.5">
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label={t('app.notifications')}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink data-[state=open]:bg-panel-3 data-[state=open]:text-ink"
+              >
+                <Bell className="h-[16px] w-[16px]" strokeWidth={1.8} />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content side="bottom" align="end" sideOffset={6} className={menuContent}>
+                <div className={menuLabel}>{t('app.notifications')}</div>
+                <div className="px-2.5 py-3 text-center text-[12px] text-muted">
+                  {t('app.noNotifications')}
+                </div>
+                <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+                <div className="flex items-center gap-2 px-2.5 py-2 text-[11.5px] text-muted">
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      backend?.connected ? 'bg-accent-2' : 'bg-muted/40'
+                    )}
+                  />
+                  {backend?.connected ? t('app.localServiceReady') : t('app.localServiceStarting')}
+                </div>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+          <button
+            type="button"
+            aria-label={t('app.search')}
+            onClick={() => {
+              setSearching((value) => !value)
+              setQuery('')
+            }}
+            className={cn(
+              'grid h-7 w-7 place-items-center rounded-md transition-colors hover:bg-panel-3 hover:text-ink',
+              searching ? 'bg-panel-3 text-ink' : 'text-muted'
+            )}
+          >
+            {searching ? <X className="h-[16px] w-[16px]" /> : <Search className="h-[16px] w-[16px]" strokeWidth={1.8} />}
+          </button>
+        </div>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-2">
-        <div className="flex flex-col gap-0.5 pb-3">
-          {filteredSessions.length === 0 ? <div className="px-2 py-6 text-center text-[11px] text-muted">{t('app.noThreads')}</div> : filteredSessions.map((session) => {
-            const active = view === 'chat' && session.id === activeSessionId
-            return (
-              <div
-                key={session.id}
-                onMouseEnter={() => setHovered(session.id)}
-                onMouseLeave={() => setHovered(null)}
-                className={cn('flex w-full items-center gap-1 rounded-lg pr-1 transition-colors', active ? 'bg-panel-3 text-ink' : 'text-ink-soft hover:bg-panel-2')}
-              >
-                <button type="button" onClick={() => void selectSession(session.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left">
-                  <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', active ? 'bg-accent' : 'bg-muted/25')} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] font-medium">{session.title}</span>
-                    <span className="mt-0.5 block font-mono text-[10px] text-muted/70">{formatTime(session.updatedAt)}</span>
-                  </span>
-                </button>
-                {hovered === session.id && sessions.length > 1 ? (
-                  <button type="button" className="rounded p-1 text-muted hover:bg-danger/15 hover:text-danger" onClick={() => void removeSession(session.id)} aria-label={t('app.deleteThread')}>
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                ) : null}
-              </div>
-            )
-          })}
+      {searching ? (
+        <div className="px-3 pb-1.5">
+          <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-bg px-2.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setSearching(false)
+                  setQuery('')
+                }
+              }}
+              placeholder={t('app.searchChats')}
+              className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-muted/80"
+            />
+          </div>
         </div>
-      </ScrollArea>
+      ) : null}
 
-      <div className="border-t border-line-soft p-2">
-        <button type="button" onClick={() => void chooseWorkspace()} className="group flex w-full items-start gap-2.5 rounded-xl border border-line bg-panel-2/60 px-3 py-2.5 text-left transition-colors hover:border-accent/25 hover:bg-panel-3">
-          <FolderOpen className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-          <span className="min-w-0 flex-1">
-            <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-muted/70">{t('app.workspace')}</span>
-            <span className="mt-0.5 block truncate text-xs text-ink-soft">{settings.workspaceRoot ? basename(settings.workspaceRoot) : t('app.chooseFolder')}</span>
-          </span>
-          <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
-        </button>
-        <div className="mt-2 flex items-center gap-1">
-          <button type="button" onClick={() => setView('system')} className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[10px] text-muted hover:text-ink">
-            <span className={cn('h-1.5 w-1.5 rounded-full', backend?.connected ? 'bg-accent-2' : 'bg-muted/40')} />
-            <span className="truncate">{backend?.connected ? backend.baseUrl : t('app.disconnected')}</span>
-          </button>
-          <Tooltip label={t('app.settings')} side="top">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSettingsOpen(true)} aria-label={t('app.settings')}>
-              <Settings2 className="h-3.5 w-3.5" />
-            </Button>
-          </Tooltip>
-        </div>
+      <button
+        type="button"
+        onClick={() => {
+          setView('chat')
+          void newSession()
+        }}
+        className="mx-2 mt-4 flex h-8 shrink-0 items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-medium text-ink-soft transition-colors hover:bg-[var(--codex-hover)] hover:text-ink"
+      >
+        <SquarePen className="h-[16px] w-[16px] text-muted" strokeWidth={1.8} />
+        {t('app.newChat')}
+      </button>
+
+      <div className="mt-1 min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        {query.trim() ? (
+          <div className="pt-3">
+            <div className="px-2 pb-1.5 text-[11px] font-medium text-muted">{t('app.threads')}</div>
+            {filtered.length === 0 ? (
+              <div className="px-2 py-6 text-center text-[12px] text-muted">{t('app.noThreads')}</div>
+            ) : (
+              filtered.map((session) => (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  active={view === 'chat' && session.id === activeSessionId}
+                  pinned={session.pinned}
+                />
+              ))
+            )}
+          </div>
+        ) : (
+          <>
+            {pinned.length > 0 ? (
+              <div className="pt-3">
+                <div className="px-2 pb-1.5 text-[11px] font-medium text-muted">{t('app.pinned')}</div>
+                {pinned.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    active={view === 'chat' && session.id === activeSessionId}
+                    pinned
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-1 px-2 pb-1 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAllProjects((value) => !value)}
+                className="flex items-center gap-1 text-[11px] font-medium text-muted transition-colors hover:text-ink-soft"
+              >
+                {t('app.projects')}
+                <ChevronDown className="h-3 w-3" strokeWidth={2} />
+              </button>
+              <div className="ml-auto flex items-center gap-0.5">
+                <button
+                  type="button"
+                  aria-label={t('app.sortProjects')}
+                  title={t('app.sortProjects')}
+                  onClick={() => setSortMode((value) => (value === 'recent' ? 'name' : 'recent'))}
+                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.8} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('app.newProject')}
+                  title={t('app.newProject')}
+                  onClick={() => void createProject()}
+                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={1.8} />
+                </button>
+              </div>
+            </div>
+
+            {visibleProjects.length === 0 ? (
+              <div className="px-2 py-6 text-center text-[12px] leading-5 text-muted">
+                {t('app.noChats')}
+              </div>
+            ) : (
+              visibleProjects.map((project) => {
+                const open = expanded.has(project.path)
+                const all = showAllChats.has(project.path)
+                const visible = all ? project.sessions : project.sessions.slice(0, 4)
+                return (
+                  <div key={project.path || '__none'} className="mb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleProject(project.path)}
+                      className={cn(
+                        'group flex h-[31px] w-full items-center gap-2 rounded-[7px] px-2 text-left transition-colors',
+                        open && project.path === settings.workspaceRoot
+                          ? 'bg-panel-3/80 text-ink'
+                          : 'text-ink-soft hover:bg-[var(--codex-hover)] hover:text-ink'
+                      )}
+                    >
+                      <Folder className="h-[15px] w-[15px] shrink-0 text-muted" strokeWidth={1.7} />
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{project.name}</span>
+                      <ChevronRight
+                        className={cn(
+                          'h-3 w-3 shrink-0 text-muted/60 opacity-0 transition-all group-hover:opacity-100',
+                          open && 'rotate-90'
+                        )}
+                      />
+                    </button>
+                    {open ? (
+                      <div className="mt-0.5">
+                        {visible.map((session) => (
+                          <SessionRow
+                            key={session.id}
+                            session={session}
+                            active={view === 'chat' && session.id === activeSessionId}
+                          />
+                        ))}
+                        {project.sessions.length > 4 ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleAllChats(project.path)}
+                            className="flex h-[26px] w-full items-center rounded-[7px] pl-[30px] text-left text-[11.5px] text-muted transition-colors hover:text-ink-soft"
+                          >
+                            {all ? t('app.showLess') : t('app.showMore')}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })
+            )}
+
+            {projects.length > 4 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllProjects((value) => !value)}
+                className="mt-0.5 flex h-[28px] w-full items-center rounded-[7px] px-2 text-left text-[11.5px] text-muted transition-colors hover:text-ink-soft"
+              >
+                {showAllProjects ? t('app.showLess') : t('app.showMore')}
+              </button>
+            ) : null}
+
+            {sessions.length === 0 ? (
+              <div className="px-2 py-6 text-center text-[12px] text-muted">{t('app.noChats')}</div>
+            ) : null}
+          </>
+        )}
       </div>
     </aside>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ArrowUpRight, Loader2, RefreshCw, Unplug } from 'lucide-react'
+import { AlertTriangle, Loader2, RefreshCw, ServerOff } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'
 import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
@@ -54,13 +54,13 @@ export function ErrorRow({ message, retry }: { message: string; retry?: () => vo
 
 export function ConnectPrompt(): React.JSX.Element {
   const t = useT()
-  const setView = useAppStore((state) => state.setView)
+  const refreshBackend = useAppStore((state) => state.refreshBackend)
   return (
     <div className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-6 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-line bg-panel-2"><Unplug className="h-5 w-5 text-muted" /></div>
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-line bg-panel-2"><ServerOff className="h-5 w-5 text-muted" /></div>
       <h2 className="mt-4 text-sm font-semibold text-ink">{t('overview.connectPrompt')}</h2>
       <p className="mt-2 text-xs leading-5 text-muted">{t('overview.connectHint')}</p>
-      <Button className="mt-5" size="sm" onClick={() => setView('system')}>{t('system.title')}<ArrowUpRight className="h-3.5 w-3.5" /></Button>
+      <Button className="mt-5" size="sm" onClick={() => void refreshBackend()}>{t('app.retry')}</Button>
     </div>
   )
 }
