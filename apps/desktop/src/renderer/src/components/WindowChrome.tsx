@@ -135,9 +135,11 @@ export function PanelResizeHandle(): React.JSX.Element {
         const start = event.clientX
         const startWidth = width
         target.setPointerCapture(event.pointerId)
+        document.body.classList.add('is-resizing')
         const move = (e: PointerEvent): void =>
           setPanelWidth(startWidth - (e.clientX - start))
         const done = (): void => {
+          document.body.classList.remove('is-resizing')
           target.removeEventListener('pointermove', move)
           target.removeEventListener('pointerup', done)
           target.removeEventListener('pointercancel', done)
@@ -217,6 +219,7 @@ export function SidebarResizeHandle(): React.JSX.Element {
           }
         }
         const done = (): void => {
+          document.body.classList.remove('is-resizing')
           target.removeEventListener('pointermove', move)
           target.removeEventListener('pointerup', done)
           target.removeEventListener('pointercancel', done)
