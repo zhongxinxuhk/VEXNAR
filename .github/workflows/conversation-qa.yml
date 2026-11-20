@@ -1,0 +1,99 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Conversation and website QA
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: Desktop checks (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: Windows x64
+            runner: windows-2025
+            arch: x64
+          - target: Linux x64
+            runner: ubuntu-24.04
+            arch: x64
+          - target: macOS arm64
+            runner: macos-15
+            arch: arm64
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - name: Verify runner architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: node -e "if (process.arch !== process.env.EXPECTED_ARCH) throw Error('Unexpected Node architecture '+process.arch)"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Run isolated Electron conversation UI fixture
+        if: runner.os == 'macOS'
+        run: npm run test:ui
+
+  conversation-store:
+    name: Go conversation API with PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: vexnar_test
+          POSTGRES_USER: vexnar_test
+          POSTGRES_PASSWORD: vexnar_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vexnar_test -d vexnar_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify conversation history, replay and timestamp precision
+        env:
+          VEXNAR_PG_DSN: postgres://vexnar_test:vexnar_ci@127.0.0.1:5432/vexnar_test?sslmode=disable
+        run: go test ./server -run 'TestConversationMessages|TestConvLiveTextKindSwitch' -count=1 -v
+
+  website:
+    name: Website build and credits checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci --prefix website
+      - name: Prepare public GitHub metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 website/scripts/prepare_data.py
+      - run: npm run build --prefix website
+      - run: npm run check --prefix website
