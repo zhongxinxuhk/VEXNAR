@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # VEXNAR 安装脚本：① 全部 Docker  ② 本地编译运行
 set -euo pipefail
 cd "$(cd "$(dirname "$0")" && pwd)"

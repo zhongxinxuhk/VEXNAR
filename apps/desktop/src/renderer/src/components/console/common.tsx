@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Loader2, RefreshCw, ServerOff } from 'lucide-react'
 import type { MessageKey } from '@/lib/i18n'

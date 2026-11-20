@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # 开发模式：后端(:8787) + 流量代理(:8788) 与 前端 next dev(:5173) 一起跑。
 # 前端 /api 反代到后端；Ctrl-C 一并退出。
 #

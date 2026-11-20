@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # VEXNAR 更新脚本：① Docker 更新（拉新镜像重建）  ② 本地编译更新（重建二进制）
 # 与 install.sh 对应：install 负责首次落地，update 负责升级到新版本。
 # DB 迁移无需手动执行——vexnar 每次启动都会幂等重跑 schema.sql（含 ADD COLUMN/CREATE

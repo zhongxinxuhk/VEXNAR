@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # VEXNAR Desktop
 
 Tauri v2 外壳，把 Go 后端、Web 控制台和便携 PostgreSQL 包成一个桌面应用。业务逻辑仍然全部在 `vexnar` 里，这一层负责：

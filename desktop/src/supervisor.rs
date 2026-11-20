@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Supervises the Go backend (`vexnar`) that ships with the desktop app.
 //!
 //! The shell does three things and nothing else:

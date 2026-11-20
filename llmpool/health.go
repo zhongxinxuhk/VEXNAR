@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package llmpool implements LLM failover ("轮询"): a Provider decorator that
 // walks an ordered chain of LLM profiles and moves to the next one when the
 // current one can't serve the request — out of credit, revoked key, rate-limited

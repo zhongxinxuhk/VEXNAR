@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # 更新日志
 
 本项目的重要变更记录在此文件中，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。

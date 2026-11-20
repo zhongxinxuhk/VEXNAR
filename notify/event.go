@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package notify
 
 // Snapshot 是 notification_events.snapshot 这一 JSONB 列的契约。写方是 db 层的

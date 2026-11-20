@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package intercept implements the user-configurable tool-call interception layer.
 // Rules are loaded from the database, cached in memory, and evaluated in priority
 // order (highest first) on every PreToolUse event. Three actions are supported:

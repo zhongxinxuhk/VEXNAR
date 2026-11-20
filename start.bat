@@ -1,4 +1,8 @@
 @echo off
+rem Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+rem Repository: https://github.com/zhongxinxuhk/VEXNAR
+rem SPDX-License-Identifier: AGPL-3.0-or-later
+
 rem 控制台切 UTF-8，否则本文件里的中文在 GBK 终端下是乱码。
 chcp 65001 >nul 2>&1
 rem VEXNAR 守护启动脚本（Windows）

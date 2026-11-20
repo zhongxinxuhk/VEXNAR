@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package agent
 
 // 本文件把内置 agent 的「默认提示词正文」(段 [A]) 变成可枚举、可被服务端幂等

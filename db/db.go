@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package db is the PostgreSQL data source for VEXNAR (取代旧 graph 单文件 SQLite)。
 // 它打开连接、应用 schema、并 seed 内置 agent 与变量目录。
 package db

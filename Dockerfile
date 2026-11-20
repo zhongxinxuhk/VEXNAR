@@ -1,4 +1,8 @@
 # syntax=docker/dockerfile:1
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 #
 # 运行镜像（不在镜像里编译）：只装常用工具，放入**预编译好的 Linux 单二进制**。
 # 二进制由 CI 的 binaries job 交叉编译（纯 Go、无 QEMU），按目标架构放在

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useEffect, useState } from 'react'
 import { FolderOpen, Loader2, RefreshCw } from 'lucide-react'
 import type { SettingsInput } from '@shared/contracts'

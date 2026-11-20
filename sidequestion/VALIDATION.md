@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # `/btw` 验证记录
 
 日期：2026-09-10。分支：`codex/btw-side-question`。基线：`8dae851b9b622f2ff2631f332fde9719d0b16fba`。

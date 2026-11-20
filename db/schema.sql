@@ -1,3 +1,7 @@
+-- Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+-- Repository: https://github.com/zhongxinxuhk/VEXNAR
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+
 -- VEXNAR PostgreSQL schema (单一数据源)
 -- 幂等：可重复执行（IF NOT EXISTS / OR REPLACE / DROP TRIGGER IF EXISTS）。
 

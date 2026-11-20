@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Builds the Go sidecar (and the static web UI it embeds) for the desktop shell.
 #
 # Usage: scripts/prepare-sidecar.sh [--release]

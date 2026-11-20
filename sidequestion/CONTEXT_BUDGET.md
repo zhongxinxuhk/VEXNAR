@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # 旁路长对话与上下文预算
 
 2026-09-11 修复。原实现将请求 JSON 的字符数直接视为 token，并继承主任务的 32K 输出预留，因此 HTML、JS 和工具结果较多时会提前拒绝正常旁路问题。

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package llmrec implements a recording decorator for llm.Provider. It intercepts
 // every Stream call, captures the full request and accumulated response, and
 // persists them to PostgreSQL for later inspection.

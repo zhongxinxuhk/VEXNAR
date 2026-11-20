@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package vulnclass 是漏洞类目基线（VulnClass Matrix）的代码目录。
 //
 // 它解决的问题：planner 每次唤醒只能看到"资产 + 已有事实/漏洞"，缺一张
