@@ -552,7 +552,7 @@ function ChatView({
       .conversationHistory(conv.id, 0, HISTORY_PAGE)
       .then((r) => {
         if (!live) return;
-        setMessages((current) => mergeActivities(r.items, current));
+        setMessages((current) => mergeActivities(r.live ? [...r.items, r.live] : r.items, current));
         cursorRef.current = Math.max(cursorRef.current, r.cursor);
         earliestRef.current = r.items.length ? r.items[0].seq : 0;
         hasMoreRef.current = r.hasMore;
@@ -586,8 +586,10 @@ function ChatView({
       try {
         const r = await api.conversationMessages(conv.id, cursorRef.current);
         if (!live) return;
-        if (r.items.length) {
-          setMessages((prev) => mergeActivities(prev, r.items));
+        // `live` 是正在写的答案行,同一个 seq 文本持续变长 → 合并(而不是追加)才能流式刷新。
+        const incoming = r.live ? [...r.items, r.live] : r.items;
+        if (incoming.length) {
+          setMessages((prev) => mergeActivities(prev, incoming));
         }
         cursorRef.current = Math.max(cursorRef.current, r.cursor);
         keepPolling = r.running;

@@ -11,12 +11,18 @@ import (
 	"time"
 )
 
+// Project ownership errors. A missing project/task is reported separately from
+// a task that already belongs to another project, so the HTTP layer can answer
+// 404 and 409 without guessing.
 var (
-	ErrDesktopProjectNotFound = errors.New("project not found")
+	ErrDesktopProjectNotFound = errors.New("desktop project not found")
 	ErrDesktopTaskNotFound    = errors.New("task not found")
 	ErrDesktopTaskBound       = errors.New("task already belongs to another project")
 )
 
+// DesktopProject is one registered working directory. It is the ownership unit
+// for conversations: the id is allocated here, never derived by a client from
+// the path it happens to have open.
 type DesktopProject struct {
 	ID        int64     `json:"id,string"`
 	RootPath  string    `json:"root_path"`
@@ -38,18 +44,23 @@ type DesktopProjectTask struct {
 
 const desktopProjectTaskColumns = `t.exploration_id, t.id, t.name, t.description, t.goal, t.status, t.paused, t.queued, (t.pinned_at IS NOT NULL)`
 
+// RegisterDesktopProject resolves an existing project by root path, creating it
+// on first sight. Re-registering the same path is idempotent and keeps the
+// original name so a directory rename does not silently split history.
 func (d *DB) RegisterDesktopProject(ctx context.Context, root, name string) (DesktopProject, error) {
 	var project DesktopProject
 	err := d.QueryRowContext(ctx, `
 INSERT INTO desktop_projects(root_path, name) VALUES ($1, $2)
-ON CONFLICT (root_path) DO UPDATE SET root_path=EXCLUDED.root_path
+ON CONFLICT (root_path) DO UPDATE SET root_path = EXCLUDED.root_path
 RETURNING id, root_path, name, created_at`, root, name).
 		Scan(&project.ID, &project.RootPath, &project.Name, &project.CreatedAt)
 	return project, err
 }
 
+// ListDesktopProjects returns every registered project, oldest first.
 func (d *DB) ListDesktopProjects(ctx context.Context) ([]DesktopProject, error) {
-	rows, err := d.QueryContext(ctx, `SELECT id, root_path, name, created_at FROM desktop_projects ORDER BY id`)
+	rows, err := d.QueryContext(ctx, `
+SELECT id, root_path, name, created_at FROM desktop_projects ORDER BY created_at, id`)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +74,34 @@ func (d *DB) ListDesktopProjects(ctx context.Context) ([]DesktopProject, error) 
 		projects = append(projects, project)
 	}
 	return projects, rows.Err()
+}
+
+// DesktopProjectByRoot looks up a registered project by its canonical root path.
+// A missing row is not an error: callers use nil to mean "not registered yet".
+func (d *DB) DesktopProjectByRoot(ctx context.Context, root string) (*DesktopProject, error) {
+	var project DesktopProject
+	err := d.QueryRowContext(ctx, `
+SELECT id, root_path, name, created_at FROM desktop_projects WHERE root_path = $1`, root).
+		Scan(&project.ID, &project.RootPath, &project.Name, &project.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &project, nil
+}
+
+// DesktopProjectByID returns one project or ErrDesktopProjectNotFound.
+func (d *DB) DesktopProjectByID(ctx context.Context, id int64) (DesktopProject, error) {
+	var project DesktopProject
+	err := d.QueryRowContext(ctx, `
+SELECT id, root_path, name, created_at FROM desktop_projects WHERE id = $1`, id).
+		Scan(&project.ID, &project.RootPath, &project.Name, &project.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return DesktopProject{}, ErrDesktopProjectNotFound
+	}
+	return project, err
 }
 
 func (d *DB) DesktopTaskProject(ctx context.Context, taskID int64) (*int64, error) {

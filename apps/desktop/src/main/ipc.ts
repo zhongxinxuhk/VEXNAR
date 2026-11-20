@@ -13,14 +13,19 @@ import { z } from 'zod'
 import {
   agentSendSchema,
   backendRequestSchema,
+  backendUploadSchema,
   copyTextSchema,
   fileReadSchema,
   gitDiffSchema,
   idSchema,
   IPC,
   messageAppendSchema,
+  newApiAmountSchema,
   newApiExternalAuthSchema,
   newApiLoginSchema,
+  newApiRedeemSchema,
+  newApiSubscribeSchema,
+  newApiTopupPaySchema,
   newApiVerifySchema,
   sessionCreateSchema,
   sessionPinSchema,
@@ -200,6 +205,11 @@ export function registerIpc(services: Services): void {
     }
     return services.backend.request(input)
   })
+  handle(IPC.backendUpload, backendUploadSchema, (input) => {
+    if (services.updates.status().phase === 'installing')
+      throw new Error('应用正在安装更新，请等待重启。')
+    return services.backend.upload(input)
+  })
 
   handle(IPC.newapiStatus, noInput, () => services.newapi.getState())
   handle(IPC.newapiBootstrap, noInput, () => services.newapi.bootstrap())
@@ -225,4 +235,17 @@ export function registerIpc(services: Services): void {
   handle(IPC.newapiOpenPlatform, noInput, () => services.newapi.openPlatform())
   handle(IPC.newapiUsage, noInput, () => services.newapi.usage())
   handle(IPC.newapiAffCode, noInput, () => services.newapi.getAffCode())
+  handle(IPC.newapiWallet, noInput, () => services.newapi.getWallet())
+  handle(IPC.newapiTopupQuote, newApiAmountSchema, (input) =>
+    services.newapi.quoteTopup(input)
+  )
+  handle(IPC.newapiTopupPay, newApiTopupPaySchema, (input) =>
+    services.newapi.startTopupPayment(input)
+  )
+  handle(IPC.newapiRedeem, newApiRedeemSchema, (input) =>
+    services.newapi.redeem(input)
+  )
+  handle(IPC.newapiSubscribe, newApiSubscribeSchema, (input) =>
+    services.newapi.subscribe(input)
+  )
 }

@@ -8,7 +8,6 @@ import {
   ArrowDown,
   ArrowUp,
   AudioLines,
-  BookOpen,
   Check,
   ChevronDown,
   ChevronRight,
@@ -18,32 +17,37 @@ import {
   Loader2,
   Mic,
   PanelRight,
+  Paperclip,
   Pencil,
   Plus,
   RefreshCw,
   Square,
-  SquareTerminal,
-  Wrench,
   X
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { consoleRequest } from '@/lib/console'
 import { recordEffort } from '@/lib/insight'
 import { useT } from '@/lib/i18n'
+import { parseQuotaShortfall, stripFailureText } from '@/lib/quota-error'
 import { AccessMenu, ContextBar } from './ChatControls'
+import {
+  EFFORT_LEVELS,
+  ModelPicker,
+  type EffortLevel
+} from './ModelPicker'
 import { useDrafts, emptyDraft } from '@/store/drafts'
 import { useLayout } from '@/store/layout'
 import { ThinkingSteps } from '@/components/ThinkingSteps'
-import {
-  attachmentsSchema,
-  type ImageAttachment,
-  type ReasoningEffort
-} from '@shared/contracts'
+import { ThinkingBlock } from '@/components/agent-ui/ThinkingBlock'
+import { ToolCallRow } from '@/components/agent-ui/ToolCallRow'
+import { AgentLoading } from '@/components/agent-ui/LoadingMark'
+import { attachmentsSchema, type ImageAttachment } from '@shared/contracts'
 import { useChatSendMode } from '@/lib/chat-send-mode'
 import { useAppStore, type ChatMessage } from '@/store/app'
 import { basename, cn } from '@/lib/utils'
 import { Tooltip } from '@/components/ui'
 import { Markdown } from '@/components/Markdown'
+import { QuotaNotice } from '@/components/QuotaNotice'
 import { CloudMark } from '@/components/brand'
 
 const menuContent =
@@ -51,6 +55,7 @@ const menuContent =
 const menuItem =
   'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
 
+// 目录来自后端，这里只做展示层排版：gpt-6.1-sol → GPT-6.1 Sol。
 function modelLabel(model: string): string {
   switch (model) {
     case 'gpt-5-codex':
@@ -61,12 +66,23 @@ function modelLabel(model: string): string {
       return 'GPT-4.1'
     case 'o4-mini':
       return 'o4-mini'
-    default:
-      return model
+    default: {
+      const [head, ...rest] = model.split('-')
+      if (head?.toLowerCase() !== 'gpt' || rest.length === 0) return model
+      const tail = rest
+        .map((part) =>
+          part.length <= 1 ? part : part.charAt(0).toUpperCase() + part.slice(1)
+        )
+        .join(' ')
+      return `GPT-${tail}`
+    }
   }
 }
 
-const effortLabels = { low: '低', medium: '中', high: '高' }
+// ChatGPT-style thinking strength: the slider edits the ACTIVE LLM profile's
+// reasoning_effort in PostgreSQL, so the web LLM page shows the same value.
+// The five levels match what the Go backend/web page accept; the picker only
+// localises the labels (Light … Ultra) in ModelPicker.
 const toolLabels: Record<string, string> = {
   read_file: '读取文件',
   list_files: '列出文件',
@@ -90,67 +106,6 @@ function toolTitle(tool: NonNullable<ChatMessage['toolCalls']>[number]): string 
   )
 }
 
-function ToolCard({
-  tool
-}: {
-  tool: NonNullable<ChatMessage['toolCalls']>[number]
-}): React.JSX.Element {
-  const args =
-    tool.input && typeof tool.input === 'object'
-      ? (tool.input as Record<string, unknown>)
-      : {}
-  const command =
-    tool.name === 'git_status'
-      ? 'git status --short --branch'
-      : typeof args.command === 'string'
-        ? args.command
-        : ''
-  const Icon = command
-    ? SquareTerminal
-    : tool.name === 'read_file'
-      ? BookOpen
-      : Wrench
-  const title = toolTitle(tool)
-  const status =
-    tool.status === 'running'
-      ? '运行中'
-      : tool.status === 'done'
-        ? '成功'
-        : '未完成'
-  return (
-    <details className="group">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-ink-soft hover:bg-panel-2">
-        <Icon className="size-3.5 shrink-0 text-muted" />
-        <span
-          title={title}
-          className={cn('min-w-0 flex-1 truncate', command && 'font-mono')}
-        >
-          {title}
-        </span>
-        <span
-          className={cn(
-            'flex shrink-0 items-center gap-1',
-            tool.status === 'error' ? 'text-danger' : 'text-muted'
-          )}
-        >
-          {tool.status === 'running' && (
-            <Loader2 className="size-3 animate-spin" />
-          )}
-          {tool.status === 'done' && <Check className="size-3 text-accent-2" />}
-          {status}
-        </span>
-        <ChevronDown className="size-3 shrink-0 group-open:rotate-180" />
-      </summary>
-      <div className="my-1 ml-6 overflow-hidden rounded-lg border border-line-soft bg-panel">
-        <pre className="max-h-56 overflow-auto p-3 text-[11px] leading-5 text-ink-soft">
-          {command && '$ ' + command + '\n'}
-          {tool.output || (tool.status === 'running' ? '等待输出…' : '无输出')}
-        </pre>
-      </div>
-    </details>
-  )
-}
-
 function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
   const t = useT()
   const isUser = message.role === 'user'
@@ -163,8 +118,33 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
   const lastUser = [...messages].reverse().find((item) => item.role === 'user')
   const canRegenerate =
     !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
+  // Reasoning is stored as a `思考` pseudo-tool so the transcript stays
+  // append-only; the view lifts it out of the tool list and gives it its own
+  // capped window instead of counting it as a tool call.
+  const allTools = message.toolCalls ?? []
+  const thinkingText = allTools
+    .filter((tool) => tool.name === '思考')
+    .map((tool) => tool.output ?? '')
+    .filter((value) => value.trim().length > 0)
+    .join('\n\n')
+  const toolCalls = allTools.filter((tool) => tool.name !== '思考')
+  // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
+  // 后端会先把错误写成 text 行，因此正文里可能夹着 403 原文，这里只保留叙述部分。
+  const failureText = message.error ?? message.content
+  const quotaExhausted = message.failed ? parseQuotaShortfall(failureText) : null
+  const visibleContent =
+    quotaExhausted !== null
+      ? stripFailureText(message.content, failureText)
+      : message.content
+  // Reasoning is live only while the turn is still waiting on the model, not
+  // while an answer or a tool result is streaming in.
+  const thinkingActive =
+    message.streaming &&
+    !message.content &&
+    !toolCalls.some((tool) => tool.status === 'running')
   const copy = async (): Promise<void> => {
-    const result = await window.vexnar.app.copyText(message.content)
+    // 复制可见正文：余额不足时正文已剥掉 403 原文，不要把报错 JSON 当回答复制走。
+    const result = await window.vexnar.app.copyText(visibleContent || message.content)
     if (result.ok) {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
@@ -175,11 +155,12 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className={cn('group flex w-full', isUser ? 'justify-end' : 'justify-start')}
+      className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
     >
+      {/* group 落在气泡容器上：悬停气泡才浮出操作行，行本身不参与布局 */}
       <div
         className={cn(
-          'min-w-0',
+          'group relative min-w-0',
           isUser ? 'max-w-[78%]' : 'w-full max-w-[760px]'
         )}
       >
@@ -201,74 +182,61 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               ))}
             </div>
           ) : null}
-          {message.content ? (
-            <Markdown content={message.content} />
-          ) : message.streaming || message.attachments?.length ? null : (
+          {message.files?.length ? (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {message.files.map((file, index) => (
+                <span
+                  key={`${file.name}-${index}`}
+                  className="inline-flex max-w-60 items-center gap-1.5 rounded-lg border border-line-soft bg-panel px-2 py-1 text-[11px] text-ink-soft"
+                >
+                  <Paperclip className="size-3 shrink-0 text-muted" />
+                  <span className="truncate">{file.name}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {thinkingText ? <ThinkingBlock text={thinkingText} streaming={thinkingActive} /> : null}
+          {visibleContent ? (
+            // 流式时由 CSS 把光标贴在最后一段文字末尾（.answer-streaming）——在
+            // Markdown 之后塞 inline-block 会被块级段落挤到下一行，看着像断行。
+            <Markdown
+              content={visibleContent}
+              className={message.streaming ? 'answer-streaming' : undefined}
+            />
+          ) : message.streaming ||
+            message.attachments?.length ||
+            thinkingText ||
+            quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}
-          {message.streaming ? (
-            <span className="stream-caret ml-0.5 inline-block h-[13px] w-[6px] translate-y-[2px] rounded-[1px] bg-ink/70" />
-          ) : null}
-          {message.content && !message.streaming ? (
-            <div
-              className={cn(
-                'mt-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100',
-                isUser ? 'justify-end' : 'justify-start'
-              )}
-            >
-              <button
-                type="button"
-                aria-label="复制消息"
-                title={copied ? '已复制' : '复制'}
-                onClick={() => void copy()}
-                className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
-              {canRegenerate ? (
-                <button
-                  type="button"
-                  aria-label="重新生成"
-                  title="重新生成"
-                  onClick={() => void send(lastUser!.content, [], undefined)}
-                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-              {isUser && activeSessionId ? (
-                <button
-                  type="button"
-                  aria-label="在输入框编辑"
-                  title="在输入框编辑"
-                  onClick={() => patchDraft(activeSessionId, { text: message.content })}
-                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
           {message.failed ? (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
-              <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
-              {lastUser?.content ? (
-                <button
-                  type="button"
-                  onClick={() => void send(lastUser.content, [], undefined)}
-                  disabled={busy}
-                  className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
-                >
-                  重试
-                </button>
-              ) : null}
-            </div>
+            quotaExhausted ? (
+              <QuotaNotice
+                error={failureText}
+                onRetry={lastUser?.content ? () => void send(lastUser.content) : undefined}
+                retrying={busy}
+              />
+            ) : (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
+                <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
+                {lastUser?.content ? (
+                  <button
+                    type="button"
+                    onClick={() => void send(lastUser.content)}
+                    disabled={busy}
+                    className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
+                  >
+                    重试
+                  </button>
+                ) : null}
+              </div>
+            )
           ) : null}
-          {message.streaming && message.toolCalls?.length ? (
+          {message.streaming && toolCalls.length ? (
             <div className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-3.5 py-2.5">
               <ThinkingSteps
-                steps={message.toolCalls.map((tool, index) => {
-                  const last = index === message.toolCalls!.length - 1
+                steps={toolCalls.map((tool, index) => {
+                  const last = index === toolCalls.length - 1
                   return {
                     id: tool.id,
                     label: toolTitle(tool),
@@ -283,25 +251,78 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               />
             </div>
           ) : null}
-          {message.streaming && !message.content && !message.toolCalls?.length ? (
+          {message.streaming && !message.content && !toolCalls.length && !thinkingText ? (
             <div className="mt-1">
-              <ThinkingSteps steps={[{ id: 'waiting', label: '正在思考…', status: 'active' }]} />
+              <AgentLoading />
             </div>
           ) : null}
-          {!message.streaming && Boolean(message.toolCalls?.length) && (
+          {!message.streaming && Boolean(toolCalls.length) && (
             <details className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-2 py-1">
               <summary className="cursor-pointer px-2 py-1.5 text-xs text-muted">
-                工具活动 · {message.toolCalls?.length} 项
+                工具活动 · {toolCalls.length} 项
                 {message.streaming ? ' · 运行中' : ''}
               </summary>
               <div className="ml-2 border-l border-line-soft pl-2">
-                {message.toolCalls?.map((tool) => (
-                  <ToolCard key={tool.id} tool={tool} />
+                {toolCalls.map((tool) => (
+                  <ToolCallRow
+                    key={tool.id}
+                    name={tool.name}
+                    summary={toolTitle(tool)}
+                    status={tool.status}
+                    input={tool.input}
+                    output={tool.output}
+                  />
                 ))}
               </div>
             </details>
           )}
         </div>
+        {/* 操作行浮在气泡下方：不占气泡高度/宽度，只有鼠标靠近气泡才出现。
+            pt-0.5 而非 mt-0.5 —— 行盒子与气泡下沿贴合，指针从气泡滑到图标时
+            不会经过 2px 的空档把 group-hover 断掉。 */}
+        {message.content && !message.streaming ? (
+          <div
+            className={cn(
+              'pointer-events-none absolute top-full z-10 flex items-start gap-0.5 pt-0.5',
+              'opacity-0 transition-opacity duration-150',
+              'group-hover:pointer-events-auto group-hover:opacity-100',
+              'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+              isUser ? 'right-0' : 'left-0'
+            )}
+          >
+            <button
+              type="button"
+              aria-label="复制消息"
+              title={copied ? '已复制' : '复制'}
+              onClick={() => void copy()}
+              className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </button>
+            {canRegenerate ? (
+              <button
+                type="button"
+                aria-label="重新生成"
+                title="重新生成"
+                onClick={() => void send(lastUser!.content)}
+                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            ) : null}
+            {isUser && activeSessionId ? (
+              <button
+                type="button"
+                aria-label="在输入框编辑"
+                title="在输入框编辑"
+                onClick={() => patchDraft(activeSessionId, { text: message.content })}
+                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </motion.div>
   )
@@ -416,10 +437,50 @@ function Composer(): React.JSX.Element {
   const usage = useAppStore(
     (state) => state.contextUsage[activeSessionId || '']
   )
-  const [effortByModel, setEffortByModel] = useState<
-    Record<string, ReasoningEffort | undefined>
-  >({})
-  const effort = effortByModel[settings.model]
+  const [effort, setEffort] = useState<EffortLevel | undefined>()
+  const [effortSaving, setEffortSaving] = useState(false)
+  const [effortError, setEffortError] = useState('')
+  // Persisting is async; a send must wait for the write so the backend runs the
+  // turn with the strength the operator just picked.
+  const effortPersist = useRef<Promise<void>>(Promise.resolve())
+  useEffect(() => {
+    void consoleRequest<{ reasoning_effort?: string }>('/desktop/llm')
+      .then((status) => {
+        const stored = status?.reasoning_effort
+        if (stored && (EFFORT_LEVELS as string[]).includes(stored))
+          setEffort(stored as EffortLevel)
+      })
+      .catch(() => undefined)
+  }, [])
+  const applyEffort = (index: number): void => {
+    const next = EFFORT_LEVELS[Math.min(EFFORT_LEVELS.length - 1, Math.max(0, index))]
+    setEffort(next)
+    setEffortError('')
+    setEffortSaving(true)
+    effortPersist.current = consoleRequest<{ reasoning_effort?: string }>(
+      '/desktop/llm/configure',
+      'POST',
+      { reasoning_effort: next }
+    )
+      .then((status) => {
+        const stored = status?.reasoning_effort
+        if (stored && (EFFORT_LEVELS as string[]).includes(stored))
+          setEffort(stored as EffortLevel)
+      })
+      .catch((error) => {
+        setEffortError(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => setEffortSaving(false))
+  }
+  const clearEffort = (): void => {
+    setEffort(undefined)
+    setEffortError('')
+    effortPersist.current = consoleRequest('/desktop/llm/configure', 'POST', {
+      reasoning_effort: ''
+    })
+      .then(() => undefined)
+      .catch((error) => setEffortError(error instanceof Error ? error.message : String(error)))
+  }
   const [capacity, setCapacity] = useState<{ model: string; tokens: number }>()
   const readCapacity = (): void => {
     const model = settings.model
@@ -482,7 +543,10 @@ function Composer(): React.JSX.Element {
     const id = activeSessionId || 'new'
     const submitted = useDrafts.getState().drafts[id]
     try {
-      const sent = await send(text, images, effort)
+      await effortPersist.current
+      // The Go backend reads the profile's effort; the app does not stream a
+      // second model call, so no per-message effort is passed.
+      const sent = await send(text, images)
       if (sent) recordEffort(effort)
       if (sent && useDrafts.getState().drafts[id] === submitted)
         patchDraft(id, { text: '', images: [] })
@@ -753,99 +817,25 @@ function Composer(): React.JSX.Element {
                   )}
                 </button>
               </Tooltip>
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                  <button
-                    type="button"
-                    aria-label="选择模型"
-                    disabled={busy || submitting}
-                    className="flex h-7 min-w-0 items-center gap-1 rounded-lg px-1.5 text-xs text-ink-soft hover:bg-panel-2"
-                  >
-                    <span className="max-w-48 truncate">
-                      {modelLabel(settings.model)}
-                      {effort && (
-                        <span className="ml-1 text-muted">
-                          {effortLabels[effort]}
-                        </span>
-                      )}
-                    </span>
-                    <ChevronDown className="h-3 w-3 shrink-0 text-muted" />
-                  </button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    side="top"
-                    align="end"
-                    sideOffset={8}
-                    className={`${menuContent} max-h-80 overflow-y-auto`}
-                  >
-                    <DropdownMenu.Label className="px-2.5 py-1.5 text-xs text-muted">
-                      推理强度 · {modelLabel(settings.model)}
-                    </DropdownMenu.Label>
-                    <DropdownMenu.RadioGroup
-                      value={effort ?? 'default'}
-                      onValueChange={(value) =>
-                        setEffortByModel((previous) => ({
-                          ...previous,
-                          [settings.model]:
-                            value === 'default'
-                              ? undefined
-                              : (value as ReasoningEffort)
-                        }))
-                      }
-                    >
-                      {(['default', 'low', 'medium', 'high'] as const).map(
-                        (value) => (
-                          <DropdownMenu.RadioItem
-                            key={value}
-                            value={value}
-                            className={menuItem}
-                          >
-                            <DropdownMenu.ItemIndicator>
-                              <Check className="size-3" />
-                            </DropdownMenu.ItemIndicator>
-                            {value === 'default'
-                              ? '由模型决定'
-                              : effortLabels[value]}
-                          </DropdownMenu.RadioItem>
-                        )
-                      )}
-                    </DropdownMenu.RadioGroup>
-                    <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-                    <DropdownMenu.Label className="px-2.5 py-1.5 text-xs text-muted">
-                      可用模型
-                    </DropdownMenu.Label>
-                    {Array.from(
-                      new Set(
-                        [settings.model, ...settings.newApiModels].filter(
-                          Boolean
-                        )
-                      )
-                    ).map((model) => (
-                      <DropdownMenu.Item
-                        key={model}
-                        className={cn(
-                          menuItem,
-                          model === settings.model && 'bg-panel-2 text-ink'
-                        )}
-                        onSelect={() => pickModel(model)}
-                      >
-                        <span className="flex-1">{modelLabel(model)}</span>
-                        {model === settings.model && (
-                          <Check className="h-3.5 w-3.5" />
-                        )}
-                      </DropdownMenu.Item>
-                    ))}
-                    <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-                    <DropdownMenu.Item
-                      className={menuItem}
-                      onSelect={() => setSettingsOpen(true)}
-                    >
-                      {t('settings.modelSection')}
-                    </DropdownMenu.Item>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
+              <ModelPicker
+                model={settings.model}
+                models={settings.newApiModels}
+                effort={effort}
+                saving={effortSaving}
+                error={effortError}
+                disabled={busy || submitting}
+                formatModel={modelLabel}
+                onModel={pickModel}
+                onEffortPreview={(level) => {
+                  setEffort(level)
+                  setEffortError('')
+                }}
+                onEffortCommit={(level) => {
+                  applyEffort(EFFORT_LEVELS.indexOf(level))
+                }}
+                onClearEffort={clearEffort}
+                onOpenSettings={() => setSettingsOpen(true)}
+              />
               <Tooltip label={voiceHint || t('composer.voice')} side="top">
                 <button
                   type="button"

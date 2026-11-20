@@ -50,6 +50,7 @@ export const newApiTokenSchema = z.object({
   id: z.number().int(),
   name: z.string().default('App-managed'),
   maskedKey: z.string().default(''),
+  group: z.string().default(''),
   unlimitedQuota: z.boolean().default(false),
   remainQuota: z.number().default(0),
   usedQuota: z.number().default(0)
@@ -66,6 +67,18 @@ export const newApiQuotaSchema = z.object({
   unlimited: z.boolean().default(false)
 })
 export type NewApiQuota = z.infer<typeof newApiQuotaSchema>
+
+/** 当前生效的订阅。额度单位与 NewApiQuota 一致，展示前按 quotaPerUnit 换算。 */
+export const newApiSubscriptionSchema = z.object({
+  id: z.number().int().default(0),
+  planId: z.number().int().default(0),
+  amountTotal: z.number().default(0),
+  amountUsed: z.number().default(0),
+  status: z.string().default(''),
+  upgradeGroup: z.string().default(''),
+  endTime: z.number().default(0)
+})
+export type NewApiSubscription = z.infer<typeof newApiSubscriptionSchema>
 
 /**
  * 中转平台（NewAPI）消费日志的一行。登录用户的 /api/log/self 接口返回记录，
@@ -87,6 +100,92 @@ export const newApiUsageSchema = z.object({
   fetchedAt: z.number()
 })
 export type NewApiUsage = z.infer<typeof newApiUsageSchema>
+
+/**
+ * 平台钱包：充值配置、订阅套餐与付款入口。
+ * 字段来自 new-api 的 /api/user/topup/info 与 /api/subscription/plans，
+ * 主进程用访问令牌请求后在这里做一次归一化，渲染层不再直接接触凭据。
+ */
+export const newApiTopupMethodSchema = z.object({
+  name: z.string().default(''),
+  type: z.string().default(''),
+  icon: z.string().default(''),
+  minTopup: z.number().default(0)
+})
+export type NewApiTopupMethod = z.infer<typeof newApiTopupMethodSchema>
+
+export const newApiTopupInfoSchema = z.object({
+  onlineEnabled: z.boolean().default(false),
+  redemptionEnabled: z.boolean().default(false),
+  complianceConfirmed: z.boolean().default(false),
+  minTopup: z.number().default(1),
+  amountOptions: z.array(z.number()).default([]),
+  discount: z.record(z.string(), z.number()).default({}),
+  methods: z.array(newApiTopupMethodSchema).default([])
+})
+export type NewApiTopupInfo = z.infer<typeof newApiTopupInfoSchema>
+
+export const newApiPlanSchema = z.object({
+  id: z.number().int(),
+  title: z.string().default(''),
+  subtitle: z.string().default(''),
+  priceAmount: z.number().default(0),
+  currency: z.string().default('CNY'),
+  durationUnit: z.string().default('month'),
+  durationValue: z.number().int().default(1),
+  totalAmount: z.number().default(0),
+  quotaResetPeriod: z.string().default('never'),
+  allowBalancePay: z.boolean().default(true),
+  upgradeGroup: z.string().default('')
+})
+export type NewApiPlan = z.infer<typeof newApiPlanSchema>
+
+export const newApiWalletSchema = z.object({
+  topup: newApiTopupInfoSchema,
+  plans: z.array(newApiPlanSchema).default([]),
+  plansError: z.string().nullable().default(null)
+})
+export type NewApiWallet = z.infer<typeof newApiWalletSchema>
+
+export const newApiTopupPaySchema = z.object({
+  amount: z.number().int().positive().max(1000000),
+  method: z.string().trim().min(1).max(64)
+})
+export type NewApiTopupPayInput = z.infer<typeof newApiTopupPaySchema>
+
+export const newApiAmountSchema = z.object({
+  amount: z.number().int().positive().max(1000000)
+})
+export type NewApiAmountInput = z.infer<typeof newApiAmountSchema>
+
+export const newApiRedeemSchema = z.object({
+  key: z.string().trim().min(1).max(200)
+})
+export type NewApiRedeemInput = z.infer<typeof newApiRedeemSchema>
+
+export const newApiSubscribeSchema = z.object({
+  planId: z.number().int().positive(),
+  method: z.string().trim().min(1).max(64).default('balance')
+})
+export type NewApiSubscribeInput = z.infer<typeof newApiSubscribeSchema>
+
+export const newApiPaymentResultSchema = z.object({
+  status: z.enum(['redirect', 'paid', 'qr']),
+  amount: z.number().default(0),
+  currency: z.string().default('CNY'),
+  method: z.string().default(''),
+  orderId: z.string().default(''),
+  merchantId: z.string().default(''),
+  paymentUrl: z.string().default(''),
+  expiresAt: z.number().default(0)
+})
+export type NewApiPaymentResult = z.infer<typeof newApiPaymentResultSchema>
+
+export const newApiTopupQuoteSchema = z.object({
+  payable: z.number(),
+  currency: z.string().default('CNY')
+})
+export type NewApiTopupQuote = z.infer<typeof newApiTopupQuoteSchema>
 
 /**
  * 访问令牌（面板 API 凭证）。与 API Key 同名，登录时创建、退出登录时撤销。
@@ -156,6 +255,7 @@ export const newApiStateSchema = z.object({
   authenticated: z.boolean(),
   user: newApiUserSchema.nullable().default(null),
   quota: newApiQuotaSchema.nullable().default(null),
+  subscriptions: z.array(newApiSubscriptionSchema).default([]),
   token: newApiTokenSchema.nullable().default(null),
   accessToken: newApiAccessTokenSchema.nullable().default(null),
   accessTokenError: z.string().nullable().default(null),
@@ -238,7 +338,14 @@ export const toolActivitySchema = z.object({
   output: z.string().max(8000).optional()
 })
 export type ToolActivity = z.infer<typeof toolActivitySchema>
-export const reasoningEffortSchema = z.enum(['low', 'medium', 'high'])
+// 与 Go 端 validReasoningEffort 和 NewAPI 的 wire 值保持一致。
+export const reasoningEffortSchema = z.enum([
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max'
+])
 export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>
 
 export const messageAppendSchema = z
@@ -315,6 +422,28 @@ export const backendRequestSchema = z.object({
 })
 export type BackendRequestInput = z.infer<typeof backendRequestSchema>
 
+// 附件上传：renderer 只有 dataURL，没有后端地址与 token。上传经由主进程
+// 以 multipart 转发到同一个 Go 后端，与 web 的 /api/chat/upload 完全同一条路径。
+// 用 base64 而不是 number[]：6 张 4MB 图片若走数字数组，IPC 序列化会膨胀几十倍。
+export const backendUploadSchema = z.object({
+  path: z.string().min(1).max(4000).regex(/^\//, '路径必须以 / 开头'),
+  files: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(200),
+        type: z.string().max(120).default('application/octet-stream'),
+        base64: z.string().min(1).max(24_000_000)
+      })
+    )
+    .min(1)
+    .max(6)
+})
+export type BackendUploadInput = z.infer<typeof backendUploadSchema>
+
+export type BackendUploadResult = {
+  attachments: { name: string; path: string; size: number; abs?: string }[]
+}
+
 export type BackendStatus = {
   connected: boolean
   version?: string
@@ -332,6 +461,11 @@ export type Session = {
   id: string
   title: string
   workspace: string
+  /**
+   * Owning project as assigned by the backend. null means the thread is
+   * unassigned and must not be shown under any project.
+   */
+  projectId: string | null
   pinned: boolean
   createdAt: number
   updatedAt: number
@@ -451,6 +585,7 @@ export const IPC = {
   agentEvent: 'agent:event',
   backendStatus: 'backend:status',
   backendRequest: 'backend:request',
+  backendUpload: 'backend:upload',
   newapiStatus: 'newapi:status',
   newapiAffCode: 'newapi:aff-code',
   newapiBootstrap: 'newapi:bootstrap',
@@ -465,5 +600,10 @@ export const IPC = {
   newapiCopyKey: 'newapi:copy-key',
   newapiOpenPlatform: 'newapi:open-platform',
   newapiUsage: 'newapi:usage',
+  newapiWallet: 'newapi:wallet',
+  newapiTopupQuote: 'newapi:topup-quote',
+  newapiTopupPay: 'newapi:topup-pay',
+  newapiRedeem: 'newapi:redeem',
+  newapiSubscribe: 'newapi:subscribe',
   newapiChanged: 'newapi:changed'
 } as const

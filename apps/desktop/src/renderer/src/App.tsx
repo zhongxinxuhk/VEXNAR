@@ -16,6 +16,7 @@ import { SchedulesView } from '@/components/SchedulesView'
 import { PluginsView } from '@/components/PluginsView'
 import { RightPanel } from '@/components/RightPanel'
 import { SettingsDialog } from '@/components/SettingsDialog'
+import { WalletDialog } from '@/components/WalletDialog'
 import { ConsoleView } from '@/components/console/ConsoleView'
 import { LoginScreen } from '@/components/LoginScreen'
 import { TooltipProvider } from '@/components/ui'
@@ -27,7 +28,6 @@ import { defaultNewApiAuthMethods } from '@shared/contracts'
 function WorkspaceApp(): React.JSX.Element {
   const t = useT()
   const init = useAppStore((state) => state.init)
-  const handleAgentEvent = useAppStore((state) => state.handleAgentEvent)
   const rightOpen = useAppStore((state) => state.rightOpen)
   const toggleRight = useAppStore((state) => state.toggleRight)
   const error = useAppStore((state) => state.error)
@@ -38,6 +38,10 @@ function WorkspaceApp(): React.JSX.Element {
   const taskFocus = useAppStore((state) => state.taskFocus)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const panelWidth = useAppStore((state) => state.panelWidth)
+  const walletOpen = useAppStore((state) => state.walletOpen)
+  const walletTab = useAppStore((state) => state.walletTab)
+  const setWalletOpen = useAppStore((state) => state.setWalletOpen)
+  const setWalletTab = useAppStore((state) => state.setWalletTab)
   const toggleSidebar = useLayout((state) => state.toggleSidebar)
   const sidebarWidth = useLayout((state) => state.sidebarWidth)
   // 控制台视图（概览/任务/发现/流量/资产/工具执行）与资料页、定时任务页
@@ -47,8 +51,6 @@ function WorkspaceApp(): React.JSX.Element {
   useEffect(() => {
     void init()
   }, [init])
-
-  useEffect(() => window.vexnar.agent.onEvent(handleAgentEvent), [handleAgentEvent])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -169,6 +171,13 @@ function WorkspaceApp(): React.JSX.Element {
       </AnimatePresence>
 
       <SettingsDialog />
+      {/* App-wide wallet: the quota notice deep-links to 充值余额 / 升级套餐. */}
+      <WalletDialog
+        open={walletOpen}
+        onOpenChange={setWalletOpen}
+        tab={walletTab}
+        onTabChange={setWalletTab}
+      />
     </div>
   )
 }
@@ -205,6 +214,7 @@ export default function App(): React.JSX.Element {
           authenticated: false,
           user: null,
           quota: null,
+          subscriptions: [],
           token: null,
           accessToken: null,
           accessTokenError: null,

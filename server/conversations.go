@@ -60,7 +60,39 @@ func (s *Server) pgListConversations(w http.ResponseWriter, r *http.Request) {
 	if pg == nil {
 		return
 	}
-	cs, err := pg.ListConversations()
+	// Scope is decided by the backend, never by the client's current directory:
+	//   ?project_id=7   → 该项目的会话
+	//   ?workspace=...  → 解析成项目后同上
+	//   ?unassigned=1   → project_id IS NULL 的待归属会话
+	var (
+		cs  []*db.Conversation
+		err error
+	)
+	query := r.URL.Query()
+	switch {
+	case strings.TrimSpace(query.Get("unassigned")) == "1":
+		cs, err = pg.ListUnassignedConversations()
+	case query.Get("project_id") != "":
+		projectID, parseErr := strconv.ParseInt(query.Get("project_id"), 10, 64)
+		if parseErr != nil || projectID <= 0 {
+			writeErr(w, 400, "无效的 project_id")
+			return
+		}
+		cs, err = pg.ListConversationsByProject(projectID)
+	case strings.TrimSpace(query.Get("workspace")) != "":
+		project, lookupErr := s.projectForWorkspace(r, strings.TrimSpace(query.Get("workspace")))
+		if lookupErr != nil {
+			writeErr(w, 500, lookupErr.Error())
+			return
+		}
+		if project == nil {
+			cs, err = []*db.Conversation{}, nil
+		} else {
+			cs, err = pg.ListConversationsByProject(project.ID)
+		}
+	default:
+		cs, err = pg.ListConversations()
+	}
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -83,6 +115,11 @@ func (s *Server) pgCreateConversation(w http.ResponseWriter, r *http.Request) {
 		AgentKey     string `json:"agent_key"`
 		Title        string `json:"title"`
 		LLMProfileID *int64 `json:"llm_profile_id"`
+		// Workspace is the directory the thread is started from. The backend
+		// registers it as a project on first sight and binds the conversation to
+		// that project_id; an empty workspace leaves the thread unassigned.
+		Workspace string `json:"workspace"`
+		ProjectID *int64 `json:"project_id"`
 	}
 	if !decodeConversationRequest(w, r, &req) {
 		return
@@ -119,12 +156,67 @@ func (s *Server) pgCreateConversation(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, fmt.Sprintf("标题最多 %d 个字符", maxConversationTitleRunes))
 		return
 	}
-	c, err := pg.CreateConversation(req.AgentKey, title, req.LLMProfileID)
+	projectID, workspace, err := s.resolveConversationProject(r, req.ProjectID, req.Workspace)
+	if err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	c, err := pg.CreateConversationInProject(req.AgentKey, title, req.LLMProfileID, projectID, workspace)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 200, c)
+}
+
+// resolveConversationProject decides the owning project for a new thread.
+// An explicit project_id wins; otherwise the workspace path is canonicalised and
+// registered, so a first chat in a directory still lands in the right project.
+func (s *Server) resolveConversationProject(r *http.Request, projectID *int64, workspace string) (*int64, string, error) {
+	if projectID != nil {
+		if *projectID <= 0 {
+			return nil, "", errors.New("无效的 project_id")
+		}
+		if _, err := s.m.pg.DesktopProjectByID(r.Context(), *projectID); err != nil {
+			return nil, "", errors.New("指定的项目不存在")
+		}
+		return projectID, strings.TrimSpace(workspace), nil
+	}
+	root := canonicalWorkspace(workspace)
+	if root == "" {
+		return nil, "", nil
+	}
+	project, err := s.m.pg.RegisterDesktopProject(r.Context(), root, filepath.Base(root))
+	if err != nil {
+		return nil, "", err
+	}
+	return &project.ID, root, nil
+}
+
+// projectForWorkspace resolves a read-only lookup: it never registers a project.
+func (s *Server) projectForWorkspace(r *http.Request, workspace string) (*db.DesktopProject, error) {
+	root := canonicalWorkspace(workspace)
+	if root == "" {
+		return nil, nil
+	}
+	return s.m.pg.DesktopProjectByRoot(r.Context(), root)
+}
+
+// canonicalWorkspace makes a workspace path absolute and symlink-free so the
+// same directory cannot create two projects through different spellings.
+func canonicalWorkspace(workspace string) string {
+	trimmed := strings.TrimSpace(workspace)
+	if trimmed == "" {
+		return ""
+	}
+	absolute, err := filepath.Abs(trimmed)
+	if err != nil {
+		return filepath.Clean(trimmed)
+	}
+	if resolved, err := filepath.EvalSymlinks(absolute); err == nil {
+		return resolved
+	}
+	return filepath.Clean(absolute)
 }
 
 func (s *Server) pgUpdateConversation(w http.ResponseWriter, r *http.Request) {
@@ -314,20 +406,42 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	}
 	q := r.URL.Query()
 	limit := atoiDefault(q.Get("limit"), 200)
+	// detail=1 includes each step's full text. The web transcript lazy-loads it,
+	// but the desktop app renders whole answers immediately and cannot afford one
+	// /messages/{seq} round-trip per step.
+	withDetail := q.Get("detail") == "1"
 	s.chatMu.Lock()
 	running := s.chatBusy[s.convBusyKey(c.ID)]
+	sink := s.chatLive[s.convBusyKey(c.ID)]
 	s.chatMu.Unlock()
+	// `live` is the row the running turn is still writing (the answer so far). It
+	// changes id-once, text-many: clients merge it by seq into what they already
+	// hold, which is what makes the reply stream instead of appearing at the end.
+	var live *ActivityDTO
+	if running && sink != nil {
+		if row, ok := sink.Snapshot(); ok {
+			dto := activityDTO(row)
+			live = &dto
+		}
+	}
 
 	// Incremental tail: ?since=N returns steps after id N (ASC) — used by the live
 	// poll and the post-send fetch. A generous cap so a burst is never dropped.
 	if sv := q.Get("since"); sv != "" {
 		since, _ := strconv.ParseInt(sv, 10, 64)
-		items, cursor, err := pg.ConvActivityList(c.ID, since, max(limit, 1000))
+		var items []db.Activity
+		var cursor int64
+		var err error
+		if withDetail {
+			items, cursor, err = pg.ConvActivityListDetail(c.ID, since, max(limit, 1000))
+		} else {
+			items, cursor, err = pg.ConvActivityList(c.ID, since, max(limit, 1000))
+		}
 		if err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}
-		writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "hasMore": false})
+		writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": false})
 		return
 	}
 
@@ -335,7 +449,14 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	// the page of older steps ending before id N. hasMore lets the client stop
 	// loading earlier history once the top of the thread is reached.
 	before, _ := strconv.ParseInt(q.Get("before"), 10, 64)
-	items, hasMore, err := pg.ConvActivityPage(c.ID, before, limit)
+	var items []db.Activity
+	var hasMore bool
+	var err error
+	if withDetail {
+		items, hasMore, err = pg.ConvActivityPageDetail(c.ID, before, limit)
+	} else {
+		items, hasMore, err = pg.ConvActivityPage(c.ID, before, limit)
+	}
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -344,7 +465,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	if n := len(items); n > 0 {
 		cursor = items[n-1].ID
 	}
-	writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "hasMore": hasMore})
+	writeJSON(w, 200, map[string]any{"items": activityDTOs(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
 }
 
 // pgConversationMsgDetail lazily returns one step's full detail blob.
@@ -503,6 +624,7 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 		s.chatMu.Lock()
 		delete(s.chatBusy, busyKey)
 		delete(s.chatCancel, busyKey)
+		delete(s.chatLive, busyKey)
 		s.chatMu.Unlock()
 	}()
 	// Only the first turn executes a historical retest. Follow-up conversation
@@ -562,9 +684,18 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
 		}
 	}
+	// Stream the answer: the sink grows a transcript row in place, and the poll
+	// endpoint hands that row to clients as `live` while the turn is running.
+	live := newConvLiveText(pg, c.ID, c.AgentKey)
+	s.chatMu.Lock()
+	if s.chatLive == nil { // tests build Server literals without the map
+		s.chatLive = map[string]*convLiveText{}
+	}
+	s.chatLive[busyKey] = live
+	s.chatMu.Unlock()
 	// On a manual stop ctx is cancelled; Chat already emits a clean "已手动停止"
 	// step, so skip the raw-error entry — only surface genuine failures.
-	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit); err != nil {
+	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit, live); err != nil {
 		finishReason = err.Error()
 		if ctx.Err() == nil {
 			_, _ = pg.AppendConvActivity(c.ID, db.Activity{Worker: c.AgentKey, Kind: "text", IsError: true,

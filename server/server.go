@@ -78,6 +78,11 @@ type Server struct {
 	// cleared alongside chatBusy under chatMu. Aborting a run does NOT touch the P3
 	// trigger queue — the drain goroutine simply proceeds to the next queued fire.
 	chatCancel map[string]context.CancelCauseFunc
+	// chatLive publishes the answer a running conversation turn is still writing,
+	// keyed by convBusyKey. The messages endpoint hands it to polling clients as
+	// `live`, so the answer streams instead of appearing only at the terminal
+	// record. Registered/cleared alongside chatBusy under chatMu.
+	chatLive map[string]*convLiveText
 
 	// triggerQ buffers P3 trigger fires PER AGENT. A per-agent "pump" launches runs up
 	// to a concurrency limit derived from the agent's策略: serial → limit 1 (+ optional
@@ -151,7 +156,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		log.Fatalf("[auth] JWT key: %v", err)
 	}
 	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, jwtKey: key, desktopToken: strings.TrimSpace(os.Getenv("VEXNAR_DESKTOP_TOKEN")), chatBusy: map[string]bool{},
-		chatCancel: map[string]context.CancelCauseFunc{}, triggerQ: map[string][]triggeredRun{},
+		chatCancel: map[string]context.CancelCauseFunc{}, chatLive: map[string]*convLiveText{}, triggerQ: map[string][]triggeredRun{},
 		triggerActive: map[string]int{}, triggerCfg: map[string]triggerBehavior{},
 		profChatAgents: map[int64]*agent.ChatAgent{},
 		provByProfile:  map[int64]*provEntry{}, llmHealth: newLLMHealthRegistry(m.pg),
@@ -353,35 +358,83 @@ func (s *Server) loadLLMConfig() (agent.Config, bool) {
 	return cfg, true
 }
 
-// saveLLMConfig persists the LLM config as the active "default" profile in PG.
-func (s *Server) saveLLMConfig(cfg agent.Config) error {
+// saveLLMConfig persists cfg into the profile the caller owns and keeps it
+// active. Two ownership modes:
+//
+//   - ownerName != "" (the NewAPI-managed desktop path): update the row named
+//     ownerName. If it does not exist yet, claim the legacy row named "default"
+//     (rename it when the name is free) so older installs migrate in place.
+//     Never overwrite an operator-curated profile that happens to be active —
+//     signing in through the app must not clobber 系统 → LLM 配置 entries.
+//   - ownerName == "" (the legacy /api/llm endpoint): upsert the active row,
+//     preserving its name.
+//
+// Writing by name instead of by active-row used to create a second "default"
+// row next to the active custom profile — the app showed one row while the web
+// page kept displaying another. The managed row is the single shared row both
+// clients render.
+//
+// Only fields the caller actually decides are overwritten: the retry ladder,
+// priority, pool_exclude, streaming and output caps stay as stored, because the
+// legacy /api/llm and desktop configure bodies do not carry them.
+func (s *Server) saveLLMConfig(cfg agent.Config, ownerName string) error {
 	// cfg.Provider() already returns one of the three valid format strings
 	// (anthropic / openai / openai-responses), matching the DB CHECK constraint.
 	format := cfg.Provider()
-	var id int64
-	// 这个 legacy 端点的请求体不含轮询/收发/输出上限参数,故把库里已存的值原样带回 —
-	// 否则每次保存都会把 profile 的 priority、pool_exclude、streaming 以及输出上限
-	// (max_tokens / max_tokens_field)悄悄重置成零值。
-	var priority int
-	var poolExclude bool
-	streaming := true // 旧库/新建默认流式
-	var maxTokens int
-	var maxTokensField string
-	var sessionHeaderKey string
-	var retry db.RetryOverride
-	if profs, _ := s.m.pg.ListProfiles(); profs != nil {
-		for _, p := range profs {
-			if p.Name == "default" {
-				id, priority, poolExclude, streaming = p.ID, p.Priority, p.PoolExclude, p.Streaming
-				maxTokens, maxTokensField = p.MaxTokens, p.MaxTokensField
-				sessionHeaderKey = p.SessionHeaderKey
-				retry = p.Retry
-				break
-			}
+	owner := strings.TrimSpace(ownerName)
+
+	profs, err := s.m.pg.ListProfiles()
+	if err != nil {
+		return err
+	}
+	byName := make(map[string]*db.LLMProfile, len(profs))
+	var active *db.LLMProfile
+	for _, p := range profs {
+		byName[p.Name] = p
+		if p.IsDefault {
+			active = p
 		}
 	}
+
+	var existing *db.LLMProfile
+	if owner != "" {
+		existing = byName[owner]
+		if existing == nil && active != nil && active.Name == "default" {
+			// Legacy managed row from a previous app build: migrate it in place.
+			existing = active
+		}
+	} else {
+		existing = active
+		if existing == nil {
+			existing = byName["default"]
+		}
+	}
+
+	streaming := true // 旧库/新建默认流式
+	var id int64
+	var priority int
+	var poolExclude bool
+	var maxTokens int
+	var maxTokensField, sessionHeaderKey string
+	var retry db.RetryOverride
+	name := owner
+	if existing != nil {
+		id, name = existing.ID, existing.Name
+		priority, poolExclude, streaming = existing.Priority, existing.PoolExclude, existing.Streaming
+		maxTokens, maxTokensField = existing.MaxTokens, existing.MaxTokensField
+		sessionHeaderKey, retry = existing.SessionHeaderKey, existing.Retry
+	}
+	if owner != "" && (existing == nil || existing.Name == "default") {
+		// Claim the managed name unless another row already holds it.
+		if other := byName[owner]; other == nil || other.ID == id {
+			name = owner
+		}
+	}
+	if name == "" {
+		name = "default"
+	}
 	newID, err := s.m.pg.SaveProfile(&db.LLMProfile{
-		ID: id, Name: "default", Format: format, Model: cfg.Model, BaseURL: cfg.BaseURL, Proxy: cfg.Proxy,
+		ID: id, Name: name, Format: format, Model: cfg.Model, BaseURL: cfg.BaseURL, Proxy: cfg.Proxy,
 		APIKey: cfg.APIKey, RatePerSecond: cfg.RatePerSecond, RatePerMinute: cfg.RatePerMinute,
 		ContextWindowK: cfg.ContextWindowK, ThinkingType: cfg.ThinkingType, ReasoningEffort: cfg.ReasoningEffort, IsDefault: true,
 		Priority: priority, PoolExclude: poolExclude, Streaming: streaming,
@@ -754,6 +807,8 @@ func (s *Server) Handler() http.Handler {
 	// requireAuth rejects them when no desktop token was configured.
 	mux.HandleFunc("GET /api/desktop/preferences", s.desktopGetPreferences)
 	mux.HandleFunc("PUT /api/desktop/preferences", s.desktopPutPreferences)
+	// Project ownership: the app reads this list; conversations reference
+	// project_id instead of inferring a project from the open directory.
 	s.registerDesktopProjects(mux)
 	mux.HandleFunc("GET /api/desktop/llm", s.desktopGetLLM)
 	mux.HandleFunc("POST /api/desktop/llm/configure", s.desktopConfigureLLM)
@@ -762,6 +817,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/desktop/llm/clear", s.desktopClearLLM)
 	mux.HandleFunc("GET /api/desktop/openai/v1/models", s.desktopListModels)
 	mux.HandleFunc("POST /api/desktop/openai/v1/chat/completions", s.desktopChatProxy)
+	// Responses is the default wire format for a NewAPI-managed profile.
+	mux.HandleFunc("POST /api/desktop/openai/v1/responses", s.desktopResponsesProxy)
 
 	// asset system
 	mux.HandleFunc("GET /api/assets", s.listAssets)
@@ -1383,7 +1440,9 @@ func (s *Server) setLLM(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "provider init failed: "+err.Error())
 		return
 	}
-	if err := s.saveLLMConfig(cfg); err != nil {
+	// 空 ownerName = 保留激活行现有的名字：legacy 端点不该把 NewAPI 托管行
+	// 从 "newapi" 改回 "default"，否则 app 与 web 又会看到两个不同的名字。
+	if err := s.saveLLMConfig(cfg, ""); err != nil {
 		writeErr(w, 500, "persist provider failed: "+err.Error())
 		return
 	}

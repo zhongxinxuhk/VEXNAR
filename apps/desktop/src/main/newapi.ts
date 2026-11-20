@@ -6,16 +6,24 @@ import { BrowserWindow, clipboard, safeStorage, session, shell } from 'electron'
 import { readSetting, writeSetting } from './db'
 import type {
   NewApiAccessToken,
+  NewApiAmountInput,
   NewApiAuthProvider,
   NewApiExternalAuthInput,
   NewApiLoginInput,
+  NewApiPaymentResult,
   NewApiQuota,
+  NewApiRedeemInput,
   NewApiState,
+  NewApiSubscribeInput,
+  NewApiSubscription,
   NewApiToken,
+  NewApiTopupPayInput,
+  NewApiTopupQuote,
   NewApiUsage,
   NewApiUsageRecord,
   NewApiUser,
-  NewApiVerifyInput
+  NewApiVerifyInput,
+  NewApiWallet
 } from '@shared/contracts'
 import { defaultNewApiAuthMethods, IPC } from '@shared/contracts'
 import {
@@ -42,6 +50,16 @@ import {
   tokenFromRecord,
   type TokenRecord
 } from './newapi-utils'
+import {
+  buildPaymentSession,
+  parseHostedCheckoutUrl,
+  parsePaymentTarget,
+  parseRedeemResult,
+  parseSubscriptionPlans,
+  parseSubscriptionSelf,
+  parseTopupInfo,
+  parseTopupQuote
+} from './newapi-wallet'
 
 export const NEWAPI_ORIGIN = 'https://platform.sec.hn.cn'
 export const NEWAPI_API_BASE = 'https://api.sec.hn.cn/v1'
@@ -136,6 +154,7 @@ export class NewApiManager {
     authenticated: false,
     user: null,
     quota: null,
+    subscriptions: [],
     token: null,
     accessToken: null,
     accessTokenError: null,
@@ -859,6 +878,16 @@ export class NewApiManager {
     const statusData = statusResult.ok ? statusPayload?.data : undefined
     this.statusCache = statusData ?? {}
 
+    let subscriptions: NewApiSubscription[] = []
+    try {
+      const result = await this.authRequest('/api/subscription/self')
+      if (result.status === 401) throw new SessionExpiredError('登录已过期')
+      if (result.ok) subscriptions = parseSubscriptionSelf(result.json)
+    } catch (error) {
+      if (error instanceof SessionExpiredError) throw error
+      // 订阅接口未启用或暂不可用时，订阅额度按 0 展示。
+    }
+
     let token: NewApiToken | null = null
     let tokenError: string | null = null
     let accessToken: NewApiAccessToken | null = null
@@ -877,7 +906,7 @@ export class NewApiManager {
       model = pickDefaultModel(models, current.model)
       // The Go backend owns the upstream base URL/key. Electron only receives
       // a loopback proxy URL and a per-launch token for inference.
-      await this.backend.configureLLM({
+      const status = await this.backend.configureLLM({
         baseUrl: NEWAPI_API_BASE,
         apiKey: managed.apiKey,
         model
@@ -896,26 +925,27 @@ export class NewApiManager {
         // Keep the authenticated platform list as a display fallback; the
         // gateway still has a valid configured model.
       }
+      // Mirror what PostgreSQL actually holds (normalized base URL, effective
+      // model) so the app and the web page — which both read that row — show
+      // the same provider instead of two divergent local caches.
       await applyManagedConnection({
-        baseUrl: NEWAPI_API_BASE,
+        baseUrl: status?.base_url || NEWAPI_API_BASE,
         apiKey: managed.apiKey,
-        model,
+        model: status?.model || model,
         models
       })
     } catch (error) {
       tokenError = errorMessage(error)
     }
 
-    const quota: NewApiQuota = quotaFromUser(
-      rawUser,
-      this.statusCache,
-      Boolean(token?.unlimitedQuota)
-    )
+    // 余额始终取当前账户余额；App-managed API Key 的 unlimited_quota 不代表账户余额。
+    const quota: NewApiQuota = quotaFromUser(rawUser, this.statusCache)
     this.update({
       stage: 'ready',
       authenticated: true,
       user,
       quota,
+      subscriptions,
       token,
       accessToken,
       accessTokenError,
@@ -928,6 +958,134 @@ export class NewApiManager {
       error: tokenError,
       updatedAt: Date.now()
     })
+  }
+
+  /** 钱包：充值配置与可购买订阅套餐。套餐读取失败不阻断充值。 */
+  async getWallet(): Promise<NewApiWallet> {
+    const info = await this.authRequest('/api/user/topup/info')
+    if (info.status === 401) throw new SessionExpiredError('登录已过期')
+    const topup = parseTopupInfo(info.json)
+    let plans: NewApiWallet['plans'] = []
+    let plansError: string | null = null
+    try {
+      const result = await this.authRequest('/api/subscription/plans')
+      if (!result.ok && result.status !== 200) {
+        throw new Error(messageOf(result.json, `无法读取订阅套餐（HTTP ${result.status}）`))
+      }
+      plans = parseSubscriptionPlans(result.json)
+    } catch (error) {
+      plansError = errorMessage(error)
+    }
+    return { topup, plans, plansError }
+  }
+
+  /** 按充值额度向平台询价（含分组倍率与预设折扣）。 */
+  async quoteTopup(input: NewApiAmountInput): Promise<NewApiTopupQuote> {
+    const result = await this.authRequest('/api/user/amount', {
+      method: 'POST',
+      body: JSON.stringify({ amount: input.amount })
+    })
+    return { payable: parseTopupQuote(result.json), currency: 'CNY' }
+  }
+
+  /** 余额充值：创建平台订单，返回可直接渲染二维码的收银台链接。 */
+  async startTopupPayment(input: NewApiTopupPayInput): Promise<NewApiPaymentResult> {
+    if (input.method === 'stripe' || input.method === 'waffo_pancake') {
+      const path =
+        input.method === 'stripe' ? '/api/user/stripe/pay' : '/api/user/waffo-pancake/pay'
+      const result = await this.authRequest(path, {
+        method: 'POST',
+        body: JSON.stringify({ amount: input.amount })
+      })
+      const url = parseHostedCheckoutUrl(result.json)
+      return {
+        status: 'qr',
+        amount: input.amount,
+        currency: 'CNY',
+        method: input.method,
+        orderId: '',
+        merchantId: '',
+        paymentUrl: url,
+        expiresAt: Date.now() + 5 * 60 * 1000
+      }
+    }
+    const result = await this.authRequest('/api/user/pay', {
+      method: 'POST',
+      body: JSON.stringify({ amount: input.amount, payment_method: input.method })
+    })
+    const target = parsePaymentTarget(result.json)
+    return buildPaymentSession(target, { amount: input.amount, method: input.method })
+  }
+
+  /** 兑换码充值。 */
+  async redeem(input: NewApiRedeemInput): Promise<{ credited: number }> {
+    const result = await this.authRequest('/api/user/topup', {
+      method: 'POST',
+      body: JSON.stringify({ key: input.key })
+    })
+    const credited = parseRedeemResult(result.json)
+    await this.refreshQuietly()
+    return { credited }
+  }
+
+  /** 订阅套餐：余额支付即时生效，其它方式打开平台收银台。 */
+  async subscribe(input: NewApiSubscribeInput): Promise<NewApiPaymentResult> {
+    if (input.method === 'balance') {
+      const result = await this.authRequest('/api/subscription/balance/pay', {
+        method: 'POST',
+        body: JSON.stringify({ plan_id: input.planId })
+      })
+      const payload = result.json as { success?: boolean; message?: unknown } | null
+      if (!result.ok || payload?.success === false) {
+        throw new Error(messageOf(payload, '余额支付订阅失败'))
+      }
+      await this.refreshQuietly()
+      return {
+        status: 'paid',
+        amount: 0,
+        currency: 'CNY',
+        method: 'balance',
+        orderId: '',
+        merchantId: '',
+        paymentUrl: '',
+        expiresAt: 0
+      }
+    }
+    if (input.method === 'stripe' || input.method === 'waffo_pancake') {
+      const path =
+        input.method === 'stripe'
+          ? '/api/subscription/stripe/pay'
+          : '/api/subscription/waffo-pancake/pay'
+      const result = await this.authRequest(path, {
+        method: 'POST',
+        body: JSON.stringify({ plan_id: input.planId })
+      })
+      const url = parseHostedCheckoutUrl(result.json)
+      return {
+        status: 'qr',
+        amount: 0,
+        currency: 'CNY',
+        method: input.method,
+        orderId: '',
+        merchantId: '',
+        paymentUrl: url,
+        expiresAt: Date.now() + 5 * 60 * 1000
+      }
+    }
+    const result = await this.authRequest('/api/subscription/epay/pay', {
+      method: 'POST',
+      body: JSON.stringify({ plan_id: input.planId, payment_method: input.method })
+    })
+    const target = parsePaymentTarget(result.json)
+    return buildPaymentSession(target, { amount: 0, method: input.method })
+  }
+
+  private async refreshQuietly(): Promise<void> {
+    try {
+      await this.refresh()
+    } catch {
+      // 支付/兑换已成功，额度刷新失败不应让操作显示为失败。
+    }
   }
 
   /** 平台推荐计划：读取当前账号的专属推荐码（new-api /api/user/aff，code 在 message 字段）。 */
@@ -1146,6 +1304,7 @@ export class NewApiManager {
       authenticated: false,
       user: null,
       quota: null,
+      subscriptions: [],
       token: null,
       accessToken: null,
       accessTokenError: null,

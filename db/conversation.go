@@ -58,7 +58,12 @@ type Conversation struct {
 	AgentKey     string     `json:"agent_key"`
 	Title        string     `json:"title"`
 	LLMProfileID *int64     `json:"llm_profile_id,omitempty"`
-	Pinned       bool       `json:"pinned"`
+	// ProjectID is the owning project. NULL means the thread is unassigned and
+	// must stay out of every project's list until it is bound explicitly.
+	ProjectID *int64 `json:"project_id,omitempty"`
+	// Workspace is the working directory recorded at creation time.
+	Workspace string     `json:"workspace"`
+	Pinned    bool       `json:"pinned"`
 	PinnedAt     *time.Time `json:"pinned_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -70,12 +75,12 @@ type ConversationPatch struct {
 	Pinned *bool
 }
 
-const convCols = `id, agent_key, title, llm_profile_id, pinned_at, created_at, updated_at`
+const convCols = `id, agent_key, title, llm_profile_id, project_id, workspace, pinned_at, created_at, updated_at`
 
 func scanConv(row interface{ Scan(...any) error }) (Conversation, error) {
 	var c Conversation
 	var pinnedAt sql.NullTime
-	err := row.Scan(&c.ID, &c.AgentKey, &c.Title, &c.LLMProfileID, &pinnedAt, &c.CreatedAt, &c.UpdatedAt)
+	err := row.Scan(&c.ID, &c.AgentKey, &c.Title, &c.LLMProfileID, &c.ProjectID, &c.Workspace, &pinnedAt, &c.CreatedAt, &c.UpdatedAt)
 	if pinnedAt.Valid {
 		c.Pinned = true
 		c.PinnedAt = &pinnedAt.Time
@@ -84,8 +89,15 @@ func scanConv(row interface{ Scan(...any) error }) (Conversation, error) {
 }
 
 // CreateConversation opens a new chat thread for agentKey with an initial title.
-// llmProfileID may be nil to use the globally active profile.
+// llmProfileID may be nil to use the globally active profile. The thread is
+// created unassigned; use CreateConversationInProject when a project is known.
 func (d *DB) CreateConversation(agentKey, title string, llmProfileID *int64) (*Conversation, error) {
+	return d.CreateConversationInProject(agentKey, title, llmProfileID, nil, "")
+}
+
+// CreateConversationInProject opens a thread owned by projectID and records the
+// workspace it was started from. projectID nil keeps the thread unassigned.
+func (d *DB) CreateConversationInProject(agentKey, title string, llmProfileID, projectID *int64, workspace string) (*Conversation, error) {
 	tx, err := d.Begin()
 	if err != nil {
 		return nil, err
@@ -96,8 +108,9 @@ func (d *DB) CreateConversation(agentKey, title string, llmProfileID *int64) (*C
 	// by this transaction before it takes a profile lock, matching DeleteProfile's
 	// child-row -> profile-row protocol.
 	c, err := scanConv(tx.QueryRow(`
-INSERT INTO conversations(agent_key, title, llm_profile_id) VALUES ($1, $2, NULL)
-RETURNING `+convCols, agentKey, title))
+INSERT INTO conversations(agent_key, title, llm_profile_id, project_id, workspace)
+VALUES ($1, $2, NULL, $3, $4)
+RETURNING `+convCols, agentKey, title, projectID, workspace))
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +128,14 @@ WHERE id=$1 RETURNING `+convCols, c.ID, llmProfileID))
 		return nil, err
 	}
 	return &c, nil
+}
+
+// SetConversationProject binds a thread to a project. Callers must check the
+// current owner first: history moving between projects is an explicit decision,
+// not a side effect of the client switching directories.
+func (d *DB) SetConversationProject(id, projectID int64) error {
+	_, err := d.Exec(`UPDATE conversations SET project_id=$2 WHERE id=$1`, id, projectID)
+	return err
 }
 
 // UpdateConversationProfile sets (or clears) the LLM profile override for a conversation.
@@ -142,10 +163,26 @@ func (d *DB) UpdateConversationProfile(id int64, llmProfileID *int64) error {
 	return tx.Commit()
 }
 
+const convOrderBy = ` ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC NULLS LAST, updated_at DESC, id DESC`
+
 // ListConversations returns all threads, most-recently-updated first.
 func (d *DB) ListConversations() ([]*Conversation, error) {
-	rows, err := d.Query(`SELECT ` + convCols + ` FROM conversations
-ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC NULLS LAST, updated_at DESC, id DESC`)
+	return d.queryConversations(`SELECT ` + convCols + ` FROM conversations` + convOrderBy)
+}
+
+// ListConversationsByProject returns one project's threads only. Threads that
+// belong to another project — or to none — are never included.
+func (d *DB) ListConversationsByProject(projectID int64) ([]*Conversation, error) {
+	return d.queryConversations(`SELECT `+convCols+` FROM conversations WHERE project_id = $1`+convOrderBy, projectID)
+}
+
+// ListUnassignedConversations returns threads whose project_id is still NULL.
+func (d *DB) ListUnassignedConversations() ([]*Conversation, error) {
+	return d.queryConversations(`SELECT ` + convCols + ` FROM conversations WHERE project_id IS NULL` + convOrderBy)
+}
+
+func (d *DB) queryConversations(query string, args ...any) ([]*Conversation, error) {
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -248,13 +285,37 @@ RETURNING id`, convID, utf8Clean(a.Worker), utf8Clean(a.Kind), utf8Clean(a.Tool)
 	return id, err
 }
 
+// UpdateConvActivityText rewrites the text of a row that is still being written
+// (a live chat answer). Only summary/detail change: kind, worker and created_at
+// are immutable, so a client that already rendered this seq only has to replace
+// the text it is showing.
+func (d *DB) UpdateConvActivityText(convID, id int64, summary, detail string) error {
+	_, err := d.Exec(`UPDATE conversation_activities SET summary=$3, detail=$4 WHERE id=$1 AND conversation_id=$2`,
+		id, convID, utf8Clean(summary), utf8Clean(detail))
+	return err
+}
+
 // ConvActivityList returns a conversation's steps after sinceID (exclusive) with
 // the summary-only column set (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityList(convID, sinceID int64, limit int) ([]Activity, int64, error) {
+	return d.convActivityList(convID, sinceID, limit, false)
+}
+
+// ConvActivityListDetail is ConvActivityList including the full Detail blob.
+// The desktop app asks for it so a full assistant answer renders immediately
+// instead of one lazy /messages/{seq} request per step.
+func (d *DB) ConvActivityListDetail(convID, sinceID int64, limit int) ([]Activity, int64, error) {
+	return d.convActivityList(convID, sinceID, limit, true)
+}
+
+func (d *DB) convActivityList(convID, sinceID int64, limit int, withDetail bool) ([]Activity, int64, error) {
 	if limit <= 0 {
 		limit = 500
 	}
-	const cols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+	cols := convActivityCols
+	if withDetail {
+		cols += `, COALESCE(detail,'')`
+	}
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMIT $3`, convID, sinceID, limit)
 	if err != nil {
@@ -264,9 +325,8 @@ FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMI
 	out := []Activity{}
 	cursor := sinceID
 	for rows.Next() {
-		var a Activity
-		if err := rows.Scan(&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
-			&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens); err != nil {
+		a := Activity{}
+		if err := scanActivityRow(rows, &a, withDetail); err != nil {
 			return nil, sinceID, err
 		}
 		if a.ID > cursor {
@@ -283,10 +343,22 @@ FROM conversation_activities WHERE conversation_id=$1 AND id>$2 ORDER BY id LIMI
 // exist before the returned window, so the client can stop loading earlier history
 // on scroll-up. Summary-only columns (detail is lazy-loaded via ConvActivityDetail).
 func (d *DB) ConvActivityPage(convID, before int64, limit int) ([]Activity, bool, error) {
+	return d.convActivityPage(convID, before, limit, false)
+}
+
+// ConvActivityPageDetail is ConvActivityPage including the full Detail blob.
+func (d *DB) ConvActivityPageDetail(convID, before int64, limit int) ([]Activity, bool, error) {
+	return d.convActivityPage(convID, before, limit, true)
+}
+
+func (d *DB) convActivityPage(convID, before int64, limit int, withDetail bool) ([]Activity, bool, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	const cols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+	cols := convActivityCols
+	if withDetail {
+		cols += `, COALESCE(detail,'')`
+	}
 	// fetch one extra row to detect whether older history remains before this window.
 	rows, err := d.Query(`SELECT `+cols+`
 FROM conversation_activities
@@ -298,9 +370,8 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 	defer rows.Close()
 	desc := []Activity{}
 	for rows.Next() {
-		var a Activity
-		if err := rows.Scan(&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
-			&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens); err != nil {
+		a := Activity{}
+		if err := scanActivityRow(rows, &a, withDetail); err != nil {
 			return nil, false, err
 		}
 		desc = append(desc, a)
@@ -318,6 +389,20 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 		out[len(desc)-1-i] = a
 	}
 	return out, hasMore, nil
+}
+
+// convActivityCols is the summary-only column list shared by both readers; the
+// detail variant appends the Detail blob. Keep the order in sync with
+// scanActivityRow.
+const convActivityCols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+
+func scanActivityRow(rows *sql.Rows, a *Activity, withDetail bool) error {
+	dest := []any{&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
+		&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens}
+	if withDetail {
+		dest = append(dest, &a.Detail)
+	}
+	return rows.Scan(dest...)
 }
 
 // ConvActivityDetail lazily returns the full detail blob for one step.

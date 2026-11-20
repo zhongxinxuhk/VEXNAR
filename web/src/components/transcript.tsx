@@ -105,7 +105,14 @@ function groupSteps(steps: Activity[], chat: boolean): Group[] {
     }
     // In a chat (main agent) the assistant's text/result IS the answer — render it
     // full (markdown), never collapsed. thinking still folds into a compact block.
-    if (s.kind === "result" || (chat && s.kind === "text")) {
+    // 流式回合的正文已经作为 text 步骤落库,终态 result 行只带用量和终态信息,
+    // 渲染它会多出一个空答案块。
+    if (s.kind === "result") {
+      if (!s.summary.trim() && !s.detail?.trim()) continue;
+      out.push({ type: "answer", key: s.seq, step: s });
+      continue;
+    }
+    if (chat && s.kind === "text") {
       out.push({ type: "answer", key: s.seq, step: s });
       continue;
     }

@@ -20,6 +20,46 @@ let savedMessages = [{
     { id: 'fixture-read', name: 'read_file', status: 'error', input: { path: 'README.md' }, output: '文件不存在' }
   ]
 }]
+// Backend conversations (the app no longer uses the Electron-local session store).
+let conversationSeq = 1
+let effort = 'high'
+const desktopProjects = [
+  { id: '1', root_path: '/fixture/project-a', name: 'project-a', created_at: '2026-11-20T09:00:00Z' }
+]
+const conversations = [
+  {
+    id: 1,
+    agent_key: 'auto',
+    title: '搭建 VEXNAR 官网',
+    project_id: 1,
+    workspace: '/fixture/project-a',
+    pinned: false,
+    created_at: '2026-11-20T10:00:00Z',
+    updated_at: '2026-11-20T10:05:00Z'
+  },
+  {
+    id: 2,
+    agent_key: 'auto',
+    title: '检查 LLM 网关',
+    project_id: null,
+    workspace: '',
+    pinned: false,
+    created_at: '2026-11-20T09:00:00Z',
+    updated_at: '2026-11-20T09:30:00Z'
+  }
+]
+let activitySeq = 0
+const conversationActivities = {
+  1: [
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:00Z', kind: 'user', summary: '把官网搭起来', detail: JSON.stringify({ text: '把官网搭起来', attachments: [] }) },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:05Z', kind: 'thinking', summary: '先看目录结构', detail: '先看目录结构，再决定用 React 还是静态页。' },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06Z', kind: 'tool_use', tool: 'Bash', tool_use_id: 'tool-1', summary: 'Bash ls', detail: JSON.stringify({ command: 'ls' }) },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:07Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:09Z', kind: 'text', summary: '已经搭好官网骨架', detail: '已经搭好官网骨架，并补上交互式架构图和部署脚本。' },
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:10Z', kind: 'result', summary: '完成', detail: '完成', input_tokens: 3200 }
+  ]
+}
+
 const sessionList = [
   {
     id: 'test',
@@ -55,16 +95,26 @@ const sessionList = [
   }
 ]
 contextBridge.exposeInMainWorld('__uiFixture', {
-  snapshot: () => ({ accessMode, lastSend, savedMessages, settings })
+  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort })
 })
 let settings = {
   theme: 'light',
   displayName: 'VEXNAR',
   avatarColor: 'orange',
-  workspaceRoot: '',
+  workspaceRoot: '/fixture/project-a',
   shell: '',
-  model: 'test-model',
-  newApiModels: ['test-model'],
+  model: 'gpt-6.1-sol',
+  newApiModels: [
+    'gpt-6.2-sol',
+    'gpt-6.2-astra',
+    'gpt-6.1-terra',
+    'gpt-6.1-sol',
+    'gpt-6-astra',
+    'gpt-6-sol',
+    'gpt-6-luna',
+    'gpt-5.6-sol',
+    'gpt-5.6-terra'
+  ],
   baseUrl: '',
   hasApiKey: false
 }
@@ -81,6 +131,8 @@ let system = {
   notify_public_base_url: '',
   notify_digest_interval_min: 15
 }
+let paymentPending = 0
+let pendingGroup = ''
 const newapi = {
   authenticated: true,
   stage: 'ready',
@@ -98,6 +150,17 @@ const newapi = {
     usdExchangeRate: 1,
     displayInCurrency: false
   },
+  subscriptions: [
+    {
+      id: 11,
+      planId: 3,
+      amountTotal: 120000000,
+      amountUsed: 12000000,
+      status: 'active',
+      upgradeGroup: 'research',
+      endTime: Date.now() + 86400000
+    }
+  ],
   models: ['test-model'],
   token: null,
   accessToken: {
@@ -169,10 +232,30 @@ contextBridge.exposeInMainWorld('vexnar', {
   git: { status: () => ok({ branch: 'main', files: [] }) },
   backend: {
     status: () => ok({ connected: true, version: 'test' }),
+    upload: ({ files }) =>
+      ok({
+        attachments: files.map((file) => ({
+          name: file.name,
+          path: 'uploads/' + file.name,
+          size: 1024
+        }))
+      }),
     request: ({ method, body, path }) => {
-      if (path === '/desktop/projects' && method === 'POST') {
-        const id = body.root_path === '/fixture/project-a' ? '1' : '2'
-        return ok({ id, name: 'project-a', root_path: body.root_path })
+      if (path === '/desktop/projects') {
+        if (method === 'POST') {
+          const root = typeof body?.root_path === 'string' ? body.root_path : ''
+          const existing = desktopProjects.find((item) => item.root_path === root)
+          if (existing) return ok(existing)
+          const project = {
+            id: String(desktopProjects.length + 1),
+            root_path: root,
+            name: root.split('/').filter(Boolean).pop() || root,
+            created_at: new Date().toISOString()
+          }
+          desktopProjects.push(project)
+          return ok(project)
+        }
+        return ok({ projects: desktopProjects })
       }
       const sessionsPath = /^\/desktop\/projects\/([12])\/tasks\/1237\/(sessions|history)(?:\?(.*))?$/.exec(path)
       if (sessionsPath && taskProject === sessionsPath[1]) {
@@ -205,10 +288,104 @@ contextBridge.exposeInMainWorld('vexnar', {
         if (method === 'PUT') accessMode = body.access_mode
         return ok({ access_mode: accessMode })
       }
+      if (path === '/desktop/llm') {
+        return ok({
+          configured: true,
+          provider: 'openai-responses',
+          format: 'openai-responses',
+          model: settings.model,
+          base_url: 'https://api.sec.hn.cn/v1',
+          key_set: true,
+          reasoning_effort: effort
+        })
+      }
+      if (path === '/desktop/llm/configure') {
+        if (typeof body?.reasoning_effort === 'string') effort = body.reasoning_effort
+        if (body?.model) settings.model = body.model
+        return ok({
+          configured: true,
+          provider: 'openai-responses',
+          format: 'openai-responses',
+          model: settings.model,
+          base_url: 'https://api.sec.hn.cn/v1',
+          key_set: true,
+          reasoning_effort: effort
+        })
+      }
+      if (path === '/desktop/llm/models') {
+        return ok({ data: [{ id: settings.model }, ...settings.newApiModels.map((id) => ({ id }))] })
+      }
       if (path === '/settings') {
         if (method === 'PUT') system = { ...system, ...body }
         return ok(system)
       }
+      if (path === '/conversations' && method === 'GET') {
+        return ok({ conversations })
+      }
+      if (path === '/conversations' && method === 'POST') {
+        const workspace = typeof body?.workspace === 'string' ? body.workspace : ''
+        const project = desktopProjects.find((item) => item.root_path === workspace)
+        const conversation = {
+          id: ++conversationSeq,
+          agent_key: body?.agent_key || 'auto',
+          title: body?.title || '新对话',
+          project_id: project ? Number(project.id) : null,
+          workspace,
+          pinned: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        conversations.unshift(conversation)
+        conversationActivities[conversation.id] = []
+        return ok(conversation)
+      }
+      const bind = path.match(/^\/desktop\/conversations\/(\d+)\/project$/)
+      if (bind && method === 'POST') {
+        const conversation = conversations.find((item) => item.id === Number(bind[1]))
+        if (!conversation) return ok({ error: 'not found' })
+        conversation.project_id = Number(body?.project_id || 0) || null
+        return ok(conversation)
+      }
+      const patch = path.match(/^\/conversations\/(\d+)$/)
+      if (patch && method === 'PATCH') {
+        const conversation = conversations.find((item) => item.id === Number(patch[1]))
+        if (conversation) {
+          if (typeof body?.title === 'string') conversation.title = body.title
+          if (typeof body?.pinned === 'boolean') conversation.pinned = body.pinned
+        }
+        return ok(conversation)
+      }
+      if (patch && method === 'DELETE') {
+        const index = conversations.findIndex((item) => item.id === Number(patch[1]))
+        if (index >= 0) conversations.splice(index, 1)
+        return ok({ deleted: 1 })
+      }
+      const tail = path.match(/^\/conversations\/([^/]+)\/messages/)
+      if (tail && method === 'GET') {
+        const id = tail[1]
+        const since = Number(new URLSearchParams(path.split('?')[1] || '').get('since') || 0)
+        const items = (conversationActivities[id] || []).filter((item) => item.seq > since)
+        return ok({ items, cursor: items.length ? items[items.length - 1].seq : since, running: false, hasMore: false })
+      }
+      if (tail && method === 'POST') {
+        const id = tail[1]
+        const attachments = body?.attachments || []
+        lastSend = { sessionId: id, message: body?.message || '', attachments }
+        savedMessages.push({
+          id: 'send-' + Date.now(),
+          sessionId: id,
+          role: 'user',
+          content: body?.message || '',
+          attachments,
+          createdAt: Date.now()
+        })
+        const list = conversationActivities[id] || (conversationActivities[id] = [])
+        list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'user', summary: (body?.message || '图片').slice(0, 40), detail: body?.message || '图片' })
+        list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'text', summary: '收到', detail: '收到，这条回答来自 Go 后端会话活动流。' })
+        list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'result', summary: '完成', detail: '完成', input_tokens: 42 })
+        return ok({ status: 'accepted' })
+      }
+      if (tail && /\/stop$/.test(path) && method === 'POST') return ok({ status: 'idle' })
       return ok([])
     }
   },
@@ -223,10 +400,135 @@ contextBridge.exposeInMainWorld('vexnar', {
   newapi: {
     bootstrap: () => ok(newapi),
     status: () => ok(newapi),
-    refresh: () => ok(newapi),
+    refresh: () => {
+      if (paymentPending > 0) {
+        paymentPending -= 1
+        if (paymentPending === 0) {
+          newapi.quota.remaining += 100
+          if (pendingGroup) {
+            newapi.user.group = pendingGroup
+            pendingGroup = ''
+          }
+        }
+      }
+      return ok(newapi)
+    },
     onChange: sub,
     openPlatform: () => ok({ opened: true }),
     affCode: () => ok({ code: 'AKEH', link: 'https://platform.sec.hn.cn/sign-up?aff=AKEH' }),
+    wallet: () =>
+      ok({
+        topup: {
+          onlineEnabled: true,
+          redemptionEnabled: true,
+          complianceConfirmed: true,
+          minTopup: 5,
+          amountOptions: [10, 50, 100, 200, 500, 1000],
+          discount: { 100: 0.95, 200: 0.9, 500: 0.85, 1000: 0.8 },
+          methods: [
+            { name: '支付宝', type: 'alipay', icon: '', minTopup: 0 },
+            { name: '微信支付', type: 'wxpay', icon: '', minTopup: 0 }
+          ]
+        },
+        plans: [
+          {
+            id: 1,
+            title: '标准版',
+            subtitle: '覆盖日常对话与轻量分析',
+            priceAmount: 49,
+            currency: 'CNY',
+            durationUnit: 'month',
+            durationValue: 1,
+            totalAmount: 2500000,
+            quotaResetPeriod: 'monthly',
+            allowBalancePay: true,
+            upgradeGroup: ''
+          },
+          {
+            id: 2,
+            title: '高级版',
+            subtitle: '长上下文、更多并发与高频使用',
+            priceAmount: 129,
+            currency: 'CNY',
+            durationUnit: 'month',
+            durationValue: 1,
+            totalAmount: 8000000,
+            quotaResetPeriod: 'monthly',
+            allowBalancePay: true,
+            upgradeGroup: 'pro'
+          },
+          {
+            id: 3,
+            title: '专业年付',
+            subtitle: '适合团队与持续安全运营',
+            priceAmount: 1299,
+            currency: 'CNY',
+            durationUnit: 'year',
+            durationValue: 1,
+            totalAmount: 120000000,
+            quotaResetPeriod: 'monthly',
+            allowBalancePay: false,
+            upgradeGroup: 'team'
+          },
+          {
+            id: 4,
+            title: '团队版',
+            subtitle: '多人协作与统一结算',
+            priceAmount: 2999,
+            currency: 'CNY',
+            durationUnit: 'year',
+            durationValue: 1,
+            totalAmount: 300000000,
+            quotaResetPeriod: 'monthly',
+            allowBalancePay: false,
+            upgradeGroup: 'team-plus'
+          }
+        ],
+        plansError: null
+      }),
+    topupQuote: (input) =>
+      ok({
+        payable:
+          input.amount *
+          ({ 100: 0.95, 200: 0.9, 500: 0.85, 1000: 0.8 }[input.amount] ?? 1),
+        currency: 'CNY'
+      }),
+    topupPay: (input) => {
+      paymentPending = 1
+      return ok({
+        status: 'qr',
+        amount: input.amount === 100 ? 95 : input.amount,
+        currency: 'CNY',
+        method: input.method,
+        orderId: 'VEX202611210001',
+        merchantId: '20220726190052',
+        paymentUrl:
+          'https://zpayz.cn/submit.php?pid=20220726190052&type=' +
+          input.method +
+          '&out_trade_no=VEX202611210001&money=95.00&name=VEXNAR',
+        expiresAt: Date.now() + 300000
+      })
+    },
+    redeem: () => ok({ credited: 500000 }),
+    subscribe: (input) => {
+      const planAmount = { 1: 49, 2: 129, 3: 1299 }[input.planId] ?? 49
+      if (input.method === 'balance') return ok({ status: 'paid', amount: planAmount, method: 'balance' })
+      paymentPending = 1
+      pendingGroup = 'pro'
+      return ok({
+        status: 'qr',
+        amount: planAmount,
+        currency: 'CNY',
+        method: input.method,
+        orderId: 'VEX202611210002',
+        merchantId: '20220726190052',
+        paymentUrl:
+          'https://zpayz.cn/submit.php?pid=20220726190052&type=' +
+          input.method +
+          '&out_trade_no=VEX202611210002&money=129.00&name=VEXNAR',
+        expiresAt: Date.now() + 300000
+      })
+    },
     usage: () => {
       const now = Date.now()
       const day = 86_400_000

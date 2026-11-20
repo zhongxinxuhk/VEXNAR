@@ -8,12 +8,17 @@ import type {
   AgentEvent,
   AgentSendInput,
   BackendRequestInput,
+  BackendUploadInput,
   IdInput,
   IpcResult,
   MessageAppendInput,
+  NewApiAmountInput,
   NewApiExternalAuthInput,
   NewApiLoginInput,
+  NewApiRedeemInput,
   NewApiState,
+  NewApiSubscribeInput,
+  NewApiTopupPayInput,
   NewApiVerifyInput,
   SessionCreateInput,
   SessionPinInput,
@@ -93,7 +98,8 @@ const api: VexnarApi = {
   },
   backend: {
     status: () => invoke(IPC.backendStatus),
-    request: <T = unknown>(input: BackendRequestInput) => invoke<T>(IPC.backendRequest, input)
+    request: <T = unknown>(input: BackendRequestInput) => invoke<T>(IPC.backendRequest, input),
+    upload: (input: BackendUploadInput) => invoke(IPC.backendUpload, input)
   },
   newapi: {
     status: () => invoke(IPC.newapiStatus),
@@ -111,6 +117,11 @@ const api: VexnarApi = {
     openPlatform: () => invoke(IPC.newapiOpenPlatform),
     usage: () => invoke(IPC.newapiUsage),
     affCode: () => invoke(IPC.newapiAffCode),
+    wallet: () => invoke(IPC.newapiWallet),
+    topupQuote: (input: NewApiAmountInput) => invoke(IPC.newapiTopupQuote, input),
+    topupPay: (input: NewApiTopupPayInput) => invoke(IPC.newapiTopupPay, input),
+    redeem: (input: NewApiRedeemInput) => invoke(IPC.newapiRedeem, input),
+    subscribe: (input: NewApiSubscribeInput) => invoke(IPC.newapiSubscribe, input),
     onChange: (listener: (state: NewApiState) => void) =>
       subscribe(IPC.newapiChanged, listener)
   }

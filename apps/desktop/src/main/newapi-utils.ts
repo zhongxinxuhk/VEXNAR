@@ -15,6 +15,7 @@ export type TokenRecord = {
   id: number;
   name: string;
   key?: string;
+  group?: string;
   unlimited_quota?: boolean;
   remain_quota?: number;
   used_quota?: number;
@@ -98,6 +99,7 @@ export function tokenFromRecord(record: TokenRecord): NewApiToken {
     id: record.id,
     name: record.name || "App-managed",
     maskedKey: maskApiKey(key),
+    group: String(record.group ?? "").trim(),
     unlimitedQuota: Boolean(record.unlimited_quota),
     remainQuota: Number(record.remain_quota ?? 0),
     usedQuota: Number(record.used_quota ?? 0),
@@ -122,6 +124,7 @@ export function parseTokenItems(payload: unknown): TokenRecord[] {
       id: Number(item.id ?? 0),
       name: String(item.name ?? ""),
       key: typeof item.key === "string" ? item.key : undefined,
+      group: typeof item.group === "string" ? item.group.trim() : "",
       unlimited_quota: Boolean(item.unlimited_quota),
       remain_quota: Number(item.remain_quota ?? 0),
       used_quota: Number(item.used_quota ?? 0),
@@ -219,7 +222,6 @@ export function quotaFromUser(
     display_in_currency?: unknown;
     usd_exchange_rate?: unknown;
   },
-  unlimited = false,
 ): NewApiQuota {
   const remaining = Number(user.quota ?? 0);
   const used = Number(user.used_quota ?? 0);
@@ -232,7 +234,7 @@ export function quotaFromUser(
     quotaPerUnit: quotaPerUnit > 0 ? quotaPerUnit : 500000,
     usdExchangeRate: exchange > 0 ? exchange : 1,
     displayInCurrency: status.display_in_currency !== false,
-    unlimited,
+    unlimited: false,
   };
 }
 

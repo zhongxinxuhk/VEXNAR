@@ -18,6 +18,29 @@ import (
 	"github.com/zhongxinxuhk/vexnar/sidequestion"
 )
 
+// LiveText is the sink that persists a run's assistant text while the model is
+// still writing it. The implementation owns the transcript row: the first Push
+// creates it, later Pushes rewrite it in place, Finish seals it. Because that row
+// IS the transcript record for the run, captureRun must not emit a second one —
+// and the terminal `result` row leaves its text empty when the answer was already
+// streamed (see the KindResult branch below).
+//
+// Worker/planner runs pass nil: they keep the coalesce-then-emit behaviour so the
+// console transcript stays one row per step.
+type LiveText interface {
+	// Push receives the accumulated text of the current run. A kind switch starts
+	// a new row (the previous one is sealed by captureRun's flush).
+	Push(kind, text string)
+	// Finish seals the row being written; the next Push starts a new one. It
+	// reports whether the run is now a persisted transcript row: false means the
+	// sink could not store it, and captureRun falls back to emitting the record
+	// itself so an answer is never lost to a storage failure.
+	Finish() bool
+	// LastText is the sealed text of the most recent `text` run ("" if none).
+	// captureRun compares it with the terminal answer to avoid storing it twice.
+	LastText() string
+}
+
 // captureRun drives one agent turn-to-completion over Session.Prompt and emits a
 // coalesced ActivityRecord per execution step (tool_use / tool_result / text /
 // thinking / result). It is shared by every LLM agent in the system (worker,
@@ -28,7 +51,9 @@ import (
 //
 // KindText/KindThinking arrive as streaming deltas (one event per fragment); a
 // contiguous run is coalesced into a single record so the trace shows whole
-// messages, not dozens of fragments.
+// messages, not dozens of fragments. When live != nil the coalesced run is
+// written incrementally through that sink instead, so a chat client can render
+// the answer as it is written.
 func captureRun(ctx context.Context, opts agentcore.Options, input string, emit func(db.Activity)) (string, harness.TerminalReason, error) {
 	s := agentcore.NewSession(opts)
 	defer s.Close() // release the session's background-task manager (temp dir + processes)
@@ -39,6 +64,11 @@ func captureRun(ctx context.Context, opts agentcore.Options, input string, emit 
 // multiple prompts on the SAME conversation (e.g. a settlement round that reuses
 // the worker's accumulated context after the main run hit max_turns).
 func captureRunSession(ctx context.Context, s *agentcore.Session, input string, emit func(db.Activity)) (string, harness.TerminalReason, error) {
+	return captureRunSessionLive(ctx, s, input, emit, nil)
+}
+
+// captureRunSessionLive is captureRunSession with an incremental text sink.
+func captureRunSessionLive(ctx context.Context, s *agentcore.Session, input string, emit func(db.Activity), live LiveText) (string, harness.TerminalReason, error) {
 	ctx, auditTrace := intercept.WithTrace(ctx, input, approvalHistory(s.Messages()))
 	defer auditTrace.Finish()
 	var reason harness.TerminalReason
@@ -62,9 +92,21 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 		k := tkind
 		tbuf.Reset()
 		tkind = ""
-		if s != "" {
-			rec(db.Activity{Kind: k, Summary: firstLine(s, 200), Detail: s})
+		if s == "" {
+			return
 		}
+		if live != nil {
+			// The row was already written fragment-by-fragment; seal it instead of
+			// emitting a duplicate. The intercept audit still needs the finished text.
+			if live.Finish() {
+				if k == "text" {
+					auditTrace.Append(db.InterceptContextEntry{Kind: "text", Text: s})
+				}
+				return
+			}
+			// Storage failed — fall through and emit the record the normal way.
+		}
+		rec(db.Activity{Kind: k, Summary: firstLine(s, 200), Detail: s})
 	}
 	addDelta := func(kind, text string) {
 		if text == "" {
@@ -75,6 +117,9 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 		}
 		tkind = kind
 		tbuf.WriteString(text)
+		if live != nil {
+			live.Push(kind, tbuf.String())
+		}
 	}
 	lastTool := &runTrace{startedAt: time.Now()}
 	var lastUsage *llm.Usage
@@ -140,13 +185,28 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 				// the buffered tail text usually equals Terminal.Text (final answer);
 				// drop it to avoid a duplicate record, the result row carries it.
 				if tkind == "text" && strings.TrimSpace(tbuf.String()) == strings.TrimSpace(ev.Terminal.Text) {
-					tbuf.Reset()
-					tkind = ""
+					if live == nil {
+						tbuf.Reset()
+						tkind = ""
+					} else if live.Finish() {
+						// The sink owns that row — seal it, and keep the intercept
+						// audit complete even though nothing is emitted.
+						text := strings.TrimSpace(tbuf.String())
+						tbuf.Reset()
+						tkind = ""
+						if text != "" {
+							auditTrace.Append(db.InterceptContextEntry{Kind: "text", Text: text})
+						}
+					}
 				}
 				flush() // flush any trailing thinking / non-final text
 				sum, detail := ev.Terminal.Text, ev.Terminal.Text
 				if sum == "" || ev.Terminal.Reason == harness.ReasonAbortedTools || ev.Terminal.Reason == harness.ReasonAbortedStreaming {
 					sum, detail = terminalText(ctx, ev.Terminal, lastTool)
+				} else if live != nil && live.LastText() == strings.TrimSpace(ev.Terminal.Text) {
+					// The answer is already a streamed transcript row — repeating it in
+					// the terminal row would render the same reply twice.
+					sum, detail = "", ""
 				}
 				u := ev.Terminal.Usage // cumulative token usage for this session
 				rec(db.Activity{Kind: "result", IsError: ev.Terminal.Err != nil,

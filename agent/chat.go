@@ -105,8 +105,10 @@ type chatVars struct{ DataDir, Now string }
 // THIS agent (the global backend/key still come from the chat agent's config,
 // but each agent decides on/off). emit receives each execution step (thinking /
 // tool_use / tool_result / text / result), tagged with the agent key as the
-// worker lane.
-func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message string, maxTurns int, maxDuration time.Duration, webSearch bool, emit func(db.Activity)) (string, error) {
+// worker lane. live (optional) receives the assistant text while it is being
+// written, so the chat surface can stream the answer instead of waiting for the
+// turn to end.
+func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message string, maxTurns int, maxDuration time.Duration, webSearch bool, emit func(db.Activity), live LiveText) (string, error) {
 	// gate the global web-search opts by this agent's own flag.
 	ws := c.webSearch
 	if !webSearch {
@@ -184,11 +186,11 @@ func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message strin
 	// re-unlock skill-gated MCPs from prior Skill() calls in the reloaded history so
 	// revealed tools stay callable across the fresh session.
 	seedUnlockFromHistory(s.Messages(), def.UnlockSkill)
-	text, _, err := captureRunSession(ctx, s, message, func(r db.Activity) {
+	text, _, err := captureRunSessionLive(ctx, s, message, func(r db.Activity) {
 		if emit != nil {
 			r.Worker = agentKey
 			emit(r)
 		}
-	})
+	}, live)
 	return text, err
 }

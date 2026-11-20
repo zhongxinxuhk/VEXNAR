@@ -51,6 +51,37 @@ When embedding the backend, preserve these invariants:
 - Packaging is covered by a smoke test that starts the bundled app and verifies the backend is
   reachable through the app's main-process service boundary.
 
+## The desktop app is this backend's app form
+
+`apps/desktop` is not a separate product and not a second implementation of VEXNAR. It is the
+native (Electron) form of the one Go backend that also serves the web console. Desktop work is
+client integration: connect the app to existing backend APIs. Do not build a parallel system.
+
+- Implement the capability in the Go backend first, then wire the app to that API. The app must
+  call the same REST endpoints and read the same PostgreSQL rows as the web console — no
+  app-only store, protocol, transcript table, model loop or business logic.
+- Conversations, transcripts, LLM profiles, the active model, reasoning effort and uploaded
+  attachments are shared backend state. The app renders them through `/api/conversations/*`,
+  `/api/llm/*` and `/api/desktop/*`; it must not keep a second authoritative copy.
+- A chat turn runs in the Go backend. The renderer posts the message and polls the backend's
+  activity tail for the answer; it must not run a parallel assistant stream alongside it.
+- If the app needs a field the API lacks, extend the backend contract with tests and use the
+  same field from the web client. Never fork the behaviour into an Electron-only path.
+- Electron's main process supervises/embeds the Go backend and exposes it over IPC; the
+  renderer never receives backend URLs, tokens or upstream API keys.
+
+## Connect to the web console's API — do not rewrite the web console
+
+- `web/` is an existing, finished client. App work connects to its backend APIs; it must not
+  restyle, refactor or restructure the web app to make the app fit. Only change `web/` when a
+  shared backend contract genuinely requires it, and keep the edit minimal.
+- Data shown on both surfaces must come from the same endpoint and row. If the app and the web
+  console disagree, fix the backend state or contract — never special-case either client.
+- Never run `next build` inside `web/` while `next dev` is running. Both write `.next/`, and the
+  dev server then resolves no routes and returns 404 for every page (including `/`). Stop the
+  dev server first, or build in a separate copy. Recovery: stop dev, move `.next/` aside
+  (`mv .next /tmp/vexnar-next-stale`), then `npm run dev` again.
+
 ## Authorship, repository and license headers
 
 Every first-party file authored or maintained by the project owner must begin with the following

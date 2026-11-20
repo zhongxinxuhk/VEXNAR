@@ -1017,18 +1017,30 @@ export const api = {
   deleteConversations: (ids: number[]) =>
     post<{ items: { id: number; ok: boolean; error?: string }[] }>("/conversations/delete/batch", { ids }),
   // Incremental tail: steps after `since` (id ASC) — live poll + post-send fetch.
+  // `live` 是运行中回合正在写的那一行(同一个 seq,文本持续变长),客户端按 seq 合并。
   conversationMessages: (id: number, since = 0) =>
-    get<{ items: Activity[]; cursor: number; running: boolean }>(`/conversations/${id}/messages?since=${since}`).then(
-      (r) => ({ items: arr(r.items), cursor: r.cursor ?? 0, running: !!r.running }),
-    ),
+    get<{ items: Activity[]; cursor: number; running: boolean; live?: Activity | null }>(
+      `/conversations/${id}/messages?since=${since}`,
+    ).then((r) => ({
+      items: arr(r.items),
+      cursor: r.cursor ?? 0,
+      running: !!r.running,
+      live: r.live ?? null,
+    })),
   // Reverse pagination: the latest `limit` steps (before=0) or the page of older
   // steps ending before id `before`. hasMore = still-older steps exist.
   conversationHistory: (id: number, before = 0, limit = 200) => {
     const q = new URLSearchParams({ limit: String(limit) });
     if (before > 0) q.set("before", String(before));
-    return get<{ items: Activity[]; cursor: number; running: boolean; hasMore: boolean }>(
+    return get<{ items: Activity[]; cursor: number; running: boolean; hasMore: boolean; live?: Activity | null }>(
       `/conversations/${id}/messages?${q.toString()}`,
-    ).then((r) => ({ items: arr(r.items), cursor: r.cursor ?? 0, running: !!r.running, hasMore: !!r.hasMore }));
+    ).then((r) => ({
+      items: arr(r.items),
+      cursor: r.cursor ?? 0,
+      running: !!r.running,
+      hasMore: !!r.hasMore,
+      live: r.live ?? null,
+    }));
   },
   conversationMsgDetail: (id: number, seq: number) =>
     get<{ detail: string }>(`/conversations/${id}/messages/${seq}`).then((r) => r.detail ?? ""),

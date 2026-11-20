@@ -5,13 +5,23 @@
 import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
 import type { ProjectTaskFocus } from '@/lib/project-task'
+import {
+  conversations,
+  projects as projectApi,
+  DEFAULT_AGENT_KEY,
+  lastTurnUsage,
+  mergeActivities,
+  toChatMessages,
+  toSession,
+  uploadImages,
+  type BackendActivity,
+  type BackendProject
+} from '@/lib/conversations'
 import { defaultNewApiAuthMethods } from '@shared/contracts'
 import type {
-  AgentEvent,
   AppInfo,
   AvatarColor,
   ImageAttachment,
-  ReasoningEffort,
   BackendStatus,
   DiffPayload,
   FileNode,
@@ -36,9 +46,15 @@ export type ChatMessage = Message & {
   toolCalls?: ToolCall[]
   streaming?: boolean
   failed?: boolean
+  /** Upstream failure text for a failed turn (kept apart from any streamed text). */
+  error?: string
+  /** Uploaded (non-image-previewable) files attached to a human turn. */
+  files?: { name: string; size: number }[]
 }
 
 type RightTab = 'tasks' | 'sessions' | 'workspace' | 'terminal' | 'diff'
+/** Wallet dialog tabs; the quota notice deep-links to `topup` / `plans`. */
+export type WalletTab = 'topup' | 'plans' | 'redeem'
 type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
 export type SettingsSection = 'general' | 'appearance' | 'workspace' | 'model' | 'runtime'
 export type AppView =
@@ -46,6 +62,7 @@ export type AppView =
   | 'profile'
   | 'schedules'
   | 'overview'
+  | 'approvals'
   | 'tasks'
   | 'plugins'
   | 'findings'
@@ -64,17 +81,25 @@ type AppState = {
   settings: PublicSettings
   newApi: NewApiState | null
   sessions: Session[]
+  /** Project list owned by Go; the sidebar groups threads by these rows. */
+  projects: BackendProject[]
   activeSessionId: string | null
-  taskFocus: ProjectTaskFocus | null
   messages: ChatMessage[]
   agentSessionId: string | null
   agentStatus: AgentStatus
   busy: boolean
   rightTab: RightTab
+  panelLauncher: boolean
   panelWidth: number
   rightOpen: boolean
   settingsOpen: boolean
   settingsSection: SettingsSection
+  /** Wallet dialog is app-wide: the quota notice and the rail both open it. */
+  walletOpen: boolean
+  walletTab: WalletTab
+  openWallet: (tab?: WalletTab) => void
+  setWalletOpen: (open: boolean) => void
+  setWalletTab: (tab: WalletTab) => void
   workspaceFiles: FileNode[]
   workspaceLoading: boolean
   git: GitStatus | null
@@ -96,22 +121,22 @@ type AppState = {
   refreshBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
-  openProjectTask: (task: ProjectTaskFocus) => void
-  setProjectTaskSession: (key: string, title?: string) => void
-  closeProjectTask: () => void
   newSession: (workspace?: string) => Promise<void>
+  switchWorkspace: (workspace: string) => Promise<void>
+  taskFocus: ProjectTaskFocus | null
+  openProjectTask: (focus: ProjectTaskFocus) => void
+  setProjectTaskSession: (sessionKey: string, sessionTitle?: string) => void
+  closeProjectTask: () => void
   removeSession: (id: string) => Promise<void>
   pinSession: (id: string, pinned: boolean) => Promise<void>
   contextUsage: Record<string, { model: string; promptTokens: number }>
-  send: (text: string, attachments?: ImageAttachment[], reasoningEffort?: ReasoningEffort) => Promise<boolean>
+  send: (text: string, attachments?: ImageAttachment[]) => Promise<boolean>
   cancel: () => Promise<void>
-  handleAgentEvent: (event: AgentEvent) => void
   saveSettings: (input: SettingsInput) => Promise<boolean>
   setNewApi: (state: NewApiState) => void
   refreshNewApi: () => Promise<void>
   logout: () => Promise<boolean>
   chooseWorkspace: () => Promise<void>
-  switchWorkspace: (workspace: string) => Promise<void>
   refreshWorkspace: () => Promise<void>
   refreshGit: () => Promise<void>
   openDiff: (path: string) => Promise<void>
@@ -138,7 +163,169 @@ const emptySettings: PublicSettings = {
 
 const api = window.vexnar
 const newChatTitle = (): string => translate(useI18n.getState().locale, 'app.newThread')
-const isDefaultTitle = (title: string): boolean => title === 'New chat' || title === translate('zh', 'app.newThread') || title === translate('en', 'app.newThread')
+
+/**
+ * Live transcript buffer for the open conversation. The Go backend is the only
+ * transcript store; the app keeps the raw activity rows so a poll can rebuild
+ * the rendered list without drifting from what the web /chat page shows.
+ */
+let activities: BackendActivity[] = []
+let activityCursor = 0
+let turnActive = false
+/** seq of the row the running turn is still writing (0 = none). */
+let liveSeq = 0
+let pending: { text: string; images: ImageAttachment[] } | null = null
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let pollSeq = 0
+let pollConversation = ''
+
+function stopPolling(): void {
+  pollSeq += 1
+  pollConversation = ''
+  liveSeq = 0
+  if (pollTimer) {
+    clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+/** Rebuild the visible transcript from the backend activity buffer. */
+function renderActivities(sessionId: string): ChatMessage[] {
+  const messages = toChatMessages(activities, sessionId)
+  // Drop the optimistic bubble once the server's persisted human turn arrives.
+  if (pending) {
+    const sent = [...messages].reverse().find((message) => message.role === 'user')
+    if (sent && sent.content.trim() === pending.text.trim()) pending = null
+  }
+  if (pending) {
+    messages.push({
+      id: `pending-user-${sessionId}`,
+      sessionId,
+      role: 'user',
+      content: pending.text,
+      createdAt: Date.now(),
+      ...(pending.images.length ? { attachments: pending.images } : {})
+    })
+  }
+  if (turnActive) {
+    const last = messages[messages.length - 1]
+    if (last && last.role === 'assistant') last.streaming = true
+    else
+      messages.push({
+        id: `pending-assistant-${sessionId}`,
+        sessionId,
+        role: 'assistant',
+        content: '',
+        createdAt: Date.now(),
+        streaming: true,
+        toolCalls: []
+      })
+  }
+  return messages
+}
+
+/** Push the activity buffer into the store for the conversation on screen. */
+function publish(id: string, running: boolean): void {
+  const state = useAppStore.getState()
+  if (state.activeSessionId !== id) return
+  const usage = lastTurnUsage(activities)
+  useAppStore.setState({
+    messages: renderActivities(id),
+    busy: running,
+    agentStatus: running ? 'streaming' : 'idle',
+    ...(usage
+      ? {
+          contextUsage: {
+            ...state.contextUsage,
+            [id]: { model: state.settings.model, promptTokens: usage.promptTokens }
+          }
+        }
+      : {})
+  })
+}
+
+/**
+ * Poll /conversations/{id}/messages until the backend reports the turn is done.
+ * This is the same transport the web /chat page uses — no second SSE loop and no
+ * local assistant stream that could drift from the stored transcript.
+ *
+ * The poll runs fast while the model is actively writing because the backend
+ * streams the answer through `live`: one transcript row whose text grows.
+ * Merging it by seq gives token-by-token rendering even though the transport is
+ * plain polling. While a tool runs (no live text) it backs off, so a long turn
+ * doesn't turn into thousands of requests.
+ */
+const LIVE_POLL_MS = 150
+const IDLE_POLL_MS = 400
+
+function pollUntilDone(id: string): void {
+  stopPolling()
+  pollConversation = id
+  const seq = pollSeq
+  turnActive = true
+  const tick = async (): Promise<void> => {
+    if (seq !== pollSeq || pollConversation !== id) return
+    try {
+      const page = await conversations.messages(id, activityCursor)
+      if (seq !== pollSeq) return
+      const incoming = page.live ? [...page.items, page.live] : page.items
+      if (incoming.length) activities = mergeActivities(activities, incoming)
+      activityCursor = Math.max(activityCursor, page.cursor)
+      if (page.live) liveSeq = page.live.seq
+      if (page.running) {
+        turnActive = true
+        publish(id, true)
+        pollTimer = setTimeout(() => void tick(), page.live ? LIVE_POLL_MS : IDLE_POLL_MS)
+        return
+      }
+      turnActive = false
+      pending = null
+      // The turn just ended: re-read the streamed row once, so the very last
+      // fragment (written between the final poll and the seal) is not lost.
+      await settleLiveRow(id)
+      if (seq !== pollSeq) return
+      publish(id, false)
+      pollTimer = null
+      void refreshSessions()
+    } catch {
+      if (seq !== pollSeq) return
+      // Transient (backend restarting, short DB hiccup): retry with the same
+      // cursor instead of dropping the turn from the UI.
+      pollTimer = setTimeout(() => void tick(), 1500)
+    }
+  }
+  pollTimer = setTimeout(() => void tick(), 120)
+}
+
+/** Replace the streamed row with its sealed text once the turn is over. */
+async function settleLiveRow(id: string): Promise<void> {
+  const seq = liveSeq
+  liveSeq = 0
+  if (!seq) return
+  try {
+    const detail = await conversations.detail(id, seq)
+    const row = activities.find((item) => item.seq === seq)
+    if (!row || !detail || detail === row.detail) return
+    activities = mergeActivities(activities, [{ ...row, detail }])
+  } catch {
+    // The next history load will pick the sealed row up; nothing to repair here.
+  }
+}
+
+/** Refresh titles/pin order/updated timestamps from the shared conversation list. */
+async function refreshSessions(): Promise<void> {
+  try {
+    // Ownership comes from the backend rows; the current workspace is never
+    // stamped onto threads that belong elsewhere.
+    const [rows, projects] = await Promise.all([
+      conversations.list(),
+      projectApi.list().catch(() => useAppStore.getState().projects)
+    ])
+    useAppStore.setState({ sessions: rows.map((item) => toSession(item)), projects })
+  } catch {
+    // cosmetic refresh — a transient failure must not clear the sidebar
+  }
+}
 
 function applyTheme(theme: PublicSettings['theme']): void {
   const dark =
@@ -160,99 +347,6 @@ function settingsInput(settings: PublicSettings): SettingsInput {
   }
 }
 
-function lastStreaming(messages: ChatMessage[]): ChatMessage | undefined {
-  return [...messages].reverse().find((message) => message.role === 'assistant' && message.streaming)
-}
-
-const lastSessionKey = (workspace: string): string => `vexnar.last-session:${workspace}`
-
-function preferredSession(sessions: Session[], workspace: string): Session | undefined {
-  const lastId = localStorage.getItem(lastSessionKey(workspace))
-  return sessions.find((session) => session.workspace === workspace && session.id === lastId)
-    ?? sessions.find((session) => session.workspace === workspace)
-}
-
-let navigating = false
-let preparingSend = false
-let resourceRequest = 0
-let diffRequest = 0
-
-async function navigate(action: () => Promise<boolean>): Promise<boolean> {
-  if (navigating || useAppStore.getState().initializing) return false
-  if (useAppStore.getState().busy || preparingSend) {
-    useAppStore.setState({ error: translate(useI18n.getState().locale, 'app.navigationBusy') })
-    return false
-  }
-  navigating = true
-  try {
-    return await action()
-  } finally {
-    navigating = false
-  }
-}
-
-function changeWorkspace(settings: PublicSettings): void {
-  resourceRequest++
-  diffRequest++
-  useAppStore.setState({
-    settings, activeSessionId: null, taskFocus: null, messages: [], agentSessionId: null, error: null,
-    workspaceFiles: [], workspaceLoading: false, git: null, gitError: null,
-    diff: null, diffError: null, diffLoading: false,
-    rightTab: 'sessions', rightOpen: true
-  })
-}
-
-async function focusSession(session: Session | undefined, showPanel = false): Promise<void> {
-  useAppStore.setState({
-    activeSessionId: session?.id ?? null,
-    taskFocus: null,
-    messages: [],
-    agentSessionId: null,
-    agentStatus: 'idle',
-    ...(showPanel ? { rightTab: 'sessions', rightOpen: true } : {})
-  })
-  if (!session) return
-  localStorage.setItem(lastSessionKey(session.workspace), session.id)
-  const result = await api.messages.list({ id: session.id })
-  if (result.ok) useAppStore.setState({ messages: result.data })
-  else useAppStore.setState({ error: result.error })
-}
-
-async function createWorkspaceSession(): Promise<void> {
-  const workspace = useAppStore.getState().settings.workspaceRoot
-  const result = await api.sessions.create({ title: newChatTitle(), workspace })
-  if (!result.ok) {
-    useAppStore.setState({ error: result.error })
-    return
-  }
-  localStorage.setItem(lastSessionKey(workspace), result.data.id)
-  useAppStore.setState((state) => ({
-    sessions: [result.data, ...state.sessions],
-    activeSessionId: result.data.id,
-    taskFocus: null,
-    messages: [],
-    agentSessionId: null,
-    agentStatus: 'idle'
-  }))
-}
-
-async function openWorkspace(workspace: string, session?: Session): Promise<boolean> {
-  const settings = useAppStore.getState().settings
-  const changed = settings.workspaceRoot !== workspace
-  if (changed) {
-    const result = await api.settings.set({ ...settingsInput(settings), workspaceRoot: workspace })
-    if (!result.ok) {
-      useAppStore.setState({ error: result.error })
-      return false
-    }
-    changeWorkspace(result.data)
-  }
-  useAppStore.getState().setView('chat')
-  await focusSession(session ?? preferredSession(useAppStore.getState().sessions, workspace), true)
-  if (changed) await Promise.all([useAppStore.getState().refreshWorkspace(), useAppStore.getState().refreshGit()])
-  return true
-}
-
 export const useAppStore = create<AppState>((set, get) => ({
   info: null,
   view: 'chat',
@@ -265,18 +359,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   usage: null,
   usageLoading: false,
   sessions: [],
-  activeSessionId: null,
+  projects: [],
   taskFocus: null,
+  activeSessionId: null,
   messages: [],
   agentSessionId: null,
   agentStatus: 'idle',
   busy: false,
-  rightTab: 'sessions',
+  rightTab: 'workspace',
+  panelLauncher: true,
   panelWidth: Math.min(720, Math.max(280, Number(localStorage.getItem('vexnar.panel-width')) || 360)),
   rightOpen: false,
   contextUsage: {},
   settingsOpen: false,
   settingsSection: 'general',
+  walletOpen: false,
+  walletTab: 'topup',
+  openWallet: (tab = 'topup') => set({ walletOpen: true, walletTab: tab }),
+  setWalletOpen: (open) => set({ walletOpen: open }),
+  setWalletTab: (tab) => set({ walletTab: tab }),
   workspaceFiles: [],
   workspaceLoading: false,
   git: null,
@@ -292,33 +393,55 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (get().initializing || get().initialized) return
     set({ initializing: true })
     try {
-      const [infoResult, settingsResult, sessionsResult] = await Promise.all([
-      api.app.info(),
-      api.settings.get(),
-      api.sessions.list()
-    ])
+      const [infoResult, settingsResult] = await Promise.all([
+        api.app.info(),
+        api.settings.get()
+      ])
       if (!settingsResult.ok) {
         set({ error: settingsResult.error })
         return
       }
       const settings = settingsResult.data
-      let sessions = sessionsResult.ok ? sessionsResult.data : []
-      if (sessionsResult.ok && !preferredSession(sessions, settings.workspaceRoot)) {
-        const created = await api.sessions.create({
-          title: newChatTitle(),
-          workspace: settings.workspaceRoot
-        })
-        if (created.ok) sessions = [created.data, ...sessions]
+      // Transcripts live in PostgreSQL behind the Go backend, shared verbatim
+      // with the web /chat page. The app keeps no second session store.
+      let sessions: Session[] = []
+      let sessionsError: string | null = null
+      let projects: BackendProject[] = []
+      try {
+        // Projects are registered by the backend when a directory is opened; the
+        // app only reads the list and groups threads by project_id.
+        const [rows, projectRows] = await Promise.all([
+          conversations.list(),
+          projectApi.list().catch(() => [])
+        ])
+        sessions = rows.map((item) => toSession(item))
+        projects = projectRows
+      } catch (error) {
+        sessionsError = error instanceof Error ? error.message : String(error)
+      }
+      if (!sessions.length && !sessionsError) {
+        try {
+          const created = await conversations.create(
+            DEFAULT_AGENT_KEY,
+            newChatTitle(),
+            settings.workspaceRoot
+          )
+          sessions = [toSession(created)]
+        } catch (error) {
+          sessionsError = error instanceof Error ? error.message : String(error)
+        }
       }
       set({
         info: infoResult.ok ? infoResult.data : null,
         settings,
         sessions,
+        projects,
+        activeSessionId: sessions[0]?.id ?? null,
         initialized: true,
-        error: sessionsResult.ok ? null : sessionsResult.error
+        error: sessionsError
       })
       applyTheme(settings.theme)
-      await focusSession(preferredSession(sessions, settings.workspaceRoot), !!settings.workspaceRoot)
+      if (sessions[0]) await get().selectSession(sessions[0].id)
       await Promise.all([get().refreshWorkspace(), get().refreshGit()])
       void get().refreshBackend()
     } finally {
@@ -369,264 +492,185 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    const session = get().sessions.find((item) => item.id === id)
-    if (!session) return
-    if (id === get().activeSessionId) {
-      get().closeProjectTask()
-      return
+    if (!get().sessions.some((item) => item.id === id)) return
+    set({ taskFocus: null })
+    stopPolling()
+    pending = null
+    activities = []
+    activityCursor = 0
+    turnActive = false
+    set({
+      activeSessionId: id,
+      messages: [],
+      busy: false,
+      agentStatus: 'idle',
+      agentSessionId: null,
+      diff: null,
+      diffError: null
+    })
+    try {
+      // Same latest-page contract as the web page: one page on open, then the
+      // incremental tail while a turn runs.
+      const page = await conversations.history(id)
+      if (get().activeSessionId !== id) return
+      activities = page.items
+      activityCursor = page.cursor
+      turnActive = page.running
+      const usage = lastTurnUsage(activities)
+      set({
+        messages: renderActivities(id),
+        busy: page.running,
+        agentStatus: page.running ? 'streaming' : 'idle',
+        ...(usage
+          ? {
+              contextUsage: {
+                ...get().contextUsage,
+                [id]: { model: get().settings.model, promptTokens: usage.promptTokens }
+              }
+            }
+          : {})
+      })
+      if (page.running) pollUntilDone(id)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
-    await navigate(() => openWorkspace(session.workspace, session))
+  },
+
+  switchWorkspace: async (workspace) => {
+    // 切换工作区等价于在该目录下开一个新会话：目录写进设置，会话由后端登记。
+    await get().newSession(workspace)
   },
 
   openProjectTask: (taskFocus) => {
-    if (taskFocus.workspace !== get().settings.workspaceRoot || navigating) return
+    if (taskFocus.workspace !== get().settings.workspaceRoot) return
     set({ taskFocus, rightTab: 'tasks', rightOpen: true })
   },
 
-  setProjectTaskSession: (sessionKey, sessionTitle) => set((state) => ({
-    taskFocus: state.taskFocus ? { ...state.taskFocus, sessionKey, sessionTitle } : null
-  })),
+  setProjectTaskSession: (sessionKey, sessionTitle) =>
+    set((state) => ({
+      taskFocus: state.taskFocus
+        ? {
+            ...state.taskFocus,
+            sessionKey,
+            sessionTitle: sessionTitle ?? translate(useI18n.getState().locale, 'panel.mainAgent')
+          }
+        : null
+    })),
 
   closeProjectTask: () => set({ taskFocus: null }),
 
-  switchWorkspace: async (workspace) => {
-    await navigate(() => openWorkspace(workspace))
-  },
-
-  newSession: async (workspace) => {
-    await navigate(async () => {
-      if (workspace !== undefined && workspace !== get().settings.workspaceRoot && !(await openWorkspace(workspace))) return false
-      await createWorkspaceSession()
-      return true
-    })
+  newSession: async (workspaceOverride) => {
+    if (get().busy) await get().cancel()
+    stopPolling()
+    pending = null
+    activities = []
+    activityCursor = 0
+    turnActive = false
+    const workspace = workspaceOverride ?? get().settings.workspaceRoot
+    if (workspace !== get().settings.workspaceRoot) {
+      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
+      if (!saved.ok) {
+        set({ error: saved.error })
+        return
+      }
+      set({ settings: saved.data })
+      await Promise.all([get().refreshWorkspace(), get().refreshGit()])
+    }
+    try {
+      const created = await conversations.create(
+        DEFAULT_AGENT_KEY,
+        newChatTitle(),
+        workspace
+      )
+      const session = toSession(created)
+      set((state) => ({
+        sessions: [session, ...state.sessions],
+        activeSessionId: session.id,
+        messages: [],
+        agentSessionId: null,
+        busy: false,
+        agentStatus: 'idle'
+      }))
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
+    }
   },
 
   pinSession: async (id, pinned) => {
-    const result = await api.sessions.pin({ id, pinned })
-    if (!result.ok) {
-      set({ error: result.error })
-      return
+    try {
+      await conversations.pin(id, pinned)
+      await refreshSessions()
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
-    set((state) => ({
-      sessions: state.sessions.map((session) => (session.id === id ? result.data : session))
-    }))
   },
 
   removeSession: async (id) => {
-    await navigate(async () => {
-      const result = await api.sessions.remove({ id })
-      if (!result.ok) {
-        set({ error: result.error })
-        return false
-      }
-      set((state) => ({ sessions: state.sessions.filter((session) => session.id !== id) }))
-      if (id === get().activeSessionId) {
-        const workspace = get().settings.workspaceRoot
-        const next = preferredSession(get().sessions, workspace)
-        if (next) await focusSession(next)
-        else {
-          await focusSession(undefined)
-          await createWorkspaceSession()
-        }
-      }
-      return true
-    })
+    const wasActive = id === get().activeSessionId
+    if (wasActive) {
+      stopPolling()
+      turnActive = false
+      pending = null
+    }
+    try {
+      await conversations.remove(id)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
+      return
+    }
+    const sessions = get().sessions.filter((session) => session.id !== id)
+    set({ sessions })
+    if (wasActive) {
+      if (sessions[0]) await get().selectSession(sessions[0].id)
+      else await get().newSession()
+    }
   },
 
-  send: async (text, attachments = [], reasoningEffort) => {
+  send: async (text, attachments = []) => {
     const trimmed = text.trim()
     const sessionId = get().activeSessionId
-    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy ||
-        navigating || preparingSend || get().initializing) return false
-    preparingSend = true
+    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy) return false
 
-    const userResult = await api.messages.append({
-      sessionId,
-      role: 'user',
-      content: trimmed,
-      attachments
-    }).finally(() => { preparingSend = false })
-    if (!userResult.ok) {
-      set({ error: userResult.error })
-      return false
-    }
-    const assistant: ChatMessage = {
-      id: `stream-${Date.now()}`,
-      sessionId,
-      role: 'assistant',
-      content: '',
-      createdAt: Date.now(),
-      streaming: true,
-      toolCalls: []
-    }
-    set((state) => ({
-      messages: [...state.messages, userResult.data, assistant],
+    // Optimistic bubble: the server persists the human turn within the same
+    // request, and the first poll replaces this with the stored activity row.
+    pending = { text: trimmed, images: attachments }
+    turnActive = true
+    set({
+      messages: renderActivities(sessionId),
       busy: true,
       agentStatus: 'streaming',
       agentSessionId: sessionId,
       error: null
-    }))
-    const current = get().sessions.find((item) => item.id === sessionId)
-    if (current && isDefaultTitle(current.title)) {
-      const title = (trimmed || attachments[0]?.name || '图片').replace(/\s+/g, ' ').slice(0, 60)
-      void api.sessions.rename({ id: sessionId, title }).then((renamed) => {
-        if (!renamed.ok) return
-        set((state) => ({
-          sessions: state.sessions.map((item) => (item.id === sessionId ? renamed.data : item))
-        }))
-      })
-    }
-    const result = await api.agent.send({ sessionId, text: trimmed, attachments, reasoningEffort })
-    if (!result.ok) {
-      set((state) => ({
+    })
+    try {
+      // Images travel through the same /api/chat/upload route the web page uses,
+      // then the message carries their relative paths to the Go conversation.
+      const files = await uploadImages(sessionId, attachments)
+      await conversations.send(sessionId, trimmed, files)
+      pollUntilDone(sessionId)
+      return true
+    } catch (error) {
+      pending = null
+      turnActive = false
+      set({
         busy: false,
         agentStatus: 'error',
-        error: result.error,
-        messages: state.messages.map((message) =>
-          message.id === assistant.id
-            ? { ...message, streaming: false, failed: true, content: `${translate(useI18n.getState().locale, 'chat.runtimeError')}：${result.error}` }
-            : message
-        )
-      }))
+        error: error instanceof Error ? error.message : String(error),
+        messages: renderActivities(sessionId)
+      })
+      return false
     }
-    return result.ok
   },
 
   cancel: async () => {
-    await api.agent.cancel()
-    const messages = get().messages
-    const streaming = lastStreaming(messages)
-    set({
-      busy: false,
-      agentStatus: 'idle',
-      messages: messages.map((message) =>
-        message.id === streaming?.id ? { ...message, streaming: false } : message
-      )
-    })
-    if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
-      await api.messages.append({
-        sessionId: streaming.sessionId,
-        role: 'assistant',
-        content: streaming.content,
-        toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
-      })
-    }
-  },
-
-  handleAgentEvent: (event) => {
-    const sessionId = get().agentSessionId
+    const sessionId = get().activeSessionId
     if (!sessionId) return
-    if (event.type === 'ready') {
-      if (get().agentStatus === 'idle') set({ agentStatus: 'ready' })
-      return
-    }
-    if (event.type === 'assistant_delta') {
-      set((state) => {
-        const messages = [...state.messages]
-        let index = messages.findIndex((message) => message.role === 'assistant' && message.streaming)
-        if (index < 0) {
-          messages.push({
-            id: `stream-${Date.now()}`,
-            sessionId,
-            role: 'assistant',
-            content: '',
-            createdAt: Date.now(),
-            streaming: true,
-            toolCalls: []
-          })
-          index = messages.length - 1
-        }
-        messages[index] = {
-          ...messages[index],
-          content: messages[index].content + event.text
-        }
-        return { messages, agentStatus: 'streaming' }
-      })
-      return
-    }
-    if (event.type === 'tool_start') {
-      set((state) => {
-        const messages = [...state.messages]
-        const index = messages.findIndex((message) => message.role === 'assistant' && message.streaming)
-        if (index >= 0) {
-          const toolCalls = [...(messages[index].toolCalls ?? [])]
-          toolCalls.push({
-            id: event.id,
-            name: event.name,
-            status: 'running',
-            input: event.input
-          })
-          messages[index] = { ...messages[index], toolCalls }
-        }
-        return { messages }
-      })
-      return
-    }
-    if (event.type === 'tool_end') {
-      set((state) => ({
-        messages: state.messages.map((message) => {
-          if (message.role !== 'assistant') return message
-          return {
-            ...message,
-            toolCalls: (message.toolCalls ?? []).map((tool) =>
-              tool.id === event.id
-                ? { ...tool, status: event.ok ? 'done' : 'error', output: event.output }
-                : tool
-            )
-          }
-        })
-      }))
-      return
-    }
-    if (event.type === 'error') {
-      set((state) => ({
-        error: event.message,
-        agentStatus: 'error',
-        busy: false,
-        messages: state.messages.map((message) =>
-          message.role === 'assistant' && message.streaming
-            ? {
-                ...message,
-                streaming: false,
-                content: message.content + `\n\n${translate(useI18n.getState().locale, 'chat.runtimeError')}：${event.message}`,
-                failed: true
-              }
-            : message
-        )
-      }))
-      return
-    }
-    if (event.type === 'context_usage') {
-      const id = get().agentSessionId
-      if (id) set((state) => ({ contextUsage: { ...state.contextUsage, [id]: event } }))
-      return
-    }
-    if (event.type === 'assistant_done') {
-      const streaming = lastStreaming(get().messages)
-      set((state) => ({
-        busy: false,
-        agentStatus: 'idle',
-        messages: state.messages.map((message) =>
-          message.id === streaming?.id ? { ...message, streaming: false } : message
-        )
-      }))
-      if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
-        void api.messages
-          .append({
-            sessionId: streaming.sessionId,
-            role: 'assistant',
-            content: streaming.content,
-            toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
-          })
-          .then((result) => {
-            if (!result.ok) return
-            set((state) => ({
-              messages: state.messages.map((message) =>
-                message.id === streaming.id ? { ...message, id: result.data.id } : message
-              )
-            }))
-          })
-      }
+    try {
+      // The poller keeps running: the backend cancels the turn and flips
+      // `running` to false on the next tick, keeping the stop button honest.
+      await conversations.stop(sessionId)
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
     }
   },
 
@@ -646,41 +690,36 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: result.error })
       return false
     }
-    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, accessToken: null, accessTokenError: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() }, usage: null })
+    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, subscriptions: [], token: null, accessToken: null, accessTokenError: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() }, usage: null })
     return true
   },
 
-  saveSettings: (input) => navigate(async () => {
-    const previousWorkspace = get().settings.workspaceRoot
+  saveSettings: async (input) => {
     const result = await api.settings.set(input)
     if (!result.ok) {
       set({ error: result.error })
       return false
     }
-    const workspace = result.data.workspaceRoot
+    set({ settings: result.data, error: null })
     applyTheme(result.data.theme)
-    if (workspace !== previousWorkspace) {
-      changeWorkspace(result.data)
-      await focusSession(preferredSession(get().sessions, workspace))
-      if (!get().activeSessionId) await createWorkspaceSession()
-    } else set({ settings: result.data, error: null })
     await Promise.all([get().refreshWorkspace(), get().refreshGit()])
     return true
-  }),
+  },
 
   chooseWorkspace: async () => {
     const result = await api.workspace.choose()
-    if (!result.ok) {
-      set({ error: result.error })
-      return
-    }
-    if (!result.data) return
-    const workspace = result.data
-    await navigate(async () => {
-      if (!(await openWorkspace(workspace))) return false
-      if (!get().activeSessionId) await createWorkspaceSession()
-      return true
+    if (!result.ok || !result.data) return
+    const path = result.data
+    const saved = await get().saveSettings({
+      ...settingsInput(get().settings),
+      workspaceRoot: path
     })
+    if (!saved) return
+    // The workspace is a local editing context now, not a conversation key: the
+    // Go backend conversation stays the same, and every sidebar row re-tags to
+    // the new project path.
+    set({ view: 'chat' })
+    void refreshSessions()
   },
 
   refreshWorkspace: async () => {
@@ -688,10 +727,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ workspaceFiles: [], workspaceLoading: false })
       return
     }
-    const request = resourceRequest
     set({ workspaceLoading: true })
     const result = await api.workspace.list()
-    if (request !== resourceRequest) return
     set({
       workspaceFiles: result.ok ? result.data : [],
       workspaceLoading: false,
@@ -704,17 +741,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ git: null, gitError: null })
       return
     }
-    const request = resourceRequest
     const result = await api.git.status()
-    if (request !== resourceRequest) return
     set({ git: result.ok ? result.data : null, gitError: result.ok ? null : result.error })
   },
 
   openDiff: async (filePath) => {
-    const request = ++diffRequest
     set({ rightTab: 'diff', rightOpen: true, diffLoading: true, diffError: null, diff: null })
     const result = await api.git.diff({ path: filePath })
-    if (request !== diffRequest) return
     set({
       diff: result.ok ? result.data : null,
       diffError: result.ok ? null : result.error,
@@ -722,14 +755,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  setRightTab: (rightTab) => set({ rightTab, rightOpen: true }),
+  setRightTab: (rightTab) => set({ rightTab, rightOpen: true, panelLauncher: false }),
   setPanelWidth: (width) => {
     const bounded = Math.round(Math.min(720, Math.max(280, width)))
     localStorage.setItem('vexnar.panel-width', String(bounded))
     set({ panelWidth: bounded })
   },
   toggleRight: () =>
-    set((state) => ({ rightOpen: !state.rightOpen })),
+    set((state) => ({ rightOpen: !state.rightOpen, panelLauncher: !state.rightOpen })),
   setSettingsOpen: (settingsOpen) =>
     set(settingsOpen ? { settingsOpen: true, settingsSection: 'general' } : { settingsOpen: false }),
   openSettings: (settingsSection = 'general') => set({ settingsOpen: true, settingsSection }),

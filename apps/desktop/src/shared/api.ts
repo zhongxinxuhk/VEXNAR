@@ -8,6 +8,8 @@ import type {
   AppInfo,
   BackendRequestInput,
   BackendStatus,
+  BackendUploadInput,
+  BackendUploadResult,
   DiffPayload,
   FileNode,
   GitDiffInput,
@@ -16,11 +18,18 @@ import type {
   IpcResult,
   Message,
   MessageAppendInput,
+  NewApiAmountInput,
   NewApiExternalAuthInput,
   NewApiLoginInput,
+  NewApiPaymentResult,
+  NewApiRedeemInput,
   NewApiState,
+  NewApiSubscribeInput,
+  NewApiTopupPayInput,
+  NewApiTopupQuote,
   NewApiUsage,
   NewApiVerifyInput,
+  NewApiWallet,
   PublicSettings,
   Session,
   SessionCreateInput,
@@ -107,6 +116,7 @@ export interface VexnarApi {
   backend: {
     status: () => Promise<IpcResult<BackendStatus>>
     request: <T = unknown>(input: BackendRequestInput) => Promise<IpcResult<T>>
+    upload: (input: BackendUploadInput) => Promise<IpcResult<BackendUploadResult>>
   }
   newapi: {
     status: () => Promise<IpcResult<NewApiState>>
@@ -123,6 +133,11 @@ export interface VexnarApi {
     openPlatform: () => Promise<IpcResult<{ opened: true }>>
     usage: () => Promise<IpcResult<NewApiUsage>>
     affCode: () => Promise<IpcResult<{ code: string; link: string }>>
+    wallet: () => Promise<IpcResult<NewApiWallet>>
+    topupQuote: (input: NewApiAmountInput) => Promise<IpcResult<NewApiTopupQuote>>
+    topupPay: (input: NewApiTopupPayInput) => Promise<IpcResult<NewApiPaymentResult>>
+    redeem: (input: NewApiRedeemInput) => Promise<IpcResult<{ credited: number }>>
+    subscribe: (input: NewApiSubscribeInput) => Promise<IpcResult<NewApiPaymentResult>>
     onChange: (listener: (state: NewApiState) => void) => Unsubscribe
   }
 }

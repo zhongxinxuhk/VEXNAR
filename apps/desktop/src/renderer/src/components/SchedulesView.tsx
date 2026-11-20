@@ -20,12 +20,13 @@ import { Button, Dialog, DialogContent, DialogTitle } from '@/components/ui'
 import { Button as AuiButton } from '@/components/ui/affectui/button-clean'
 import { consoleRequest } from '@/lib/console'
 import { EFFORT_LABELS } from '@/lib/insight'
+import { EFFORT_LEVELS, type EffortLevel } from '@/lib/effort'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app'
 
 type Frequency = 'daily' | 'weekly' | 'monthly'
 type NotifyLevel = 'important' | 'all' | 'off'
-type Effort = 'default' | 'low' | 'medium' | 'high'
+type Effort = 'default' | EffortLevel
 
 type ScheduledTask = {
   id: string
@@ -363,7 +364,7 @@ function TaskDialog({
               <InlineSelect
                 value={effort}
                 onChange={(next) => setEffort(next as Effort)}
-                options={(['default', 'low', 'medium', 'high'] as Effort[]).map((value) => ({
+                options={(['default', ...EFFORT_LEVELS] as Effort[]).map((value) => ({
                   value,
                   label: EFFORT_LABELS[value]
                 }))}

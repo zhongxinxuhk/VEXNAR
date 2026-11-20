@@ -32,6 +32,9 @@ web/next-env.d.ts
 **/.idea/httpRequests/
 **/.idea/queries/
 **/.idea/dataSources/
+**/.idea/dataSources.xml
+**/.idea/data_source_mapping.xml
+**/.idea/sqldialects.xml
 **/.idea/dataSources.local.xml
 **/.idea/markdown.xml
 
