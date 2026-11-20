@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, KeyRound, Loader2, ShieldCheck } from 'lucide-react'
+import { FolderOpen, Loader2, RefreshCw } from 'lucide-react'
 import type { SettingsInput } from '@shared/contracts'
 import { useAppStore } from '@/store/app'
 import { useI18n, useT } from '@/lib/i18n'
@@ -58,14 +58,15 @@ export function SettingsDialog(): React.JSX.Element {
   const settings = useAppStore((state) => state.settings)
   const settingsSection = useAppStore((state) => state.settingsSection)
   const saveSettings = useAppStore((state) => state.saveSettings)
+  const refreshNewApi = useAppStore((state) => state.refreshNewApi)
+  const newApi = useAppStore((state) => state.newApi)
   const info = useAppStore((state) => state.info)
   const locale = useI18n((state) => state.locale)
   const setLocale = useI18n((state) => state.setLocale)
   const t = useT()
   const [draft, setDraft] = useState<SettingsInput>(settings)
-  const [apiKey, setApiKey] = useState('')
-  const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -76,10 +77,9 @@ export function SettingsDialog(): React.JSX.Element {
       workspaceRoot: settings.workspaceRoot,
       shell: settings.shell,
       model: settings.model,
+      newApiModels: settings.newApiModels,
       baseUrl: settings.baseUrl
     })
-    setApiKey('')
-    setClearApiKey(false)
   }, [open, settings])
 
   useEffect(() => {
@@ -100,16 +100,33 @@ export function SettingsDialog(): React.JSX.Element {
     if (result.ok && result.data) update('workspaceRoot', result.data)
   }
 
+  const syncModels = async (): Promise<void> => {
+    setSyncing(true)
+    await refreshNewApi()
+    const latest = useAppStore.getState().settings
+    setDraft({
+      theme: latest.theme,
+      displayName: latest.displayName,
+      avatarColor: latest.avatarColor,
+      workspaceRoot: latest.workspaceRoot,
+      shell: latest.shell,
+      model: latest.model,
+      newApiModels: latest.newApiModels,
+      baseUrl: latest.baseUrl
+    })
+    setSyncing(false)
+  }
+
   const save = async (): Promise<void> => {
     setSaving(true)
-    const ok = await saveSettings({
-      ...draft,
-      apiKey: apiKey.trim() || undefined,
-      clearApiKey
-    })
+    const ok = await saveSettings(draft)
     setSaving(false)
     if (ok) setOpen(false)
   }
+
+  const models = draft.newApiModels.length > 0 ? draft.newApiModels : settings.newApiModels
+  const currentModel = draft.model
+  const modelOptions = models.includes(currentModel) || !currentModel ? models : [currentModel, ...models]
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,6 +136,40 @@ export function SettingsDialog(): React.JSX.Element {
         </DialogHeader>
 
         <div id="settings-top" className="space-y-4">
+          <Section id="settings-account" title={t('settings.accountSection')}>
+            <div className="rounded-xl border border-line-soft bg-panel/60 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-medium text-ink">
+                  {newApi?.user?.displayName || newApi?.user?.username || t('settings.notConnected')}
+                </span>
+                <span className="rounded-full border border-line-soft bg-bg px-1.5 py-0.5 text-[9.5px] text-muted">
+                  {newApi?.user?.group || 'HXSEC'}
+                </span>
+                <span className="ml-auto text-[10px] text-muted">
+                  {newApi?.authenticated ? t('settings.connected') : t('settings.notConnected')}
+                </span>
+              </div>
+              <div className="mt-1 text-[11px] text-muted">
+                {newApi?.user?.email || 'platform.sec.hn.cn'}
+              </div>
+            </div>
+            <Row label={t('settings.managedKey')}>
+              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-line-soft bg-panel px-2.5 py-1.5">
+                <span className="truncate font-mono text-[11px] text-ink-soft">
+                  {newApi?.token?.maskedKey || t('settings.keyPending')}
+                </span>
+                <span className="ml-auto shrink-0 text-[10px] text-muted">
+                  {t('settings.managedKeyHint')}
+                </span>
+              </div>
+            </Row>
+            <Row label={t('settings.relayUrl')}>
+              <div className="rounded-lg border border-line-soft bg-panel px-2.5 py-1.5 font-mono text-[11px] text-ink-soft">
+                https://api.sec.hn.cn/v1
+              </div>
+            </Row>
+          </Section>
+
           <Section id="settings-appearance" title={t('app.appearance')}>
             <Row label={t('settings.theme')} htmlFor="theme">
               <select
@@ -179,67 +230,32 @@ export function SettingsDialog(): React.JSX.Element {
 
           <Section id="settings-model" title={t('settings.modelSection')}>
             <Row label={t('settings.model')} htmlFor="model">
-              <Input
+              <select
                 id="model"
                 value={draft.model}
                 onChange={(event) => update('model', event.target.value)}
-                placeholder="gpt-5-codex"
-                className="h-8 font-mono text-[11.5px]"
-              />
+                className={fieldClass}
+              >
+                {modelOptions.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
             </Row>
-            <Row label={t('settings.baseUrl')} htmlFor="baseUrl">
-              <Input
-                id="baseUrl"
-                value={draft.baseUrl}
-                onChange={(event) => update('baseUrl', event.target.value)}
-                placeholder="https://api.openai.com/v1"
-                className="h-8 font-mono text-[11.5px]"
-              />
-            </Row>
-            <Row label={t('settings.apiKey')} htmlFor="apiKey">
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted" />
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => {
-                    setApiKey(event.target.value)
-                    setClearApiKey(false)
-                  }}
-                  placeholder={
-                    settings.hasApiKey
-                      ? `•••••••• (${t('settings.apiKeyStored')})`
-                      : t('settings.apiKeyPlaceholder')
-                  }
-                  className="h-8 pl-8 font-mono text-[11.5px]"
-                />
-              </div>
-            </Row>
-            {settings.hasApiKey ? (
-              <Row label="">
-                <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
-                  <input
-                    type="checkbox"
-                    checked={clearApiKey}
-                    onChange={(event) => {
-                      setClearApiKey(event.target.checked)
-                      if (event.target.checked) setApiKey('')
-                    }}
-                    className="accent-[var(--color-accent)]"
-                  />
-                  {t('settings.clearApiKey')}
-                  <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-muted/70">
-                    <ShieldCheck className="h-3 w-3" /> {t('settings.safeStorage')}
-                  </span>
-                </label>
-              </Row>
-            ) : null}
-            {!apiKey && !settings.hasApiKey ? (
-              <div className="rounded-lg bg-panel px-2.5 py-2 font-mono text-[10.5px] leading-5 text-muted">
-                {t('settings.noKey')}
-              </div>
-            ) : null}
+            <div className="flex items-center gap-2 rounded-lg bg-panel px-2.5 py-2 text-[10.5px] leading-5 text-muted">
+              <span className="min-w-0 flex-1">{t('settings.modelsHint')}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+                disabled={syncing}
+                onClick={() => void syncModels()}
+              >
+                <RefreshCw className={`h-3 w-3 ${syncing ? 'animate-spin' : ''}`} />
+                {t('settings.syncModels')}
+              </Button>
+            </div>
           </Section>
 
           <Section id="settings-runtime" title={t('settings.runtimeSection')}>

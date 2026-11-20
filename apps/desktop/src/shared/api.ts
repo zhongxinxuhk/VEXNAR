@@ -12,6 +12,9 @@ import type {
   IpcResult,
   Message,
   MessageAppendInput,
+  NewApiLoginInput,
+  NewApiState,
+  NewApiVerifyInput,
   PublicSettings,
   Session,
   SessionCreateInput,
@@ -73,5 +76,17 @@ export interface VexnarApi {
   backend: {
     status: () => Promise<IpcResult<BackendStatus>>
     request: <T = unknown>(input: BackendRequestInput) => Promise<IpcResult<T>>
+  }
+  newapi: {
+    status: () => Promise<IpcResult<NewApiState>>
+    bootstrap: () => Promise<IpcResult<NewApiState>>
+    login: (input: NewApiLoginInput) => Promise<IpcResult<NewApiState>>
+    verify: (input: NewApiVerifyInput) => Promise<IpcResult<NewApiState>>
+    cancelLogin: () => Promise<IpcResult<NewApiState>>
+    refresh: () => Promise<IpcResult<NewApiState>>
+    logout: () => Promise<IpcResult<{ loggedOut: true }>>
+    copyKey: () => Promise<IpcResult<{ copied: true }>>
+    openPlatform: () => Promise<IpcResult<{ opened: true }>>
+    onChange: (listener: (state: NewApiState) => void) => Unsubscribe
   }
 }

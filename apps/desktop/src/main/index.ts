@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
 import os from 'node:os'
 import path from 'node:path'
 import { AgentManager } from './agent'
+import { NewApiManager } from './newapi'
 import { closeDb, initDb } from './db'
 import { registerIpc } from './ipc'
 import { startPortablePostgres, type PostgresRuntime } from './pg'
@@ -34,6 +35,7 @@ const terminal = new TerminalManager({
 })
 
 const agent = new AgentManager((event) => emit(IPC.agentEvent, event))
+const newapi = new NewApiManager(emit)
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -92,6 +94,7 @@ async function boot(): Promise<void> {
   registerIpc({
     agent,
     terminal,
+    newapi,
     getWindow: () => mainWindow
   })
   createWindow()
@@ -106,6 +109,7 @@ async function shutdown(): Promise<void> {
   shuttingDown = true
   agent.dispose()
   terminal.disposeAll()
+  newapi.dispose()
   await closeDb().catch(() => undefined)
   await postgres?.stop().catch(() => undefined)
   postgres = null

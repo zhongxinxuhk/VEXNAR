@@ -125,6 +125,7 @@ function ProfileDialog({
 }): React.JSX.Element {
   const t = useT()
   const settings = useAppStore((state) => state.settings)
+  const newApi = useAppStore((state) => state.newApi)
   const updateProfile = useAppStore((state) => state.updateProfile)
   const [name, setName] = useState('')
   const [color, setColor] = useState<AvatarColor>('orange')
@@ -160,7 +161,9 @@ function ProfileDialog({
           <ProfileAvatar name={preview} color={color} size="lg" />
           <div className="min-w-0">
             <div className="truncate text-[13.5px] font-medium text-ink">{preview}</div>
-            <div className="mt-0.5 text-[11.5px] text-muted">{t('profile.plan')}</div>
+            <div className="mt-0.5 text-[11.5px] text-muted">
+              {newApi?.user?.group ? `HXSEC · ${newApi.user.group}` : t('profile.plan')}
+            </div>
           </div>
         </div>
 
@@ -289,11 +292,11 @@ function HelpDialog({
 function LogoutDialog({
   open,
   onOpenChange,
-  onReset
+  onLogout
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onReset: () => Promise<boolean>
+  onLogout: () => Promise<boolean>
 }): React.JSX.Element {
   const t = useT()
   const [saving, setSaving] = useState(false)
@@ -305,7 +308,7 @@ function LogoutDialog({
 
   const reset = async (): Promise<void> => {
     setSaving(true)
-    const ok = await onReset()
+    const ok = await onLogout()
     setSaving(false)
     if (ok) onOpenChange(false)
     else setError(t('app.error'))
@@ -324,7 +327,7 @@ function LogoutDialog({
             {t('app.cancel')}
           </Button>
           <Button variant="danger" size="sm" onClick={() => void reset()} disabled={saving}>
-            {t('profile.resetProfile')}
+            {t('profile.logoutConfirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -335,10 +338,11 @@ function LogoutDialog({
 export function ProfileMenu(): React.JSX.Element {
   const t = useT()
   const settings = useAppStore((state) => state.settings)
+  const newApi = useAppStore((state) => state.newApi)
   const info = useAppStore((state) => state.info)
   const openSettings = useAppStore((state) => state.openSettings)
   const setRightTab = useAppStore((state) => state.setRightTab)
-  const updateProfile = useAppStore((state) => state.updateProfile)
+  const logout = useAppStore((state) => state.logout)
   const [dialog, setDialog] = useState<'profile' | 'help' | 'logout' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -346,6 +350,7 @@ export function ProfileMenu(): React.JSX.Element {
   const mac =
     (info?.platform ?? (navigator.userAgent.includes('Mac') ? 'darwin' : '')) === 'darwin'
   const displayName = settings.displayName.trim() || t('profile.defaultName')
+  const accountName = newApi?.user?.displayName || newApi?.user?.username || displayName
 
   useEffect(
     () => () => {
@@ -366,11 +371,7 @@ export function ProfileMenu(): React.JSX.Element {
     notify(result.ok ? t('profile.inviteCopied') : result.error || t('profile.copyFailed'))
   }
 
-  const resetProfile = async (): Promise<boolean> => {
-    const ok = await updateProfile({ displayName: '', avatarColor: 'orange' })
-    if (ok) notify(t('profile.resetDone'))
-    return ok
-  }
+  const signOut = async (): Promise<boolean> => logout()
 
   return (
     <>
@@ -381,7 +382,7 @@ export function ProfileMenu(): React.JSX.Element {
             aria-label={t('rail.account')}
             className="no-drag rounded-full outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-accent/50"
           >
-            <ProfileAvatar name={displayName} color={settings.avatarColor} size="sm" />
+            <ProfileAvatar name={accountName} color={settings.avatarColor} size="sm" />
           </button>
         </DropdownMenu.Trigger>
 
@@ -394,15 +395,19 @@ export function ProfileMenu(): React.JSX.Element {
             className="z-50 w-[262px] rounded-xl border border-line bg-bg p-1.5 codex-popover outline-none"
           >
             <div className="flex items-start gap-2.5 px-2 py-2">
-              <ProfileAvatar name={displayName} color={settings.avatarColor} />
+              <ProfileAvatar name={accountName} color={settings.avatarColor} />
               <div className="min-w-0 pt-0.5">
                 <div className="truncate text-[13px] font-medium leading-4 text-ink">
-                  {displayName}
+                  {accountName}
                 </div>
-                <div className="mt-0.5 text-[11px] leading-4 text-muted">{t('profile.plan')}</div>
+                <div className="mt-0.5 truncate text-[11px] leading-4 text-muted">
+                  {newApi?.user?.group ? `HXSEC · ${newApi.user.group}` : t('profile.plan')}
+                </div>
               </div>
             </div>
-            <div className="px-2 pb-2 text-[11.5px] text-muted">{t('profile.runtime')}</div>
+            <div className="truncate px-2 pb-2 text-[11.5px] text-muted">
+              {newApi?.user?.email || newApi?.user?.username || t('profile.runtime')}
+            </div>
             <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
 
             <MenuRow
@@ -463,7 +468,7 @@ export function ProfileMenu(): React.JSX.Element {
       <LogoutDialog
         open={dialog === 'logout'}
         onOpenChange={(open) => setDialog(open ? 'logout' : null)}
-        onReset={resetProfile}
+        onLogout={signOut}
       />
 
       {toast ? (

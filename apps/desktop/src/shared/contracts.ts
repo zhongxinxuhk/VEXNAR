@@ -13,6 +13,7 @@ export const settingsSchema = z.object({
   workspaceRoot: z.string().default(''),
   shell: z.string().default(''),
   model: z.string().trim().min(1).max(120).default('gpt-5-codex'),
+  newApiModels: z.array(z.string().trim().min(1).max(200)).max(500).default([]),
   baseUrl: z.string().default(''),
   apiKey: z.string().max(4096).optional(),
   clearApiKey: z.boolean().optional()
@@ -23,6 +24,61 @@ export const publicSettingsSchema = settingsSchema
   .omit({ apiKey: true, clearApiKey: true })
   .extend({ hasApiKey: z.boolean() })
 export type PublicSettings = z.infer<typeof publicSettingsSchema>
+
+export const newApiUserSchema = z.object({
+  id: z.number().int(),
+  username: z.string().default(''),
+  displayName: z.string().default(''),
+  email: z.string().default(''),
+  group: z.string().default(''),
+  role: z.number().int().default(0)
+})
+export type NewApiUser = z.infer<typeof newApiUserSchema>
+
+export const newApiTokenSchema = z.object({
+  id: z.number().int(),
+  name: z.string().default('App-managed'),
+  maskedKey: z.string().default(''),
+  unlimitedQuota: z.boolean().default(false),
+  remainQuota: z.number().default(0),
+  usedQuota: z.number().default(0)
+})
+export type NewApiToken = z.infer<typeof newApiTokenSchema>
+
+export const newApiQuotaSchema = z.object({
+  remaining: z.number(),
+  used: z.number(),
+  requestCount: z.number(),
+  quotaPerUnit: z.number().positive().default(500000),
+  usdExchangeRate: z.number().positive().default(1),
+  displayInCurrency: z.boolean().default(true),
+  unlimited: z.boolean().default(false)
+})
+export type NewApiQuota = z.infer<typeof newApiQuotaSchema>
+
+export const newApiStateSchema = z.object({
+  stage: z.enum(['checking', 'anonymous', 'authenticating', 'verification', 'ready', 'error']),
+  authenticated: z.boolean(),
+  user: newApiUserSchema.nullable().default(null),
+  quota: newApiQuotaSchema.nullable().default(null),
+  token: newApiTokenSchema.nullable().default(null),
+  models: z.array(z.string()).default([]),
+  verificationMethods: z.array(z.string()).default([]),
+  error: z.string().nullable().default(null),
+  updatedAt: z.number().nullable().default(null)
+})
+export type NewApiState = z.infer<typeof newApiStateSchema>
+
+export const newApiLoginSchema = z.object({
+  username: z.string().trim().min(1).max(200),
+  password: z.string().min(1).max(4096)
+})
+export type NewApiLoginInput = z.infer<typeof newApiLoginSchema>
+
+export const newApiVerifySchema = z.object({
+  code: z.string().trim().min(1).max(64)
+})
+export type NewApiVerifyInput = z.infer<typeof newApiVerifySchema>
 
 export const sessionCreateSchema = z.object({
   title: z.string().trim().min(1).max(120).default('New chat'),
@@ -215,5 +271,15 @@ export const IPC = {
   agentCancel: 'agent:cancel',
   agentEvent: 'agent:event',
   backendStatus: 'backend:status',
-  backendRequest: 'backend:request'
+  backendRequest: 'backend:request',
+  newapiStatus: 'newapi:status',
+  newapiBootstrap: 'newapi:bootstrap',
+  newapiLogin: 'newapi:login',
+  newapiVerify: 'newapi:verify',
+  newapiCancelLogin: 'newapi:cancel-login',
+  newapiRefresh: 'newapi:refresh',
+  newapiLogout: 'newapi:logout',
+  newapiCopyKey: 'newapi:copy-key',
+  newapiOpenPlatform: 'newapi:open-platform',
+  newapiChanged: 'newapi:changed'
 } as const
