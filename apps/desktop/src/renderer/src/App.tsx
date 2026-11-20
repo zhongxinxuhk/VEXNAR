@@ -115,14 +115,22 @@ function WorkspaceApp(): React.JSX.Element {
       </main>
       {/* 右侧面板：独立列（内容变窄而非被覆盖），-mt-11 让它的顶行与窗口顶栏同高，
           药丸与圆形开关都放在面板自己的顶行里（ChatGPT 同构） */}
-      {view === 'chat' && rightOpen ? (
+      {view === 'chat' ? (
         <>
-          <PanelResizeHandle />
+          {rightOpen ? <PanelResizeHandle /> : null}
+          {/* 常驻挂载 + 宽度过渡：展开/收起都有动画，且不依赖 JS 动画
+              （此前 framer-motion 的 opacity 入场在后台窗口会停在首帧） */}
           <div
-            className="-mt-11 flex shrink-0 flex-col overflow-hidden border-l border-line-soft bg-bg"
-            style={{ width: panelWidth }}
+            className="panel-shell -mt-11 shrink-0"
+            data-open={rightOpen}
+            style={{ width: rightOpen ? panelWidth : 0 }}
           >
-            <RightPanel />
+            <div
+              className="flex h-full flex-col border-l border-line-soft bg-bg"
+              style={{ width: panelWidth }}
+            >
+              <RightPanel />
+            </div>
           </div>
         </>
       ) : null}
