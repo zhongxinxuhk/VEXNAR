@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   ChevronRight,
+  House,
   CircleHelp,
   CircleUserRound,
   LogOut,
@@ -18,6 +19,7 @@ import type { AvatarColor } from '@shared/contracts'
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input } from '@/components/ui'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { Button as AuiButton } from '@/components/ui/affectui/button-clean'
 import { useAppStore } from '@/store/app'
 
 const AVATAR_COLORS: Array<{ id: AvatarColor; className: string }> = [
@@ -34,7 +36,7 @@ const AVATAR_CLASS: Record<AvatarColor, string> = Object.fromEntries(
 ) as Record<AvatarColor, string>
 
 const menuItem =
-  'flex cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
+  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[5px] text-[12px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
 
 function avatarInitials(name: string): string {
   const cleaned = name.trim()
@@ -233,6 +235,104 @@ export function ProfileDialog({
   )
 }
 
+/**
+ * 邀请好友卡片：展示平台推荐计划给当前账号生成的专属链接。
+ * 对齐 ChatGPT 的邀请卡片版式（渐变头图 + 应用图标 + 链接 + 复制），
+ * 不做邮件发送——用户自行分享链接。
+ */
+function InviteDialog({
+  open,
+  onOpenChange
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}): React.JSX.Element {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [link, setLink] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    setCopied(false)
+    setLink('')
+    window.vexnar.newapi
+      .affCode()
+      .then((result) => {
+        if (cancelled) return
+        if (result.ok) setLink(result.data.link)
+        else setError(result.error || '获取推荐链接失败')
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : '获取推荐链接失败')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  const copy = async (): Promise<void> => {
+    const result = await window.vexnar.app.copyText(link)
+    if (result.ok) {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(400px,calc(100vw-32px))] overflow-hidden rounded-2xl border-line bg-bg p-0 codex-popover">
+        <div className="relative flex h-[128px] items-center justify-center bg-gradient-to-br from-[#7ab3ff] via-[#5f9bff] to-[#3f7ef7]">
+          <div className="grid h-[72px] w-[72px] place-items-center rounded-[20px] bg-white/95 shadow-lg">
+            <House className="h-9 w-9 text-ink" strokeWidth={1.6} />
+          </div>
+        </div>
+        <div className="px-6 pb-6 pt-5">
+          <DialogTitle className="text-center text-[16px] font-semibold text-ink">
+            邀请好友使用 VEXNAR
+          </DialogTitle>
+          <p className="mt-2 text-center text-[12px] leading-5 text-muted">
+            把你的专属链接分享给朋友，注册成功后奖励会发放到你的平台钱包。
+          </p>
+
+          {loading ? (
+            <div className="mt-5 rounded-xl border border-line-soft bg-panel px-3 py-3 text-center text-[12px] text-muted">
+              正在获取推荐链接…
+            </div>
+          ) : error ? (
+            <div className="mt-5 rounded-xl border border-line-soft bg-panel px-3 py-3 text-center text-[12px] text-danger">
+              {error}
+            </div>
+          ) : (
+            <div className="mt-5 flex items-center gap-2">
+              <input
+                readOnly
+                value={link}
+                onFocus={(event) => event.currentTarget.select()}
+                className="h-9 min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 font-mono text-[11.5px] text-ink outline-none"
+              />
+              <AuiButton variant="primary" size="md" onClick={() => void copy()}>
+                {copied ? '已复制' : '复制链接'}
+              </AuiButton>
+            </div>
+          )}
+
+          <p className="mt-4 text-center text-[10.5px] leading-4 text-muted">
+            推荐计划 · platform.sec.hn.cn/wallet 可查看奖励明细
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function HelpDialog({
   open,
   onOpenChange,
@@ -349,7 +449,7 @@ export function ProfileMenu(): React.JSX.Element {
   const setRightTab = useAppStore((state) => state.setRightTab)
   const setView = useAppStore((state) => state.setView)
   const logout = useAppStore((state) => state.logout)
-  const [dialog, setDialog] = useState<'help' | 'logout' | null>(null)
+  const [dialog, setDialog] = useState<'invite' | 'help' | 'logout' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
 
@@ -369,12 +469,6 @@ export function ProfileMenu(): React.JSX.Element {
     setToast(message)
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 2600)
-  }
-
-  const copyInvite = async (): Promise<void> => {
-    const text = t('profile.inviteText', { version: info?.version ?? '0.1.0' })
-    const result = await window.vexnar.app.copyText(text)
-    notify(result.ok ? t('profile.inviteCopied') : result.error || t('profile.copyFailed'))
   }
 
   const signOut = async (): Promise<boolean> => logout()
@@ -398,9 +492,9 @@ export function ProfileMenu(): React.JSX.Element {
             align="end"
             sideOffset={10}
             collisionPadding={12}
-            className="z-50 w-[262px] rounded-xl border border-line bg-bg p-1.5 codex-popover outline-none"
+            className="z-50 w-[224px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none"
           >
-            <div className="flex items-start gap-2.5 px-2 py-2">
+            <div className="flex items-start gap-2.5 px-2 py-1.5">
               <ProfileAvatar name={accountName} color={settings.avatarColor} />
               <div className="min-w-0 pt-0.5">
                 <div className="truncate text-[13px] font-medium leading-4 text-ink">
@@ -425,7 +519,7 @@ export function ProfileMenu(): React.JSX.Element {
             <MenuRow
               icon={<UserPlus className="h-4 w-4" strokeWidth={1.8} />}
               label={t('profile.invite')}
-              onSelect={() => void copyInvite()}
+              onSelect={() => setDialog('invite')}
             />
             <MenuRow
               icon={<Palette className="h-4 w-4" strokeWidth={1.8} />}
@@ -462,6 +556,10 @@ export function ProfileMenu(): React.JSX.Element {
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
 
+      <InviteDialog
+        open={dialog === 'invite'}
+        onOpenChange={(open) => setDialog(open ? 'invite' : null)}
+      />
       <HelpDialog
         open={dialog === 'help'}
         onOpenChange={(open) => setDialog(open ? 'help' : null)}

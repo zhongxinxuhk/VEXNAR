@@ -120,6 +120,7 @@ export interface VexnarApi {
     copyKey: () => Promise<IpcResult<{ copied: true }>>
     openPlatform: () => Promise<IpcResult<{ opened: true }>>
     usage: () => Promise<IpcResult<NewApiUsage>>
+    affCode: () => Promise<IpcResult<{ code: string; link: string }>>
     onChange: (listener: (state: NewApiState) => void) => Unsubscribe
   }
 }
