@@ -258,6 +258,33 @@ button {
   background: transparent;
 }
 
+/* 思考步骤进行中的呼吸环（Halaska Thinking Steps 同款节奏） */
+@keyframes thinking-ring-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.thinking-ring {
+  animation: thinking-ring-pulse 1.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-ring {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 /* affectUI 组件的主题桥接：跟随应用自身的亮/暗变量 */
 :root {
   --aui-ink: var(--color-ink);
