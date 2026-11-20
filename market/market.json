@@ -1,0 +1,374 @@
+{
+  "schema": "vexnar.market/v1",
+  "name": "VEXNAR 官方插件市场",
+  "description": "VEXNAR 桌面端 MCP / 技能市场索引。市场源就是一个 GitHub 仓库目录，本文件即官方市场链接：https://github.com/zhongxinxuhk/VEXNAR 的 market/ 目录。",
+  "homepage": "https://github.com/zhongxinxuhk/VEXNAR",
+  "updated": "2026-11-20",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn>",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "mcp": [
+    {
+      "name": "filesystem",
+      "description": "读写指定目录下的文件。安装时把最后一个参数改成你自己的目录。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/workspace"],
+      "tags": ["官方", "文件"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "memory",
+      "description": "基于知识图谱的持久记忆，跨会话保留事实、实体与关系。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "tags": ["官方", "记忆"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "sequential-thinking",
+      "description": "可回溯的分步推理草稿，适合复杂排查链路与方案推演。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "tags": ["官方", "推理"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "playwright",
+      "description": "浏览器自动化：导航、点击、填表、截图、抓取动态页面。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "tags": ["浏览器", "自动化"],
+      "homepage": "https://github.com/microsoft/playwright-mcp"
+    },
+    {
+      "name": "chrome-devtools",
+      "description": "Chrome DevTools 协议：性能轨迹、网络面板、控制台诊断。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"],
+      "tags": ["浏览器", "调试"],
+      "homepage": "https://github.com/ChromeDevTools/chrome-devtools-mcp"
+    },
+    {
+      "name": "github",
+      "description": "读写仓库：Issue、PR、代码检索。需要 Personal Access Token。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "" },
+      "tags": ["官方", "代码"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "context7",
+      "description": "按需拉取第三方库的最新文档与可运行示例，减少版本幻觉。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "tags": ["文档"],
+      "homepage": "https://github.com/upstash/context7"
+    },
+    {
+      "name": "postgres",
+      "description": "只读 SQL 查询 PostgreSQL。安装时改成你的连接串。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:pass@localhost:5432/db"],
+      "tags": ["官方", "数据库"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "supabase",
+      "description": "Supabase 项目：表结构、SQL、边缘函数与迁移。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase", "--read-only"],
+      "env": { "SUPABASE_ACCESS_TOKEN": "" },
+      "tags": ["数据库", "云服务"],
+      "homepage": "https://github.com/supabase-community/supabase-mcp"
+    },
+    {
+      "name": "notion",
+      "description": "读写 Notion 页面与数据库。填入 Integration Token 后可用。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "env": { "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer ntn_your_token\",\"Notion-Version\":\"2022-06-28\"}" },
+      "tags": ["知识库"],
+      "homepage": "https://github.com/makenotion/notion-mcp-server"
+    },
+    {
+      "name": "slack",
+      "description": "频道消息、检索与回复。需要 Bot Token 与 Team ID。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": { "SLACK_BOT_TOKEN": "", "SLACK_TEAM_ID": "" },
+      "tags": ["协作", "官方"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "firecrawl",
+      "description": "整站抓取、结构化提取与搜索，适合资产与情报收集。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": { "FIRECRAWL_API_KEY": "" },
+      "tags": ["搜索", "抓取"],
+      "homepage": "https://github.com/firecrawl/firecrawl-mcp-server"
+    },
+    {
+      "name": "tavily",
+      "description": "面向模型的搜索 API：结果已裁剪，适合快速情报检索。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "tavily-mcp"],
+      "env": { "TAVILY_API_KEY": "" },
+      "tags": ["搜索"],
+      "homepage": "https://github.com/tavily-ai/tavily-mcp"
+    },
+    {
+      "name": "exa",
+      "description": "语义搜索与网页正文提取。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "exa-mcp-server"],
+      "env": { "EXA_API_KEY": "" },
+      "tags": ["搜索"],
+      "homepage": "https://github.com/exa-labs/exa-mcp-server"
+    },
+    {
+      "name": "browserbase",
+      "description": "云端无头浏览器：打开页面、执行脚本、下载文件。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@browserbasehq/mcp"],
+      "env": { "BROWSERBASE_API_KEY": "", "BROWSERBASE_PROJECT_ID": "" },
+      "tags": ["浏览器", "云服务"],
+      "homepage": "https://github.com/browserbase/mcp-server-browserbase"
+    },
+    {
+      "name": "puppeteer",
+      "description": "本地 Puppeteer 驱动的网页抓取与操作。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "tags": ["浏览器", "官方"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "brave-search",
+      "description": "Brave 搜索与网页抓取。需要 API Key。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "" },
+      "tags": ["搜索", "官方"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "kubernetes",
+      "description": "集群只读操作：Pod、日志、事件与资源清单。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "kubernetes-mcp-server@latest"],
+      "tags": ["运维"],
+      "homepage": "https://github.com/containers/kubernetes-mcp-server"
+    },
+    {
+      "name": "fetch",
+      "description": "抓取网页并转成适合模型阅读的 Markdown（需要 uv / Python）。",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "tags": ["官方", "网络", "Python"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "git",
+      "description": "本地仓库操作：状态、diff、提交历史、分支（需要 uv）。",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/path/to/repo"],
+      "tags": ["官方", "代码", "Python"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "time",
+      "description": "时区转换与当前时间（AEST / UTC+10 场景常用）。",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-time"],
+      "tags": ["官方", "工具", "Python"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "sqlite",
+      "description": "查询本地 SQLite 数据库文件（需要 uv）。",
+      "transport": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "/path/to/db.sqlite"],
+      "tags": ["官方", "数据库", "Python"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    },
+    {
+      "name": "everything",
+      "description": "官方示例服务器：验证 MCP 链路与工具发现是否正常。",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "tags": ["官方", "调试"],
+      "homepage": "https://github.com/modelcontextprotocol/servers"
+    }
+  ],
+  "skills": [
+    {
+      "name": "pdf",
+      "description": "PDF 全流程：提取文本/表格、合并拆分、旋转、水印、填表、加解密与 OCR。",
+      "repo": "anthropics/skills",
+      "path": "skills/pdf",
+      "tags": ["文档", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "docx",
+      "description": "创建、读取、编辑 Word 文档与模板：目录、页眉页脚、批注、修订。",
+      "repo": "anthropics/skills",
+      "path": "skills/docx",
+      "tags": ["文档", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "xlsx",
+      "description": "电子表格读写与建模：公式、格式、数据透视。",
+      "repo": "anthropics/skills",
+      "path": "skills/xlsx",
+      "tags": ["表格", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "pptx",
+      "description": "生成与修改演示文稿，含版式、母版与图表。",
+      "repo": "anthropics/skills",
+      "path": "skills/pptx",
+      "tags": ["文档", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "mcp-builder",
+      "description": "按最佳实践编写 MCP 服务器（Python FastMCP / Node SDK）。",
+      "repo": "anthropics/skills",
+      "path": "skills/mcp-builder",
+      "tags": ["开发", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "skill-creator",
+      "description": "创建、改进并评测技能包，优化触发描述与评测集。",
+      "repo": "anthropics/skills",
+      "path": "skills/skill-creator",
+      "tags": ["开发", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "canvas-design",
+      "description": "画布式视觉设计：海报、版式、配色方案。",
+      "repo": "anthropics/skills",
+      "path": "skills/canvas-design",
+      "tags": ["设计", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "frontend-design",
+      "description": "前端界面设计与审美约束，避免模板化的 AI 视觉。",
+      "repo": "anthropics/skills",
+      "path": "skills/frontend-design",
+      "tags": ["设计", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "brand-guidelines",
+      "description": "品牌规范：色彩、字体、语气在产出物中的一致性。",
+      "repo": "anthropics/skills",
+      "path": "skills/brand-guidelines",
+      "tags": ["设计", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "webapp-testing",
+      "description": "用 Playwright 驱动 Web 应用做端到端验证与截图。",
+      "repo": "anthropics/skills",
+      "path": "skills/webapp-testing",
+      "tags": ["测试", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "doc-coauthoring",
+      "description": "与作者协作打磨文档结构与措辞。",
+      "repo": "anthropics/skills",
+      "path": "skills/doc-coauthoring",
+      "tags": ["写作", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "internal-comms",
+      "description": "内部沟通文案：公告、周报、事故复盘。",
+      "repo": "anthropics/skills",
+      "path": "skills/internal-comms",
+      "tags": ["写作", "官方"],
+      "homepage": "https://github.com/anthropics/skills"
+    },
+    {
+      "name": "brainstorming",
+      "description": "先把问题空间打开：约束、方案分叉与取舍，再落到实现。",
+      "repo": "obra/superpowers",
+      "path": "skills/brainstorming",
+      "tags": ["方法", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    },
+    {
+      "name": "systematic-debugging",
+      "description": "系统化排障：复现、二分、假设验证，避免凭感觉改代码。",
+      "repo": "obra/superpowers",
+      "path": "skills/systematic-debugging",
+      "tags": ["方法", "调试", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    },
+    {
+      "name": "test-driven-development",
+      "description": "红-绿-重构的 TDD 流程与边界用例设计。",
+      "repo": "obra/superpowers",
+      "path": "skills/test-driven-development",
+      "tags": ["方法", "测试", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    },
+    {
+      "name": "writing-plans",
+      "description": "把需求拆成可执行、可验收的实施计划。",
+      "repo": "obra/superpowers",
+      "path": "skills/writing-plans",
+      "tags": ["方法", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    },
+    {
+      "name": "executing-plans",
+      "description": "按计划推进并逐项验证，偏离时显式记录。",
+      "repo": "obra/superpowers",
+      "path": "skills/executing-plans",
+      "tags": ["方法", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    },
+    {
+      "name": "requesting-code-review",
+      "description": "在提交前组织一次有的放矢的代码评审请求。",
+      "repo": "obra/superpowers",
+      "path": "skills/requesting-code-review",
+      "tags": ["方法", "评审", "社区"],
+      "homepage": "https://github.com/obra/superpowers"
+    }
+  ]
+}
