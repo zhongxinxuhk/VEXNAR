@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { PanelLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react'
 import { useLayout } from '@/store/layout'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app'
@@ -15,6 +15,10 @@ export function WindowChrome({
   compact?: boolean
 } = {}): React.JSX.Element {
   const toggle = useLayout((state) => state.toggleSidebar)
+  const goBack = useAppStore((state) => state.goBack)
+  const goForward = useAppStore((state) => state.goForward)
+  const historyAt = useAppStore((state) => state.historyAt)
+  const historyLen = useAppStore((state) => state.history.length)
   const open = useLayout((state) => state.sidebarOpen)
   const width = useLayout((state) => state.sidebarWidth)
   const info = useAppStore((state) => state.info)
@@ -39,6 +43,20 @@ export function WindowChrome({
         style={{ left: 52 + (!compact && open ? width : 0) }}
       />
       <div className={mac ? 'w-[84px] shrink-0' : ''} />
+      {compact ? (
+        <>
+          <NavArrow
+            direction="back"
+            disabled={historyAt <= 0}
+            onClick={goBack}
+          />
+          <NavArrow
+            direction="forward"
+            disabled={historyAt >= historyLen - 1}
+            onClick={goForward}
+          />
+        </>
+      ) : null}
       {compact ? null : (
         <Tooltip label={open ? '收起聊天列表' : '展开聊天列表'} side="bottom">
           <button
@@ -52,7 +70,38 @@ export function WindowChrome({
           </button>
         </Tooltip>
       )}
+      {compact ? null : (
+        <>
+          <NavArrow direction="back" disabled={historyAt <= 0} onClick={goBack} />
+          <NavArrow direction="forward" disabled={historyAt >= historyLen - 1} onClick={goForward} />
+        </>
+      )}
     </header>
+  )
+}
+
+function NavArrow({
+  direction,
+  disabled,
+  onClick
+}: {
+  direction: 'back' | 'forward'
+  disabled?: boolean
+  onClick: () => void
+}): React.JSX.Element {
+  const Icon = direction === 'back' ? ChevronLeft : ChevronRight
+  return (
+    <Tooltip label={direction === 'back' ? '后退' : '前进'} side="bottom">
+      <button
+        type="button"
+        aria-label={direction === 'back' ? '后退' : '前进'}
+        disabled={disabled}
+        onClick={onClick}
+        className="no-drag relative z-40 grid h-[28px] w-[28px] shrink-0 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-panel-3 hover:text-ink disabled:opacity-35 disabled:hover:bg-transparent"
+      >
+        <Icon className="h-[17px] w-[17px]" strokeWidth={1.8} />
+      </button>
+    </Tooltip>
   )
 }
 

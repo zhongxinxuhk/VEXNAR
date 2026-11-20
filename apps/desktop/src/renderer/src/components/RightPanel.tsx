@@ -16,6 +16,7 @@ import {
   GitBranch,
   Loader2,
   PanelRightClose,
+  Plus,
   RefreshCw,
   Search,
   SquareTerminal
@@ -338,11 +339,77 @@ export function RightPanel(): React.JSX.Element {
   const rightTab = useAppStore((state) => state.rightTab)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const toggleRight = useAppStore((state) => state.toggleRight)
+  const panelLauncher = useAppStore((state) => state.panelLauncher)
+  const newSession = useAppStore((state) => state.newSession)
+  const [launcherQuery, setLauncherQuery] = useState('')
+  const cards = [
+    { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2, tab: 'diff' as const },
+    { id: 'terminal' as const, label: t('panel.terminal'), icon: SquareTerminal, tab: 'terminal' as const },
+    { id: 'new-chat' as const, label: '新建对话', icon: Plus, tab: null },
+    { id: 'workspace' as const, label: t('panel.files'), icon: Folder, tab: 'workspace' as const }
+  ]
+  const visibleCards = cards.filter((card) =>
+    card.label.toLowerCase().includes(launcherQuery.trim().toLowerCase())
+  )
   const tabs = [
     { id: 'workspace' as const, label: t('panel.files'), icon: Folder },
     { id: 'terminal' as const, label: t('panel.terminal'), icon: SquareTerminal },
     { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2 }
   ]
+
+  if (panelLauncher) {
+    return (
+      <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-panel/50">
+        <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
+          <div className="ml-auto">
+            <Tooltip label={t('app.hidePanel')} side="bottom">
+              <Button variant="ghost" size="icon" onClick={toggleRight} aria-label={t('app.hidePanel')}>
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-6">
+          <input
+            value={launcherQuery}
+            onChange={(event) => setLauncherQuery(event.target.value)}
+            placeholder={t('panel.searchPlaceholder')}
+            className="h-9 w-full rounded-xl border border-line bg-bg px-3.5 text-[12.5px] text-ink outline-none placeholder:text-muted/80 focus:border-accent/50"
+          />
+          <div>
+            <div className="px-1 pb-2 text-[11px] text-muted">Open</div>
+            <div className="grid grid-cols-4 gap-2.5">
+              {visibleCards.map((card) => {
+                const Icon = card.icon
+                return (
+                  <button
+                    key={card.id}
+                    type="button"
+                    onClick={() => {
+                      if (card.tab) setRightTab(card.tab)
+                      else {
+                        void newSession()
+                        toggleRight()
+                      }
+                    }}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-line-soft bg-bg px-2 py-3.5 text-[12px] text-ink-soft transition-colors hover:bg-panel-2 hover:text-ink"
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={1.7} />
+                    {card.label}
+                  </button>
+                )
+              })}
+              {visibleCards.length === 0 ? (
+                <div className="col-span-4 py-6 text-center text-[12px] text-muted">
+                  {t('app.noResults')}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </aside>
+    )
+  }
 
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-panel/50">
