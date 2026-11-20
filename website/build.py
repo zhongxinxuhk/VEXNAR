@@ -13,11 +13,13 @@ import shutil
 import urllib.parse
 import urllib.request
 
+from credits import render_credits
+
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'dist'
 REPO = 'https://github.com/zhongxinxuhk/VEXNAR'
 API = 'https://api.github.com/repos/zhongxinxuhk/VEXNAR'
-PAGES = [('index', '总览'), ('downloads', '下载中心'), ('releases', '版本更新'), ('branches', '分支'), ('commits', '提交记录'), ('contributors', '合作者')]
+PAGES = [('index', '总览'), ('downloads', '下载中心'), ('releases', '版本更新'), ('branches', '分支'), ('commits', '提交记录'), ('contributors', '合作者'), ('credits', '开源致谢')]
 
 def fetch(route):
     headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'VEXNAR-Website'}
@@ -66,12 +68,13 @@ def build():
     branches = '<div class="list">'+''.join(f'<article class="branch-row"><div><span class="branch-icon">⑂</span><h2>{link(REPO+"/tree/"+urllib.parse.quote(b["name"],safe=""),e(b["name"]))}</h2>{"<span class=badge>默认分支</span>" if b["name"]==data["repo"]["default_branch"] else ""}</div><span class="mono">{e(b["commit"]["sha"][:8])}</span>{link(REPO+"/commits/"+urllib.parse.quote(b["name"],safe=""),"查看提交", "text-link")}</article>' for b in data['branches'])+'</div><p class="data-note">最多展示 100 个公开分支。默认分支标识来自仓库元数据。</p>'
     commits = '<div class="commit-list">'+''.join(f'<article class="commit"><div class="commit-mark"></div><div><h2>{link(c["html_url"],e(c["commit"]["message"].splitlines()[0]))}</h2><p>{e((c.get("author") or {}).get("login") or "Git contributor")} <span>·</span> <time>{e(c["commit"]["author"]["date"][:10])}</time></p></div>{link(c["html_url"],e(c["sha"][:8]),"sha mono")}</article>' for c in data['commits'])+'</div><p class="data-note">展示默认分支最近 50 次公开提交。完整历史请查看 GitHub。</p>'
     contributors = '<div class="people">'+''.join(f'<a class="person" href="{e(c["html_url"])}" target="_blank" rel="noopener noreferrer"><img src="https://github.com/{e(c["login"])}.png?size=160" width="80" height="80" alt="{e(c["login"])} 的头像" loading="lazy"><h2>{e(c["login"])}</h2><p>{c["contributions"]} 次提交贡献</p><span class="text-link">GitHub 主页</span></a>' for c in data['contributors'])+'</div><div class="notice"><h2>一起构建下一步。</h2><p>这里展示 GitHub 的公开代码贡献者，不代表仓库的私有协作者或访问权限名单。欢迎通过 Issue、Pull Request 与文档改进参与项目。</p>'+link(REPO+'/issues','参与讨论','button secondary')+'</div>'
-    contents = {'index':home,'downloads':downloads,'releases':releases,'branches':branches,'commits':commits,'contributors':contributors}
-    subtitles = {'downloads':('DESIGNED FOR YOUR WORKSPACE','你的工作台，准备就绪。','选择适合你的平台。下载链接直接指向 GitHub 官方 Release 资产。'), 'releases':('THE CHANGELOG','持续演进，步步可见。','跟随每一次公开发行，了解 VEXNAR 的能力与变化。'),'branches':('DEVELOPMENT BRANCHES','看见开发的每一条路径。','从默认分支到功能分支，探索项目正在发生的变化。'),'commits':('A RECORD OF PROGRESS','每一次提交，都是向前。','阅读默认分支的真实提交，追踪项目的细节与进展。'),'contributors':('BUILT TOGETHER','由每一份贡献，连接而成。','感谢参与代码建设的开源贡献者。让安全探索的工具持续变好。')}
+    contents = {'index':home,'downloads':downloads,'releases':releases,'branches':branches,'commits':commits,'contributors':contributors, 'credits':render_credits(ROOT)}
+    subtitles = {'credits':('OPEN SOURCE CREDITS','让每一份贡献，被看见。','致谢 VEXNAR 使用、参考与借鉴的开源项目，以及持续创造的作者与社区。'), 'downloads':('DESIGNED FOR YOUR WORKSPACE','你的工作台，准备就绪。','选择适合你的平台。下载链接直接指向 GitHub 官方 Release 资产。'), 'releases':('THE CHANGELOG','持续演进，步步可见。','跟随每一次公开发行，了解 VEXNAR 的能力与变化。'),'branches':('DEVELOPMENT BRANCHES','看见开发的每一条路径。','从默认分支到功能分支，探索项目正在发生的变化。'),'commits':('A RECORD OF PROGRESS','每一次提交，都是向前。','阅读默认分支的真实提交，追踪项目的细节与进展。'),'contributors':('BUILT TOGETHER','由每一份贡献，连接而成。','感谢参与代码建设的开源贡献者。让安全探索的工具持续变好。')}
     header = '<!--\nCopyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>\nRepository: https://github.com/zhongxinxuhk/VEXNAR\nSPDX-License-Identifier: AGPL-3.0-or-later\n-->'
     for name,title in PAGES:
         nav=''.join(f'<a href="{slug}.html" {"aria-current=page" if slug==name else ""}>{label}</a>' for slug,label in PAGES)
-        intro='' if name=='index' else f'<section class="page-intro"><div class="eyebrow">{subtitles[name][0]}</div><h1>{subtitles[name][1]}</h1><p>{subtitles[name][2]}</p><div class="snapshot">GitHub 公开数据快照 · {stamp}</div></section>'
+        snapshot_label = '来源与许可证核对 · 2026-11-20' if name == 'credits' else 'GitHub 公开数据快照 · ' + stamp
+        intro='' if name=='index' else f'<section class="page-intro"><div class="eyebrow">{subtitles[name][0]}</div><h1>{subtitles[name][1]}</h1><p>{subtitles[name][2]}</p><div class="snapshot">{snapshot_label}</div></section>'
         doc=f'''<!doctype html>
 {header}
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#07090e"><meta name="description" content="VEXNAR 官方网站：AI 自主渗透测试系统，探索图、资产图、证据追溯与人在环路。客户端下载、版本更新与开源协作动态。"><meta property="og:title" content="VEXNAR · {title}"><meta property="og:description" content="洞察攻击面，让每一步都有据可循。"><meta property="og:type" content="website"><title>{title} · VEXNAR — AI 自主安全探索</title><link rel="icon" href="assets/logo.png"><link rel="stylesheet" href="style.css?v={css_version}"><script src="app.js?v={js_version}" defer></script></head><body><a class="skip" href="#main">跳转到正文</a><header class="header"><div class="nav-shell"><a class="brand" href="index.html" aria-label="VEXNAR 首页"><img src="assets/logo.png" alt="" width="34" height="34"><span>VEXNAR</span></a><button class="menu-toggle" aria-label="打开导航菜单" aria-expanded="false" aria-controls="navigation">☰</button><nav id="navigation" aria-label="主导航">{nav}</nav>{link(REPO,"GitHub","github-link")}</div></header><main id="main">{intro}{contents[name]}</main><footer><div class="footer-top"><a class="brand" href="index.html"><img src="assets/logo.png" alt="" width="30" height="30">VEXNAR</a><p>探索有迹。验证有据。</p><a href="{REPO}" target="_blank" rel="noopener noreferrer">GitHub</a><a href="{REPO}/blob/main/LICENSE">AGPL-3.0-or-later</a></div><div class="footer-bottom"><span>© 2026 xuzhongxin · VEXNAR</span><span>AI 自主安全探索 · 开源共建</span></div></footer></body></html>'''

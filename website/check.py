@@ -28,8 +28,22 @@ for page in ROOT.glob('*.html'):
     assert content.count('aria-current=page') == 1
     Links().feed(content)
 data = json.loads((ROOT/'data.json').read_text())
-assert len(list(ROOT.glob('*.html'))) == 7
+assert len(list(ROOT.glob('*.html'))) == 8
 if not data['releases']:
     assert (ROOT/'downloads.html').read_text().count('尚未发布') == 3
     assert '第一份发行说明' in (ROOT/'releases.html').read_text()
-print('PASS: 6 pages + 404; relative routes/assets; navigation; safe links; release empty states')
+print('PASS: 7 pages + 404; relative routes/assets; navigation; safe links; release empty states')
+
+credits = (ROOT / 'credits.html').read_text()
+assert credits.index('href="contributors.html"') < credits.index('href="credits.html"')
+for section in ['INTRODUCTION', 'OPEN SOURCE PROJECTS', 'Usage · 用途', 'LICENSE', 'ACKNOWLEDGEMENTS']:
+    assert section in credits, section
+catalog = json.loads((ROOT.parent / 'credits.json').read_text())
+assert len(catalog['projects']) == credits.count('class="credit-card"')
+assert len({p['github'] for p in catalog['projects']}) == len(catalog['projects'])
+for project in catalog['projects']:
+    for key in ['name', 'author', 'usage', 'license', 'license_url', 'github', 'logo_kind']:
+        assert project[key], (project['name'], key)
+    assert project['github'].startswith('https://github.com/')
+    assert project['license'] != 'NOASSERTION'
+print('PASS: credits navigation order, all five sections, catalog fields, unique sources and local logos')
