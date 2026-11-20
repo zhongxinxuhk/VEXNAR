@@ -18,6 +18,7 @@ type StoredSettings = {
   workspaceRoot: string
   shell: string
   model: string
+  newApiModels: string[]
   baseUrl: string
   apiKeyCipher?: string
 }
@@ -37,6 +38,7 @@ const defaults: StoredSettings = {
   workspaceRoot: defaultWorkspace(),
   shell: '',
   model: 'gpt-5-codex',
+  newApiModels: [],
   baseUrl: ''
 }
 
@@ -87,6 +89,7 @@ function toPublic(stored: StoredSettings): PublicSettings {
     workspaceRoot: stored.workspaceRoot,
     shell: stored.shell,
     model: stored.model,
+    newApiModels: stored.newApiModels,
     baseUrl: stored.baseUrl,
     hasApiKey: Boolean(stored.apiKeyCipher)
   })
@@ -110,6 +113,7 @@ export async function setSettings(input: SettingsInput): Promise<PublicSettings>
   stored.workspaceRoot = parsed.workspaceRoot.trim()
   stored.shell = parsed.shell.trim()
   stored.model = parsed.model.trim()
+  stored.newApiModels = parsed.newApiModels
   stored.baseUrl = parsed.baseUrl.trim()
 
   if (parsed.clearApiKey) {
@@ -129,4 +133,58 @@ export function getAgentConfig(): { model: string; baseUrl: string; apiKey: stri
     baseUrl: cache.baseUrl,
     apiKey: decryptSecret(cache.apiKeyCipher)
   }
+}
+
+export type ManagedConnection = {
+  baseUrl: string
+  apiKey: string
+  model: string
+  models: string[]
+}
+
+/**
+ * Persist the NewAPI-derived runtime config. The raw key never leaves the main
+ * process: only its encrypted ciphertext is written to PostgreSQL.
+ */
+export async function applyManagedConnection(input: ManagedConnection): Promise<PublicSettings> {
+  const models = Array.from(new Set(input.models.map((item) => item.trim()).filter(Boolean)))
+  const model = input.model.trim()
+  const baseUrl = input.baseUrl.trim()
+  const apiKey = input.apiKey.trim()
+  if (!baseUrl || !model || !apiKey) {
+    throw new Error('NewAPI 连接配置不完整')
+  }
+
+  const stored = { ...cache }
+  const currentKey = decryptSecret(stored.apiKeyCipher)
+  const sameModels =
+    stored.newApiModels.length === models.length &&
+    stored.newApiModels.every((item, index) => item === models[index])
+  if (
+    stored.baseUrl === baseUrl &&
+    currentKey === apiKey &&
+    stored.model === model &&
+    sameModels
+  ) {
+    return toPublic(stored)
+  }
+
+  stored.baseUrl = baseUrl
+  stored.apiKeyCipher = encryptSecret(apiKey, 'API Key')
+  stored.model = model
+  stored.newApiModels = models
+  await writeStored(stored)
+  cache = stored
+  return toPublic(stored)
+}
+
+/** Remove only the relay connection; local chats, workspaces and profile stay intact. */
+export async function clearManagedConnection(): Promise<PublicSettings> {
+  const stored = { ...cache }
+  delete stored.apiKeyCipher
+  stored.baseUrl = ''
+  stored.newApiModels = []
+  await writeStored(stored)
+  cache = stored
+  return toPublic(stored)
 }

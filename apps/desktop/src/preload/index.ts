@@ -7,6 +7,9 @@ import type {
   IdInput,
   IpcResult,
   MessageAppendInput,
+  NewApiLoginInput,
+  NewApiState,
+  NewApiVerifyInput,
   SessionCreateInput,
   SessionPinInput,
   SessionRenameInput,
@@ -75,6 +78,19 @@ const api: VexnarApi = {
   backend: {
     status: () => invoke(IPC.backendStatus),
     request: <T = unknown>(input: BackendRequestInput) => invoke<T>(IPC.backendRequest, input)
+  },
+  newapi: {
+    status: () => invoke(IPC.newapiStatus),
+    bootstrap: () => invoke(IPC.newapiBootstrap),
+    login: (input: NewApiLoginInput) => invoke(IPC.newapiLogin, input),
+    verify: (input: NewApiVerifyInput) => invoke(IPC.newapiVerify, input),
+    cancelLogin: () => invoke(IPC.newapiCancelLogin),
+    refresh: () => invoke(IPC.newapiRefresh),
+    logout: () => invoke(IPC.newapiLogout),
+    copyKey: () => invoke(IPC.newapiCopyKey),
+    openPlatform: () => invoke(IPC.newapiOpenPlatform),
+    onChange: (listener: (state: NewApiState) => void) =>
+      subscribe(IPC.newapiChanged, listener)
   }
 }
 

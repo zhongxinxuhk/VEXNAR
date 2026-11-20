@@ -13,7 +13,6 @@ import {
   Network,
   Settings,
   Shield,
-  Sparkles,
   SquareCheckBig,
   SquareTerminal,
   Target
@@ -22,6 +21,7 @@ import { useT } from '@/lib/i18n'
 import { useAppStore, type AppView } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { ProfileMenu } from '@/components/ProfileMenu'
+import { QuotaMenu } from '@/components/QuotaMenu'
 import { Tooltip } from '@/components/ui'
 
 const menuContent =
@@ -69,8 +69,6 @@ export function IconRail(): React.JSX.Element {
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
-  const rightOpen = useAppStore((state) => state.rightOpen)
-  const toggleRight = useAppStore((state) => state.toggleRight)
   const info = useAppStore((state) => state.info)
 
   const mac =
@@ -222,14 +220,8 @@ export function IconRail(): React.JSX.Element {
         </RailButton>
       </nav>
 
-      <div className="mt-auto flex flex-col items-center gap-7 pb-3">
-        <RailButton
-          label={t('profile.companion')}
-          active={rightOpen}
-          onClick={toggleRight}
-        >
-          <Sparkles className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </RailButton>
+      <div className="mt-auto flex flex-col items-center gap-3 pb-3">
+        <QuotaMenu />
         <ProfileMenu />
       </div>
     </aside>

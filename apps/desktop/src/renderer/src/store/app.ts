@@ -9,6 +9,7 @@ import type {
   FileNode,
   GitStatus,
   Message,
+  NewApiState,
   PublicSettings,
   Session,
   SettingsInput
@@ -47,6 +48,7 @@ type AppState = {
   backend: BackendStatus | null
   backendLoading: boolean
   settings: PublicSettings
+  newApi: NewApiState | null
   sessions: Session[]
   activeSessionId: string | null
   messages: ChatMessage[]
@@ -80,6 +82,9 @@ type AppState = {
   cancel: () => Promise<void>
   handleAgentEvent: (event: AgentEvent) => void
   saveSettings: (input: SettingsInput) => Promise<boolean>
+  setNewApi: (state: NewApiState) => void
+  refreshNewApi: () => Promise<void>
+  logout: () => Promise<boolean>
   chooseWorkspace: () => Promise<void>
   refreshWorkspace: () => Promise<void>
   refreshGit: () => Promise<void>
@@ -99,6 +104,7 @@ const emptySettings: PublicSettings = {
   workspaceRoot: '',
   shell: '',
   model: 'gpt-5-codex',
+  newApiModels: [],
   baseUrl: '',
   hasApiKey: false
 }
@@ -122,6 +128,7 @@ function settingsInput(settings: PublicSettings): SettingsInput {
     workspaceRoot: settings.workspaceRoot,
     shell: settings.shell,
     model: settings.model,
+    newApiModels: settings.newApiModels,
     baseUrl: settings.baseUrl
   }
 }
@@ -136,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   backend: null,
   backendLoading: false,
   settings: emptySettings,
+  newApi: null,
   sessions: [],
   activeSessionId: null,
   messages: [],
@@ -463,6 +471,26 @@ export const useAppStore = create<AppState>((set, get) => ({
           })
       }
     }
+  },
+
+  setNewApi: (newApi) => set({ newApi }),
+
+  refreshNewApi: async () => {
+    const result = await api.newapi.refresh()
+    if (result.ok) set({ newApi: result.data })
+    else set({ error: result.error })
+    const settings = await api.settings.get()
+    if (settings.ok) set({ settings: settings.data })
+  },
+
+  logout: async () => {
+    const result = await api.newapi.logout()
+    if (!result.ok) {
+      set({ error: result.error })
+      return false
+    }
+    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, models: [], verificationMethods: [], error: null, updatedAt: Date.now() } })
+    return true
   },
 
   saveSettings: async (input) => {

@@ -9,6 +9,8 @@ import {
   idSchema,
   IPC,
   messageAppendSchema,
+  newApiLoginSchema,
+  newApiVerifySchema,
   sessionCreateSchema,
   sessionPinSchema,
   sessionRenameSchema,
@@ -31,6 +33,7 @@ import {
   setSessionPinned
 } from './db'
 import { gitDiff, gitStatus } from './git'
+import { NewApiManager } from './newapi'
 import { getSettings, setSettings } from './settings'
 import { TerminalManager } from './terminal'
 import { chooseWorkspace, listWorkspace, readWorkspaceFile } from './workspace'
@@ -38,6 +41,7 @@ import { chooseWorkspace, listWorkspace, readWorkspaceFile } from './workspace'
 type Services = {
   agent: AgentManager
   terminal: TerminalManager
+  newapi: NewApiManager
   getWindow: () => BrowserWindow | null
 }
 
@@ -127,4 +131,14 @@ export function registerIpc(services: Services): void {
 
   handle(IPC.backendStatus, noInput, () => backendStatus())
   handle(IPC.backendRequest, backendRequestSchema, (input) => backendRequest(input))
+
+  handle(IPC.newapiStatus, noInput, () => services.newapi.getState())
+  handle(IPC.newapiBootstrap, noInput, () => services.newapi.bootstrap())
+  handle(IPC.newapiLogin, newApiLoginSchema, (input) => services.newapi.login(input))
+  handle(IPC.newapiVerify, newApiVerifySchema, (input) => services.newapi.verify(input))
+  handle(IPC.newapiCancelLogin, noInput, () => services.newapi.cancelLogin())
+  handle(IPC.newapiRefresh, noInput, () => services.newapi.refresh())
+  handle(IPC.newapiLogout, noInput, () => services.newapi.logout())
+  handle(IPC.newapiCopyKey, noInput, () => services.newapi.copyKey())
+  handle(IPC.newapiOpenPlatform, noInput, () => services.newapi.openPlatform())
 }

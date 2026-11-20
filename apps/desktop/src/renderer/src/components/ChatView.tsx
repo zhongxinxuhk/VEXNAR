@@ -254,6 +254,7 @@ function Composer(): React.JSX.Element {
       workspaceRoot: settings.workspaceRoot,
       shell: settings.shell,
       model,
+      newApiModels: settings.newApiModels,
       baseUrl: settings.baseUrl
     })
   }
@@ -365,7 +366,7 @@ function Composer(): React.JSX.Element {
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.Content side="top" align="end" sideOffset={8} className={menuContent}>
-                      {MODEL_OPTIONS.map((model) => (
+                      {(settings.newApiModels.length > 0 ? settings.newApiModels : MODEL_OPTIONS).map((model) => (
                         <DropdownMenu.Item
                           key={model}
                           className={cn(menuItem, model === settings.model && 'bg-panel-2 text-ink')}
