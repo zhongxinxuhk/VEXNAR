@@ -1037,6 +1037,7 @@ CREATE TABLE IF NOT EXISTS conversation_activities (
     cache_write_tokens INTEGER,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE conversation_activities ADD COLUMN IF NOT EXISTS outcome TEXT;
 CREATE INDEX IF NOT EXISTS idx_conv_act ON conversation_activities(conversation_id, id);
 CREATE INDEX IF NOT EXISTS idx_conv_act_tool_call ON conversation_activities(conversation_id, tool_use_id, id)
   WHERE kind IN ('tool_use', 'tool_result');

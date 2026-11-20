@@ -120,6 +120,17 @@ describe('toChatMessages', () => {
     expect(messages[3].execution?.model).toBeUndefined()
   })
 
+  it('keeps recorded partial replies and separates explicit stops from failures', () => {
+    const user = step({ kind: 'user', detail: 'fixture' })
+    const partial = step({ kind: 'text', detail: '已有部分答复' })
+    const cancelled = step({ kind: 'result', outcome: 'cancelled', is_error: true, detail: 'diagnostic output' })
+    const reply = toChatMessages([user, partial, cancelled], '1')[1]
+    expect(reply.content).toBe('已有部分答复')
+    expect(reply.execution?.cancelled).toBe(true)
+    expect(reply.failed).toBeUndefined()
+    expect(toChatMessages([user, cancelled], '1')[1].execution?.cancelled).toBe(true)
+  })
+
   it('preserves the assistant identity when a private reasoning row becomes an answer', () => {
     const user = step({ kind: 'user', detail: '你好' })
     const first = step({ kind: 'thinking', summary: 'private summary', detail: 'private detail' })

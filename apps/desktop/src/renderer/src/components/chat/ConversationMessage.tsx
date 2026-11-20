@@ -114,7 +114,7 @@ export function ConversationMessage({
           {visibleContent ? (
             // 流式时由 CSS 把光标贴在最后一段文字末尾（.answer-streaming）——在
             // Markdown 之后塞 inline-block 会被块级段落挤到下一行，看着像断行。
-            <section aria-label={isUser ? undefined : t(message.streaming ? 'chat.streamingReply' : 'chat.finalAnswer')}>
+            <section aria-label={isUser ? undefined : t(message.streaming ? 'chat.streamingReply' : execution?.cancelled ? 'chat.partialReply' : 'chat.finalAnswer')}>
               <Markdown
                 content={visibleContent}
                 className={message.streaming ? 'answer-streaming' : undefined}
@@ -123,6 +123,7 @@ export function ConversationMessage({
           ) : message.streaming ||
             message.attachments?.length ||
             hasTrace ||
+            execution?.cancelled ||
             quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}

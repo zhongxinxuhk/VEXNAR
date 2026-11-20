@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zhongxinxuhk/vexnar/agent"
 	"github.com/zhongxinxuhk/vexnar/db"
 )
 
@@ -372,5 +373,32 @@ func TestConversationMessagesTraceMasksPrivateKeyAndCredentialFormats(t *testing
 	if !strings.Contains(safe, "postgres://fixture:[REDACTED]@localhost/log") ||
 		!strings.Contains(safe, "report complete") {
 		t.Fatalf("trace lost surrounding context: %q", safe)
+	}
+}
+
+func TestConversationMessagesRecordsExplicitStopBeforeExecution(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "stop before execution", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+	if _, err := s.m.pg.AppendConvActivity(conv.ID, db.Activity{Kind: "user", Detail: "fixture"}); err != nil {
+		t.Fatal(err)
+	}
+	key := s.convBusyKey(conv.ID)
+	ctx, cancel := s.conversationRunContext(conv.ID, key)
+	cancel(agent.AbortChatStoppedByUser)
+	s.runConversationTurn(ctx, cancel, conv, "fixture", key)
+
+	page := readLivePage(t, s, conv.ID, "trace=1")
+	rows := page["items"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("want one user and one terminal event, got %d", len(rows))
+	}
+	terminal := rows[1].(map[string]any)
+	if terminal["kind"] != "result" || terminal["outcome"] != "cancelled" ||
+		terminal["detail"] != nil || page["running"] != false {
+		t.Fatalf("unexpected recorded stop: %+v", terminal)
 	}
 }

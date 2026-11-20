@@ -71,10 +71,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Verify conversation history, replay and timestamp precision
+      - name: Verify conversation replay, terminal state and model provenance
         env:
           VEXNAR_PG_DSN: postgres://vexnar_test:vexnar_ci@127.0.0.1:5432/vexnar_test?sslmode=disable
-        run: go test ./server -run 'TestConversationMessages|TestConvLiveTextKindSwitch' -count=1 -v
+        run: go test -p 1 ./server ./db ./llmrec -run 'TestConversationMessages|TestConversationActivityDetailVariants|TestModelObserver|TestConvLiveTextKindSwitch' -count=1 -v
 
   website:
     name: Website build and credits checks

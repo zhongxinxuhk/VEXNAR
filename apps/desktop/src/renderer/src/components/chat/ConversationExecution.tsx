@@ -20,9 +20,11 @@ export function ConversationExecution({
   const completedAt = message.execution?.completedAt
   const status = message.streaming
     ? 'running'
-    : message.failed
-      ? 'failed'
-      : completedAt !== undefined ? 'completed' : 'unknown'
+    : message.execution?.cancelled
+      ? 'cancelled'
+      : message.failed
+        ? 'failed'
+        : completedAt !== undefined ? 'completed' : 'unknown'
   const elapsed = startedAt !== undefined && completedAt !== undefined ? completedAt - startedAt : NaN
 
   if (events.length > 0) {
@@ -42,5 +44,5 @@ export function ConversationExecution({
   if (message.streaming && (workView || !message.content)) {
     return <div className="mt-1"><AgentLoading label={t(executionStatusLabels.running)} /></div>
   }
-  return workView ? <p className="mt-1 text-xs text-muted">{t(executionStatusLabels[status])}</p> : null
+  return workView || status === 'cancelled' ? <p className="mt-1 text-xs text-muted">{t(executionStatusLabels[status])}</p> : null
 }

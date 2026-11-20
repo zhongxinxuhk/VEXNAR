@@ -38,6 +38,7 @@ export type BackendActivity = {
   tool?: string
   tool_use_id?: string
   is_error?: boolean
+  outcome?: string
   summary: string
   /** Present when the selected response projection includes this row body. */
   detail?: string
@@ -333,7 +334,10 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         // 或（没有流式时）该 result 行本身。只取 detail：summary 是 400 字的截断预览，
         // 用它当正文会在已流式的情况下多出半句话。
         const answer = item.is_error ? (item.detail || item.summary || '').trim() : (item.detail || '').trim()
-        if (item.is_error) {
+        if (item.outcome === 'cancelled') {
+          const message = assistant(item)
+          if (message.execution) message.execution.cancelled = true
+        } else if (item.is_error) {
           const message = assistant(item)
           if (!message.content.trim()) message.content = answer
           message.failed = true

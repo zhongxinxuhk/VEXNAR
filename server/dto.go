@@ -483,6 +483,7 @@ type ActivityDTO struct {
 	Tool         string          `json:"tool,omitempty"`
 	ToolUseID    string          `json:"tool_use_id,omitempty"`
 	IsError      bool            `json:"is_error"`
+	Outcome      string          `json:"outcome,omitempty"`
 	Summary      string          `json:"summary"`
 	Detail       string          `json:"detail,omitempty"`
 	Metadata     json.RawMessage `json:"metadata,omitempty"`
@@ -510,6 +511,7 @@ func activityDTO(a db.Activity) ActivityDTO {
 		Tool:             a.Tool,
 		ToolUseID:        a.ToolUseID,
 		IsError:          a.IsError,
+		Outcome:          a.Outcome,
 		Summary:          a.Summary,
 		Detail:           a.Detail, // list endpoint leaves this empty (lazy)
 		Metadata:         a.Metadata,

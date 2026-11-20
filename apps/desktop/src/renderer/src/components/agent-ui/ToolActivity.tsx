@@ -43,6 +43,7 @@ export const executionStatusLabels = {
   running: 'chat.executionRunning',
   completed: 'chat.executionCompleted',
   failed: 'chat.executionFailed',
+  cancelled: 'chat.executionCancelled',
   unknown: 'chat.executionUnknown'
 } as const
 

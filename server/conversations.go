@@ -422,7 +422,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 			// Preserve the cursor and activity kind without disclosing model reasoning.
 			return ActivityDTO{Seq: dto.Seq, Worker: dto.Worker, TS: dto.TS, Kind: dto.Kind}
 		}
-		if trace && (dto.Kind == "tool_use" || dto.Kind == "tool_result") {
+		if trace && (dto.Kind == "tool_use" || dto.Kind == "tool_result" || dto.Outcome == "cancelled") {
 			dto.Summary, dto.Detail = "", ""
 			dto.Metadata = nil
 		}
@@ -667,7 +667,22 @@ func (s *Server) conversationRunContext(id int64, busyKey string) (context.Conte
 }
 
 func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelCauseFunc, c *db.Conversation, msg, busyKey string) {
+	pg := s.m.pg
+	terminalRecorded := false
+	emit := func(rec db.Activity) {
+		if rec.Kind == "result" && errors.Is(context.Cause(ctx), agent.AbortChatStoppedByUser) {
+			rec.Outcome = "cancelled"
+		}
+		if _, err := pg.AppendConvActivity(c.ID, rec); err != nil {
+			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
+		} else if rec.Kind == "result" {
+			terminalRecorded = true
+		}
+	}
 	defer func() {
+		if pg != nil && !terminalRecorded && errors.Is(context.Cause(ctx), agent.AbortChatStoppedByUser) {
+			emit(db.Activity{Kind: "result", Worker: c.AgentKey, Summary: agent.AbortChatStoppedByUser.Short})
+		}
 		cancel(agent.AbortChatTurnFinished)
 		s.chatMu.Lock()
 		delete(s.chatBusy, busyKey)
@@ -719,7 +734,6 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 		finishReason = s.chatUnavailableReason()
 		return
 	}
-	pg := s.m.pg
 	maxTurns := s.agentMaxTurns(c.AgentKey)
 	maxDuration := time.Duration(s.agentRunSeconds(c.AgentKey)) * time.Second
 	webSearch := false
@@ -727,11 +741,6 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 		webSearch = a.WebSearch
 	}
 	sessionID := s.convBusyKey(c.ID) // "conv-<id>" transcript session
-	emit := func(rec db.Activity) {
-		if _, err := pg.AppendConvActivity(c.ID, rec); err != nil {
-			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
-		}
-	}
 	var modelMu sync.Mutex
 	lastModel := ""
 	ctx = llmrec.WithModelObserver(ctx, func(model string) {

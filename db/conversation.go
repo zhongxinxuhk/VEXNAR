@@ -278,10 +278,10 @@ func (d *DB) DeleteConversations(ids []int64) ([]int64, error) {
 func (d *DB) AppendConvActivity(convID int64, a Activity) (int64, error) {
 	var id int64
 	err := d.QueryRow(`
-INSERT INTO conversation_activities(conversation_id, worker, kind, tool, tool_use_id, is_error, summary, detail, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens)
-VALUES ($1,NULLIF($2,''),NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,NULLIF($7,''),NULLIF($8,''),$9,$10,$11,$12)
+INSERT INTO conversation_activities(conversation_id, worker, kind, tool, tool_use_id, is_error, summary, detail, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, outcome)
+VALUES ($1,NULLIF($2,''),NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,NULLIF($7,''),NULLIF($8,''),$9,$10,$11,$12,NULLIF($13,''))
 RETURNING id`, convID, utf8Clean(a.Worker), utf8Clean(a.Kind), utf8Clean(a.Tool), utf8Clean(a.ToolUseID), a.IsError,
-		utf8Clean(a.Summary), utf8Clean(a.Detail), a.InputTokens, a.OutputTokens, a.CacheReadTokens, a.CacheWriteTokens).Scan(&id)
+		utf8Clean(a.Summary), utf8Clean(a.Detail), a.InputTokens, a.OutputTokens, a.CacheReadTokens, a.CacheWriteTokens, utf8Clean(a.Outcome)).Scan(&id)
 	return id, err
 }
 
@@ -398,7 +398,7 @@ ORDER BY id DESC LIMIT $3`, convID, before, limit+1)
 // convActivityCols is the summary-only column list shared by both readers; the
 // detail variant appends the Detail blob. Keep the order in sync with
 // scanActivityRow.
-const convActivityCols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens`
+const convActivityCols = `id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, COALESCE(outcome,'')`
 
 func conversationActivityColumns(withDetail, trace bool) string {
 	if trace {
@@ -420,7 +420,7 @@ WHERE id=$1 AND conversation_id=$2 AND kind IN ('tool_use','tool_result')`, id, 
 
 func scanActivityRow(rows *sql.Rows, a *Activity, withDetail bool) error {
 	dest := []any{&a.ID, &a.Worker, &a.Kind, &a.Tool, &a.ToolUseID, &a.IsError, &a.Summary, &a.CreatedAt,
-		&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens}
+		&a.InputTokens, &a.OutputTokens, &a.CacheReadTokens, &a.CacheWriteTokens, &a.Outcome}
 	if withDetail {
 		dest = append(dest, &a.Detail)
 	}

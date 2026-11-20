@@ -96,6 +96,7 @@ type Activity struct {
 	Tool      string          `json:"tool,omitempty"`
 	ToolUseID string          `json:"tool_use_id,omitempty"`
 	IsError   bool            `json:"is_error"`
+	Outcome   string          `json:"outcome,omitempty"` // explicit terminal outcome on conversation activities
 	Summary   string          `json:"summary,omitempty"`
 	Detail    string          `json:"-"` // full blob; lazy-loaded, omitted from list payloads
 	Metadata  json.RawMessage `json:"metadata,omitempty"`
