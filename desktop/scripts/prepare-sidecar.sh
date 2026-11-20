@@ -12,6 +12,23 @@ cd "$(dirname "$0")/.."          # desktop/
 DESKTOP="$PWD"
 ROOT="$(cd .. && pwd)"
 MODE="${1:-debug}"
+REQUIRED_GO="$(awk '$1 == "go" { print $2; exit }' "$ROOT/go.mod")"
+
+if ! command -v go >/dev/null 2>&1; then
+  echo "[desktop] go not found; install Go >= ${REQUIRED_GO:-the go.mod version}" >&2
+  exit 1
+fi
+
+# Go 1.21+ may try to download the exact toolchain named in go.mod. Behind a
+# proxy with GOSUMDB=off that fails before the build starts, even when a newer
+# local toolchain is installed. Use the local toolchain by default; opt back in
+# with VEXNAR_ALLOW_TOOLCHAIN_DOWNLOAD=1.
+if [[ "${VEXNAR_ALLOW_TOOLCHAIN_DOWNLOAD:-0}" != "1" ]]; then
+  export GOTOOLCHAIN=local
+fi
+
+GO_VERSION="$(go env GOVERSION 2>/dev/null || true)"
+echo "[desktop] go toolchain: ${GO_VERSION:-unknown} (required >= ${REQUIRED_GO:-unknown}, GOTOOLCHAIN=${GOTOOLCHAIN:-auto})"
 
 if [[ "${SKIP_WEB:-0}" != "1" ]]; then
   echo "[desktop] building static web UI..."
@@ -45,7 +62,16 @@ if [[ "$MODE" == "--release" ]]; then
 fi
 
 echo "[desktop] building sidecar ($TRIPLE)..."
-(cd "$ROOT" && CGO_ENABLED=0 go build "${BUILD_ARGS[@]}" -o "$OUT" ./cmd/vexnar)
+if ! (cd "$ROOT" && CGO_ENABLED=0 go build "${BUILD_ARGS[@]}" -o "$OUT" ./cmd/vexnar); then
+  cat >&2 <<EOF
+[desktop] sidecar build failed.
+[desktop] Required Go >= ${REQUIRED_GO:-unknown}; local is ${GO_VERSION:-unknown}.
+[desktop] If Go tried to download a toolchain and GOSUMDB=off blocked it,
+[desktop] install a compatible Go toolchain or set VEXNAR_ALLOW_TOOLCHAIN_DOWNLOAD=1
+[desktop] with a working module checksum/proxy configuration.
+EOF
+  exit 1
+fi
 
 # Tauri resolves the triple-suffixed name; the plain copy keeps `cargo run`
 # and the smoke mode working without rebuilding the shell.
