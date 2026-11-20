@@ -135,3 +135,50 @@ func TestDesktopConfigurePersistsAndProxies(t *testing.T) {
 		t.Fatalf("models status=%d body=%s", modelsRec.Code, modelsRec.Body.String())
 	}
 }
+
+func TestDesktopPreferencesRejectInvalidModes(t *testing.T) {
+	for _, mode := range []string{"", "allow-all", "FULL"} {
+		if validDesktopAccess(mode) {
+			t.Fatalf("invalid mode accepted: %s", mode)
+		}
+		s := &Server{}
+		req := httptest.NewRequest(http.MethodPut, "/api/desktop/preferences", strings.NewReader(`{"access_mode":"`+mode+`"}`))
+		rec := httptest.NewRecorder()
+		s.desktopPutPreferences(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d", rec.Code)
+		}
+	}
+	for _, mode := range []string{"request", "balanced", "full"} {
+		if !validDesktopAccess(mode) {
+			t.Fatalf("valid mode rejected: %s", mode)
+		}
+	}
+}
+
+func TestDesktopGatewayPreservesImageContentAndStripsApproval(t *testing.T) {
+	seen := make(chan string, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get(desktopApprovalHeader) != "" || r.Header.Get(desktopTokenHeader) != "" {
+			t.Error("private desktop headers reached upstream")
+		}
+		body, _ := io.ReadAll(r.Body)
+		seen <- string(body)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	defer upstream.Close()
+	s := &Server{llmOn: true, llmCfg: agent.ConfigFrom("openai", "vision", upstream.URL+"/v1", "fixture-key", "")}
+	body := `{"model":"vision","messages":[{"role":"user","content":[{"type":"text","text":"describe"},{"type":"image_url","image_url":{"url":"data:image/png;base64,aGVsbG8="}}]}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/desktop/openai/v1/chat/completions", strings.NewReader(body))
+	req.Header.Set(desktopApprovalHeader, "1")
+	req.Header.Set(desktopTokenHeader, "local-token")
+	rec := httptest.NewRecorder()
+	s.desktopChatProxy(rec, req)
+	if rec.Code != 200 {
+		t.Fatal(rec.Code, rec.Body.String())
+	}
+	if got := <-seen; got != body {
+		t.Fatal("gateway changed multimodal body")
+	}
+}

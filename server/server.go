@@ -750,6 +750,8 @@ func (s *Server) Handler() http.Handler {
 	// Loopback gateway used by the bundled Electron app. These routes are
 	// authenticated with VEXNAR_DESKTOP_TOKEN instead of the browser JWT;
 	// requireAuth rejects them when no desktop token was configured.
+	mux.HandleFunc("GET /api/desktop/preferences", s.desktopGetPreferences)
+	mux.HandleFunc("PUT /api/desktop/preferences", s.desktopPutPreferences)
 	mux.HandleFunc("GET /api/desktop/llm", s.desktopGetLLM)
 	mux.HandleFunc("POST /api/desktop/llm/configure", s.desktopConfigureLLM)
 	mux.HandleFunc("GET /api/desktop/llm/models", s.desktopListModels)

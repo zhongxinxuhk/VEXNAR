@@ -23,7 +23,8 @@
     "dist:mac": "npm run build && npm run backend:prepare && electron-builder --mac",
     "pg:fetch": "bash scripts/fetch-pg.sh",
     "dist:linux": "npm run build && npm run backend:prepare && electron-builder --linux --x64",
-    "dist:win": "npm run build && npm run backend:prepare && electron-builder --win --x64"
+    "dist:win": "npm run build && npm run backend:prepare && electron-builder --win --x64",
+    "test:ui": "npm run build && electron scripts/test-ui.cjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -39,21 +40,23 @@
     "@xterm/xterm": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.11",
     "lucide-react": "^1.76.0",
     "monaco-editor": "^0.57.0",
     "motion": "^14.14.0",
     "node-pty": "^1.1.0",
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "simple-git": "^4.1.0",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7",
-    "zustand": "^5.1.0",
-    "pg": "^8.23.1"
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^24.10.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
@@ -63,7 +66,6 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^5.9.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.1",
-    "@types/pg": "^8.23.1"
+    "vitest": "^5.1.1"
   }
 }

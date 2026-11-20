@@ -2,10 +2,18 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { app } from 'electron'
+import { randomUUID } from 'node:crypto'
+import path from 'node:path'
 import { promises as fs } from 'node:fs'
 import { simpleGit } from 'simple-git'
 import type { DiffPayload, GitStatus } from '@shared/contracts'
-import { ensureInside, isProbablyBinary, languageFor, relativeTo } from './paths'
+import {
+  ensureInside,
+  isProbablyBinary,
+  languageFor,
+  relativeTo
+} from './paths'
 import { getSettings } from './settings'
 
 function root(): string {
@@ -47,10 +55,51 @@ export async function gitDiff(filePath: string): Promise<DiffPayload> {
   let modified = ''
   try {
     const buffer = await fs.readFile(absolute)
-    modified = isProbablyBinary(buffer) ? '[binary file]' : buffer.toString('utf8')
+    modified = isProbablyBinary(buffer)
+      ? '[binary file]'
+      : buffer.toString('utf8')
   } catch {
     modified = ''
   }
 
   return { path: rel, original, modified, language: languageFor(rel) }
+}
+
+export async function gitBranches(): Promise<string[]> {
+  const refs = await simpleGit({ baseDir: root() }).raw([
+    'for-each-ref',
+    '--format=%(refname:short)',
+    'refs/heads'
+  ])
+  return refs.split('\n').filter(Boolean)
+}
+
+export async function createChatWorktree(
+  baseDir: string,
+  branch: string
+): Promise<string> {
+  if (!baseDir) throw new Error('该会话没有工作区')
+  const git = simpleGit({ baseDir })
+  const refs = await git.raw([
+    'for-each-ref',
+    '--format=%(refname:short)',
+    'refs/heads'
+  ])
+  if (!refs.split('\n').includes(branch)) throw new Error('请选择现有本地分支')
+  const parent = path.join(app.getPath('userData'), 'worktrees')
+  await fs.mkdir(parent, { recursive: true })
+  const id = randomUUID()
+  const target = path.join(
+    parent,
+    `${path.basename(baseDir).slice(0, 48)}-${id.slice(0, 8)}`
+  )
+  await git.raw([
+    'worktree',
+    'add',
+    '-b',
+    `vexnar/${id}`,
+    target,
+    `refs/heads/${branch}`
+  ])
+  return target
 }

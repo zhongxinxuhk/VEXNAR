@@ -9,12 +9,15 @@ import type {
   AgentEvent,
   AppInfo,
   AvatarColor,
+  ImageAttachment,
+  ReasoningEffort,
   BackendStatus,
   DiffPayload,
   FileNode,
   GitStatus,
   Message,
   NewApiState,
+  NewApiUsage,
   PublicSettings,
   Session,
   SettingsInput
@@ -39,6 +42,8 @@ type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
 export type SettingsSection = 'general' | 'appearance' | 'workspace' | 'model' | 'runtime'
 export type AppView =
   | 'chat'
+  | 'profile'
+  | 'schedules'
   | 'overview'
   | 'tasks'
   | 'findings'
@@ -77,13 +82,17 @@ type AppState = {
 
   init: () => Promise<void>
   setView: (view: AppView) => void
+  usage: NewApiUsage | null
+  usageLoading: boolean
+  refreshUsage: () => Promise<void>
   refreshBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
-  newSession: () => Promise<void>
+  newSession: (workspace?: string) => Promise<void>
   removeSession: (id: string) => Promise<void>
   pinSession: (id: string, pinned: boolean) => Promise<void>
-  send: (text: string) => Promise<void>
+  contextUsage: Record<string, { model: string; promptTokens: number }>
+  send: (text: string, attachments?: ImageAttachment[], reasoningEffort?: ReasoningEffort) => Promise<boolean>
   cancel: () => Promise<void>
   handleAgentEvent: (event: AgentEvent) => void
   saveSettings: (input: SettingsInput) => Promise<boolean>
@@ -149,6 +158,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   backendLoading: false,
   settings: emptySettings,
   newApi: null,
+  usage: null,
+  usageLoading: false,
   sessions: [],
   activeSessionId: null,
   messages: [],
@@ -157,6 +168,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   busy: false,
   rightTab: 'workspace',
   rightOpen: false,
+  contextUsage: {},
   settingsOpen: false,
   settingsSection: 'general',
   workspaceFiles: [],
@@ -211,6 +223,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setView: (view) => set({ view }),
 
+  refreshUsage: async () => {
+    if (get().usageLoading) return
+    set({ usageLoading: true })
+    const result = await api.newapi.usage()
+    set({ usage: result.ok ? result.data : null, usageLoading: false })
+  },
+
   refreshBackend: async () => {
     set({ backendLoading: true })
     const result = await api.backend.status()
@@ -231,23 +250,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (get().busy && get().agentSessionId && get().agentSessionId !== id) {
       await get().cancel()
     }
+    const session = get().sessions.find((item) => item.id === id)
+    if (!session) return
+    const contextChanged = session.workspace !== get().settings.workspaceRoot
+    if (contextChanged) {
+      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: session.workspace })
+      if (!saved.ok) { set({ error: saved.error }); return }
+      set({ settings: saved.data })
+    }
     set({ activeSessionId: id, messages: [], agentSessionId: null, diff: null, diffError: null })
     const result = await api.messages.list({ id })
     if (result.ok) {
       set({
         messages: result.data.map((message) => ({
           ...message,
-          toolCalls: undefined
+          toolCalls: message.toolCalls
         }))
       })
     } else {
       set({ error: result.error })
     }
+    if (contextChanged) await Promise.all([get().refreshWorkspace(), get().refreshGit()])
   },
 
-  newSession: async () => {
+  newSession: async (workspaceOverride) => {
     if (get().busy) await get().cancel()
-    const workspace = get().settings.workspaceRoot
+    const workspace = workspaceOverride ?? get().settings.workspaceRoot
+    if (workspace !== get().settings.workspaceRoot) {
+      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
+      if (!saved.ok) { set({ error: saved.error }); return }
+      set({ settings: saved.data })
+      await Promise.all([get().refreshWorkspace(), get().refreshGit()])
+    }
     const result = await api.sessions.create({ title: newChatTitle(), workspace })
     if (!result.ok) {
       set({ error: result.error })
@@ -292,19 +326,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     else await get().newSession()
   },
 
-  send: async (text) => {
+  send: async (text, attachments = [], reasoningEffort) => {
     const trimmed = text.trim()
     const sessionId = get().activeSessionId
-    if (!trimmed || !sessionId || get().busy) return
+    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy) return false
 
     const userResult = await api.messages.append({
       sessionId,
       role: 'user',
-      content: trimmed
+      content: trimmed,
+      attachments
     })
     if (!userResult.ok) {
       set({ error: userResult.error })
-      return
+      return false
     }
     const assistant: ChatMessage = {
       id: `stream-${Date.now()}`,
@@ -324,7 +359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))
     const current = get().sessions.find((item) => item.id === sessionId)
     if (current && isDefaultTitle(current.title)) {
-      const title = trimmed.replace(/\s+/g, ' ').slice(0, 60)
+      const title = (trimmed || attachments[0]?.name || '图片').replace(/\s+/g, ' ').slice(0, 60)
       void api.sessions.rename({ id: sessionId, title }).then((renamed) => {
         if (!renamed.ok) return
         set((state) => ({
@@ -332,7 +367,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }))
       })
     }
-    const result = await api.agent.send({ sessionId, text: trimmed })
+    const result = await api.agent.send({ sessionId, text: trimmed, attachments, reasoningEffort })
     if (!result.ok) {
       set((state) => ({
         busy: false,
@@ -345,6 +380,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         )
       }))
     }
+    return result.ok
   },
 
   cancel: async () => {
@@ -358,11 +394,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         message.id === streaming?.id ? { ...message, streaming: false } : message
       )
     })
-    if (streaming?.content.trim()) {
+    if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
       await api.messages.append({
         sessionId: streaming.sessionId,
         role: 'assistant',
-        content: streaming.content
+        content: streaming.content,
+        toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
       })
     }
   },
@@ -450,6 +487,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       }))
       return
     }
+    if (event.type === 'context_usage') {
+      const id = get().agentSessionId
+      if (id) set((state) => ({ contextUsage: { ...state.contextUsage, [id]: event } }))
+      return
+    }
     if (event.type === 'assistant_done') {
       const streaming = lastStreaming(get().messages)
       set((state) => ({
@@ -459,12 +501,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           message.id === streaming?.id ? { ...message, streaming: false } : message
         )
       }))
-      if (streaming?.content.trim()) {
+      if (streaming && (streaming.content.trim() || streaming.toolCalls?.length)) {
         void api.messages
           .append({
             sessionId: streaming.sessionId,
             role: 'assistant',
-            content: streaming.content
+            content: streaming.content,
+            toolCalls: streaming.toolCalls?.map((tool) => tool.status === 'running' ? { ...tool, status: 'error' } : tool)
           })
           .then((result) => {
             if (!result.ok) return
@@ -494,7 +537,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: result.error })
       return false
     }
-    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() } })
+    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, accessToken: null, accessTokenError: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() }, usage: null })
     return true
   },
 
@@ -504,7 +547,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: result.error })
       return false
     }
-    set({ settings: result.data, settingsOpen: false, error: null })
+    set({ settings: result.data, error: null })
     applyTheme(result.data.theme)
     await Promise.all([get().refreshWorkspace(), get().refreshGit()])
     return true

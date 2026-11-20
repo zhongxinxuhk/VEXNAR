@@ -182,6 +182,10 @@ func (s *Server) desktopListModels(w http.ResponseWriter, r *http.Request) {
 // agent runtime talks to this endpoint; only the Go process sees the upstream
 // base URL and API key.
 func (s *Server) desktopChatProxy(w http.ResponseWriter, r *http.Request) {
+	if s.desktopAccessMode() == "request" && r.Header.Get(desktopApprovalHeader) != "1" {
+		writeErr(w, 403, "当前访问模式要求先批准模型联网请求")
+		return
+	}
 	s.cfgMu.Lock()
 	cfg := s.llmCfg
 	on := s.llmOn
@@ -211,6 +215,7 @@ func (s *Server) desktopChatProxy(w http.ResponseWriter, r *http.Request) {
 		req.Host = target.Host
 		req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 		req.Header.Del(desktopTokenHeader)
+		req.Header.Del(desktopApprovalHeader)
 	}
 	proxy.FlushInterval = -1
 	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {

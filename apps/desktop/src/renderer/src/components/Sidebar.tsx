@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
+import { useLayout } from '@/store/layout'
 import { useAppStore } from '@/store/app'
 import { basename, cn } from '@/lib/utils'
 import type { Session } from '@shared/contracts'
@@ -54,7 +55,7 @@ function SessionRow({
     <div
       className={cn(
         'group relative flex h-[30px] items-center rounded-[7px] pl-[42px] pr-1',
-        active ? 'text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
+        active ? 'bg-[var(--codex-active)] text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
       )}
     >
       <button
@@ -119,11 +120,12 @@ type Project = {
 
 export function Sidebar(): React.JSX.Element {
   const t = useT()
+  const sidebarWidth = useLayout((state) => state.sidebarWidth)
+  const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const view = useAppStore((state) => state.view)
   const settings = useAppStore((state) => state.settings)
-  const info = useAppStore((state) => state.info)
   const backend = useAppStore((state) => state.backend)
   const newSession = useAppStore((state) => state.newSession)
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
@@ -134,8 +136,7 @@ export function Sidebar(): React.JSX.Element {
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [showAllChats, setShowAllChats] = useState<Set<string>>(new Set())
-  const [showAllProjects, setShowAllProjects] = useState(false)
+  const [projectsCollapsed, setProjectsCollapsed] = useState(false)
   const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
   const lastAutoExpand = useRef<string | null>(null)
@@ -206,29 +207,20 @@ export function Sidebar(): React.JSX.Element {
     })
   }
 
-  const toggleAllChats = (path: string): void => {
-    setShowAllChats((previous) => {
-      const next = new Set(previous)
-      if (next.has(path)) next.delete(path)
-      else next.add(path)
-      return next
-    })
-  }
-
   const createProject = async (): Promise<void> => {
     await chooseWorkspace()
   }
 
-  const visibleProjects = showAllProjects ? projects : projects.slice(0, 4)
-  const mac =
-    (info?.platform ?? (navigator.userAgent.includes('Mac') ? 'darwin' : '')) === 'darwin'
+  const visibleProjects = projects
+
+  if (!sidebarOpen) return <></>
 
   return (
-    <aside className="relative z-10 flex w-[248px] shrink-0 flex-col border-r border-line-soft bg-panel">
+    <aside data-testid="chat-sidebar" style={{ width: sidebarWidth }} className="relative z-10 flex shrink-0 flex-col border-r border-line bg-panel">
       <div
         className={cn(
           'drag-region flex shrink-0 items-center gap-1.5 pl-4 pr-2',
-          mac ? 'h-[84px] pt-[42px]' : 'h-[52px]'
+          'h-[44px]'
         )}
       >
         <DropdownMenu.Root>
@@ -373,11 +365,17 @@ export function Sidebar(): React.JSX.Element {
             <div className="flex items-center gap-1 px-2 pb-1 pt-4">
               <button
                 type="button"
-                onClick={() => setShowAllProjects((value) => !value)}
+                onClick={() => setProjectsCollapsed((value) => !value)}
                 className="flex items-center gap-1 text-[11px] font-medium text-muted transition-colors hover:text-ink-soft"
               >
                 {t('app.projects')}
-                <ChevronDown className="h-3 w-3" strokeWidth={2} />
+                <ChevronDown
+                  className={cn(
+                    'h-3 w-3 strokeWidth-2 transition-transform',
+                    projectsCollapsed && '-rotate-90'
+                  )}
+                  strokeWidth={2}
+                />
               </button>
               <div className="ml-auto flex items-center gap-0.5">
                 <button
@@ -401,15 +399,14 @@ export function Sidebar(): React.JSX.Element {
               </div>
             </div>
 
-            {visibleProjects.length === 0 ? (
+            {projectsCollapsed ? null : visibleProjects.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] leading-5 text-muted">
                 {t('app.noChats')}
               </div>
             ) : (
               visibleProjects.map((project) => {
                 const open = expanded.has(project.path)
-                const all = showAllChats.has(project.path)
-                const visible = all ? project.sessions : project.sessions.slice(0, 4)
+                const visible = project.sessions
                 return (
                   <div key={project.path || '__none'} className="mb-0.5">
                     <button
@@ -440,31 +437,12 @@ export function Sidebar(): React.JSX.Element {
                             active={view === 'chat' && session.id === activeSessionId}
                           />
                         ))}
-                        {project.sessions.length > 4 ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleAllChats(project.path)}
-                            className="flex h-[26px] w-full items-center rounded-[7px] pl-[30px] text-left text-[11.5px] text-muted transition-colors hover:text-ink-soft"
-                          >
-                            {all ? t('app.showLess') : t('app.showMore')}
-                          </button>
-                        ) : null}
                       </div>
                     ) : null}
                   </div>
                 )
               })
             )}
-
-            {projects.length > 4 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllProjects((value) => !value)}
-                className="mt-0.5 flex h-[28px] w-full items-center rounded-[7px] px-2 text-left text-[11.5px] text-muted transition-colors hover:text-ink-soft"
-              >
-                {showAllProjects ? t('app.showLess') : t('app.showMore')}
-              </button>
-            ) : null}
 
             {sessions.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] text-muted">{t('app.noChats')}</div>

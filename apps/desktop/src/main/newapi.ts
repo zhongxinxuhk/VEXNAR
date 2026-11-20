@@ -5,12 +5,15 @@
 import { BrowserWindow, clipboard, safeStorage, session, shell } from 'electron'
 import { readSetting, writeSetting } from './db'
 import type {
+  NewApiAccessToken,
   NewApiAuthProvider,
   NewApiExternalAuthInput,
   NewApiLoginInput,
   NewApiQuota,
   NewApiState,
   NewApiToken,
+  NewApiUsage,
+  NewApiUsageRecord,
   NewApiUser,
   NewApiVerifyInput
 } from '@shared/contracts'
@@ -22,13 +25,20 @@ import {
 } from './settings'
 import type { BackendManager } from './backend'
 import {
+  accessTokenItemsFromPayload,
+  accessTokenScopesFromCatalog,
   authMethodsFromStatus,
+  hasPasswordProofMethod,
   isAuthBundle,
+  logItemsFromPayload,
   normalizeApiKey,
   normalizeModels,
   parseTokenItems,
   pickDefaultModel,
+  proofTokenFromPayload,
   quotaFromUser,
+  toAccessToken,
+  toUsageRecord,
   tokenFromRecord,
   type TokenRecord
 } from './newapi-utils'
@@ -38,6 +48,10 @@ export const NEWAPI_API_BASE = 'https://api.sec.hn.cn/v1'
 const AUTH_SETTING_KEY = 'newapi.auth'
 const AUTH_PARTITION = 'vexnar-newapi-auth'
 const MANAGED_TOKEN_NAME = 'App-managed'
+const ACCESS_TOKEN_SETTING_KEY = 'newapi.accessToken'
+// 平台的一次性安全凭证 scope：创建 / 撤销访问令牌各自独立。
+const ACCESS_TOKEN_SCOPE_GENERATE = 'access_token.generate'
+const ACCESS_TOKEN_SCOPE_REVOKE = 'access_token.revoke'
 
 type RawUser = Record<string, unknown>
 
@@ -123,6 +137,8 @@ export class NewApiManager {
     user: null,
     quota: null,
     token: null,
+    accessToken: null,
+    accessTokenError: null,
     models: [],
     verificationMethods: [],
     authMethods: { ...defaultNewApiAuthMethods },
@@ -132,6 +148,11 @@ export class NewApiManager {
   }
   private auth: StoredAuth | null = null
   private pendingFlowToken = ''
+  /**
+   * 本次登录会话的密码，只驻留内存，用于访问令牌创建/撤销时的一次性安全验签
+   * （平台要求 step-up 凭证，且不在磁盘上做任何持久化）。
+   */
+  private sessionPassword = ''
   private bootstrapped = false
   private busy = false
   private authWindow: BrowserWindow | null = null
@@ -207,8 +228,11 @@ export class NewApiManager {
         method: 'POST',
         body: JSON.stringify({ username: input.username.trim(), password: input.password })
       })
+      // 记住本次密码，供访问令牌的 step-up 验签使用；退出登录即清空。
+      this.sessionPassword = input.password
       await this.acceptAuthResponse(result)
     } catch (error) {
+      this.sessionPassword = ''
       const message = errorMessage(error)
       this.update({
         stage: 'error',
@@ -351,10 +375,42 @@ export class NewApiManager {
     return this.state
   }
 
+  /**
+   * 读取中转平台的消费日志，供个人资料页在本地聚合统计。
+   * 平台未开放日志接口时返回 supported: false，由界面降级到本地数据。
+   */
+  async usage(): Promise<NewApiUsage> {
+    const now = Date.now()
+    const pageSize = 100
+    const maxPages = 5
+    const records: NewApiUsageRecord[] = []
+    let truncated = false
+    for (let page = 0; page < maxPages; page += 1) {
+      const result = await this.authRequest(
+        `/api/log/self?p=${page}&page_size=${pageSize}&size=${pageSize}`
+      )
+      const items = result.ok ? logItemsFromPayload(result.json) : null
+      if (items === null) {
+        return { supported: false, truncated: false, records: [], fetchedAt: now }
+      }
+      for (const item of items) {
+        const record = toUsageRecord(item)
+        if (record) records.push(record)
+      }
+      if (items.length < pageSize) break
+      if (page === maxPages - 1) truncated = true
+    }
+    records.sort((left, right) => left.at - right.at)
+    return { supported: true, truncated, records, fetchedAt: now }
+  }
+
   async logout(): Promise<{ loggedOut: true }> {
     const auth = this.auth
     this.pendingFlowToken = ''
     if (auth) {
+      // 先清理平台侧的凭证（会话仍然有效时才能撤销），再注销会话。
+      await this.revokeManagedAccessToken().catch(() => undefined)
+      await this.deleteManagedApiKey().catch(() => undefined)
       await this.request(
         '/api/user/auth/logout',
         { method: 'POST', body: '{}' },
@@ -362,6 +418,8 @@ export class NewApiManager {
       ).catch(() => undefined)
     }
     this.auth = null
+    this.sessionPassword = ''
+    await writeSetting(ACCESS_TOKEN_SETTING_KEY, '').catch(() => undefined)
     await this.clearAuth()
     await this.backend.clearLLM().catch(() => undefined)
     await clearManagedConnection()
@@ -381,6 +439,7 @@ export class NewApiManager {
 
   dispose(): void {
     this.auth = null
+    this.sessionPassword = ''
     this.pendingFlowToken = ''
     this.externalCompleted = true
     this.stopAuthTimers()
@@ -802,10 +861,18 @@ export class NewApiManager {
 
     let token: NewApiToken | null = null
     let tokenError: string | null = null
+    let accessToken: NewApiAccessToken | null = null
+    let accessTokenError: string | null = null
     let model = pickDefaultModel(models, getSettings().model)
     try {
       const managed = await this.ensureManagedToken(user, rawUser)
       token = managed.token
+      try {
+        // 与 API Key 同名：登录后自动建好，退出登录时一起撤销。
+        accessToken = await this.ensureAccessToken()
+      } catch (error) {
+        accessTokenError = errorMessage(error)
+      }
       const current = getSettings()
       model = pickDefaultModel(models, current.model)
       // The Go backend owns the upstream base URL/key. Electron only receives
@@ -850,6 +917,8 @@ export class NewApiManager {
       user,
       quota,
       token,
+      accessToken,
+      accessTokenError,
       models,
       verificationMethods: [],
       authMethods: statusData
@@ -859,6 +928,109 @@ export class NewApiManager {
       error: tokenError,
       updatedAt: Date.now()
     })
+  }
+
+  private async listAccessTokens(): Promise<NewApiAccessToken[]> {
+    const result = await this.authRequest('/api/user/access_tokens')
+    const items = accessTokenItemsFromPayload(result.json)
+    if (!items) throw new Error(messageOf(result.json, '无法读取访问令牌列表'))
+    return items
+      .map(toAccessToken)
+      .filter((item): item is NewApiAccessToken => Boolean(item))
+  }
+
+  private async accessTokenScopes(): Promise<string[]> {
+    const result = await this.authRequest('/api/user/access_tokens/catalog')
+    const scopes = accessTokenScopesFromCatalog(result.json)
+    if (scopes.length === 0) throw new Error('无法读取访问令牌权限目录')
+    return scopes
+  }
+
+  /**
+   * 申请一次性安全凭证（step-up）。平台对访问令牌的创建/撤销强制要求，
+   * 且凭证绑定具体操作内容（scope + context）。
+   */
+  private async acquireSecurityProof(scope: string, context: unknown): Promise<string> {
+    const methods = await this.authRequest(
+      `/api/verify/methods?scope=${encodeURIComponent(scope)}`
+    )
+    if (!hasPasswordProofMethod(methods.json)) {
+      throw new Error(
+        '该账号启用了两步验证或 Passkey，访问令牌需要到平台「安全设置」手动创建'
+      )
+    }
+    if (!this.sessionPassword) {
+      throw new Error('需要重新登录后才能创建访问令牌')
+    }
+    const result = await this.authRequest('/api/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        method: 'password',
+        scope,
+        context,
+        password: this.sessionPassword
+      })
+    })
+    const proof = proofTokenFromPayload(result.json)
+    if (!proof) throw new Error(messageOf(result.json, '安全验证失败'))
+    return proof
+  }
+
+  /** 登录后确保存在与 API Key 同名的访问令牌；已存在则复用。 */
+  private async ensureAccessToken(): Promise<NewApiAccessToken> {
+    const existing = await this.listAccessTokens()
+    const found = existing.find((item) => item.name === MANAGED_TOKEN_NAME)
+    if (found) {
+      await writeSetting(ACCESS_TOKEN_SETTING_KEY, JSON.stringify({ id: found.id }))
+      return found
+    }
+    if (!this.sessionPassword) {
+      throw new Error('非密码登录无法自动创建访问令牌，请到平台「安全设置」创建')
+    }
+    const scopes = await this.accessTokenScopes()
+    const expiresAt = 0 // 0 = 永不过期，与 API Key 保持一致
+    const proof = await this.acquireSecurityProof(ACCESS_TOKEN_SCOPE_GENERATE, {
+      scopes,
+      expires_at: expiresAt
+    })
+    const result = await this.authRequest('/api/user/access_tokens', {
+      method: 'POST',
+      headers: { 'X-Security-Proof': proof },
+      body: JSON.stringify({ name: MANAGED_TOKEN_NAME, scopes, expires_at: expiresAt })
+    })
+    const payload = result.json as
+      | { success?: boolean; data?: { item?: unknown }; message?: string }
+      | null
+    if (!result.ok || payload?.success === false) {
+      throw new Error(messageOf(payload, '创建访问令牌失败'))
+    }
+    const created = toAccessToken(payload?.data?.item)
+    if (!created) throw new Error('创建访问令牌失败：平台返回内容不完整')
+    await writeSetting(ACCESS_TOKEN_SETTING_KEY, JSON.stringify({ id: created.id }))
+    return created
+  }
+
+  /** 退出登录：撤销同名访问令牌。失败不阻断退出。 */
+  private async revokeManagedAccessToken(): Promise<void> {
+    if (!this.sessionPassword) return
+    const existing = await this.listAccessTokens()
+    const found = existing.find((item) => item.name === MANAGED_TOKEN_NAME)
+    if (!found) return
+    const proof = await this.acquireSecurityProof(ACCESS_TOKEN_SCOPE_REVOKE, {
+      token_id: found.id
+    })
+    await this.authRequest(`/api/user/access_tokens/${found.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Security-Proof': proof }
+    })
+  }
+
+  /** 退出登录：删除本应用创建的 API Key。失败不阻断退出。 */
+  private async deleteManagedApiKey(): Promise<void> {
+    const tokens = await this.listTokens()
+    const found = tokens.find((token) => token.name === MANAGED_TOKEN_NAME)
+    if (!found) return
+    await this.authRequest(`/api/token/${found.id}`, { method: 'DELETE' })
   }
 
   private async ensureManagedToken(
@@ -963,6 +1135,8 @@ export class NewApiManager {
       user: null,
       quota: null,
       token: null,
+      accessToken: null,
+      accessTokenError: null,
       models: [],
       verificationMethods: [],
       externalAuth: null,

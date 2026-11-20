@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
+import { UpdateManager } from './updates'
 import os from 'node:os'
 import path from 'node:path'
 import { AgentManager } from './agent'
@@ -42,6 +44,18 @@ const terminal = new TerminalManager({
 const backend = new BackendManager()
 const agent = new AgentManager((event) => emit(IPC.agentEvent, event), backend)
 const newapi = new NewApiManager(emit, backend)
+
+const updates = new UpdateManager(autoUpdater, app.getVersion(), app.isPackaged, (state) => {
+  emit(IPC.updateChanged, state)
+}, async () => {
+  if (agent.isBusy()) throw new Error('对话仍在运行，下载已完成；请在对话结束后点击重启更新。')
+  const tasks = await backend.request({ path: '/tasks', method: 'GET' }) as { tasks: Array<{ status: string }> }
+  if (!Array.isArray(tasks.tasks)) throw new Error('无法确认任务状态，请稍后重试安装。')
+  if (tasks.tasks.some((task) => ['running', 'queued'].includes(task.status))) {
+    throw new Error('后台任务仍在运行或排队，下载已完成；请停止任务后点击重启更新。')
+  }
+  await shutdown()
+})
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -122,6 +136,7 @@ async function boot(): Promise<void> {
   }
 
   registerIpc({
+    updates,
     agent,
     backend,
     terminal,
@@ -129,6 +144,7 @@ async function boot(): Promise<void> {
     getWindow: () => mainWindow
   })
   createWindow()
+  updates.start()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -138,6 +154,7 @@ async function boot(): Promise<void> {
 async function shutdown(): Promise<void> {
   if (shuttingDown) return
   shuttingDown = true
+  updates.dispose()
   agent.dispose()
   terminal.disposeAll()
   newapi.dispose()
@@ -171,12 +188,12 @@ if (!smoke && !app.requestSingleInstanceLock()) {
   app.on('before-quit', (event) => {
     if (shuttingDown) return
     event.preventDefault()
-    void shutdown().finally(() => app.exit(0))
+    void shutdown().finally(() => app.quit())
   })
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
-      void shutdown().finally(() => app.exit(0))
+      void shutdown().finally(() => app.quit())
     })
   }
 }

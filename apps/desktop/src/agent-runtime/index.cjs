@@ -12,6 +12,7 @@
  * reloads from taking down the agent session.
  */
 
+const { resolveReadPath } = require('./read-policy.cjs')
 const fs = require('node:fs')
 const fsp = fs.promises
 const path = require('node:path')
@@ -25,7 +26,8 @@ const state = {
   workspace: '',
   model: '',
   baseUrl: '',
-  apiKey: ''
+  apiKey: '',
+  accessMode: 'full'
 }
 
 let cancelled = false
@@ -48,13 +50,17 @@ function truncate(text, max = 6000) {
   return value.length > max ? `${value.slice(0, max)}\n… (${value.length - max} chars omitted)` : value
 }
 
+const approvals = new Map()
+function approveRead(target) {
+  return new Promise((resolve) => {
+    const id = randomUUID()
+    const timer = setTimeout(() => { approvals.delete(id); resolve(false) }, 120000)
+    approvals.set(id, (allowed) => { clearTimeout(timer); resolve(allowed) })
+    send({ type: 'approval_request', id, path: target })
+  })
+}
 function safePath(root, relative) {
-  if (!root) throw new Error('尚未选择工作区')
-  const resolvedRoot = path.resolve(root)
-  const resolved = path.resolve(resolvedRoot, relative || '.')
-  const rel = path.relative(resolvedRoot, resolved)
-  if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error('路径超出当前工作区')
-  return resolved
+  return resolveReadPath(root, relative, state.accessMode, approveRead)
 }
 
 const SKIP_DIRS = new Set([
@@ -78,7 +84,7 @@ const SKIP_DIRS = new Set([
 ])
 
 async function listFiles(relative = '.', depth = 2) {
-  const root = safePath(state.workspace, relative)
+  const root = await safePath(state.workspace, relative)
   const lines = []
   const walk = async (dir, level) => {
     if (lines.length >= 120 || level > depth) return
@@ -106,7 +112,7 @@ async function listFiles(relative = '.', depth = 2) {
 }
 
 async function readFile(relative) {
-  const absolute = safePath(state.workspace, relative)
+  const absolute = await safePath(state.workspace, relative)
   const stat = await fsp.stat(absolute)
   if (!stat.isFile()) throw new Error('不是文件')
   if (stat.size > 200_000) throw new Error('文件过大')
@@ -122,7 +128,7 @@ async function gitStatus() {
     })
     return truncate(stdout.trim() || '(clean)')
   } catch (error) {
-    return `git status unavailable: ${error.message}`
+    throw new Error(`Git 状态读取失败：${error.message}`)
   }
 }
 
@@ -170,32 +176,44 @@ async function localReply(text) {
   }
 }
 
-async function llmReply(text) {
+async function llmReply(text, attachments = [], networkApproved = false, accessMode = 'full', reasoningEffort) {
   const base = state.baseUrl.replace(/\/+$/, '')
   const url = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`
   const controller = new AbortController()
   currentAbort = controller
-  const response = await fetch(url, {
+  const request = (includeUsage) => fetch(url, {
     method: 'POST',
     signal: controller.signal,
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${state.apiKey}`,
-      'x-vexnar-desktop-token': state.apiKey
+      'x-vexnar-desktop-token': state.apiKey,
+      'x-vexnar-user-approved': networkApproved ? '1' : '0'
     },
     body: JSON.stringify({
       model: state.model,
       stream: true,
+      ...(includeUsage ? { stream_options: { include_usage: true } } : {}),
+      ...(['low', 'medium', 'high'].includes(reasoningEffort) ? { reasoning_effort: reasoningEffort } : {}),
       messages: [
         {
           role: 'system',
           content:
-            'You are the VEXNAR desktop agent. Be concise, technical and actionable. You are running inside an independent Electron desktop app.'
+            `You are the VEXNAR desktop agent. Be concise, technical and actionable. Current execution environment: this computer. Workspace: ${state.workspace || '(none selected)'}. Access mode: ${accessMode}. Do not claim to have executed tools or read files unless tool evidence is supplied.`
         },
-        { role: 'user', content: text }
+        { role: 'user', content: attachments.length ? [
+          ...(text ? [{ type: 'text', text }] : []),
+          ...attachments.map((image) => ({ type: 'image_url', image_url: { url: image.dataUrl } }))
+        ] : text }
       ]
     })
   })
+  let response = await request(true)
+  if (response.status === 400) {
+    const error = await response.text()
+    if (!/stream_options|include_usage/i.test(error)) throw new Error(`LLM HTTP 400: ${error}`)
+    response = await request(false)
+  }
   if (!response.ok || !response.body) {
     throw new Error(`LLM HTTP ${response.status}: ${await response.text()}`)
   }
@@ -217,6 +235,10 @@ async function llmReply(text) {
       if (!payload || payload === '[DONE]') continue
       try {
         const json = JSON.parse(payload)
+        const promptTokens = json?.usage?.prompt_tokens
+        if (!cancelled && Number.isSafeInteger(promptTokens) && promptTokens >= 0) {
+          send({ type: 'context_usage', model: state.model, promptTokens })
+        }
         const delta = json?.choices?.[0]?.delta?.content
         if (typeof delta === 'string' && delta) {
           received = true
@@ -230,12 +252,15 @@ async function llmReply(text) {
   if (!received) emitDelta('(模型没有返回内容)')
 }
 
-async function handleUserMessage(sessionId, text) {
+async function handleUserMessage(sessionId, text, attachments = [], networkApproved = false, accessMode = 'full', reasoningEffort) {
   cancelled = false
+  state.accessMode = accessMode
   try {
     if (state.apiKey && state.baseUrl) {
-      await llmReply(text)
+      if (accessMode === 'request' && !networkApproved) throw new Error('模型联网请求尚未批准')
+      await llmReply(text, attachments, networkApproved, accessMode, reasoningEffort)
     } else {
+      if (attachments.length) throw new Error('尚未配置支持图片的模型服务，图片未被发送')
       await localReply(text)
     }
   } catch (error) {
@@ -246,8 +271,10 @@ async function handleUserMessage(sessionId, text) {
       })
     }
   } finally {
+    for (const resolve of approvals.values()) resolve(false)
+    approvals.clear()
     currentAbort = null
-    if (!cancelled) send({ type: 'assistant_done' })
+    send({ type: 'assistant_done' })
   }
 }
 
@@ -261,13 +288,20 @@ process.on('message', (message) => {
     send({ type: 'ready' })
     return
   }
+  if (message.type === 'approval_response') {
+    const resolve = approvals.get(message.id)
+    if (resolve) { approvals.delete(message.id); resolve(message.allowed === true) }
+    return
+  }
   if (message.type === 'cancel') {
+    for (const resolve of approvals.values()) resolve(false)
+    approvals.clear()
     cancelled = true
     currentAbort?.abort()
     return
   }
   if (message.type === 'user_message') {
-    void handleUserMessage(String(message.sessionId || ''), String(message.text || ''))
+    void handleUserMessage(String(message.sessionId || ''), String(message.text || ''), Array.isArray(message.attachments) ? message.attachments : [], message.networkApproved === true, message.accessMode || 'full', message.reasoningEffort)
   }
 })
 

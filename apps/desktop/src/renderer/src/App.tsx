@@ -5,9 +5,13 @@
 import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertTriangle } from 'lucide-react'
+import { UpdateSubscription } from '@/components/UpdateNotice'
+import { WindowChrome, SidebarResizeHandle } from '@/components/WindowChrome'
 import { IconRail } from '@/components/IconRail'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
+import { ProfilePage } from '@/components/ProfilePage'
+import { SchedulesView } from '@/components/SchedulesView'
 import { RightPanel } from '@/components/RightPanel'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { ConsoleView } from '@/components/console/ConsoleView'
@@ -15,6 +19,7 @@ import { LoginScreen } from '@/components/LoginScreen'
 import { TooltipProvider } from '@/components/ui'
 import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
+import { useLayout } from '@/store/layout'
 import { defaultNewApiAuthMethods } from '@shared/contracts'
 
 function WorkspaceApp(): React.JSX.Element {
@@ -28,6 +33,10 @@ function WorkspaceApp(): React.JSX.Element {
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
   const newSession = useAppStore((state) => state.newSession)
   const view = useAppStore((state) => state.view)
+  const sidebarOpen = useLayout((state) => state.sidebarOpen)
+  const toggleSidebar = useLayout((state) => state.toggleSidebar)
+  const sidebarWidth = useLayout((state) => state.sidebarWidth)
+  const bare = view === 'profile' || view === 'schedules'
 
   useEffect(() => {
     void init()
@@ -63,18 +72,42 @@ function WorkspaceApp(): React.JSX.Element {
         event.preventDefault()
         toggleRight()
       }
+      // ⌘\ / Ctrl+\ 切换左侧会话侧栏（开关按钮的键盘兜底）
+      if (event.key === '\\') {
+        event.preventDefault()
+        toggleSidebar()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [newSession, setSettingsOpen, toggleRight])
+  }, [newSession, setSettingsOpen, toggleRight, toggleSidebar])
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-bg text-ink">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-bg text-ink">
+      <WindowChrome compact={bare} />
+      <div className="flex min-h-0 flex-1">
       <IconRail />
-      <Sidebar />
+      {bare ? null : (
+        <div
+          className="sidebar-shell shrink-0"
+          data-open={sidebarOpen}
+          style={{ width: sidebarOpen ? sidebarWidth : 0 }}
+        >
+          <Sidebar />
+        </div>
+      )}
+      {bare || !sidebarOpen ? null : <SidebarResizeHandle />}
 
-      <main className="relative flex min-w-0 flex-1 overflow-hidden">
-        {view === 'chat' ? <ChatView /> : <ConsoleView view={view} />}
+      <main className={`relative flex min-w-0 flex-1 overflow-hidden ${view === 'chat' ? '-mt-11' : ''}`}>
+        {view === 'chat' ? (
+          <ChatView />
+        ) : view === 'profile' ? (
+          <ProfilePage />
+        ) : view === 'schedules' ? (
+          <SchedulesView />
+        ) : (
+          <ConsoleView view={view} />
+        )}
 
         <AnimatePresence initial={false}>
           {view === 'chat' && rightOpen ? (
@@ -84,13 +117,14 @@ function WorkspaceApp(): React.JSX.Element {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 24, opacity: 0 }}
               transition={{ duration: 0.16, ease: 'easeOut' }}
-              className="absolute right-0 top-0 z-30 h-full w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]"
+              className="absolute inset-y-0 right-0 top-11 z-30 w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]"
             >
               <RightPanel />
             </motion.div>
           ) : null}
         </AnimatePresence>
       </main>
+      </div>
 
       <AnimatePresence>
         {error ? (
@@ -135,6 +169,8 @@ export default function App(): React.JSX.Element {
           user: null,
           quota: null,
           token: null,
+          accessToken: null,
+          accessTokenError: null,
           models: [],
           verificationMethods: [],
           authMethods: defaultNewApiAuthMethods,
@@ -155,6 +191,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <TooltipProvider>
+      <UpdateSubscription />
       <div className="relative h-full w-full overflow-hidden bg-bg text-ink">
         {authenticated ? <WorkspaceApp /> : <LoginScreen state={newApi} onChange={setNewApi} />}
       </div>

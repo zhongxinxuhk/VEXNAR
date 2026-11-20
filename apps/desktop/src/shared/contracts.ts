@@ -7,7 +7,14 @@ import { z } from 'zod'
 export const themeSchema = z.enum(['dark', 'light', 'system'])
 export type Theme = z.infer<typeof themeSchema>
 
-export const avatarColorSchema = z.enum(['orange', 'blue', 'green', 'purple', 'rose', 'slate'])
+export const avatarColorSchema = z.enum([
+  'orange',
+  'blue',
+  'green',
+  'purple',
+  'rose',
+  'slate'
+])
 export type AvatarColor = z.infer<typeof avatarColorSchema>
 
 export const settingsSchema = z.object({
@@ -60,6 +67,40 @@ export const newApiQuotaSchema = z.object({
 })
 export type NewApiQuota = z.infer<typeof newApiQuotaSchema>
 
+/**
+ * 中转平台（NewAPI）消费日志的一行。登录用户的 /api/log/self 接口返回记录，
+ * 我们只保留本地统计需要的字段：时间、模型、输入/输出 token 与扣费额度。
+ */
+export const newApiUsageRecordSchema = z.object({
+  at: z.number(),
+  model: z.string().default(''),
+  promptTokens: z.number().int().nonnegative().default(0),
+  completionTokens: z.number().int().nonnegative().default(0),
+  quota: z.number().default(0)
+})
+export type NewApiUsageRecord = z.infer<typeof newApiUsageRecordSchema>
+
+export const newApiUsageSchema = z.object({
+  supported: z.boolean(),
+  truncated: z.boolean(),
+  records: z.array(newApiUsageRecordSchema),
+  fetchedAt: z.number()
+})
+export type NewApiUsage = z.infer<typeof newApiUsageSchema>
+
+/**
+ * 访问令牌（面板 API 凭证）。与 API Key 同名，登录时创建、退出登录时撤销。
+ * 平台侧创建/撤销需要一次性安全凭证（step-up），因此这里只暴露结果状态。
+ */
+export const newApiAccessTokenSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  scopes: z.array(z.string()).default([]),
+  expiresAt: z.number().default(0),
+  createdAt: z.number().default(0)
+})
+export type NewApiAccessToken = z.infer<typeof newApiAccessTokenSchema>
+
 export const newApiAuthProviderSchema = z.object({
   key: z.string().min(1).max(120),
   name: z.string().min(1).max(200),
@@ -104,11 +145,20 @@ export const newApiExternalAuthSchema = z
 export type NewApiExternalAuthInput = z.infer<typeof newApiExternalAuthSchema>
 
 export const newApiStateSchema = z.object({
-  stage: z.enum(['checking', 'anonymous', 'authenticating', 'verification', 'ready', 'error']),
+  stage: z.enum([
+    'checking',
+    'anonymous',
+    'authenticating',
+    'verification',
+    'ready',
+    'error'
+  ]),
   authenticated: z.boolean(),
   user: newApiUserSchema.nullable().default(null),
   quota: newApiQuotaSchema.nullable().default(null),
   token: newApiTokenSchema.nullable().default(null),
+  accessToken: newApiAccessTokenSchema.nullable().default(null),
+  accessTokenError: z.string().nullable().default(null),
   models: z.array(z.string()).default([]),
   verificationMethods: z.array(z.string()).default([]),
   authMethods: newApiAuthMethodsSchema.default(defaultNewApiAuthMethods),
@@ -157,11 +207,52 @@ export type SessionPinInput = z.infer<typeof sessionPinSchema>
 export const idSchema = z.object({ id: z.string().min(1) })
 export type IdInput = z.infer<typeof idSchema>
 
-export const messageAppendSchema = z.object({
-  sessionId: z.string().min(1),
-  role: z.enum(['user', 'assistant', 'system', 'tool']),
-  content: z.string().min(1).max(200_000)
+export const imageAttachmentSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().min(1).max(200),
+  dataUrl: z
+    .string()
+    .max(5_600_000)
+    .regex(
+      /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/,
+      '仅支持 PNG、JPEG、WebP、GIF 图片'
+    )
 })
+export type ImageAttachment = z.infer<typeof imageAttachmentSchema>
+export const attachmentsSchema = z
+  .array(imageAttachmentSchema)
+  .max(6)
+  .refine(
+    (items) =>
+      items.reduce((sum, item) => sum + item.dataUrl.length, 0) <= 16_000_000,
+    '图片总大小不能超过 12 MB'
+  )
+
+export const toolActivitySchema = z.object({
+  id: z.string().max(100),
+  name: z.string().max(120),
+  status: z.enum(['running', 'done', 'error']),
+  input: z.unknown().optional(),
+  output: z.string().max(8000).optional()
+})
+export type ToolActivity = z.infer<typeof toolActivitySchema>
+export const reasoningEffortSchema = z.enum(['low', 'medium', 'high'])
+export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>
+
+export const messageAppendSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    role: z.enum(['user', 'assistant', 'system', 'tool']),
+    content: z.string().max(200_000),
+    attachments: attachmentsSchema.optional(),
+    toolCalls: z.array(toolActivitySchema).max(100).optional()
+  })
+  .refine(
+    (input) =>
+      input.content.trim().length > 0 ||
+      Boolean(input.attachments?.length || input.toolCalls?.length),
+    '请输入消息或添加图片'
+  )
 export type MessageAppendInput = z.infer<typeof messageAppendSchema>
 
 export const workspaceListSchema = z.object({
@@ -199,10 +290,17 @@ export const terminalResizeSchema = z.object({
 })
 export type TerminalResizeInput = z.infer<typeof terminalResizeSchema>
 
-export const agentSendSchema = z.object({
-  sessionId: z.string().min(1),
-  text: z.string().trim().min(1).max(20_000)
-})
+export const agentSendSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    text: z.string().trim().max(20_000),
+    reasoningEffort: reasoningEffortSchema.optional(),
+    attachments: attachmentsSchema.optional()
+  })
+  .refine(
+    (input) => input.text.length > 0 || Boolean(input.attachments?.length),
+    '请输入消息或添加图片'
+  )
 export type AgentSendInput = z.infer<typeof agentSendSchema>
 
 export const backendRequestSchema = z.object({
@@ -239,6 +337,8 @@ export type Message = {
   sessionId: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
+  attachments?: ImageAttachment[]
+  toolCalls?: ToolActivity[]
   createdAt: number
 }
 
@@ -277,12 +377,21 @@ export type DiffPayload = {
 }
 
 export type TerminalDataEvent = { id: string; data: string }
-export type TerminalExitEvent = { id: string; exitCode: number; signal?: number }
+export type TerminalExitEvent = {
+  id: string
+  exitCode: number
+  signal?: number
+}
 
 export const agentEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ready') }),
   z.object({ type: z.literal('assistant_delta'), text: z.string() }),
   z.object({ type: z.literal('assistant_done') }),
+  z.object({
+    type: z.literal('context_usage'),
+    model: z.string(),
+    promptTokens: z.number().int().nonnegative()
+  }),
   z.object({
     type: z.literal('tool_start'),
     id: z.string(),
@@ -301,6 +410,11 @@ export const agentEventSchema = z.discriminatedUnion('type', [
 export type AgentEvent = z.infer<typeof agentEventSchema>
 
 export const IPC = {
+  updateStatus: 'update:status',
+  updateCheck: 'update:check',
+  updateDownload: 'update:download',
+  updateInstall: 'update:install',
+  updateChanged: 'update:changed',
   appInfo: 'app:info',
   appCopyText: 'app:copy-text',
   settingsGet: 'settings:get',
@@ -316,6 +430,8 @@ export const IPC = {
   workspaceRead: 'workspace:read',
   workspaceChoose: 'workspace:choose',
   gitStatus: 'git:status',
+  gitBranches: 'git:branches',
+  gitWorktree: 'git:worktree',
   gitDiff: 'git:diff',
   terminalCreate: 'terminal:create',
   terminalWrite: 'terminal:write',
@@ -340,5 +456,6 @@ export const IPC = {
   newapiLogout: 'newapi:logout',
   newapiCopyKey: 'newapi:copy-key',
   newapiOpenPlatform: 'newapi:open-platform',
+  newapiUsage: 'newapi:usage',
   newapiChanged: 'newapi:changed'
 } as const

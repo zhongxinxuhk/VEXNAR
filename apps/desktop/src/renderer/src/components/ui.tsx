@@ -129,7 +129,7 @@ export function Tooltip({
   side = 'right'
 }: {
   children: React.ReactNode
-  label: string
+  label: React.ReactNode
   side?: 'top' | 'right' | 'bottom' | 'left'
 }): React.JSX.Element {
   return (
