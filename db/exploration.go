@@ -1596,12 +1596,33 @@ func (f ActivitySessionFilter) cond(argStart int) (string, []any) {
 // still-older steps exist before the returned window (so the client can stop loading
 // on scroll-up). Summary-only columns — detail is lazy-loaded via ActivityDetail.
 func (s *ExplorationStore) ActivityPage(f ActivitySessionFilter, before int64, limit int) ([]Activity, bool, error) {
+	return s.activityPage(f, before, limit, false)
+}
+
+// TranscriptPage returns visible conversation text and tool execution states.
+// Tool arguments, output bodies, model reasoning and accounting stay out of this view.
+func (s *ExplorationStore) TranscriptPage(f ActivitySessionFilter, before int64, limit int) ([]Activity, bool, error) {
+	return s.activityPage(f, before, limit, true)
+}
+
+func (s *ExplorationStore) activityPage(f ActivitySessionFilter, before int64, limit int, transcript bool) ([]Activity, bool, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	const cols = `id, node_id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, COALESCE(summary,''), metadata, created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg`
 	args := []any{s.expID}
 	cond, cargs := f.cond(len(args) + 1)
+	content := `COALESCE(summary,''), metadata`
+	if transcript {
+		cond += ` AND kind IN ('user','text','result','tool_use','tool_result')`
+		if f.NodeID != nil {
+			cond += ` AND EXISTS (SELECT 1 FROM exploration_nodes n WHERE n.id=activity.node_id
+AND n.exploration_id=activity.exploration_id AND n.kind='intent' AND n.state<>'deleted')`
+		}
+		content = `LEFT(CASE WHEN kind IN ('tool_use','tool_result') THEN ''
+WHEN kind IN ('text','result') AND NOT is_error THEN COALESCE(detail,summary,'')
+ELSE COALESCE(summary,'') END, 8000), '{}'::jsonb`
+	}
+	cols := `id, node_id, COALESCE(worker,''), COALESCE(kind,''), COALESCE(tool,''), COALESCE(tool_use_id,''), is_error, ` + content + `, created_at, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg`
 	args = append(args, cargs...)
 	beforeArg := len(args) + 1
 	args = append(args, before)

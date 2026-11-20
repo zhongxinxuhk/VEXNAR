@@ -1,0 +1,121 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import * as ContextMenu from '@radix-ui/react-context-menu'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
+import type { Session } from '@shared/contracts'
+import { useT } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/app'
+
+const menuContent =
+  'z-50 min-w-[168px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
+const menuItem =
+  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
+
+export function SessionRow({
+  session,
+  active,
+  pinned,
+  showWorkspace = false
+}: {
+  session: Session
+  active: boolean
+  pinned?: boolean
+  showWorkspace?: boolean
+}): React.JSX.Element {
+  const t = useT()
+  const selectSession = useAppStore((state) => state.selectSession)
+  const pinSession = useAppStore((state) => state.pinSession)
+  const removeSession = useAppStore((state) => state.removeSession)
+
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>
+        <div
+          className={cn(
+            showWorkspace && 'h-11',
+            'group relative flex min-h-[30px] items-center rounded-[7px] pl-2 pr-1',
+            active ? 'bg-[var(--codex-active)] text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => void selectSession(session.id)}
+            className="min-w-0 flex-1 truncate text-left text-[12.5px] leading-4"
+            title={showWorkspace ? `${session.title} · ${session.workspace || t('app.unassigned')}` : session.title}
+          >
+            <span className="block truncate">{session.title}</span>
+            {showWorkspace ? <span className="block truncate text-[10px] leading-3 text-muted">{session.workspace || t('app.unassigned')}</span> : null}
+          </button>
+
+          {pinned ? (
+            <Pin className="mr-1 h-3 w-3 shrink-0 text-muted/70" strokeWidth={1.8} />
+          ) : null}
+
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label={t('app.more')}
+                onClick={(event) => event.stopPropagation()}
+                className={cn(
+                  'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted opacity-0 transition-opacity hover:bg-panel-3 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100',
+                )}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content side="right" align="start" sideOffset={6} className={menuContent}>
+                <DropdownMenu.Item
+                  className={menuItem}
+                  onSelect={() => void pinSession(session.id, !session.pinned)}
+                >
+                  {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                  {session.pinned ? t('app.unpin') : t('app.pin')}
+                </DropdownMenu.Item>
+                <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+                <DropdownMenu.Item
+                  className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
+                  onSelect={() => void removeSession(session.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {t('app.delete')}
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        </div>
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className={menuContent}>
+          <ContextMenu.Item
+            className={menuItem}
+            onSelect={() => void pinSession(session.id, !session.pinned)}
+          >
+            {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            {session.pinned ? t('app.unpin') : t('app.pin')}
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            className={menuItem}
+            onSelect={() => void window.vexnar.app.copyText(session.title)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {t('app.copySessionTitle')}
+          </ContextMenu.Item>
+          <ContextMenu.Separator className="my-1 h-px bg-line-soft" />
+          <ContextMenu.Item
+            className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
+            onSelect={() => void removeSession(session.id)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t('app.delete')}
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
+  )
+}

@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
+import type { ProjectTaskFocus } from '@/lib/project-task'
 import { defaultNewApiAuthMethods } from '@shared/contracts'
 import type {
   AgentEvent,
@@ -37,7 +38,7 @@ export type ChatMessage = Message & {
   failed?: boolean
 }
 
-type RightTab = 'workspace' | 'terminal' | 'diff'
+type RightTab = 'tasks' | 'sessions' | 'workspace' | 'terminal' | 'diff'
 type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
 export type SettingsSection = 'general' | 'appearance' | 'workspace' | 'model' | 'runtime'
 export type AppView =
@@ -64,12 +65,12 @@ type AppState = {
   newApi: NewApiState | null
   sessions: Session[]
   activeSessionId: string | null
+  taskFocus: ProjectTaskFocus | null
   messages: ChatMessage[]
   agentSessionId: string | null
   agentStatus: AgentStatus
   busy: boolean
   rightTab: RightTab
-  panelLauncher: boolean
   panelWidth: number
   rightOpen: boolean
   settingsOpen: boolean
@@ -95,6 +96,9 @@ type AppState = {
   refreshBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
+  openProjectTask: (task: ProjectTaskFocus) => void
+  setProjectTaskSession: (key: string, title?: string) => void
+  closeProjectTask: () => void
   newSession: (workspace?: string) => Promise<void>
   removeSession: (id: string) => Promise<void>
   pinSession: (id: string, pinned: boolean) => Promise<void>
@@ -107,6 +111,7 @@ type AppState = {
   refreshNewApi: () => Promise<void>
   logout: () => Promise<boolean>
   chooseWorkspace: () => Promise<void>
+  switchWorkspace: (workspace: string) => Promise<void>
   refreshWorkspace: () => Promise<void>
   refreshGit: () => Promise<void>
   openDiff: (path: string) => Promise<void>
@@ -159,6 +164,95 @@ function lastStreaming(messages: ChatMessage[]): ChatMessage | undefined {
   return [...messages].reverse().find((message) => message.role === 'assistant' && message.streaming)
 }
 
+const lastSessionKey = (workspace: string): string => `vexnar.last-session:${workspace}`
+
+function preferredSession(sessions: Session[], workspace: string): Session | undefined {
+  const lastId = localStorage.getItem(lastSessionKey(workspace))
+  return sessions.find((session) => session.workspace === workspace && session.id === lastId)
+    ?? sessions.find((session) => session.workspace === workspace)
+}
+
+let navigating = false
+let preparingSend = false
+let resourceRequest = 0
+let diffRequest = 0
+
+async function navigate(action: () => Promise<boolean>): Promise<boolean> {
+  if (navigating || useAppStore.getState().initializing) return false
+  if (useAppStore.getState().busy || preparingSend) {
+    useAppStore.setState({ error: translate(useI18n.getState().locale, 'app.navigationBusy') })
+    return false
+  }
+  navigating = true
+  try {
+    return await action()
+  } finally {
+    navigating = false
+  }
+}
+
+function changeWorkspace(settings: PublicSettings): void {
+  resourceRequest++
+  diffRequest++
+  useAppStore.setState({
+    settings, activeSessionId: null, taskFocus: null, messages: [], agentSessionId: null, error: null,
+    workspaceFiles: [], workspaceLoading: false, git: null, gitError: null,
+    diff: null, diffError: null, diffLoading: false,
+    rightTab: 'sessions', rightOpen: true
+  })
+}
+
+async function focusSession(session: Session | undefined, showPanel = false): Promise<void> {
+  useAppStore.setState({
+    activeSessionId: session?.id ?? null,
+    taskFocus: null,
+    messages: [],
+    agentSessionId: null,
+    agentStatus: 'idle',
+    ...(showPanel ? { rightTab: 'sessions', rightOpen: true } : {})
+  })
+  if (!session) return
+  localStorage.setItem(lastSessionKey(session.workspace), session.id)
+  const result = await api.messages.list({ id: session.id })
+  if (result.ok) useAppStore.setState({ messages: result.data })
+  else useAppStore.setState({ error: result.error })
+}
+
+async function createWorkspaceSession(): Promise<void> {
+  const workspace = useAppStore.getState().settings.workspaceRoot
+  const result = await api.sessions.create({ title: newChatTitle(), workspace })
+  if (!result.ok) {
+    useAppStore.setState({ error: result.error })
+    return
+  }
+  localStorage.setItem(lastSessionKey(workspace), result.data.id)
+  useAppStore.setState((state) => ({
+    sessions: [result.data, ...state.sessions],
+    activeSessionId: result.data.id,
+    taskFocus: null,
+    messages: [],
+    agentSessionId: null,
+    agentStatus: 'idle'
+  }))
+}
+
+async function openWorkspace(workspace: string, session?: Session): Promise<boolean> {
+  const settings = useAppStore.getState().settings
+  const changed = settings.workspaceRoot !== workspace
+  if (changed) {
+    const result = await api.settings.set({ ...settingsInput(settings), workspaceRoot: workspace })
+    if (!result.ok) {
+      useAppStore.setState({ error: result.error })
+      return false
+    }
+    changeWorkspace(result.data)
+  }
+  useAppStore.getState().setView('chat')
+  await focusSession(session ?? preferredSession(useAppStore.getState().sessions, workspace), true)
+  if (changed) await Promise.all([useAppStore.getState().refreshWorkspace(), useAppStore.getState().refreshGit()])
+  return true
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   info: null,
   view: 'chat',
@@ -172,12 +266,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   usageLoading: false,
   sessions: [],
   activeSessionId: null,
+  taskFocus: null,
   messages: [],
   agentSessionId: null,
   agentStatus: 'idle',
   busy: false,
-  rightTab: 'workspace',
-  panelLauncher: true,
+  rightTab: 'sessions',
   panelWidth: Math.min(720, Math.max(280, Number(localStorage.getItem('vexnar.panel-width')) || 360)),
   rightOpen: false,
   contextUsage: {},
@@ -209,23 +303,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       const settings = settingsResult.data
       let sessions = sessionsResult.ok ? sessionsResult.data : []
-      if (sessions.length === 0) {
+      if (sessionsResult.ok && !preferredSession(sessions, settings.workspaceRoot)) {
         const created = await api.sessions.create({
           title: newChatTitle(),
           workspace: settings.workspaceRoot
         })
-        if (created.ok) sessions = [created.data]
+        if (created.ok) sessions = [created.data, ...sessions]
       }
       set({
         info: infoResult.ok ? infoResult.data : null,
         settings,
         sessions,
-        activeSessionId: sessions[0]?.id ?? null,
         initialized: true,
         error: sessionsResult.ok ? null : sessionsResult.error
       })
       applyTheme(settings.theme)
-      if (sessions[0]) await get().selectSession(sessions[0].id)
+      await focusSession(preferredSession(sessions, settings.workspaceRoot), !!settings.workspaceRoot)
       await Promise.all([get().refreshWorkspace(), get().refreshGit()])
       void get().refreshBackend()
     } finally {
@@ -276,54 +369,36 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    if (get().busy && get().agentSessionId && get().agentSessionId !== id) {
-      await get().cancel()
-    }
     const session = get().sessions.find((item) => item.id === id)
     if (!session) return
-    const contextChanged = session.workspace !== get().settings.workspaceRoot
-    if (contextChanged) {
-      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: session.workspace })
-      if (!saved.ok) { set({ error: saved.error }); return }
-      set({ settings: saved.data })
-    }
-    set({ activeSessionId: id, messages: [], agentSessionId: null, diff: null, diffError: null })
-    const result = await api.messages.list({ id })
-    if (result.ok) {
-      set({
-        messages: result.data.map((message) => ({
-          ...message,
-          toolCalls: message.toolCalls
-        }))
-      })
-    } else {
-      set({ error: result.error })
-    }
-    if (contextChanged) await Promise.all([get().refreshWorkspace(), get().refreshGit()])
-  },
-
-  newSession: async (workspaceOverride) => {
-    if (get().busy) await get().cancel()
-    const workspace = workspaceOverride ?? get().settings.workspaceRoot
-    if (workspace !== get().settings.workspaceRoot) {
-      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
-      if (!saved.ok) { set({ error: saved.error }); return }
-      set({ settings: saved.data })
-      await Promise.all([get().refreshWorkspace(), get().refreshGit()])
-    }
-    const result = await api.sessions.create({ title: newChatTitle(), workspace })
-    if (!result.ok) {
-      set({ error: result.error })
+    if (id === get().activeSessionId) {
+      get().closeProjectTask()
       return
     }
-    set((state) => ({
-      sessions: [result.data, ...state.sessions],
-      activeSessionId: result.data.id,
-      messages: [],
-      agentSessionId: null,
-      busy: false,
-      agentStatus: 'idle'
-    }))
+    await navigate(() => openWorkspace(session.workspace, session))
+  },
+
+  openProjectTask: (taskFocus) => {
+    if (taskFocus.workspace !== get().settings.workspaceRoot || navigating) return
+    set({ taskFocus, rightTab: 'tasks', rightOpen: true })
+  },
+
+  setProjectTaskSession: (sessionKey, sessionTitle) => set((state) => ({
+    taskFocus: state.taskFocus ? { ...state.taskFocus, sessionKey, sessionTitle } : null
+  })),
+
+  closeProjectTask: () => set({ taskFocus: null }),
+
+  switchWorkspace: async (workspace) => {
+    await navigate(() => openWorkspace(workspace))
+  },
+
+  newSession: async (workspace) => {
+    await navigate(async () => {
+      if (workspace !== undefined && workspace !== get().settings.workspaceRoot && !(await openWorkspace(workspace))) return false
+      await createWorkspaceSession()
+      return true
+    })
   },
 
   pinSession: async (id, pinned) => {
@@ -338,34 +413,39 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeSession: async (id) => {
-    if (id === get().activeSessionId && get().busy) await get().cancel()
-    const result = await api.sessions.remove({ id })
-    if (!result.ok) {
-      set({ error: result.error })
-      return
-    }
-    set((state) => {
-      const sessions = state.sessions.filter((session) => session.id !== id)
-      const activeSessionId =
-        state.activeSessionId === id ? (sessions[0]?.id ?? null) : state.activeSessionId
-      return { sessions, activeSessionId, messages: activeSessionId === state.activeSessionId ? state.messages : [] }
+    await navigate(async () => {
+      const result = await api.sessions.remove({ id })
+      if (!result.ok) {
+        set({ error: result.error })
+        return false
+      }
+      set((state) => ({ sessions: state.sessions.filter((session) => session.id !== id) }))
+      if (id === get().activeSessionId) {
+        const workspace = get().settings.workspaceRoot
+        const next = preferredSession(get().sessions, workspace)
+        if (next) await focusSession(next)
+        else {
+          await focusSession(undefined)
+          await createWorkspaceSession()
+        }
+      }
+      return true
     })
-    const next = get().activeSessionId
-    if (next) await get().selectSession(next)
-    else await get().newSession()
   },
 
   send: async (text, attachments = [], reasoningEffort) => {
     const trimmed = text.trim()
     const sessionId = get().activeSessionId
-    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy) return false
+    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy ||
+        navigating || preparingSend || get().initializing) return false
+    preparingSend = true
 
     const userResult = await api.messages.append({
       sessionId,
       role: 'user',
       content: trimmed,
       attachments
-    })
+    }).finally(() => { preparingSend = false })
     if (!userResult.ok) {
       set({ error: userResult.error })
       return false
@@ -570,35 +650,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     return true
   },
 
-  saveSettings: async (input) => {
+  saveSettings: (input) => navigate(async () => {
+    const previousWorkspace = get().settings.workspaceRoot
     const result = await api.settings.set(input)
     if (!result.ok) {
       set({ error: result.error })
       return false
     }
-    set({ settings: result.data, error: null })
+    const workspace = result.data.workspaceRoot
     applyTheme(result.data.theme)
+    if (workspace !== previousWorkspace) {
+      changeWorkspace(result.data)
+      await focusSession(preferredSession(get().sessions, workspace))
+      if (!get().activeSessionId) await createWorkspaceSession()
+    } else set({ settings: result.data, error: null })
     await Promise.all([get().refreshWorkspace(), get().refreshGit()])
     return true
-  },
+  }),
 
   chooseWorkspace: async () => {
     const result = await api.workspace.choose()
-    if (!result.ok || !result.data) return
-    const path = result.data
-    const settings = get().settings
-    const saved = await get().saveSettings({
-      ...settingsInput(settings),
-      workspaceRoot: path
-    })
-    if (!saved) return
-    set({ view: 'chat' })
-    const existing = get().sessions.find((session) => session.workspace === path)
-    if (existing) {
-      await get().selectSession(existing.id)
+    if (!result.ok) {
+      set({ error: result.error })
       return
     }
-    await get().newSession()
+    if (!result.data) return
+    const workspace = result.data
+    await navigate(async () => {
+      if (!(await openWorkspace(workspace))) return false
+      if (!get().activeSessionId) await createWorkspaceSession()
+      return true
+    })
   },
 
   refreshWorkspace: async () => {
@@ -606,8 +688,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ workspaceFiles: [], workspaceLoading: false })
       return
     }
+    const request = resourceRequest
     set({ workspaceLoading: true })
     const result = await api.workspace.list()
+    if (request !== resourceRequest) return
     set({
       workspaceFiles: result.ok ? result.data : [],
       workspaceLoading: false,
@@ -620,13 +704,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ git: null, gitError: null })
       return
     }
+    const request = resourceRequest
     const result = await api.git.status()
+    if (request !== resourceRequest) return
     set({ git: result.ok ? result.data : null, gitError: result.ok ? null : result.error })
   },
 
   openDiff: async (filePath) => {
+    const request = ++diffRequest
     set({ rightTab: 'diff', rightOpen: true, diffLoading: true, diffError: null, diff: null })
     const result = await api.git.diff({ path: filePath })
+    if (request !== diffRequest) return
     set({
       diff: result.ok ? result.data : null,
       diffError: result.ok ? null : result.error,
@@ -634,14 +722,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  setRightTab: (rightTab) => set({ rightTab, rightOpen: true, panelLauncher: false }),
+  setRightTab: (rightTab) => set({ rightTab, rightOpen: true }),
   setPanelWidth: (width) => {
     const bounded = Math.round(Math.min(720, Math.max(280, width)))
     localStorage.setItem('vexnar.panel-width', String(bounded))
     set({ panelWidth: bounded })
   },
   toggleRight: () =>
-    set((state) => ({ rightOpen: !state.rightOpen, panelLauncher: !state.rightOpen })),
+    set((state) => ({ rightOpen: !state.rightOpen })),
   setSettingsOpen: (settingsOpen) =>
     set(settingsOpen ? { settingsOpen: true, settingsSection: 'general' } : { settingsOpen: false }),
   openSettings: (settingsSection = 'general') => set({ settingsOpen: true, settingsSection }),

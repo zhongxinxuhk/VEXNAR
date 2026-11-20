@@ -898,15 +898,6 @@ export function ChatView(): React.JSX.Element {
   const [away, setAway] = useState(false)
   const toggleRight = useAppStore((state) => state.toggleRight)
   const rightOpen = useAppStore((state) => state.rightOpen)
-  const rightTab = useAppStore((state) => state.rightTab)
-  const panelLauncher = useAppStore((state) => state.panelLauncher)
-  const rightTabLabel = panelLauncher
-    ? '新标签页'
-    : rightTab === 'terminal'
-      ? '终端'
-      : rightTab === 'diff'
-        ? '变更'
-        : '文件'
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const projectName = useMemo(() => {
     const path = sessions.find((item) => item.id === activeSessionId)?.workspace || ''

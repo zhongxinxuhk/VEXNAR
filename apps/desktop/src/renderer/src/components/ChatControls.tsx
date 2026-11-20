@@ -240,7 +240,7 @@ export function ContextBar({
 }): React.JSX.Element {
   const sessions = useAppStore((state) => state.sessions)
   const activeId = useAppStore((state) => state.activeSessionId)
-  const select = useAppStore((state) => state.selectSession)
+  const switchWorkspace = useAppStore((state) => state.switchWorkspace)
   const choose = useAppStore((state) => state.chooseWorkspace)
   const create = useAppStore((state) => state.newSession)
   const setRightTab = useAppStore((state) => state.setRightTab)
@@ -326,7 +326,7 @@ export function ContextBar({
               <DropdownMenu.Item
                 key={session.workspace}
                 className={item}
-                onSelect={() => void select(session.id)}
+                onSelect={() => void switchWorkspace(session.workspace)}
               >
                 <Folder className="h-4 w-4 shrink-0" />
                 <span className="max-w-64 truncate" title={session.workspace}>

@@ -569,6 +569,21 @@ CREATE INDEX IF NOT EXISTS idx_tasks_pinned ON tasks(pinned_at DESC)
 CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived_at DESC)
     WHERE archived_at IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS desktop_projects (
+    id             BIGSERIAL PRIMARY KEY,
+    root_path      TEXT NOT NULL UNIQUE CHECK (root_path <> ''),
+    name           TEXT NOT NULL CHECK (name <> ''),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS desktop_project_tasks (
+    task_id        BIGINT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    project_id     BIGINT NOT NULL REFERENCES desktop_projects(id) ON DELETE RESTRICT,
+    bound_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_desktop_project_tasks_page
+    ON desktop_project_tasks(project_id, task_id DESC);
+
 -- Cold task archives retain only compact metadata in PostgreSQL. The complete
 -- task payload lives in a versioned .tar.zst package under data/archives/tasks.
 -- task_id stays unique so an operation can be retried safely after a restart.

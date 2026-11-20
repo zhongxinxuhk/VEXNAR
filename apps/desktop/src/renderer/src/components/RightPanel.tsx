@@ -9,25 +9,26 @@ import '@xterm/xterm/css/xterm.css'
 import { DiffEditor } from '@monaco-editor/react'
 import {
   ChevronRight,
-  Ellipsis,
+  ClipboardList,
   FileCode2,
   FileText,
   Folder,
   FolderOpen,
   GitBranch,
   Loader2,
+  MessagesSquare,
   PanelRight,
-  PanelRightClose,
   Plus,
   RefreshCw,
   Search,
-  SquareTerminal,
-  X
+  SquareTerminal
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { Badge, Button, ScrollArea, Tooltip } from '@/components/ui'
+import { ProjectTasks } from './ProjectTasks'
+import { SessionRow } from './SessionRow'
 import '@/lib/monaco'
 
 function WorkspaceView(): React.JSX.Element {
@@ -337,138 +338,88 @@ function DiffView(): React.JSX.Element {
   )
 }
 
+function ProjectSessions(): React.JSX.Element {
+  const t = useT()
+  const root = useAppStore((state) => state.settings.workspaceRoot)
+  const sessions = useAppStore((state) => state.sessions)
+  const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const newSession = useAppStore((state) => state.newSession)
+  const visible = useMemo(() => sessions.filter((session) => session.workspace === root)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt), [sessions, root])
+
+  return (
+    <div className="flex h-full flex-col" data-testid="project-sessions">
+      <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink-soft" title={root}>
+          {root || t('app.unassigned')}
+        </span>
+        <Button variant="ghost" size="icon" aria-label={t('app.newChat')} onClick={() => void newSession()}>
+          <Plus className="size-4" />
+        </Button>
+      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-2">
+          {visible.length ? visible.map((session) => (
+            <SessionRow key={session.id} session={session} active={session.id === activeSessionId} pinned={session.pinned} />
+          )) : <div className="p-4 text-center text-xs text-muted">{t('app.noChats')}</div>}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
+
 export function RightPanel(): React.JSX.Element {
   const t = useT()
   const rightTab = useAppStore((state) => state.rightTab)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const toggleRight = useAppStore((state) => state.toggleRight)
-  const panelLauncher = useAppStore((state) => state.panelLauncher)
-  const newSession = useAppStore((state) => state.newSession)
-  const [launcherQuery, setLauncherQuery] = useState('')
-  const cards = [
-    { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2, tab: 'diff' as const },
-    { id: 'terminal' as const, label: t('panel.terminal'), icon: SquareTerminal, tab: 'terminal' as const },
-    { id: 'new-chat' as const, label: '新建对话', icon: Plus, tab: null },
-    { id: 'workspace' as const, label: t('panel.files'), icon: Folder, tab: 'workspace' as const }
-  ]
-  const visibleCards = cards.filter((card) =>
-    card.label.toLowerCase().includes(launcherQuery.trim().toLowerCase())
-  )
+  const root = useAppStore((state) => state.settings.workspaceRoot)
   const tabs = [
+    { id: 'tasks' as const, label: t('panel.projectTasks'), icon: ClipboardList },
+    { id: 'sessions' as const, label: t('app.projectSessions'), icon: MessagesSquare },
     { id: 'workspace' as const, label: t('panel.files'), icon: Folder },
     { id: 'terminal' as const, label: t('panel.terminal'), icon: SquareTerminal },
     { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2 }
   ]
-
-  const activeLabel = panelLauncher
-    ? '新标签页'
-    : rightTab === 'terminal'
-      ? '终端'
-      : rightTab === 'diff'
-        ? '变更'
-        : '文件'
+  const activeLabel = tabs.find((tab) => tab.id === rightTab)?.label
 
   return (
     <aside className="flex h-full w-full shrink-0 flex-col bg-bg">
-      {/* 统一顶行：无论启动页还是标签页都在同一位置提供药丸与圆形开关 */}
       <div className="flex h-11 shrink-0 items-center gap-2 px-3">
-        <div className="relative z-10 flex h-8 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
-          <span className="text-[12.5px] text-ink">{activeLabel}</span>
-          <button
-            type="button"
-            aria-label="关闭右侧面板"
-            onClick={toggleRight}
-            className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
+        <span className="rounded-lg bg-panel-2 px-2.5 py-1 text-[12.5px] text-ink">{activeLabel}</span>
         <button
           type="button"
           onClick={toggleRight}
-          aria-label="切换右侧面板"
-          className="no-drag relative z-10 ml-auto grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-panel-3 text-ink transition-colors hover:bg-line"
+          aria-label="关闭右侧面板"
+          className="no-drag relative z-10 ml-auto grid size-8 shrink-0 place-items-center rounded-full bg-panel-3 text-ink transition-colors hover:bg-line"
         >
           <PanelRight className="size-4" />
         </button>
       </div>
-      {panelLauncher ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-3">
-          <input
-            value={launcherQuery}
-            onChange={(event) => setLauncherQuery(event.target.value)}
-            placeholder={t('panel.searchPlaceholder')}
-            className="h-11 w-full rounded-full bg-panel-2 px-4 text-[13px] text-ink outline-none placeholder:text-muted/85 focus:bg-panel-3/70"
-          />
-          <div className="mt-1 flex items-center justify-between px-0.5">
-            <span className="text-[12px] font-medium text-ink">Open</span>
-            <button
-              type="button"
-              aria-label="更多"
-              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-            >
-              <Ellipsis className="h-4 w-4" strokeWidth={1.8} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {visibleCards.map((card) => {
-              const Icon = card.icon
-              return (
-                <button
-                  key={card.id}
-                  type="button"
-                  onClick={() => {
-                    if (card.tab) setRightTab(card.tab)
-                    else {
-                      void newSession()
-                      toggleRight()
-                    }
-                  }}
-                  className="flex h-[112px] flex-col justify-between rounded-2xl bg-panel-2 px-4 py-4 text-left transition-colors hover:bg-panel-3/80"
-                >
-                  <Icon className="h-4 w-4 text-muted" strokeWidth={1.8} />
-                  <span className="text-[13px] font-medium text-ink">{card.label}</span>
-                </button>
-              )
-            })}
-            {visibleCards.length === 0 ? (
-              <div className="col-span-2 py-6 text-center text-[12px] text-muted">
-                {t('app.noResults')}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
-            <div className="inline-flex items-center gap-1 rounded-lg bg-panel-2 p-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const active = rightTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setRightTab(tab.id)}
-                className={cn(
-                  'inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  active ? 'bg-panel-3 text-ink' : 'text-muted hover:text-ink'
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-          </div>
-          <div className="min-h-0 flex-1">
-            {rightTab === 'workspace' ? <WorkspaceView /> : null}
-            {rightTab === 'terminal' ? <TerminalView /> : null}
-            {rightTab === 'diff' ? <DiffView /> : null}
-          </div>
-        </>
-      )}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-line-soft px-2 py-2">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={rightTab === id}
+            onClick={() => setRightTab(id)}
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+              rightTab === id ? 'bg-panel-3 text-ink' : 'text-muted hover:text-ink'
+            )}
+          >
+            <Icon className="size-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1">
+        {rightTab === 'tasks' ? <ProjectTasks key={root} workspace={root} /> : null}
+        {rightTab === 'sessions' ? <ProjectSessions /> : null}
+        {rightTab === 'workspace' ? <WorkspaceView key={root} /> : null}
+        {rightTab === 'terminal' ? <TerminalView key={root} /> : null}
+        {rightTab === 'diff' ? <DiffView /> : null}
+      </div>
     </aside>
   )
 }

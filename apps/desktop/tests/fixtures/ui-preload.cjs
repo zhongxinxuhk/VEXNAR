@@ -6,6 +6,11 @@
 const { contextBridge } = require('electron')
 const ok = (data) => Promise.resolve({ ok: true, data })
 const sub = () => () => {}
+let taskProject = null
+const task = {
+  id: '1237', name: '项目任务示例', goal: '查看已有任务目标', description: '本地测试数据',
+  status: 'created', paused: false, queued: false, pinned: false
+}
 let accessMode = 'full'
 let lastSend = null
 let savedMessages = [{
@@ -30,6 +35,22 @@ const sessionList = [
     workspace: '/fixture/project-a',
     updatedAt: 1,
     createdAt: 1,
+    pinned: true
+  },
+  {
+    id: 'project-a-alternate',
+    title: '项目备用会话',
+    workspace: '/fixture/project-a',
+    updatedAt: 0,
+    createdAt: 0,
+    pinned: false
+  },
+  {
+    id: 'project-b',
+    title: '另一项目会话',
+    workspace: '/other/project-a',
+    updatedAt: 2,
+    createdAt: 2,
     pinned: false
   }
 ]
@@ -149,6 +170,37 @@ contextBridge.exposeInMainWorld('vexnar', {
   backend: {
     status: () => ok({ connected: true, version: 'test' }),
     request: ({ method, body, path }) => {
+      if (path === '/desktop/projects' && method === 'POST') {
+        const id = body.root_path === '/fixture/project-a' ? '1' : '2'
+        return ok({ id, name: 'project-a', root_path: body.root_path })
+      }
+      const sessionsPath = /^\/desktop\/projects\/([12])\/tasks\/1237\/(sessions|history)(?:\?(.*))?$/.exec(path)
+      if (sessionsPath && taskProject === sessionsPath[1]) {
+        if (sessionsPath[2] === 'sessions')
+          return ok({ main_segments: [1, 0], branches: [{ id: '42', key: 'intent:42', title: '验证分支', status: 'done' }], next_before: null })
+        const params = new URLSearchParams(sessionsPath[3])
+        const session = params.get('session')
+        const before = params.get('before')
+        const text = session === 'main' ? before ? '主 Agent 较早活动' : '主 Agent 最新活动'
+          : session === 'main:0' ? '历史主会话活动' : '分支验证结果'
+        return ok({
+          items: [{ id: before ? '1' : '10', kind: 'text', text, at: '2026-11-20T00:00:00Z', is_error: false }],
+          next_before: session === 'main' && !before ? '10' : null
+        })
+      }
+      const projectPath = /^\/desktop\/projects\/([12])\/tasks(\/1237)?$/.exec(path)
+      if (projectPath) {
+        const [, project, detail] = projectPath
+        if (!detail) return ok({ tasks: taskProject === project ? [task] : [], next_before: null })
+        if (method === 'GET' && taskProject === project) return ok(task)
+        if (method === 'PUT') {
+          if (taskProject && taskProject !== project)
+            return Promise.resolve({ ok: false, error: 'task already belongs to another project' })
+          taskProject = project
+          return ok({ project_id: project, task_id: task.id })
+        }
+        return Promise.resolve({ ok: false, error: 'task not found' })
+      }
       if (path === '/desktop/preferences') {
         if (method === 'PUT') accessMode = body.access_mode
         return ok({ access_mode: accessMode })

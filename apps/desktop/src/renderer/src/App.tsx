@@ -10,6 +10,7 @@ import { PanelResizeHandle, SidebarResizeHandle, WindowChrome } from '@/componen
 import { IconRail } from '@/components/IconRail'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
+import { ProjectTaskHistory } from '@/components/ProjectTaskHistory'
 import { ProfilePage } from '@/components/ProfilePage'
 import { SchedulesView } from '@/components/SchedulesView'
 import { PluginsView } from '@/components/PluginsView'
@@ -34,6 +35,7 @@ function WorkspaceApp(): React.JSX.Element {
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
   const newSession = useAppStore((state) => state.newSession)
   const view = useAppStore((state) => state.view)
+  const taskFocus = useAppStore((state) => state.taskFocus)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const panelWidth = useAppStore((state) => state.panelWidth)
   const toggleSidebar = useLayout((state) => state.toggleSidebar)
@@ -106,7 +108,10 @@ function WorkspaceApp(): React.JSX.Element {
 
       <main className={`relative flex min-w-0 flex-1 overflow-hidden ${view === 'chat' ? '-mt-11' : ''}`}>
         {view === 'chat' ? (
-          <ChatView />
+          <>
+            <div className={taskFocus ? 'hidden' : 'contents'}><ChatView /></div>
+            {taskFocus ? <ProjectTaskHistory key={`${taskFocus.projectId}/${taskFocus.task.id}/${taskFocus.sessionKey}`} focus={taskFocus} /> : null}
+          </>
         ) : view === 'profile' ? (
           <ProfilePage />
         ) : view === 'schedules' ? (

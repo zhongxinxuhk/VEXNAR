@@ -754,6 +754,7 @@ func (s *Server) Handler() http.Handler {
 	// requireAuth rejects them when no desktop token was configured.
 	mux.HandleFunc("GET /api/desktop/preferences", s.desktopGetPreferences)
 	mux.HandleFunc("PUT /api/desktop/preferences", s.desktopPutPreferences)
+	s.registerDesktopProjects(mux)
 	mux.HandleFunc("GET /api/desktop/llm", s.desktopGetLLM)
 	mux.HandleFunc("POST /api/desktop/llm/configure", s.desktopConfigureLLM)
 	mux.HandleFunc("GET /api/desktop/llm/models", s.desktopListModels)
