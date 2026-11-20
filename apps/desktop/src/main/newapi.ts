@@ -1,6 +1,8 @@
-import { clipboard, safeStorage, shell } from 'electron'
+import { BrowserWindow, clipboard, safeStorage, session, shell } from 'electron'
 import { readSetting, writeSetting } from './db'
 import type {
+  NewApiAuthProvider,
+  NewApiExternalAuthInput,
   NewApiLoginInput,
   NewApiQuota,
   NewApiState,
@@ -8,7 +10,7 @@ import type {
   NewApiUser,
   NewApiVerifyInput
 } from '@shared/contracts'
-import { IPC } from '@shared/contracts'
+import { defaultNewApiAuthMethods, IPC } from '@shared/contracts'
 import {
   applyManagedConnection,
   clearManagedConnection,
@@ -16,6 +18,7 @@ import {
   getSettings
 } from './settings'
 import {
+  authMethodsFromStatus,
   isAuthBundle,
   normalizeApiKey,
   normalizeModels,
@@ -29,6 +32,7 @@ import {
 export const NEWAPI_ORIGIN = 'https://platform.sec.hn.cn'
 export const NEWAPI_API_BASE = 'https://api.sec.hn.cn/v1'
 const AUTH_SETTING_KEY = 'newapi.auth'
+const AUTH_PARTITION = 'vexnar-newapi-auth'
 const MANAGED_TOKEN_NAME = 'App-managed'
 
 type RawUser = Record<string, unknown>
@@ -117,6 +121,8 @@ export class NewApiManager {
     token: null,
     models: [],
     verificationMethods: [],
+    authMethods: { ...defaultNewApiAuthMethods },
+    externalAuth: null,
     error: null,
     updatedAt: null
   }
@@ -124,6 +130,12 @@ export class NewApiManager {
   private pendingFlowToken = ''
   private bootstrapped = false
   private busy = false
+  private authWindow: BrowserWindow | null = null
+  private authPollTimer: ReturnType<typeof setInterval> | null = null
+  private authTimeoutTimer: ReturnType<typeof setTimeout> | null = null
+  private authGeneration = 0
+  private externalCompleted = false
+  private externalStarting = false
   private readonly emit: Emit
 
   constructor(emit: Emit) {
@@ -139,6 +151,15 @@ export class NewApiManager {
     this.bootstrapped = true
     this.update({ stage: 'checking', authenticated: false, error: null })
     const stored = await this.readStoredAuth()
+    try {
+      await this.loadPublicAuthMethods()
+    } catch (error) {
+      if (!stored) {
+        this.setAnonymous()
+        this.update({ stage: 'error', error: errorMessage(error) })
+        return this.state
+      }
+    }
     if (!stored) {
       this.setAnonymous()
       return this.state
@@ -171,6 +192,7 @@ export class NewApiManager {
       stage: 'authenticating',
       authenticated: false,
       verificationMethods: [],
+      externalAuth: null,
       error: null
     })
     try {
@@ -226,10 +248,84 @@ export class NewApiManager {
     return this.state
   }
 
+  async startExternalAuth(input: NewApiExternalAuthInput): Promise<NewApiState> {
+    if (this.busy || this.externalStarting) throw new Error('登录正在进行中')
+    if (this.authWindow) {
+      this.authWindow.focus()
+      return this.state
+    }
+
+    const methods = this.state.authMethods
+    if (input.kind === 'passkey' && !methods.passkeyLogin) {
+      throw new Error('平台未开放 Passkey 登录')
+    }
+    if (input.kind === 'register' && !methods.register) {
+      throw new Error('平台未开放注册')
+    }
+    let provider: NewApiAuthProvider | null = null
+    if (input.kind === 'oauth') {
+      provider = methods.providers.find((item) => item.key === input.provider) ?? null
+      if (!provider) throw new Error('该登录方式已不可用，请刷新登录方式')
+    }
+
+    const label = provider?.name ?? (input.kind === 'passkey' ? 'Passkey' : '注册')
+    const generation = ++this.authGeneration
+    this.pendingFlowToken = ''
+    this.externalCompleted = false
+    this.update({
+      stage: 'authenticating',
+      authenticated: false,
+      verificationMethods: [],
+      externalAuth: {
+        kind: input.kind,
+        label,
+        provider: provider?.key ?? null
+      },
+      error: null
+    })
+
+    try {
+      this.externalStarting = true
+      await this.openExternalAuthWindow(input, provider, generation)
+    } catch (error) {
+      this.finishExternalError(errorMessage(error))
+    } finally {
+      this.externalStarting = false
+    }
+    return this.state
+  }
+
+  async cancelExternalAuth(): Promise<NewApiState> {
+    this.externalCompleted = true
+    this.authGeneration += 1
+    this.stopAuthTimers()
+    const win = this.authWindow
+    this.authWindow = null
+    if (win && !win.isDestroyed()) win.destroy()
+    this.setAnonymous()
+    return this.state
+  }
+
+  async refreshAuthMethods(): Promise<NewApiState> {
+    try {
+      await this.loadPublicAuthMethods()
+    } catch (error) {
+      if (!this.state.authenticated) {
+        this.update({ error: errorMessage(error) })
+      }
+    }
+    return this.state
+  }
+
   async refresh(): Promise<NewApiState> {
     if (!this.bootstrapped) return this.bootstrap()
     if (!this.auth) {
-      this.setAnonymous()
+      try {
+        await this.loadPublicAuthMethods()
+        this.setAnonymous()
+      } catch (error) {
+        this.update({ stage: 'error', authenticated: false, error: errorMessage(error) })
+      }
       return this.state
     }
     try {
@@ -280,6 +376,256 @@ export class NewApiManager {
   dispose(): void {
     this.auth = null
     this.pendingFlowToken = ''
+    this.externalCompleted = true
+    this.stopAuthTimers()
+    const win = this.authWindow
+    this.authWindow = null
+    if (win && !win.isDestroyed()) win.destroy()
+  }
+
+  private async loadPublicAuthMethods(): Promise<void> {
+    const result = await this.request('/api/status')
+    const payload = result.json as
+      | { success?: boolean; data?: Record<string, unknown>; message?: string }
+      | null
+    if (!result.ok || payload?.success === false || !payload?.data) {
+      throw new Error(messageOf(payload, `无法读取平台登录方式（HTTP ${result.status}）`))
+    }
+    this.update({ authMethods: authMethodsFromStatus(payload.data) })
+  }
+
+  private async openExternalAuthWindow(
+    input: NewApiExternalAuthInput,
+    provider: NewApiAuthProvider | null,
+    generation: number
+  ): Promise<void> {
+    const authSession = session.fromPartition(AUTH_PARTITION)
+    await authSession
+      .clearStorageData({ origin: NEWAPI_ORIGIN })
+      .catch(() => undefined)
+    const existing = await authSession.cookies.get({ url: NEWAPI_ORIGIN })
+    await Promise.all(
+      existing.map((cookie) =>
+        authSession.cookies.remove(NEWAPI_ORIGIN, cookie.name).catch(() => undefined)
+      )
+    )
+    if (this.externalCompleted || generation !== this.authGeneration) return
+
+    const parent = BrowserWindow.getFocusedWindow()
+    const win = new BrowserWindow({
+      width: 520,
+      height: 760,
+      minWidth: 420,
+      minHeight: 560,
+      show: false,
+      title: 'HXSEC 安全登录',
+      backgroundColor: '#ffffff',
+      autoHideMenuBar: true,
+      parent: parent ?? undefined,
+      webPreferences: {
+        partition: AUTH_PARTITION,
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true
+      }
+    })
+    this.authWindow = win
+
+    const showWindow = (): void => {
+      if (win.isDestroyed() || this.authWindow !== win) return
+      if (!win.isVisible()) win.show()
+      win.focus()
+    }
+
+    win.once('ready-to-show', showWindow)
+    win.on('closed', () => {
+      if (this.authWindow === win) this.authWindow = null
+      this.stopAuthTimers()
+      if (this.externalCompleted || generation !== this.authGeneration) return
+      if (this.state.externalAuth) this.setAnonymous()
+    })
+    win.webContents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('https://')) void win.loadURL(url).catch(() => undefined)
+      return { action: 'deny' }
+    })
+    win.webContents.on('did-finish-load', () => {
+      if (win.isDestroyed() || this.authWindow !== win) return
+      showWindow()
+      void this.prepareAuthPage(win, input, provider)
+    })
+    win.webContents.on('did-fail-load', (_event, code, _description, _url, isMainFrame) => {
+      if (isMainFrame && code !== -3) showWindow()
+    })
+
+    const path = input.kind === 'register' ? '/sign-up' : '/sign-in'
+    this.startAuthWatcher(win, generation)
+    void win.loadURL(`${NEWAPI_ORIGIN}${path}`).catch(() => undefined)
+  }
+
+  private async prepareAuthPage(
+    win: BrowserWindow,
+    input: NewApiExternalAuthInput,
+    provider: NewApiAuthProvider | null
+  ): Promise<void> {
+    if (win.isDestroyed() || this.authWindow !== win) return
+    let page: URL
+    try {
+      page = new URL(win.webContents.getURL())
+    } catch {
+      return
+    }
+    if (page.origin !== NEWAPI_ORIGIN) return
+
+    if (input.kind === 'register') {
+      if (page.pathname === '/sign-up') await this.watchRegisterSuccess(win)
+      return
+    }
+    if (page.pathname !== '/sign-in') return
+
+    if (input.kind === 'oauth' && provider) {
+      await this.clickAuthTarget(win, [provider.name, provider.key])
+      return
+    }
+    if (input.kind === 'passkey') {
+      await this.clickAuthTarget(win, ['passkey'], /another website|其他网站|另一个网站/i)
+    }
+  }
+
+  private async clickAuthTarget(
+    win: BrowserWindow,
+    targets: string[],
+    exclude?: RegExp
+  ): Promise<void> {
+    const normalized = targets.map((target) => target.trim().toLowerCase()).filter(Boolean)
+    if (normalized.length === 0) return
+    const script = `(() => {
+      const targets = ${JSON.stringify(normalized)};
+      const exclude = ${exclude ? exclude.toString() : 'null'};
+      const nodes = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+      const node = nodes.find((item) => {
+        if (item.disabled || item.getAttribute('aria-disabled') === 'true') return false;
+        const rect = item.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return false;
+        const text = ((item.innerText || item.textContent || '') + ' ' + (item.getAttribute('aria-label') || '')).trim().toLowerCase();
+        if (!text) return false;
+        if (exclude && exclude.test(text)) return false;
+        return targets.some((target) => text.includes(target));
+      });
+      if (!node) return false;
+      node.scrollIntoView({ block: 'center' });
+      node.click();
+      return true;
+    })()`;
+
+    for (let attempt = 0; attempt < 14; attempt += 1) {
+      if (win.isDestroyed() || this.authWindow !== win) return
+      const clicked = await win.webContents.executeJavaScript(script, true).catch(() => false)
+      if (clicked === true) return
+      await new Promise((resolve) => setTimeout(resolve, 650))
+    }
+  }
+
+  private async watchRegisterSuccess(win: BrowserWindow): Promise<void> {
+    const script = `(() => {
+      if (window.__vexnarRegisterWatch) return true;
+      window.__vexnarRegisterWatch = true;
+      const check = () => {
+        const text = document.body ? (document.body.innerText || '') : '';
+        if (/Account created|账号创建成功|注册成功|Registration successful/i.test(text)) {
+          window.location.assign('/sign-in');
+        }
+      };
+      window.setInterval(check, 800);
+      return true;
+    })()`
+    await win.webContents.executeJavaScript(script, true).catch(() => undefined)
+  }
+
+  private startAuthWatcher(win: BrowserWindow, generation: number): void {
+    this.stopAuthTimers()
+    let checking = false
+    const tick = async (): Promise<void> => {
+      if (
+        checking ||
+        this.externalCompleted ||
+        this.authWindow !== win ||
+        generation !== this.authGeneration ||
+        win.isDestroyed()
+      ) {
+        return
+      }
+      checking = true
+      try {
+        const cookies = await win.webContents.session.cookies.get({
+          url: NEWAPI_ORIGIN,
+          name: 'new_api_refresh'
+        })
+        const token = cookies.find((cookie) => cookie.value)?.value ?? ''
+        if (token) await this.completeExternalAuth(token, win)
+      } catch {
+        // Transient cookie read failures are retried on the next tick.
+      } finally {
+        checking = false
+      }
+    }
+    this.authPollTimer = setInterval(() => void tick(), 650)
+    void tick()
+    this.authTimeoutTimer = setTimeout(() => {
+      if (this.authWindow === win && !this.externalCompleted) {
+        this.finishExternalError('登录窗口已超时，请重新尝试')
+      }
+    }, 10 * 60 * 1000)
+  }
+
+  private async completeExternalAuth(token: string, win: BrowserWindow): Promise<void> {
+    if (this.externalCompleted) return
+    this.externalCompleted = true
+    this.stopAuthTimers()
+    this.auth = {
+      accessToken: '',
+      accessExpiresAt: 0,
+      refreshToken: token,
+      sessionId: ''
+    }
+    try {
+      await this.refreshSession()
+      await this.loadAccount()
+    } catch (error) {
+      await this.clearAuth()
+      this.update({
+        stage: 'error',
+        authenticated: false,
+        externalAuth: null,
+        error: errorMessage(error)
+      })
+    } finally {
+      if (!win.isDestroyed()) win.close()
+    }
+  }
+
+  private finishExternalError(message: string): void {
+    this.externalCompleted = true
+    this.stopAuthTimers()
+    const win = this.authWindow
+    this.authWindow = null
+    if (win && !win.isDestroyed()) win.destroy()
+    this.update({
+      stage: 'error',
+      authenticated: false,
+      externalAuth: null,
+      error: message
+    })
+  }
+
+  private stopAuthTimers(): void {
+    if (this.authPollTimer) {
+      clearInterval(this.authPollTimer)
+      this.authPollTimer = null
+    }
+    if (this.authTimeoutTimer) {
+      clearTimeout(this.authTimeoutTimer)
+      this.authTimeoutTimer = null
+    }
   }
 
   private statusCache: {
@@ -445,7 +791,8 @@ export class NewApiManager {
 
     const statusResult = await this.authRequest('/api/status')
     const statusPayload = statusResult.json as { data?: Record<string, unknown> } | null
-    this.statusCache = statusPayload?.data ?? {}
+    const statusData = statusResult.ok ? statusPayload?.data : undefined
+    this.statusCache = statusData ?? {}
 
     let token: NewApiToken | null = null
     let tokenError: string | null = null
@@ -477,6 +824,10 @@ export class NewApiManager {
       token,
       models,
       verificationMethods: [],
+      authMethods: statusData
+        ? authMethodsFromStatus(statusData)
+        : this.state.authMethods,
+      externalAuth: null,
       error: tokenError,
       updatedAt: Date.now()
     })
@@ -586,6 +937,7 @@ export class NewApiManager {
       token: null,
       models: [],
       verificationMethods: [],
+      externalAuth: null,
       error: null
     })
   }

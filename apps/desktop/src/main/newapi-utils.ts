@@ -1,4 +1,9 @@
-import type { NewApiQuota, NewApiToken } from "@shared/contracts";
+import type {
+  NewApiAuthMethods,
+  NewApiAuthProvider,
+  NewApiQuota,
+  NewApiToken,
+} from "@shared/contracts";
 
 export type TokenRecord = {
   id: number;
@@ -119,6 +124,86 @@ export function parseTokenItems(payload: unknown): TokenRecord[] {
       model_limits_enabled: Boolean(item.model_limits_enabled),
     }))
     .filter((item) => Number.isInteger(item.id) && item.id > 0);
+}
+
+export function authMethodsFromStatus(value: unknown): NewApiAuthMethods {
+  const status =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  const providers: NewApiAuthProvider[] = [];
+  const seen = new Set<string>();
+  const add = (provider: NewApiAuthProvider): void => {
+    if (seen.has(provider.key)) return;
+    seen.add(provider.key);
+    providers.push({
+      key: provider.key,
+      name: provider.name,
+      icon: provider.icon ?? "",
+      kind: provider.kind ?? "oauth",
+    });
+  };
+
+  if (status.wechat_login === true) {
+    add({ key: "wechat", name: "微信", icon: "wechat", kind: "wechat" });
+  }
+  if (status.github_oauth === true) {
+    add({ key: "github", name: "GitHub", icon: "github", kind: "oauth" });
+  }
+  if (status.discord_oauth === true) {
+    add({ key: "discord", name: "Discord", icon: "discord", kind: "oauth" });
+  }
+  if (status.oidc_enabled === true) {
+    const name =
+      typeof status.oidc_display_name === "string" &&
+      status.oidc_display_name.trim()
+        ? status.oidc_display_name.trim()
+        : "OIDC";
+    add({ key: "oidc", name, icon: "oidc", kind: "oidc" });
+  }
+  if (status.linuxdo_oauth === true) {
+    add({ key: "linuxdo", name: "LINUX DO", icon: "linuxdo", kind: "oauth" });
+  }
+  if (status.telegram_oauth === true && status.telegram_oauth_configured === true) {
+    add({ key: "telegram", name: "Telegram", icon: "telegram", kind: "telegram" });
+  }
+
+  const custom = Array.isArray(status.custom_oauth_providers)
+    ? status.custom_oauth_providers
+    : [];
+  for (const item of custom) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const key = typeof record.slug === "string" ? record.slug.trim() : "";
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    if (!key || !name) continue;
+    const icon = typeof record.icon === "string" ? record.icon.trim() : "";
+    add({ key, name, icon, kind: "oauth" });
+  }
+
+  // NewAPI may expose additional built-in providers as <name>_oauth flags.
+  // Surface unknown enabled flags too so a platform-side switch appears here.
+  const handledFlags = new Set(["github", "discord", "linuxdo", "telegram"]);
+  for (const [flag, enabled] of Object.entries(status)) {
+    if (enabled !== true || !flag.endsWith("_oauth")) continue;
+    const key = flag.slice(0, -"_oauth".length);
+    if (!key || handledFlags.has(key) || seen.has(key)) continue;
+    const name = key
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+    add({ key, name, icon: key, kind: "oauth" });
+  }
+
+  return {
+    passwordLogin: status.password_login_enabled !== false,
+    passwordRegister: status.password_register_enabled === true,
+    register: status.register_enabled === true,
+    emailVerification: status.email_verification === true,
+    passkeyLogin: status.passkey_login === true,
+    providers,
+  };
 }
 
 export function quotaFromUser(

@@ -7,6 +7,7 @@ import type {
   IdInput,
   IpcResult,
   MessageAppendInput,
+  NewApiExternalAuthInput,
   NewApiLoginInput,
   NewApiState,
   NewApiVerifyInput,
@@ -85,6 +86,10 @@ const api: VexnarApi = {
     login: (input: NewApiLoginInput) => invoke(IPC.newapiLogin, input),
     verify: (input: NewApiVerifyInput) => invoke(IPC.newapiVerify, input),
     cancelLogin: () => invoke(IPC.newapiCancelLogin),
+    externalAuth: (input: NewApiExternalAuthInput) =>
+      invoke(IPC.newapiExternalAuth, input),
+    cancelExternalAuth: () => invoke(IPC.newapiCancelExternalAuth),
+    authMethods: () => invoke(IPC.newapiAuthMethods),
     refresh: () => invoke(IPC.newapiRefresh),
     logout: () => invoke(IPC.newapiLogout),
     copyKey: () => invoke(IPC.newapiCopyKey),
