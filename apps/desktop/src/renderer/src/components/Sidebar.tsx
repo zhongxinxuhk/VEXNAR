@@ -3,12 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   ArrowUpDown,
   Bell,
   ChevronDown,
   ChevronRight,
+  Copy,
   Folder,
   MoreHorizontal,
   Pin,
@@ -52,6 +54,8 @@ function SessionRow({
   const removeSession = useAppStore((state) => state.removeSession)
 
   return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger asChild>
     <div
       className={cn(
         'group relative flex h-[30px] items-center rounded-[7px] pl-[42px] pr-1',
@@ -108,6 +112,34 @@ function SessionRow({
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
     </div>
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal>
+        <ContextMenu.Content className={menuContent}>
+          <ContextMenu.Item
+            className={menuItem}
+            onSelect={() => void pinSession(session.id, !session.pinned)}
+          >
+            {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            {session.pinned ? t('app.unpin') : t('app.pin')}
+          </ContextMenu.Item>
+          <ContextMenu.Item
+            className={menuItem}
+            onSelect={() => void window.vexnar.app.copyText(session.title)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            复制会话标题
+          </ContextMenu.Item>
+          <ContextMenu.Separator className="my-1 h-px bg-line-soft" />
+          <ContextMenu.Item
+            className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
+            onSelect={() => void removeSession(session.id)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t('app.delete')}
+          </ContextMenu.Item>
+        </ContextMenu.Content>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   )
 }
 
@@ -211,7 +243,11 @@ export function Sidebar(): React.JSX.Element {
     await chooseWorkspace()
   }
 
-  const visibleProjects = projects
+  const looseSessions = useMemo(
+    () => projects.find((project) => !project.path)?.sessions ?? [],
+    [projects]
+  )
+  const visibleProjects = projects.filter((project) => project.path)
 
   if (!sidebarOpen) return <></>
 
@@ -362,6 +398,19 @@ export function Sidebar(): React.JSX.Element {
               </div>
             ) : null}
 
+            {/* 不归属项目的单次聊天：平铺在「项目」分组之上（ChatGPT 同为顶层列表） */}
+            {looseSessions.length > 0 ? (
+              <div className="mb-1">
+                {looseSessions.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    active={view === 'chat' && session.id === activeSessionId}
+                  />
+                ))}
+              </div>
+            ) : null}
+
             <div className="flex items-center gap-1 px-2 pb-1 pt-4">
               <button
                 type="button"
@@ -398,6 +447,19 @@ export function Sidebar(): React.JSX.Element {
                 </button>
               </div>
             </div>
+
+            {/* 不归属项目的单次聊天：平铺在「项目」分组之上（ChatGPT 同为顶层列表） */}
+            {looseSessions.length > 0 ? (
+              <div className="mb-1">
+                {looseSessions.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    active={view === 'chat' && session.id === activeSessionId}
+                  />
+                ))}
+              </div>
+            ) : null}
 
             {projectsCollapsed ? null : visibleProjects.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] leading-5 text-muted">
