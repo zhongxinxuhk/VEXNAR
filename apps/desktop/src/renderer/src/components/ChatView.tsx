@@ -29,6 +29,7 @@ import { useT } from '@/lib/i18n'
 import { AccessMenu, ContextBar } from './ChatControls'
 import { useDrafts, emptyDraft } from '@/store/drafts'
 import { useLayout } from '@/store/layout'
+import { ThinkingSteps } from '@/components/ThinkingSteps'
 import {
   attachmentsSchema,
   type ImageAttachment,
@@ -68,6 +69,23 @@ const toolLabels: Record<string, string> = {
   git_status: 'Git 状态'
 }
 
+function toolTitle(tool: NonNullable<ChatMessage['toolCalls']>[number]): string {
+  const args =
+    tool.input && typeof tool.input === 'object' ? (tool.input as Record<string, unknown>) : {}
+  const command =
+    tool.name === 'git_status'
+      ? 'git status --short --branch'
+      : typeof args.command === 'string'
+        ? args.command
+        : ''
+  return (
+    command ||
+    [toolLabels[tool.name] || tool.name, typeof args.path === 'string' ? args.path : '']
+      .filter(Boolean)
+      .join(' · ')
+  )
+}
+
 function ToolCard({
   tool
 }: {
@@ -88,14 +106,7 @@ function ToolCard({
     : tool.name === 'read_file'
       ? BookOpen
       : Wrench
-  const title =
-    command ||
-    [
-      toolLabels[tool.name] || tool.name,
-      typeof args.path === 'string' ? args.path : ''
-    ]
-      .filter(Boolean)
-      .join(' · ')
+  const title = toolTitle(tool)
   const status =
     tool.status === 'running'
       ? '运行中'
@@ -183,7 +194,31 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               {t('chat.runtimeError')}
             </div>
           ) : null}
-          {Boolean(message.toolCalls?.length) && (
+          {message.streaming && message.toolCalls?.length ? (
+            <div className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-3.5 py-2.5">
+              <ThinkingSteps
+                steps={message.toolCalls.map((tool, index) => {
+                  const last = index === message.toolCalls!.length - 1
+                  return {
+                    id: tool.id,
+                    label: toolTitle(tool),
+                    status:
+                      tool.status === 'error'
+                        ? 'done'
+                        : last && tool.status === 'running'
+                          ? 'active'
+                          : 'done'
+                  }
+                })}
+              />
+            </div>
+          ) : null}
+          {message.streaming && !message.content && !message.toolCalls?.length ? (
+            <div className="mt-1">
+              <ThinkingSteps steps={[{ id: 'waiting', label: '正在思考…', status: 'active' }]} />
+            </div>
+          ) : null}
+          {!message.streaming && Boolean(message.toolCalls?.length) && (
             <details className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-2 py-1">
               <summary className="cursor-pointer px-2 py-1.5 text-xs text-muted">
                 工具活动 · {message.toolCalls?.length} 项
