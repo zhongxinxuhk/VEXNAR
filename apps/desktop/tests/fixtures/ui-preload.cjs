@@ -18,11 +18,16 @@ let savedMessages = [{
 // Backend conversations (the app no longer uses the Electron-local session store).
 let conversationSeq = 1
 let effort = 'high'
+const desktopProjects = [
+  { id: '1', root_path: '/fixture/project-a', name: 'project-a', created_at: '2026-11-20T09:00:00Z' }
+]
 const conversations = [
   {
     id: 1,
     agent_key: 'auto',
     title: '搭建 VEXNAR 官网',
+    project_id: 1,
+    workspace: '/fixture/project-a',
     pinned: false,
     created_at: '2026-11-20T10:00:00Z',
     updated_at: '2026-11-20T10:05:00Z'
@@ -31,6 +36,8 @@ const conversations = [
     id: 2,
     agent_key: 'auto',
     title: '检查 LLM 网关',
+    project_id: null,
+    workspace: '',
     pinned: false,
     created_at: '2026-11-20T09:00:00Z',
     updated_at: '2026-11-20T09:30:00Z'
@@ -202,6 +209,22 @@ contextBridge.exposeInMainWorld('vexnar', {
         }))
       }),
     request: ({ method, body, path }) => {
+      if (path === '/desktop/projects') {
+        if (method === 'POST') {
+          const root = typeof body?.root_path === 'string' ? body.root_path : ''
+          const existing = desktopProjects.find((item) => item.root_path === root)
+          if (existing) return ok(existing)
+          const project = {
+            id: String(desktopProjects.length + 1),
+            root_path: root,
+            name: root.split('/').filter(Boolean).pop() || root,
+            created_at: new Date().toISOString()
+          }
+          desktopProjects.push(project)
+          return ok(project)
+        }
+        return ok({ projects: desktopProjects })
+      }
       if (path === '/desktop/preferences') {
         if (method === 'PUT') accessMode = body.access_mode
         return ok({ access_mode: accessMode })
@@ -241,16 +264,27 @@ contextBridge.exposeInMainWorld('vexnar', {
         return ok({ conversations })
       }
       if (path === '/conversations' && method === 'POST') {
+        const workspace = typeof body?.workspace === 'string' ? body.workspace : ''
+        const project = desktopProjects.find((item) => item.root_path === workspace)
         const conversation = {
           id: ++conversationSeq,
           agent_key: body?.agent_key || 'auto',
           title: body?.title || '新对话',
+          project_id: project ? Number(project.id) : null,
+          workspace,
           pinned: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
         conversations.unshift(conversation)
         conversationActivities[conversation.id] = []
+        return ok(conversation)
+      }
+      const bind = path.match(/^\/desktop\/conversations\/(\d+)\/project$/)
+      if (bind && method === 'POST') {
+        const conversation = conversations.find((item) => item.id === Number(bind[1]))
+        if (!conversation) return ok({ error: 'not found' })
+        conversation.project_id = Number(body?.project_id || 0) || null
         return ok(conversation)
       }
       const patch = path.match(/^\/conversations\/(\d+)$/)

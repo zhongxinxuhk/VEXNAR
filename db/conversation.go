@@ -58,7 +58,12 @@ type Conversation struct {
 	AgentKey     string     `json:"agent_key"`
 	Title        string     `json:"title"`
 	LLMProfileID *int64     `json:"llm_profile_id,omitempty"`
-	Pinned       bool       `json:"pinned"`
+	// ProjectID is the owning project. NULL means the thread is unassigned and
+	// must stay out of every project's list until it is bound explicitly.
+	ProjectID *int64 `json:"project_id,omitempty"`
+	// Workspace is the working directory recorded at creation time.
+	Workspace string     `json:"workspace"`
+	Pinned    bool       `json:"pinned"`
 	PinnedAt     *time.Time `json:"pinned_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -70,12 +75,12 @@ type ConversationPatch struct {
 	Pinned *bool
 }
 
-const convCols = `id, agent_key, title, llm_profile_id, pinned_at, created_at, updated_at`
+const convCols = `id, agent_key, title, llm_profile_id, project_id, workspace, pinned_at, created_at, updated_at`
 
 func scanConv(row interface{ Scan(...any) error }) (Conversation, error) {
 	var c Conversation
 	var pinnedAt sql.NullTime
-	err := row.Scan(&c.ID, &c.AgentKey, &c.Title, &c.LLMProfileID, &pinnedAt, &c.CreatedAt, &c.UpdatedAt)
+	err := row.Scan(&c.ID, &c.AgentKey, &c.Title, &c.LLMProfileID, &c.ProjectID, &c.Workspace, &pinnedAt, &c.CreatedAt, &c.UpdatedAt)
 	if pinnedAt.Valid {
 		c.Pinned = true
 		c.PinnedAt = &pinnedAt.Time
@@ -84,8 +89,15 @@ func scanConv(row interface{ Scan(...any) error }) (Conversation, error) {
 }
 
 // CreateConversation opens a new chat thread for agentKey with an initial title.
-// llmProfileID may be nil to use the globally active profile.
+// llmProfileID may be nil to use the globally active profile. The thread is
+// created unassigned; use CreateConversationInProject when a project is known.
 func (d *DB) CreateConversation(agentKey, title string, llmProfileID *int64) (*Conversation, error) {
+	return d.CreateConversationInProject(agentKey, title, llmProfileID, nil, "")
+}
+
+// CreateConversationInProject opens a thread owned by projectID and records the
+// workspace it was started from. projectID nil keeps the thread unassigned.
+func (d *DB) CreateConversationInProject(agentKey, title string, llmProfileID, projectID *int64, workspace string) (*Conversation, error) {
 	tx, err := d.Begin()
 	if err != nil {
 		return nil, err
@@ -96,8 +108,9 @@ func (d *DB) CreateConversation(agentKey, title string, llmProfileID *int64) (*C
 	// by this transaction before it takes a profile lock, matching DeleteProfile's
 	// child-row -> profile-row protocol.
 	c, err := scanConv(tx.QueryRow(`
-INSERT INTO conversations(agent_key, title, llm_profile_id) VALUES ($1, $2, NULL)
-RETURNING `+convCols, agentKey, title))
+INSERT INTO conversations(agent_key, title, llm_profile_id, project_id, workspace)
+VALUES ($1, $2, NULL, $3, $4)
+RETURNING `+convCols, agentKey, title, projectID, workspace))
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +128,14 @@ WHERE id=$1 RETURNING `+convCols, c.ID, llmProfileID))
 		return nil, err
 	}
 	return &c, nil
+}
+
+// SetConversationProject binds a thread to a project. Callers must check the
+// current owner first: history moving between projects is an explicit decision,
+// not a side effect of the client switching directories.
+func (d *DB) SetConversationProject(id, projectID int64) error {
+	_, err := d.Exec(`UPDATE conversations SET project_id=$2 WHERE id=$1`, id, projectID)
+	return err
 }
 
 // UpdateConversationProfile sets (or clears) the LLM profile override for a conversation.
@@ -142,10 +163,26 @@ func (d *DB) UpdateConversationProfile(id int64, llmProfileID *int64) error {
 	return tx.Commit()
 }
 
+const convOrderBy = ` ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC NULLS LAST, updated_at DESC, id DESC`
+
 // ListConversations returns all threads, most-recently-updated first.
 func (d *DB) ListConversations() ([]*Conversation, error) {
-	rows, err := d.Query(`SELECT ` + convCols + ` FROM conversations
-ORDER BY (pinned_at IS NOT NULL) DESC, pinned_at DESC NULLS LAST, updated_at DESC, id DESC`)
+	return d.queryConversations(`SELECT ` + convCols + ` FROM conversations` + convOrderBy)
+}
+
+// ListConversationsByProject returns one project's threads only. Threads that
+// belong to another project — or to none — are never included.
+func (d *DB) ListConversationsByProject(projectID int64) ([]*Conversation, error) {
+	return d.queryConversations(`SELECT `+convCols+` FROM conversations WHERE project_id = $1`+convOrderBy, projectID)
+}
+
+// ListUnassignedConversations returns threads whose project_id is still NULL.
+func (d *DB) ListUnassignedConversations() ([]*Conversation, error) {
+	return d.queryConversations(`SELECT ` + convCols + ` FROM conversations WHERE project_id IS NULL` + convOrderBy)
+}
+
+func (d *DB) queryConversations(query string, args ...any) ([]*Conversation, error) {
+	rows, err := d.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

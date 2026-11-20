@@ -125,14 +125,16 @@ describe('toSession', () => {
         title: '排查 XSS',
         pinned: true,
         created_at: '2026-11-20T10:00:00Z',
-        updated_at: '2026-11-20T10:05:00Z'
-      },
-      '/work'
+        updated_at: '2026-11-20T10:05:00Z',
+        project_id: 3,
+        workspace: '/work'
+      }
     )
     expect(session).toMatchObject({
       id: '9',
       title: '排查 XSS',
       workspace: '/work',
+      projectId: '3',
       pinned: true
     })
     expect(session.updatedAt).toBeGreaterThan(session.createdAt)

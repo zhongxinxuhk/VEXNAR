@@ -144,8 +144,11 @@ function SessionRow({
 }
 
 type Project = {
+  /** Backend project id; empty string is the "unassigned" bucket. */
   path: string
   name: string
+  /** Canonical directory the project was registered with. */
+  rootPath: string
   sessions: Session[]
   latest: number
 }
@@ -168,6 +171,7 @@ export function Sidebar(): React.JSX.Element {
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const projectRows = useAppStore((state) => state.projects)
   const [projectsCollapsed, setProjectsCollapsed] = useState(false)
   const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
@@ -179,11 +183,11 @@ export function Sidebar(): React.JSX.Element {
 
   useEffect(() => {
     const current = sessions.find((session) => session.id === activeSessionId)
-    const key = current?.workspace ?? settings.workspaceRoot
+    const key = current?.projectId ?? ''
     if (lastAutoExpand.current === key) return
     lastAutoExpand.current = key
     setExpanded((previous) => new Set(previous).add(key))
-  }, [activeSessionId, sessions, settings.workspaceRoot])
+  }, [activeSessionId, sessions])
 
   const pinned = useMemo(
     () => sessions.filter((session) => session.pinned).sort((a, b) => b.updatedAt - a.updatedAt),
@@ -191,19 +195,24 @@ export function Sidebar(): React.JSX.Element {
   )
 
   const projects = useMemo(() => {
-    const fallback = t('app.noWorkspace')
+    const unassigned = t('app.unassigned')
+    const byId = new Map(projectRows.map((project) => [project.id, project]))
     const grouped = new Map<string, Project>()
     for (const session of sessions) {
       if (session.pinned) continue
-      const path = session.workspace || settings.workspaceRoot || ''
-      const current = grouped.get(path)
+      // Grouping key is the backend project id. A thread without one is
+      // unassigned — it never inherits the directory currently open.
+      const key = session.projectId ?? ''
+      const row = key ? byId.get(key) : undefined
+      const current = grouped.get(key)
       if (current) {
         current.sessions.push(session)
         current.latest = Math.max(current.latest, session.updatedAt)
       } else {
-        grouped.set(path, {
-          path,
-          name: projectName(path, path ? fallback : fallback),
+        grouped.set(key, {
+          path: key,
+          name: row?.name ?? (key ? projectName(session.workspace, key) : unassigned),
+          rootPath: row?.root_path ?? session.workspace,
           sessions: [session],
           latest: session.updatedAt
         })
@@ -212,13 +221,13 @@ export function Sidebar(): React.JSX.Element {
     const list = [...grouped.values()]
     for (const project of list) project.sessions.sort((a, b) => b.updatedAt - a.updatedAt)
     list.sort((a, b) => {
-      if (a.path === settings.workspaceRoot) return -1
-      if (b.path === settings.workspaceRoot) return 1
+      if (a.rootPath && a.rootPath === settings.workspaceRoot) return -1
+      if (b.rootPath && b.rootPath === settings.workspaceRoot) return 1
       if (sortMode === 'name') return a.name.localeCompare(b.name)
       return b.latest - a.latest
     })
     return list
-  }, [sessions, settings.workspaceRoot, sortMode, t])
+  }, [sessions, projectRows, settings.workspaceRoot, sortMode, t])
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase()
@@ -450,7 +459,7 @@ export function Sidebar(): React.JSX.Element {
                       onClick={() => toggleProject(project.path)}
                       className={cn(
                         'group flex h-[31px] w-full items-center gap-2 rounded-[7px] px-2 text-left transition-colors',
-                        open && project.path === settings.workspaceRoot
+                        open && project.rootPath === settings.workspaceRoot
                           ? 'bg-panel-3/80 text-ink'
                           : 'text-ink-soft hover:bg-[var(--codex-hover)] hover:text-ink'
                       )}

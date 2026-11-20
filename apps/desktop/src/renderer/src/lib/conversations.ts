@@ -18,6 +18,10 @@ export type BackendConversation = {
   id: number
   agent_key: string
   title: string
+  /** Owning project assigned by the backend; null/absent means unassigned. */
+  project_id?: number | null
+  /** Working directory recorded when the thread was created. */
+  workspace?: string
   llm_profile_id?: number | null
   pinned?: boolean
   pinned_at?: string | null
@@ -72,16 +76,50 @@ export const DEFAULT_AGENT_KEY = 'auto'
  */
 const FULL = '&detail=1'
 
-export const conversations = {
+export type BackendProject = {
+  id: string
+  root_path: string
+  name: string
+  created_at?: string
+}
+
+/** Project ownership is a backend fact: the app only reads and registers. */
+export const projects = {
   list: () =>
-    request<{ conversations?: BackendConversation[] }>('/conversations', 'GET').then((r) =>
-      Array.isArray(r?.conversations) ? r.conversations : []
+    request<{ projects?: BackendProject[] }>('/desktop/projects', 'GET').then((r) =>
+      Array.isArray(r?.projects) ? r.projects : []
     ),
-  create: (agentKey: string, title: string) =>
+  register: (rootPath: string) =>
+    request<BackendProject>('/desktop/projects', 'POST', { root_path: rootPath })
+}
+
+export type ConversationScope = {
+  projectId?: string
+  /** Threads whose project_id is still NULL. */
+  unassigned?: boolean
+}
+
+export const conversations = {
+  list: (scope?: ConversationScope) => {
+    const query = scope?.unassigned
+      ? '?unassigned=1'
+      : scope?.projectId
+        ? `?project_id=${encodeURIComponent(scope.projectId)}`
+        : ''
+    return request<{ conversations?: BackendConversation[] }>(`/conversations${query}`, 'GET').then(
+      (r) => (Array.isArray(r?.conversations) ? r.conversations : [])
+    )
+  },
+  create: (agentKey: string, title: string, workspace?: string) =>
     request<BackendConversation>('/conversations', 'POST', {
       agent_key: agentKey,
       title,
-      llm_profile_id: null
+      llm_profile_id: null,
+      ...(workspace ? { workspace } : {})
+    }),
+  bindProject: (id: string, projectId: string) =>
+    request<BackendConversation>(`/desktop/conversations/${id}/project`, 'POST', {
+      project_id: Number(projectId)
     }),
   rename: (id: string, title: string) =>
     request<BackendConversation>(`/conversations/${id}`, 'PATCH', { title }),
@@ -118,12 +156,19 @@ const tsOf = (value?: string): number => {
   return Number.isFinite(parsed) ? parsed : Date.now()
 }
 
-/** Backend conversation → the Session shape the sidebar already renders. */
-export function toSession(conversation: BackendConversation, workspace: string): Session {
+/**
+ * Backend conversation → the Session shape the sidebar renders.
+ *
+ * workspace comes from the row that created the thread. It is never filled in
+ * from whatever directory the app currently has open — an unassigned thread has
+ * projectId null and is shown in the "待归属" group instead.
+ */
+export function toSession(conversation: BackendConversation): Session {
   return {
     id: String(conversation.id),
     title: conversation.title || '新对话',
-    workspace,
+    workspace: conversation.workspace ?? '',
+    projectId: conversation.project_id != null ? String(conversation.project_id) : null,
     pinned: Boolean(conversation.pinned ?? conversation.pinned_at),
     createdAt: tsOf(conversation.created_at),
     updatedAt: tsOf(conversation.updated_at)

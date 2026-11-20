@@ -6,12 +6,14 @@ import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
 import {
   conversations,
+  projects as projectApi,
   DEFAULT_AGENT_KEY,
   lastTurnUsage,
   toChatMessages,
   toSession,
   uploadImages,
-  type BackendActivity
+  type BackendActivity,
+  type BackendProject
 } from '@/lib/conversations'
 import { defaultNewApiAuthMethods } from '@shared/contracts'
 import type {
@@ -73,6 +75,8 @@ type AppState = {
   settings: PublicSettings
   newApi: NewApiState | null
   sessions: Session[]
+  /** Project list owned by Go; the sidebar groups threads by these rows. */
+  projects: BackendProject[]
   activeSessionId: string | null
   messages: ChatMessage[]
   agentSessionId: string | null
@@ -263,9 +267,13 @@ function pollUntilDone(id: string): void {
 /** Refresh titles/pin order/updated timestamps from the shared conversation list. */
 async function refreshSessions(): Promise<void> {
   try {
-    const workspace = useAppStore.getState().settings.workspaceRoot
-    const sessions = (await conversations.list()).map((item) => toSession(item, workspace))
-    useAppStore.setState({ sessions })
+    // Ownership comes from the backend rows; the current workspace is never
+    // stamped onto threads that belong elsewhere.
+    const [rows, projects] = await Promise.all([
+      conversations.list(),
+      projectApi.list().catch(() => useAppStore.getState().projects)
+    ])
+    useAppStore.setState({ sessions: rows.map((item) => toSession(item)), projects })
   } catch {
     // cosmetic refresh — a transient failure must not clear the sidebar
   }
@@ -303,6 +311,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   usage: null,
   usageLoading: false,
   sessions: [],
+  projects: [],
   activeSessionId: null,
   messages: [],
   agentSessionId: null,
@@ -343,17 +352,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       // with the web /chat page. The app keeps no second session store.
       let sessions: Session[] = []
       let sessionsError: string | null = null
+      let projects: BackendProject[] = []
       try {
-        sessions = (await conversations.list()).map((item) =>
-          toSession(item, settings.workspaceRoot)
-        )
+        // Projects are registered by the backend when a directory is opened; the
+        // app only reads the list and groups threads by project_id.
+        const [rows, projectRows] = await Promise.all([
+          conversations.list(),
+          projectApi.list().catch(() => [])
+        ])
+        sessions = rows.map((item) => toSession(item))
+        projects = projectRows
       } catch (error) {
         sessionsError = error instanceof Error ? error.message : String(error)
       }
       if (!sessions.length && !sessionsError) {
         try {
-          const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle())
-          sessions = [toSession(created, settings.workspaceRoot)]
+          const created = await conversations.create(
+            DEFAULT_AGENT_KEY,
+            newChatTitle(),
+            settings.workspaceRoot
+          )
+          sessions = [toSession(created)]
         } catch (error) {
           sessionsError = error instanceof Error ? error.message : String(error)
         }
@@ -362,6 +381,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         info: infoResult.ok ? infoResult.data : null,
         settings,
         sessions,
+        projects,
         activeSessionId: sessions[0]?.id ?? null,
         initialized: true,
         error: sessionsError
@@ -479,8 +499,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       await Promise.all([get().refreshWorkspace(), get().refreshGit()])
     }
     try {
-      const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle())
-      const session = toSession(created, workspace)
+      const created = await conversations.create(
+        DEFAULT_AGENT_KEY,
+        newChatTitle(),
+        workspace
+      )
+      const session = toSession(created)
       set((state) => ({
         sessions: [session, ...state.sessions],
         activeSessionId: session.id,

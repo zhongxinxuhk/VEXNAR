@@ -94,6 +94,8 @@ function toSession(row: SessionRow): Session {
     id: row.id,
     title: row.title,
     workspace: row.workspace,
+    // Local rows carry no project ownership; project-scoped threads live in Go.
+    projectId: null,
     pinned: Boolean(row.pinned),
     createdAt: Number(row.created_at),
     updatedAt: Number(row.updated_at)

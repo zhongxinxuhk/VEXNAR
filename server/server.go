@@ -811,6 +811,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/desktop/openai/v1/chat/completions", s.desktopChatProxy)
 	// Responses is the default wire format for a NewAPI-managed profile.
 	mux.HandleFunc("POST /api/desktop/openai/v1/responses", s.desktopResponsesProxy)
+	// Project ownership: the app reads this list; conversations reference
+	// project_id instead of inferring a project from the open directory.
+	s.registerDesktopProjectRoutes(mux)
 
 	// asset system
 	mux.HandleFunc("GET /api/assets", s.listAssets)

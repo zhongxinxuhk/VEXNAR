@@ -447,6 +447,11 @@ export type Session = {
   id: string
   title: string
   workspace: string
+  /**
+   * Owning project as assigned by the backend. null means the thread is
+   * unassigned and must not be shown under any project.
+   */
+  projectId: string | null
   pinned: boolean
   createdAt: number
   updatedAt: number

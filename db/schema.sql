@@ -973,16 +973,33 @@ CREATE TRIGGER trg_tools_upd BEFORE UPDATE ON tools
 -- =====================================================================
 -- I. 会话（对话页）
 -- =====================================================================
+
+-- 项目是会话的归属主体：由 Go 登记目录、分配 project_id，客户端只读。
+-- 会话的 project_id 为空表示「待归属」（历史数据或未登记目录），
+-- 绝不由渲染层按“当前工作区”补齐。
+CREATE TABLE IF NOT EXISTS desktop_projects (
+    id         BIGSERIAL PRIMARY KEY,
+    root_path  TEXT NOT NULL UNIQUE,
+    name       TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS conversations (
     id             BIGSERIAL PRIMARY KEY,
     agent_key      TEXT NOT NULL,
     title          TEXT NOT NULL DEFAULT '',
     llm_profile_id BIGINT REFERENCES llm_profiles(id) ON DELETE SET NULL,
+    project_id     BIGINT REFERENCES desktop_projects(id) ON DELETE SET NULL,
+    workspace      TEXT NOT NULL DEFAULT '',
     pinned_at      TIMESTAMPTZ,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS project_id BIGINT REFERENCES desktop_projects(id) ON DELETE SET NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS workspace TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_conversations_project ON conversations(project_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_unassigned ON conversations(updated_at DESC) WHERE project_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_conversations_llm_profile ON conversations(llm_profile_id) WHERE llm_profile_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_conversations_pinned ON conversations(pinned_at DESC) WHERE pinned_at IS NOT NULL;
 DROP TRIGGER IF EXISTS trg_conversations_upd ON conversations;
