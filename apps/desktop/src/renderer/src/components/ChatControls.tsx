@@ -6,13 +6,16 @@ import { useEffect, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   Check,
-  Hand,
-  Shield,
-  ShieldCheck,
-  Monitor,
+  ChevronDown,
   Folder,
+  GitBranch,
+  Hand,
+  Monitor,
   MoreHorizontal,
-  ChevronDown
+  Plus,
+  Search,
+  Shield,
+  ShieldCheck
 } from 'lucide-react'
 import { consoleRequest } from '@/lib/console'
 import { basename, cn } from '@/lib/utils'
@@ -151,6 +154,83 @@ export function AccessMenu({
   )
 }
 
+
+function BranchPickerContent({
+  current,
+  onChanged
+}: {
+  current: string
+  onChanged: (branch: string) => void
+}): React.JSX.Element {
+  const [query, setQuery] = useState('')
+  const [list, setList] = useState<string[]>([])
+  const [pending, setPending] = useState(false)
+  useEffect(() => {
+    void window.vexnar.git.branches().then((result) => {
+      if (result.ok) setList(result.data)
+    })
+  }, [])
+  const visible = list.filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()))
+  const run = async (branch: string): Promise<void> => {
+    setPending(true)
+    const result = await window.vexnar.git.checkout({ branch })
+    setPending(false)
+    if (result.ok) onChanged(result.data.branch)
+  }
+  const createNew = async (): Promise<void> => {
+    const name = query.trim()
+    if (!name) return
+    setPending(true)
+    const result = await window.vexnar.git.createBranch({ branch: name })
+    setPending(false)
+    if (result.ok) onChanged(result.data.branch)
+  }
+  return (
+    <DropdownMenu.Content side="top" align="start" sideOffset={8} className={`${content} w-[320px] p-0`}>
+      <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2">
+        <Search className="h-3.5 w-3.5 text-muted" />
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && visible.length === 0 && query.trim()) void createNew()
+          }}
+          placeholder="搜索分支"
+          className="h-6 w-full bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
+        />
+      </div>
+      <div className="max-h-64 overflow-y-auto p-1">
+        <div className="px-2 py-1 text-[10.5px] text-muted">分支</div>
+        {visible.map((name) => (
+          <DropdownMenu.Item
+            key={name}
+            className={item}
+            disabled={pending}
+            onSelect={() => void run(name)}
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+            <span className="truncate">{name}</span>
+            {name === current ? <Check className="ml-auto h-3.5 w-3.5" /> : null}
+          </DropdownMenu.Item>
+        ))}
+        {visible.length === 0 ? (
+          <div className="px-2 py-2 text-[11px] text-muted">没有匹配的分支</div>
+        ) : null}
+        <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
+        <DropdownMenu.Item
+          className={item}
+          disabled={!query.trim() || pending}
+          onSelect={() => void createNew()}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {query.trim() ? `创建并检出「${query.trim()}」` : '创建并检出新的分支…'}
+        </DropdownMenu.Item>
+      </div>
+    </DropdownMenu.Content>
+  )
+}
+
 export function ContextBar({
   disabled,
   hide
@@ -284,6 +364,28 @@ export function ContextBar({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      {active?.workspace ? (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              disabled={disabled}
+              aria-label="切换分支"
+              className="flex h-7 items-center gap-1.5 rounded-lg px-2 hover:bg-panel-2"
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+              <span className="max-w-[140px] truncate">{git?.branch || 'main'}</span>
+              <ChevronDown className="h-3 w-3 text-muted" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <BranchPickerContent
+              current={git?.branch || ''}
+              onChanged={() => void useAppStore.getState().refreshGit()}
+            />
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      ) : null}
+      {active?.workspace ? (
       <DropdownMenu.Root open={moreOpen} onOpenChange={setMoreOpen}>
         <DropdownMenu.Trigger asChild>
           <button
@@ -405,6 +507,7 @@ export function ContextBar({
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      ) : null}
     </div>
   )
 }

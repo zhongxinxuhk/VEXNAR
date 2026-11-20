@@ -190,6 +190,8 @@ export const sessionCreateSchema = z.object({
   title: z.string().trim().min(1).max(120).default('New chat'),
   workspace: z.string().default('')
 })
+export const gitBranchSchema = z.object({ branch: z.string().min(1).max(120) })
+
 export type SessionCreateInput = z.infer<typeof sessionCreateSchema>
 
 export const sessionRenameSchema = z.object({
@@ -431,6 +433,8 @@ export const IPC = {
   workspaceChoose: 'workspace:choose',
   gitStatus: 'git:status',
   gitBranches: 'git:branches',
+  gitCheckout: 'git:checkout',
+  gitCreateBranch: 'git:create-branch',
   gitWorktree: 'git:worktree',
   gitDiff: 'git:diff',
   terminalCreate: 'terminal:create',

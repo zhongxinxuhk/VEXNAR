@@ -85,6 +85,8 @@ export interface VexnarApi {
   }
   git: {
     branches: () => Promise<IpcResult<string[]>>
+    checkout: (input: { branch: string }) => Promise<IpcResult<{ branch: string }>>
+    createBranch: (input: { branch: string }) => Promise<IpcResult<{ branch: string }>>
     createWorktree: (input: { sessionId: string; branch: string }) => Promise<IpcResult<string>>
     status: () => Promise<IpcResult<GitStatus>>
     diff: (input: GitDiffInput) => Promise<IpcResult<DiffPayload>>
