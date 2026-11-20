@@ -17,6 +17,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogTitle } from '@/components/ui'
+import { Button as AuiButton } from '@/components/ui/affectui/button-clean'
 import { consoleRequest } from '@/lib/console'
 import { EFFORT_LABELS } from '@/lib/insight'
 import { cn } from '@/lib/utils'
@@ -372,22 +373,12 @@ function TaskDialog({
         ) : null}
 
         <div className="mt-6 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="h-8 rounded-full bg-panel-2 px-4 text-[13px] hover:bg-panel-3"
-          >
+          <AuiButton variant="ghost" size="md" onClick={() => onOpenChange(false)}>
             取消
-          </Button>
-          <Button
-            size="sm"
-            onClick={submit}
-            disabled={!prompt.trim()}
-            className="h-8 rounded-full px-4 text-[13px]"
-          >
+          </AuiButton>
+          <AuiButton variant="primary" size="md" onClick={submit} disabled={!prompt.trim()}>
             创建
-          </Button>
+          </AuiButton>
         </div>
       </DialogContent>
     </Dialog>
