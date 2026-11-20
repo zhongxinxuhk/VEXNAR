@@ -283,6 +283,14 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         message.content += item.detail || item.summary
         break
       }
+      case 'model': {
+        const model = item.summary.trim()
+        if (model) {
+          const execution = assistant(item).execution
+          if (execution) execution.model = model
+        }
+        break
+      }
       case 'thinking': {
         assistant(item)
         break

@@ -70,6 +70,9 @@ export function ConversationMessage({
           {!isUser ? (
             <span className="font-medium text-ink-soft">{execution?.worker || t('chat.assistantMessage')}</span>
           ) : null}
+          {!isUser && execution?.model ? (
+            <span className="max-w-56 truncate" title={execution.model}>{execution.model}</span>
+          ) : null}
           {time ? (
             <time dateTime={time.toISOString()} title={time.toLocaleString(locale)}>
               {time.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}

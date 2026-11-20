@@ -20,6 +20,20 @@ import (
 	"github.com/zhongxinxuhk/vexnar/db"
 )
 
+type modelObserverKey struct{}
+
+// WithModelObserver reports the model of a provider that produced a response.
+// Observation is independent of debug body recording.
+func WithModelObserver(ctx context.Context, observer func(string)) context.Context {
+	return context.WithValue(ctx, modelObserverKey{}, observer)
+}
+
+func observeModel(ctx context.Context, model string) {
+	if observer, ok := ctx.Value(modelObserverKey{}).(func(string)); ok && observer != nil && model != "" {
+		observer(model)
+	}
+}
+
 type taskIDContextKey struct{}
 type workerContextKey struct{}
 
@@ -179,6 +193,7 @@ func (r *Recorder) Stream(ctx context.Context, req llm.CompletionRequest) iter.S
 		}
 		defer func() { finish(ctx.Err()) }()
 
+		observed := false
 		for ev, err := range r.inner.Stream(ctx, req) {
 			if err != nil {
 				streamErr = err
@@ -187,6 +202,10 @@ func (r *Recorder) Stream(ctx context.Context, req llm.CompletionRequest) iter.S
 					return
 				}
 				return
+			}
+			if !observed {
+				observeModel(ctx, r.model)
+				observed = true
 			}
 			// Always track usage (cheap); accumulate text/thinking only for bodies.
 			// Anthropic (and the other providers) split token usage across events:
@@ -245,6 +264,10 @@ func (r *Recorder) Complete(ctx context.Context, req llm.CompletionRequest) (llm
 	}
 
 	msg, stopReason, usage, err := r.inner.Complete(ctx, req)
+	if err == nil {
+		observeModel(ctx, r.model)
+	}
+
 	status := "ok"
 	if err != nil {
 		status = "error"

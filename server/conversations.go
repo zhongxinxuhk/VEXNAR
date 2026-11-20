@@ -15,12 +15,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
 	"github.com/zhongxinxuhk/vexnar/agent"
 	"github.com/zhongxinxuhk/vexnar/db"
 	"github.com/zhongxinxuhk/vexnar/intercept"
+	"github.com/zhongxinxuhk/vexnar/llmrec"
 	"github.com/zhongxinxuhk/vexnar/sidequestion"
 )
 
@@ -730,6 +732,17 @@ func (s *Server) runConversationTurn(ctx context.Context, cancel context.CancelC
 			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
 		}
 	}
+	var modelMu sync.Mutex
+	lastModel := ""
+	ctx = llmrec.WithModelObserver(ctx, func(model string) {
+		modelMu.Lock()
+		defer modelMu.Unlock()
+		if model == lastModel {
+			return
+		}
+		lastModel = model
+		emit(db.Activity{Kind: "model", Worker: c.AgentKey, Summary: model})
+	})
 	// Stream the answer: the sink grows a transcript row in place, and the poll
 	// endpoint hands that row to clients as `live` while the turn is running.
 	live := newConvLiveText(pg, c.ID, c.AgentKey)

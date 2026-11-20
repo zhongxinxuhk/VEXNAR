@@ -781,6 +781,9 @@ export function ChatView(): React.JSX.Element {
                   <article key={message.id} className="rounded-xl border border-line-soft bg-panel/25 px-3 py-2.5">
                     <header className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-ink-soft">
                       <h2 className="font-medium">{message.execution?.worker || t('chat.assistantMessage')}</h2>
+                      {message.execution?.model ? (
+                        <span className="max-w-56 truncate text-muted" title={message.execution.model}>{message.execution.model}</span>
+                      ) : null}
                       {message.execution?.startedAt !== undefined ? (
                         <ToolEventTime timestamp={new Date(message.execution.startedAt).toISOString()} />
                       ) : null}

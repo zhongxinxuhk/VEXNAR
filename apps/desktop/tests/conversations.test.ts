@@ -106,6 +106,20 @@ describe('toChatMessages', () => {
     expect(toChatMessages([user, text], '1')[1].execution?.completedAt).toBeUndefined()
   })
 
+  it('preserves the last responding model in each turn without assigning old records a label', () => {
+    const first = step({ kind: 'user' })
+    const initialModel = step({ kind: 'model', summary: 'model-a' })
+    const finalModel = step({ kind: 'model', summary: 'model-b' })
+    const final = step({ kind: 'text', detail: '答复' })
+    const end = step({ kind: 'result' })
+    const oldMessage = step({ kind: 'user' })
+    const oldAnswer = step({ kind: 'text', detail: '旧答复' })
+    const messages = toChatMessages([first, initialModel, finalModel, final, end, oldMessage, oldAnswer], '1')
+    expect(messages[1].execution?.model).toBe('model-b')
+    expect(messages[1].content).toBe('答复')
+    expect(messages[3].execution?.model).toBeUndefined()
+  })
+
   it('preserves the assistant identity when a private reasoning row becomes an answer', () => {
     const user = step({ kind: 'user', detail: '你好' })
     const first = step({ kind: 'thinking', summary: 'private summary', detail: 'private detail' })

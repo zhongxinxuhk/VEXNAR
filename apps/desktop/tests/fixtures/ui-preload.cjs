@@ -81,6 +81,7 @@ const conversationActivities = {
         ...result, seq: ++activitySeq, tool_use_id: 'read-2', detail: 'output 2'
       }]
     }).flat(),
+    { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:08.750Z', kind: 'model', summary: 'observed-model-fixture' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:09Z', kind: 'text', summary: '已经搭好官网骨架', detail: '已经搭好官网骨架，并补上交互式架构图和部署脚本。' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:10Z', kind: 'result', summary: '完成', detail: '完成', input_tokens: 3200 }
   ]

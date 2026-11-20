@@ -172,6 +172,8 @@ app.whenReady().then(async () => {
     await wait(`document.body.textContent.includes('已经搭好官网骨架')`)
     await wait(`(${activity}).textContent.includes('回合已完成') && (${activity}).textContent.includes('118 项成功') && /10\\s*秒/.test((${activity}).textContent)`)
     await wait(`document.querySelector('article[aria-label="助手消息"] section[aria-label="最终答复"]').textContent.includes('已经搭好官网骨架')`)
+    await wait(`document.querySelector('article[aria-label="助手消息"] header').textContent.includes('observed-model-fixture')`)
+
 
     if (await run(`document.body.textContent.includes('先看目录结构')`)) throw Error('Private reasoning appeared in chat')
     if (await run(`(${activity}).parentElement.querySelector('details') !== null`)) throw Error('Collapsed trace mounted tool rows')

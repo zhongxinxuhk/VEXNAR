@@ -127,3 +127,27 @@ FROM llm_usage WHERE profile_name=$1`, profile).Scan(&count, &input, &output, &w
 		}
 	}
 }
+
+func TestModelObserverReportsRespondingProviderWithoutBodyRecording(t *testing.T) {
+	var observed []string
+	ctx := WithModelObserver(t.Context(), func(model string) { observed = append(observed, model) })
+	quiet := func() bool { return false }
+
+	empty := Wrap(completeProvider{}, nil, "no-response", "", "", "", quiet)
+	for range empty.Stream(ctx, llm.CompletionRequest{}) {
+		t.Fatal("empty provider emitted a result")
+	}
+	stream := Wrap(meteredStreamProvider{}, nil, "stream-model", "", "", "", quiet)
+	for _, err := range stream.Stream(ctx, llm.CompletionRequest{}) {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	direct := Wrap(completeProvider{}, nil, "direct-model", "", "", "", quiet)
+	if _, _, _, err := direct.Complete(ctx, llm.CompletionRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(observed) != 2 || observed[0] != "stream-model" || observed[1] != "direct-model" {
+		t.Fatalf("unexpected model labels: %v", observed)
+	}
+}
