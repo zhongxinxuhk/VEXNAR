@@ -837,7 +837,7 @@ export function ChatView(): React.JSX.Element {
         aria-label="会话工具栏"
       >
         {!sidebarOpen ? (
-          <div className="no-drag absolute inset-y-0 left-0 w-[130px]" aria-hidden="true" />
+          <div className="no-drag pointer-events-none absolute inset-y-0 left-0 w-[130px]" aria-hidden="true" />
         ) : null}
         <Tooltip label={projectLabel} side="bottom">
           <span
@@ -864,7 +864,7 @@ export function ChatView(): React.JSX.Element {
           type="button"
           onClick={toggleRight}
           aria-label="切换右侧面板"
-          className="no-drag grid size-7 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-panel-2"
+          className="no-drag ml-auto grid size-7 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-panel-2"
         >
           <PanelRight className="size-4" />
         </button>
