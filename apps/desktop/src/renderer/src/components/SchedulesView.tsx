@@ -538,12 +538,12 @@ export function SchedulesView(): React.JSX.Element {
       </aside>
 
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-bg">
-        <div className="flex h-11 shrink-0 items-center gap-1 px-3 text-muted">
+        <div className="drag-region flex h-11 shrink-0 items-center gap-1 px-3 text-muted">
           <button
             type="button"
             aria-label="返回对话"
             onClick={() => setView('chat')}
-            className="grid h-7 w-7 place-items-center rounded-md hover:bg-panel-2 hover:text-ink"
+            className="no-drag grid h-7 w-7 place-items-center rounded-md hover:bg-panel-2 hover:text-ink"
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.7} />
           </button>
