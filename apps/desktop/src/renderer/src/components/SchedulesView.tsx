@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +17,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogTitle } from '@/components/ui'
+import { consoleRequest } from '@/lib/console'
 import { EFFORT_LABELS } from '@/lib/insight'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app'
@@ -42,7 +43,38 @@ type ScheduledTask = {
 
 type TaskDraft = Omit<ScheduledTask, 'id' | 'createdAt' | 'enabled'>
 
-const STORAGE_KEY = 'vexnar.schedules'
+type BackendSchedule = {
+  id: number
+  name: string
+  prompt: string
+  frequency: Frequency
+  time_of_day: string
+  run_on_device: boolean
+  notify: NotifyLevel
+  new_chat_each_run: boolean
+  model: string
+  effort: Effort
+  enabled: boolean
+  created_at: number
+  next_fire_at: number
+}
+
+function fromBackend(item: BackendSchedule): ScheduledTask {
+  return {
+    id: String(item.id),
+    name: item.name,
+    prompt: item.prompt,
+    frequency: item.frequency,
+    time: item.time_of_day,
+    runOnDevice: item.run_on_device,
+    notify: item.notify,
+    newChatEachRun: item.new_chat_each_run,
+    model: item.model,
+    effort: item.effort,
+    enabled: item.enabled,
+    createdAt: item.created_at * 1000
+  }
+}
 
 const FREQUENCY_LABEL: Record<Frequency, string> = {
   daily: '每天',
@@ -123,59 +155,6 @@ function taskNameFromPrompt(prompt: string, fallback: string): string {
   const firstLine = prompt.trim().split('\n')[0]?.trim() ?? ''
   if (!firstLine) return fallback
   return firstLine.length > 24 ? `${firstLine.slice(0, 24)}…` : firstLine
-}
-
-function loadTasks(): ScheduledTask[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .map((item) => {
-        const record = item as Partial<ScheduledTask> | null
-        if (!record || typeof record.id !== 'string') return null
-        const frequency: Frequency =
-          record.frequency === 'daily' || record.frequency === 'monthly'
-            ? record.frequency
-            : 'weekly'
-        const notify: NotifyLevel =
-          record.notify === 'all' || record.notify === 'off' ? record.notify : 'important'
-        const effort: Effort =
-          record.effort === 'low' || record.effort === 'medium' || record.effort === 'high'
-            ? record.effort
-            : 'default'
-        const prompt = typeof record.prompt === 'string' ? record.prompt : ''
-        return {
-          id: record.id,
-          name:
-            typeof record.name === 'string' && record.name
-              ? record.name
-              : taskNameFromPrompt(prompt, '未命名任务'),
-          prompt,
-          frequency,
-          time: typeof record.time === 'string' && record.time ? record.time : '09:00',
-          runOnDevice: record.runOnDevice !== false,
-          notify,
-          newChatEachRun: record.newChatEachRun === true,
-          model: typeof record.model === 'string' ? record.model : '',
-          effort,
-          enabled: record.enabled !== false,
-          createdAt: Number(record.createdAt) || Date.now()
-        }
-      })
-      .filter((item): item is ScheduledTask => Boolean(item))
-  } catch {
-    return []
-  }
-}
-
-function persist(tasks: ScheduledTask[]): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
-  } catch {
-    // 存储失败时保持内存状态，不阻断交互
-  }
 }
 
 function Switch({
@@ -419,20 +398,31 @@ export function SchedulesView(): React.JSX.Element {
   const setView = useAppStore((state) => state.setView)
   const newApi = useAppStore((state) => state.newApi)
   const settings = useAppStore((state) => state.settings)
+  const backend = useAppStore((state) => state.backend)
   const models = useMemo(() => {
     const list = newApi?.models?.length ? newApi.models : settings.newApiModels
     return list.slice(0, 40)
   }, [newApi, settings.newApiModels])
 
-  const [tasks, setTasks] = useState<ScheduledTask[]>(() => loadTasks())
+  const [tasks, setTasks] = useState<ScheduledTask[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [draft, setDraft] = useState<Template | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pausedOpen, setPausedOpen] = useState(true)
 
+  const refresh = useCallback(async (): Promise<void> => {
+    if (!backend?.connected) return
+    try {
+      const data = await consoleRequest<{ schedules: BackendSchedule[] }>('/schedules')
+      setTasks((data.schedules ?? []).map(fromBackend))
+    } catch {
+      setTasks([])
+    }
+  }, [backend?.connected])
+
   useEffect(() => {
-    persist(tasks)
-  }, [tasks])
+    void refresh()
+  }, [refresh])
 
   const active = useMemo(() => tasks.filter((task) => task.enabled), [tasks])
   const paused = useMemo(() => tasks.filter((task) => !task.enabled), [tasks])
@@ -605,7 +595,7 @@ export function SchedulesView(): React.JSX.Element {
                 </div>
               </div>
               <div className="mt-5 flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => toggle(selected.id)}>
+                <Button variant="outline" size="sm" onClick={() => void toggle(selected.id)}>
                   {selected.enabled ? (
                     <>
                       <Pause className="h-3.5 w-3.5" />
@@ -618,13 +608,13 @@ export function SchedulesView(): React.JSX.Element {
                     </>
                   )}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => remove(selected.id)}>
+                <Button variant="ghost" size="sm" onClick={() => void remove(selected.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
                   删除
                 </Button>
               </div>
               <p className="mt-6 text-[11px] leading-5 text-muted">
-                任务保存在本机。自动执行需要后端调度器接入，目前仅保存配置，不会自行触发。
+                任务保存在服务端，到点由调度器自动创建会话并执行。
               </p>
             </div>
           ) : (

@@ -1528,3 +1528,24 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sessions_scope
     ON sessions(task_id, COALESCE(asset_id, 0), label);
 CREATE INDEX IF NOT EXISTS idx_sessions_task ON sessions(task_id, status);
+
+-- 定时任务（桌面端「定时任务」页）。next_fire_at 由服务端 ticker 每轮扫描触发，
+-- 到点后创建/复用会话并跑一轮 agent 对话（见 server/schedules.go）。
+CREATE TABLE IF NOT EXISTS schedules (
+    id               BIGSERIAL PRIMARY KEY,
+    name             TEXT NOT NULL,
+    prompt           TEXT NOT NULL,
+    frequency        TEXT NOT NULL DEFAULT 'daily',  -- daily | weekly | monthly
+    time_of_day      TEXT NOT NULL DEFAULT '09:00',  -- HH:MM（本机时区）
+    run_on_device    BOOLEAN NOT NULL DEFAULT TRUE,
+    notify           TEXT NOT NULL DEFAULT 'important', -- important | all | off
+    new_chat_each_run BOOLEAN NOT NULL DEFAULT FALSE,
+    model            TEXT NOT NULL DEFAULT '',
+    effort           TEXT NOT NULL DEFAULT 'default',   -- default | low | medium | high
+    agent_key        TEXT NOT NULL DEFAULT '',          -- 空则回落到最近会话的 agent
+    enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at       BIGINT NOT NULL,
+    last_fired_at    BIGINT,
+    next_fire_at     BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_schedules_due ON schedules(enabled, next_fire_at);
