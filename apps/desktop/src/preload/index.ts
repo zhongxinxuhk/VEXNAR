@@ -108,6 +108,7 @@ const api: VexnarApi = {
     copyKey: () => invoke(IPC.newapiCopyKey),
     openPlatform: () => invoke(IPC.newapiOpenPlatform),
     usage: () => invoke(IPC.newapiUsage),
+    affCode: () => invoke(IPC.newapiAffCode),
     onChange: (listener: (state: NewApiState) => void) =>
       subscribe(IPC.newapiChanged, listener)
   }

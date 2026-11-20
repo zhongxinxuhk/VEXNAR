@@ -930,6 +930,18 @@ export class NewApiManager {
     })
   }
 
+  /** 平台推荐计划：读取当前账号的专属推荐码（new-api /api/user/aff，code 在 message 字段）。 */
+  async getAffCode(): Promise<{ code: string; link: string }> {
+    const result = await this.authRequest('/api/user/aff')
+    const payload = result.json as { success?: boolean; message?: unknown } | null
+    if (!result.ok || payload?.success === false) {
+      throw new Error(messageOf(payload, '获取推荐码失败'))
+    }
+    const code = typeof payload?.message === 'string' ? payload.message.trim() : ''
+    if (!code) throw new Error('未获取到推荐码')
+    return { code, link: `${NEWAPI_ORIGIN}/sign-up?aff=${encodeURIComponent(code)}` }
+  }
+
   private async listAccessTokens(): Promise<NewApiAccessToken[]> {
     const result = await this.authRequest('/api/user/access_tokens')
     const items = accessTokenItemsFromPayload(result.json)

@@ -32,9 +32,9 @@ import { QuotaMenu } from '@/components/QuotaMenu'
 import { Tooltip } from '@/components/ui'
 
 const menuContent =
-  'z-50 min-w-[196px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
+  'z-50 w-[196px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
 const menuItem =
-  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
+  'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[5px] text-[12px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
 const menuLabel = 'px-2.5 pb-1 pt-1.5 text-[10.5px] font-medium text-muted'
 
 function RailButton({

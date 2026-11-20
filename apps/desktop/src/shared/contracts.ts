@@ -445,6 +445,7 @@ export const IPC = {
   backendStatus: 'backend:status',
   backendRequest: 'backend:request',
   newapiStatus: 'newapi:status',
+  newapiAffCode: 'newapi:aff-code',
   newapiBootstrap: 'newapi:bootstrap',
   newapiLogin: 'newapi:login',
   newapiVerify: 'newapi:verify',

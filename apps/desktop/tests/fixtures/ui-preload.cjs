@@ -174,6 +174,7 @@ contextBridge.exposeInMainWorld('vexnar', {
     refresh: () => ok(newapi),
     onChange: sub,
     openPlatform: () => ok({ opened: true }),
+    affCode: () => ok({ code: 'AKEH', link: 'https://platform.sec.hn.cn/sign-up?aff=AKEH' }),
     usage: () => {
       const now = Date.now()
       const day = 86_400_000

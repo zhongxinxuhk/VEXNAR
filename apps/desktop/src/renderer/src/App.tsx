@@ -109,20 +109,13 @@ function WorkspaceApp(): React.JSX.Element {
           <ConsoleView view={view} />
         )}
 
-        <AnimatePresence initial={false}>
-          {view === 'chat' && rightOpen ? (
-            <motion.div
-              key="right"
-              initial={{ x: 24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 24, opacity: 0 }}
-              transition={{ duration: 0.16, ease: 'easeOut' }}
-              className="absolute inset-y-0 right-0 top-11 z-30 w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]"
-            >
-              <RightPanel />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {/* 右侧面板为功能面板：确定性渲染。framer-motion 的 opacity 入场在
+            无 GPU/后台窗口下可能停在首帧，表现为「点击无响应」 */}
+        {view === 'chat' && rightOpen ? (
+          <div className="absolute inset-y-0 right-0 top-11 z-30 w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]">
+            <RightPanel />
+          </div>
+        ) : null}
       </main>
       </div>
 

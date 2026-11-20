@@ -222,4 +222,5 @@ export function registerIpc(services: Services): void {
   handle(IPC.newapiCopyKey, noInput, () => services.newapi.copyKey())
   handle(IPC.newapiOpenPlatform, noInput, () => services.newapi.openPlatform())
   handle(IPC.newapiUsage, noInput, () => services.newapi.usage())
+  handle(IPC.newapiAffCode, noInput, () => services.newapi.getAffCode())
 }
