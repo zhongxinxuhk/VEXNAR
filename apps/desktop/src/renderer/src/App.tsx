@@ -37,7 +37,9 @@ function WorkspaceApp(): React.JSX.Element {
   const panelWidth = useAppStore((state) => state.panelWidth)
   const toggleSidebar = useLayout((state) => state.toggleSidebar)
   const sidebarWidth = useLayout((state) => state.sidebarWidth)
-  const bare = view === 'profile' || view === 'schedules'
+  // 控制台视图（概览/任务/发现/流量/资产/工具执行）与资料页、定时任务页
+  // 不显示聊天列表侧栏，只留图标栏（ChatGPT 的控制台页同样如此）
+  const bare = view !== 'chat'
 
   useEffect(() => {
     void init()
