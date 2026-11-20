@@ -32,6 +32,18 @@ test('credit search combines purpose and text filters', async () => {
   assert.equal(filterCredits(catalog.projects, 'Monaco', '数据与运行时').length, 0);
   assert.equal(new Set(catalog.projects.map(p => p.github)).size, catalog.projects.length);
 });
+test('agent UI references appear in the published credits with MIT links', async () => {
+  const catalog = JSON.parse(await read('../credits.json'));
+  const rendered = await read('../dist/credits.html');
+  for (const [name, kind] of [['Motif', '交互改编'], ['GAIA UI', '设计参考'], ['Halaska UI', '设计参考']]) {
+    const [project] = filterCredits(catalog.projects, name, 'UI 与交互');
+    assert.equal(project?.name, name);
+    assert.equal(project.kind, kind);
+    assert.equal(project.license, 'MIT');
+    assert.ok(rendered.includes(project.github));
+    assert.ok(rendered.includes(project.license_url));
+  }
+});
 test('source-backed diagrams contain no dangling edges and point to real public files', async () => {
   assert.equal(architectures.length, 4);
   for (const diagram of architectures) {

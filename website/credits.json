@@ -2,7 +2,7 @@
   "author": "xuzhongxin <xuzhongxin@sec.hn.cn>",
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
-  "verified_at": "2026-11-20",
+  "verified_at": "2026-11-21",
   "projects": [
     {
       "name": "norma",
@@ -31,6 +31,39 @@
       "logo_kind": "维护者标识",
       "logo_source": "https://avatars.githubusercontent.com/u/43849669?v=4",
       "note": "上游项目名：next-shadcn-admin-dashboard。"
+    },
+    {
+      "name": "Motif",
+      "github": "https://github.com/SweetRetry/motif",
+      "author": "SweetRetry 与 Motif 贡献者",
+      "category": "UI 与交互",
+      "kind": "交互改编",
+      "usage": "桌面工具调用行、活动热图、审批卡片与加载状态的交互模式。",
+      "license": "MIT",
+      "license_url": "https://github.com/SweetRetry/motif/blob/main/LICENSE",
+      "note": "VEXNAR 桌面组件目录中的 NOTICE.md 保留上游 MIT 许可与署名。"
+    },
+    {
+      "name": "GAIA UI",
+      "github": "https://github.com/theexperiencecompany/gaia-ui",
+      "author": "The Experience Company 与 GAIA UI 贡献者",
+      "category": "UI 与交互",
+      "kind": "设计参考",
+      "usage": "Tool Calls Section 的工具活动聚合、默认折叠和按需查看详情。",
+      "license": "MIT",
+      "license_url": "https://github.com/theexperiencecompany/gaia-ui/blob/main/LICENSE",
+      "note": "参考 GAIA UI 的公开组件文档。VEXNAR 的工具活动使用本项目的组件与数据契约。"
+    },
+    {
+      "name": "Halaska UI",
+      "github": "https://github.com/Halaska-Studio/ui",
+      "author": "Chris Halaska 与 Halaska Studio",
+      "category": "UI 与交互",
+      "kind": "设计参考",
+      "usage": "桌面流式聊天与 Agent 交互参考，源码树保留带 MIT 署名的单文件 UI kit。",
+      "license": "MIT",
+      "license_url": "https://github.com/Halaska-Studio/ui/blob/main/LICENSE",
+      "note": "开源参考文件与桌面聊天的正式组件各自维护。"
     },
     {
       "name": "React",
