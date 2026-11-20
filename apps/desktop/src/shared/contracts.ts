@@ -56,6 +56,49 @@ export const newApiQuotaSchema = z.object({
 })
 export type NewApiQuota = z.infer<typeof newApiQuotaSchema>
 
+export const newApiAuthProviderSchema = z.object({
+  key: z.string().min(1).max(120),
+  name: z.string().min(1).max(200),
+  icon: z.string().max(200).default(''),
+  kind: z.enum(['oauth', 'oidc', 'telegram', 'wechat']).default('oauth')
+})
+export type NewApiAuthProvider = z.infer<typeof newApiAuthProviderSchema>
+
+export const newApiAuthMethodsSchema = z.object({
+  passwordLogin: z.boolean().default(true),
+  passwordRegister: z.boolean().default(false),
+  register: z.boolean().default(false),
+  emailVerification: z.boolean().default(false),
+  passkeyLogin: z.boolean().default(false),
+  providers: z.array(newApiAuthProviderSchema).default([])
+})
+export type NewApiAuthMethods = z.infer<typeof newApiAuthMethodsSchema>
+
+export const defaultNewApiAuthMethods: NewApiAuthMethods = {
+  passwordLogin: true,
+  passwordRegister: false,
+  register: false,
+  emailVerification: false,
+  passkeyLogin: false,
+  providers: []
+}
+
+export const newApiExternalAuthSchema = z
+  .object({
+    kind: z.enum(['oauth', 'passkey', 'register']),
+    provider: z.string().trim().min(1).max(120).optional()
+  })
+  .superRefine((value, context) => {
+    if (value.kind === 'oauth' && !value.provider) {
+      context.addIssue({
+        code: 'custom',
+        path: ['provider'],
+        message: '请选择第三方登录方式'
+      })
+    }
+  })
+export type NewApiExternalAuthInput = z.infer<typeof newApiExternalAuthSchema>
+
 export const newApiStateSchema = z.object({
   stage: z.enum(['checking', 'anonymous', 'authenticating', 'verification', 'ready', 'error']),
   authenticated: z.boolean(),
@@ -64,6 +107,15 @@ export const newApiStateSchema = z.object({
   token: newApiTokenSchema.nullable().default(null),
   models: z.array(z.string()).default([]),
   verificationMethods: z.array(z.string()).default([]),
+  authMethods: newApiAuthMethodsSchema.default(defaultNewApiAuthMethods),
+  externalAuth: z
+    .object({
+      kind: z.enum(['oauth', 'passkey', 'register']),
+      label: z.string().min(1).max(200),
+      provider: z.string().nullable().default(null)
+    })
+    .nullable()
+    .default(null),
   error: z.string().nullable().default(null),
   updatedAt: z.number().nullable().default(null)
 })
@@ -277,6 +329,9 @@ export const IPC = {
   newapiLogin: 'newapi:login',
   newapiVerify: 'newapi:verify',
   newapiCancelLogin: 'newapi:cancel-login',
+  newapiExternalAuth: 'newapi:external-auth',
+  newapiCancelExternalAuth: 'newapi:cancel-external-auth',
+  newapiAuthMethods: 'newapi:auth-methods',
   newapiRefresh: 'newapi:refresh',
   newapiLogout: 'newapi:logout',
   newapiCopyKey: 'newapi:copy-key',

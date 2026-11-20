@@ -9,6 +9,7 @@ import {
   idSchema,
   IPC,
   messageAppendSchema,
+  newApiExternalAuthSchema,
   newApiLoginSchema,
   newApiVerifySchema,
   sessionCreateSchema,
@@ -137,6 +138,11 @@ export function registerIpc(services: Services): void {
   handle(IPC.newapiLogin, newApiLoginSchema, (input) => services.newapi.login(input))
   handle(IPC.newapiVerify, newApiVerifySchema, (input) => services.newapi.verify(input))
   handle(IPC.newapiCancelLogin, noInput, () => services.newapi.cancelLogin())
+  handle(IPC.newapiExternalAuth, newApiExternalAuthSchema, (input) =>
+    services.newapi.startExternalAuth(input)
+  )
+  handle(IPC.newapiCancelExternalAuth, noInput, () => services.newapi.cancelExternalAuth())
+  handle(IPC.newapiAuthMethods, noInput, () => services.newapi.refreshAuthMethods())
   handle(IPC.newapiRefresh, noInput, () => services.newapi.refresh())
   handle(IPC.newapiLogout, noInput, () => services.newapi.logout())
   handle(IPC.newapiCopyKey, noInput, () => services.newapi.copyKey())

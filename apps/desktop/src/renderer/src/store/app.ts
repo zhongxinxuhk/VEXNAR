@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
+import { defaultNewApiAuthMethods } from '@shared/contracts'
 import type {
   AgentEvent,
   AppInfo,
@@ -489,7 +490,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: result.error })
       return false
     }
-    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, models: [], verificationMethods: [], error: null, updatedAt: Date.now() } })
+    set({ newApi: { stage: 'anonymous', authenticated: false, user: null, quota: null, token: null, models: [], verificationMethods: [], authMethods: defaultNewApiAuthMethods, externalAuth: null, error: null, updatedAt: Date.now() } })
     return true
   },
 
