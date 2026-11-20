@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package agent wires real LLM-driven planner and work agents (on top of the
 // agent-core SDK) to the dual SQLite graph. See docs/VEXNAR-架构设计.md
 // §4.3 (planner) and §4.4 (work agent).

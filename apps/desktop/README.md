@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # VEXNAR Desktop (Electron)
 
 独立的桌面 Agent 客户端。它与 `web/`、Go 后端以及旧的 Tauri `desktop/` 互不依赖，可以单独迭代桌面端的会话、工作区、终端和 Diff 体验。

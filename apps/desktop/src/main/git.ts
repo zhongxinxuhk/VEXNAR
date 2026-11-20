@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { promises as fs } from 'node:fs'
 import { simpleGit } from 'simple-git'
 import type { DiffPayload, GitStatus } from '@shared/contracts'

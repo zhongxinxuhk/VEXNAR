@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area'

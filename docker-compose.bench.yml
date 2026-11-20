@@ -1,3 +1,7 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # VEXNAR 腾讯 TSec Benchmark 测评镜像 —— 本地一键 build + run。
 # 与生产用的 docker-compose.yml(多服务:vexnar+postgres)互不影响。
 # 用法：

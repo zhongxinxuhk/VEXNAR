@@ -1,3 +1,7 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Builds a trimmed portable PostgreSQL for Windows x64.
 #
 # EnterpriseDB publishes the official Windows binaries as a zip. The workflow

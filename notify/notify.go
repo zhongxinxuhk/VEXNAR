@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package notify 实现漏洞发现的 IM / 邮件推送渠道适配层。
 //
 // 分层：本包是**叶子包**，只依赖标准库。它不认识数据库、不认识 server。渠道配置

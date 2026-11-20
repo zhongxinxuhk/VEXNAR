@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { contextBridge, ipcRenderer } from 'electron'
 import type { VexnarApi, Unsubscribe } from '@shared/api'
 import type {

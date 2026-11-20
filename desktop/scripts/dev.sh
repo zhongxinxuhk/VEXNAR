@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Builds the Go sidecar (and, unless SKIP_WEB=1, the static web UI) before
 # starting Tauri. Tauri's beforeDevCommand runs concurrently with the Rust dev
 # process, so a slow web build can let the app start with a stale sidecar.

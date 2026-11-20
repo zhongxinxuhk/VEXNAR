@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //! Portable PostgreSQL lifecycle for the desktop app.
 //!
 //! The app ships a trimmed PG under `resources/pg`. On first launch we run

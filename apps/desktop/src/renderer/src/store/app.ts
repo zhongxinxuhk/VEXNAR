@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { create } from 'zustand'
 import { translate, useI18n } from '@/lib/i18n'
 import { defaultNewApiAuthMethods } from '@shared/contracts'

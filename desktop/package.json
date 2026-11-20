@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.1",
   "description": "VEXNAR desktop shell",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhongxinxuhk/VEXNAR.git"
+  },
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "tauri": "tauri",
     "dev": "bash scripts/dev.sh",

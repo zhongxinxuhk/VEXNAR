@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package report renders a deliverable Markdown report from the exploration
 // graph: confirmed findings (with severity/evidence) (docs §15 P5).
 package report

@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "VEXNAR independent desktop agent UI",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhongxinxuhk/VEXNAR.git"
+  },
   "main": "./out/main/index.js",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "bash scripts/dev.sh",
     "build": "electron-vite build",

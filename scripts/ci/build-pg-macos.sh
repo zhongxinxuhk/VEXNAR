@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Builds a trimmed, static PostgreSQL for macOS arm64 (or the host arch).
 #
 # Used by .github/workflows/pg-macos.yml and runnable locally:

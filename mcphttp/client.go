@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package mcphttp contains remote Streamable HTTP and legacy SSE MCP clients.
 //
 // The core mcp package only speaks stdio; this adapts an HTTP/JSON-RPC MCP server

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package config loads runtime configuration from a JSON file, with environment
 // variables taking precedence. Currently it carries the PostgreSQL connection.
 package config
