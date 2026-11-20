@@ -398,19 +398,6 @@ export function Sidebar(): React.JSX.Element {
               </div>
             ) : null}
 
-            {/* 不归属项目的单次聊天：平铺在「项目」分组之上（ChatGPT 同为顶层列表） */}
-            {looseSessions.length > 0 ? (
-              <div className="mb-1">
-                {looseSessions.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    active={view === 'chat' && session.id === activeSessionId}
-                  />
-                ))}
-              </div>
-            ) : null}
-
             <div className="flex items-center gap-1 px-2 pb-1 pt-4">
               <button
                 type="button"
@@ -447,19 +434,6 @@ export function Sidebar(): React.JSX.Element {
                 </button>
               </div>
             </div>
-
-            {/* 不归属项目的单次聊天：平铺在「项目」分组之上（ChatGPT 同为顶层列表） */}
-            {looseSessions.length > 0 ? (
-              <div className="mb-1">
-                {looseSessions.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    active={view === 'chat' && session.id === activeSessionId}
-                  />
-                ))}
-              </div>
-            ) : null}
 
             {projectsCollapsed ? null : visibleProjects.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] leading-5 text-muted">
@@ -505,6 +479,22 @@ export function Sidebar(): React.JSX.Element {
                 )
               })
             )}
+
+            {/* 最近：无工作区的单次聊天，独立于「项目」分组（ChatGPT 的顶层会话） */}
+            {looseSessions.length > 0 ? (
+              <div className="mt-1">
+                <div className="flex items-center gap-1 px-2 pb-1 pt-4">
+                  <span className="text-[11px] font-medium text-muted">最近</span>
+                </div>
+                {looseSessions.map((session) => (
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    active={view === 'chat' && session.id === activeSessionId}
+                  />
+                ))}
+              </div>
+            ) : null}
 
             {sessions.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] text-muted">{t('app.noChats')}</div>
