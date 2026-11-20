@@ -939,6 +939,12 @@ func (d *DB) SaveMCP(m *MCPServer) (int64, error) {
 	return m.ID, err
 }
 
+// SetMCPEnabled flips only the enabled flag, leaving command/args/env untouched.
+func (d *DB) SetMCPEnabled(id int64, enabled bool) error {
+	_, err := d.Exec(`UPDATE mcp_servers SET enabled=$2 WHERE id=$1`, id, enabled)
+	return err
+}
+
 func (d *DB) DeleteMCP(id int64) error {
 	tx, err := d.Begin()
 	if err != nil {

@@ -889,9 +889,17 @@ func (s *Server) Handler() http.Handler {
 	// MCP CRUD
 	mux.HandleFunc("GET /api/mcp", s.pgListMCP)
 	mux.HandleFunc("POST /api/mcp", s.pgSaveMCP)
+	mux.HandleFunc("POST /api/mcp/import", s.pgImportMCP)
+	mux.HandleFunc("PUT /api/mcp/{id}/enabled", s.pgSetMCPEnabled)
 	mux.HandleFunc("DELETE /api/mcp/{id}", s.pgDeleteMCP)
 	mux.HandleFunc("GET /api/mcp/{id}/tools", s.pgMCPTools)
 	mux.HandleFunc("POST /api/mcp/{id}/refresh", s.pgRefreshMCP)
+	// 插件市场（MCP / 技能）：市场源一律是 GitHub 仓库，可带子目录
+	mux.HandleFunc("GET /api/market/sources", s.marketSources)
+	mux.HandleFunc("POST /api/market/sources", s.addMarketSource)
+	mux.HandleFunc("DELETE /api/market/sources/{id}", s.deleteMarketSource)
+	mux.HandleFunc("POST /api/market/sources/{id}/sync", s.syncMarketSourceByID)
+	mux.HandleFunc("GET /api/market/items", s.marketItems)
 	// 资产同步 — ScopeSentry 数据源
 	mux.HandleFunc("GET /api/sync/scopesentry/status", s.syncSSStatus)
 	mux.HandleFunc("POST /api/sync/scopesentry/datasource", s.syncSSDatasource)
@@ -902,7 +910,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/skills", s.fsListSkills)
 	mux.HandleFunc("POST /api/skills", s.fsCreateSkill)
 	mux.HandleFunc("POST /api/skills/upload", s.fsUploadSkill)
+	mux.HandleFunc("POST /api/skills/install-github", s.fsInstallSkillFromGitHub)
 	mux.HandleFunc("DELETE /api/skills/{name}", s.fsDeleteSkill)
+	mux.HandleFunc("PUT /api/skills/{name}/enabled", s.fsSkillEnabled)
 	mux.HandleFunc("GET /api/skills/missing", s.fsMissingSkills)   // 未命中(想调但不存在)的 skill 名
 	mux.HandleFunc("GET /api/skills/{name}/usage", s.fsSkillUsage) // 单个 skill 的最近调用
 	mux.HandleFunc("PUT /api/skills/{name}/meta", s.fsUpdateSkillMeta)

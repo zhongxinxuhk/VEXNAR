@@ -12,7 +12,7 @@ import { BackendManager } from './backend'
 import { NewApiManager } from './newapi'
 import { closeDb, initDb } from './db'
 import { registerIpc } from './ipc'
-import { startPortablePostgres, type PostgresRuntime } from './pg'
+import { resolveConfiguredBackendDsn, startPortablePostgres, type PostgresRuntime } from './pg'
 import { clearStoredApiKey, getAgentConfig, getSettings, loadSettings } from './settings'
 import { TerminalManager } from './terminal'
 import { runSmoke } from './smoke'
@@ -126,7 +126,11 @@ async function boot(): Promise<void> {
   postgres = await startPortablePostgres()
   await initDb(postgres.dsn)
   await loadSettings()
-  await backend.start(postgres.backendDsn)
+  // Go 后端可以单独指到 config.json 的库（与 web 控制台共享 MCP/技能数据）；
+  // Electron 会话库始终独立，避免 Go 的 sessions 表与桌面端同名表互撞。
+  const configured = await resolveConfiguredBackendDsn()
+  if (configured) console.log(`[backend] 使用 ${configured.source} 的数据库`)
+  await backend.start(configured?.dsn ?? postgres.backendDsn)
   await restoreModelConnection()
 
   if (smoke) {

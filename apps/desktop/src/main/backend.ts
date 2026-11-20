@@ -217,10 +217,14 @@ export class BackendManager {
 
   async request(input: BackendRequestInput): Promise<unknown> {
     const route = input.path.startsWith('/api/') ? input.path : `/api${input.path}`
-    return this.call(route, {
-      method: input.method,
-      body: input.body
-    })
+    return this.call(
+      route,
+      {
+        method: input.method,
+        body: input.body
+      },
+      input.timeoutMs ?? REQUEST_TIMEOUT_MS
+    )
   }
 
   async llmStatus(): Promise<LLMStatus> {

@@ -8,6 +8,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
+      '@': resolve('src/renderer/src'),
       '@shared': resolve('src/shared')
     }
   },

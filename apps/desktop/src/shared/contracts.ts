@@ -308,7 +308,10 @@ export type AgentSendInput = z.infer<typeof agentSendSchema>
 export const backendRequestSchema = z.object({
   path: z.string().min(1).max(4000).regex(/^\//, '路径必须以 / 开头'),
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'),
-  body: z.unknown().optional()
+  body: z.unknown().optional(),
+  // 少数操作（MCP 工具发现、GitHub 安装、市场同步）会超过默认 30s；
+  // 由调用方显式指定，未指定时沿用 REQUEST_TIMEOUT_MS。
+  timeoutMs: z.number().int().min(1000).max(300000).optional()
 })
 export type BackendRequestInput = z.infer<typeof backendRequestSchema>
 

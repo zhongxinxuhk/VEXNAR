@@ -1549,3 +1549,36 @@ CREATE TABLE IF NOT EXISTS schedules (
     next_fire_at     BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_schedules_due ON schedules(enabled, next_fire_at);
+
+-- =====================================================================
+-- H. 插件市场源（MCP / Skills，均以 GitHub 仓库为市场链接）
+-- =====================================================================
+-- 一行 = 一个市场源。repo/ref/path 指向 GitHub 仓库（以及仓库内目录），
+-- 服务端从该目录读取 market.json（自有 schema）或 mcp.json（Claude/CC Switch
+-- 兼容格式），技能类源在没有索引文件时按 SKILL.md 自动发现条目。
+-- items 是最近一次同步的结果缓存，synced_at/last_error 记录同步状态。
+CREATE TABLE IF NOT EXISTS market_sources (
+    id         BIGSERIAL PRIMARY KEY,
+    kind       TEXT NOT NULL CHECK (kind IN ('mcp','skills','all')),
+    name       TEXT NOT NULL DEFAULT '',
+    repo       TEXT NOT NULL,
+    ref        TEXT NOT NULL DEFAULT 'main',
+    path       TEXT NOT NULL DEFAULT '',
+    official   BOOLEAN NOT NULL DEFAULT FALSE,
+    items      JSONB NOT NULL DEFAULT '[]'::jsonb,
+    synced_at  TIMESTAMPTZ,
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (repo, path, kind)
+);
+DROP TRIGGER IF EXISTS trg_market_sources_upd ON market_sources;
+CREATE TRIGGER trg_market_sources_upd BEFORE UPDATE ON market_sources
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- 官方市场源：VEXNAR 仓库自带的 market 目录（自有市场链接）。
+-- 与 mcp_servers 的占位行不同，这里需要在首次启动时就存在，因此只在缺失时插入；
+-- 用户删除后重启会重新出现——删除接口对 official 行直接拒绝，避免"删了又回来"。
+INSERT INTO market_sources (kind, name, repo, ref, path, official)
+VALUES ('all', 'VEXNAR 官方市场', 'zhongxinxuhk/VEXNAR', 'main', 'market', TRUE)
+ON CONFLICT (repo, path, kind) DO NOTHING;
