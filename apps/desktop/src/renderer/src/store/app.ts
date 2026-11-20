@@ -3,6 +3,7 @@ import { translate, useI18n } from '@/lib/i18n'
 import type {
   AgentEvent,
   AppInfo,
+  AvatarColor,
   BackendStatus,
   DiffPayload,
   FileNode,
@@ -29,6 +30,7 @@ export type ChatMessage = Message & {
 
 type RightTab = 'workspace' | 'terminal' | 'diff'
 type AgentStatus = 'idle' | 'ready' | 'streaming' | 'error'
+export type SettingsSection = 'general' | 'appearance' | 'workspace' | 'model' | 'runtime'
 export type AppView =
   | 'chat'
   | 'overview'
@@ -54,6 +56,7 @@ type AppState = {
   rightTab: RightTab
   rightOpen: boolean
   settingsOpen: boolean
+  settingsSection: SettingsSection
   workspaceFiles: FileNode[]
   workspaceLoading: boolean
   git: GitStatus | null
@@ -84,11 +87,15 @@ type AppState = {
   setRightTab: (tab: RightTab) => void
   toggleRight: () => void
   setSettingsOpen: (open: boolean) => void
+  openSettings: (section?: SettingsSection) => void
+  updateProfile: (profile: { displayName: string; avatarColor: AvatarColor }) => Promise<boolean>
   clearError: () => void
 }
 
 const emptySettings: PublicSettings = {
   theme: 'light',
+  displayName: '',
+  avatarColor: 'orange',
   workspaceRoot: '',
   shell: '',
   model: 'gpt-5-codex',
@@ -110,6 +117,8 @@ function applyTheme(theme: PublicSettings['theme']): void {
 function settingsInput(settings: PublicSettings): SettingsInput {
   return {
     theme: settings.theme,
+    displayName: settings.displayName,
+    avatarColor: settings.avatarColor,
     workspaceRoot: settings.workspaceRoot,
     shell: settings.shell,
     model: settings.model,
@@ -136,6 +145,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   rightTab: 'workspace',
   rightOpen: false,
   settingsOpen: false,
+  settingsSection: 'general',
   workspaceFiles: [],
   workspaceLoading: false,
   git: null,
@@ -521,6 +531,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setRightTab: (rightTab) => set({ rightTab, rightOpen: true }),
   toggleRight: () => set((state) => ({ rightOpen: !state.rightOpen })),
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setSettingsOpen: (settingsOpen) =>
+    set(settingsOpen ? { settingsOpen: true, settingsSection: 'general' } : { settingsOpen: false }),
+  openSettings: (settingsSection = 'general') => set({ settingsOpen: true, settingsSection }),
+  updateProfile: async (profile) =>
+    get().saveSettings({
+      ...settingsInput(get().settings),
+      ...profile
+    }),
   clearError: () => set({ error: null })
 }))

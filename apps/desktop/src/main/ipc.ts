@@ -1,8 +1,9 @@
-import { app, ipcMain, type BrowserWindow } from 'electron'
+import { app, clipboard, ipcMain, type BrowserWindow } from 'electron'
 import { z } from 'zod'
 import {
   agentSendSchema,
   backendRequestSchema,
+  copyTextSchema,
   fileReadSchema,
   gitDiffSchema,
   idSchema,
@@ -71,6 +72,10 @@ export function registerIpc(services: Services): void {
     arch: process.arch,
     userData: app.getPath('userData')
   }))
+  handle(IPC.appCopyText, copyTextSchema, (text) => {
+    clipboard.writeText(text)
+    return { copied: true as const }
+  })
 
   handle(IPC.settingsGet, noInput, () => getSettings())
   handle(IPC.settingsSet, settingsSchema, async (input) => {

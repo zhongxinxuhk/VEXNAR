@@ -31,6 +31,18 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.altKey && event.code === 'Space') {
+        const target = event.target
+        if (
+          target instanceof HTMLElement &&
+          target.closest('input, textarea, [contenteditable="true"]')
+        ) {
+          return
+        }
+        event.preventDefault()
+        toggleRight()
+        return
+      }
       const meta = event.metaKey || event.ctrlKey
       if (!meta) return
       if (event.key.toLowerCase() === 'n') {

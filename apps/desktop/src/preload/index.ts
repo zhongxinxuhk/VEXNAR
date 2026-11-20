@@ -32,7 +32,8 @@ function subscribe<T>(channel: string, listener: (payload: T) => void): Unsubscr
 
 const api: VexnarApi = {
   app: {
-    info: () => invoke(IPC.appInfo)
+    info: () => invoke(IPC.appInfo),
+    copyText: (text: string) => invoke(IPC.appCopyText, text)
   },
   settings: {
     get: () => invoke(IPC.settingsGet),

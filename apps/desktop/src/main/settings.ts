@@ -1,4 +1,5 @@
 import { safeStorage } from 'electron'
+import os from 'node:os'
 import { readSetting, writeSetting } from './db'
 import { defaultWorkspace } from './paths'
 import {
@@ -12,6 +13,8 @@ const SETTINGS_KEY = 'desktop'
 
 type StoredSettings = {
   theme: 'dark' | 'light' | 'system'
+  displayName: string
+  avatarColor: 'orange' | 'blue' | 'green' | 'purple' | 'rose' | 'slate'
   workspaceRoot: string
   shell: string
   model: string
@@ -19,8 +22,18 @@ type StoredSettings = {
   apiKeyCipher?: string
 }
 
+function defaultDisplayName(): string {
+  try {
+    return os.userInfo().username || 'VEXNAR'
+  } catch {
+    return 'VEXNAR'
+  }
+}
+
 const defaults: StoredSettings = {
   theme: 'light',
+  displayName: defaultDisplayName(),
+  avatarColor: 'orange',
   workspaceRoot: defaultWorkspace(),
   shell: '',
   model: 'gpt-5-codex',
@@ -69,6 +82,8 @@ function decryptSecret(cipher: string | undefined): string {
 function toPublic(stored: StoredSettings): PublicSettings {
   return publicSettingsSchema.parse({
     theme: stored.theme,
+    displayName: stored.displayName,
+    avatarColor: stored.avatarColor,
     workspaceRoot: stored.workspaceRoot,
     shell: stored.shell,
     model: stored.model,
@@ -90,6 +105,8 @@ export async function setSettings(input: SettingsInput): Promise<PublicSettings>
   const parsed = settingsSchema.parse(input)
   const stored = { ...cache }
   stored.theme = parsed.theme
+  stored.displayName = parsed.displayName.trim() || defaults.displayName
+  stored.avatarColor = parsed.avatarColor
   stored.workspaceRoot = parsed.workspaceRoot.trim()
   stored.shell = parsed.shell.trim()
   stored.model = parsed.model.trim()

@@ -3,8 +3,13 @@ import { z } from 'zod'
 export const themeSchema = z.enum(['dark', 'light', 'system'])
 export type Theme = z.infer<typeof themeSchema>
 
+export const avatarColorSchema = z.enum(['orange', 'blue', 'green', 'purple', 'rose', 'slate'])
+export type AvatarColor = z.infer<typeof avatarColorSchema>
+
 export const settingsSchema = z.object({
   theme: themeSchema.default('light'),
+  displayName: z.string().trim().max(80).default(''),
+  avatarColor: avatarColorSchema.default('orange'),
   workspaceRoot: z.string().default(''),
   shell: z.string().default(''),
   model: z.string().trim().min(1).max(120).default('gpt-5-codex'),
@@ -104,6 +109,8 @@ export type BackendStatus = {
 
 export const emptySchema = z.undefined().or(z.null()).optional()
 
+export const copyTextSchema = z.string().min(1).max(20_000)
+
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
 export type Session = {
@@ -183,6 +190,7 @@ export type AgentEvent = z.infer<typeof agentEventSchema>
 
 export const IPC = {
   appInfo: 'app:info',
+  appCopyText: 'app:copy-text',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   sessionsList: 'sessions:list',

@@ -14,6 +14,12 @@ describe('settings contracts', () => {
     expect(settings.workspaceRoot).toBe('')
     expect(settings.model).toBe('gpt-5-codex')
     expect(settings.baseUrl).toBe('')
+    expect(settings.displayName).toBe('')
+    expect(settings.avatarColor).toBe('orange')
+  })
+
+  it('rejects an unknown avatar color', () => {
+    expect(settingsSchema.safeParse({ avatarColor: 'pink' }).success).toBe(false)
   })
 
   it('keeps the API key out of public settings', () => {
@@ -23,6 +29,7 @@ describe('settings contracts', () => {
       hasApiKey: true
     })
     expect(publicSettings.hasApiKey).toBe(true)
+    expect(publicSettings.avatarColor).toBe('orange')
     expect('apiKey' in publicSettings).toBe(false)
     expect('backendUrl' in publicSettings).toBe(false)
   })
