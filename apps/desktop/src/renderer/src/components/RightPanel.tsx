@@ -360,30 +360,39 @@ export function RightPanel(): React.JSX.Element {
     { id: 'diff' as const, label: t('panel.changes'), icon: FileCode2 }
   ]
 
-  if (panelLauncher) {
-    return (
-      <aside className="flex h-full w-full shrink-0 flex-col bg-bg">
-        <div className="flex h-11 shrink-0 items-center gap-2 px-3">
-          <div className="flex h-8 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
-            <span className="text-[12.5px] text-ink">新标签页</span>
-            <button
-              type="button"
-              aria-label="关闭右侧面板"
-              onClick={toggleRight}
-              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
+  const activeLabel = panelLauncher
+    ? '新标签页'
+    : rightTab === 'terminal'
+      ? '终端'
+      : rightTab === 'diff'
+        ? '变更'
+        : '文件'
+
+  return (
+    <aside className="flex h-full w-full shrink-0 flex-col bg-bg">
+      {/* 统一顶行：无论启动页还是标签页都在同一位置提供药丸与圆形开关 */}
+      <div className="flex h-11 shrink-0 items-center gap-2 px-3">
+        <div className="relative z-10 flex h-8 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
+          <span className="text-[12.5px] text-ink">{activeLabel}</span>
           <button
             type="button"
+            aria-label="关闭右侧面板"
             onClick={toggleRight}
-            aria-label="切换右侧面板"
-            className="no-drag ml-auto grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-panel-3 text-ink transition-colors hover:bg-line"
+            className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
           >
-            <PanelRight className="size-4" />
+            <X className="size-3.5" />
           </button>
         </div>
+        <button
+          type="button"
+          onClick={toggleRight}
+          aria-label="切换右侧面板"
+          className="no-drag relative z-10 ml-auto grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-panel-3 text-ink transition-colors hover:bg-line"
+        >
+          <PanelRight className="size-4" />
+        </button>
+      </div>
+      {panelLauncher ? (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-3">
           <input
             value={launcherQuery}
@@ -429,14 +438,10 @@ export function RightPanel(): React.JSX.Element {
             ) : null}
           </div>
         </div>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-panel/50">
-      <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
-        <div className="inline-flex items-center gap-1 rounded-lg bg-panel-2 p-1">
+      ) : (
+        <>
+          <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
+            <div className="inline-flex items-center gap-1 rounded-lg bg-panel-2 p-1">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const active = rightTab === tab.id
@@ -456,19 +461,14 @@ export function RightPanel(): React.JSX.Element {
             )
           })}
         </div>
-        <div className="ml-auto">
-          <Tooltip label={t('app.hidePanel')} side="bottom">
-            <Button variant="ghost" size="icon" onClick={toggleRight} aria-label={t('app.hidePanel')}>
-              <PanelRightClose className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1">
-        {rightTab === 'workspace' ? <WorkspaceView /> : null}
-        {rightTab === 'terminal' ? <TerminalView /> : null}
-        {rightTab === 'diff' ? <DiffView /> : null}
-      </div>
+          </div>
+          <div className="min-h-0 flex-1">
+            {rightTab === 'workspace' ? <WorkspaceView /> : null}
+            {rightTab === 'terminal' ? <TerminalView /> : null}
+            {rightTab === 'diff' ? <DiffView /> : null}
+          </div>
+        </>
+      )}
     </aside>
   )
 }
