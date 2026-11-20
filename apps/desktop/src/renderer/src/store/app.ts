@@ -36,6 +36,13 @@ import type {
 
 export type ToolCallEvent = { sequence: number; timestamp: string }
 
+export type ToolTraceEvent = ToolCallEvent & {
+  tool: string
+  worker: string
+  outcome: 'invoked' | 'done' | 'error'
+  relatedCallSequence?: number
+}
+
 export type ToolCall = {
   id: string
   name: string
@@ -49,6 +56,7 @@ export type ToolCall = {
 
 export type ChatMessage = Message & {
   toolCalls?: ToolCall[]
+  toolEvents?: ToolTraceEvent[]
   streaming?: boolean
   failed?: boolean
   /** Upstream failure text for a failed turn (kept apart from any streamed text). */

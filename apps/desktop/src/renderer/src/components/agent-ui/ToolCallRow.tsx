@@ -28,17 +28,16 @@ const statusDisplay = {
 export function ToolCallRow({
   call,
   summary,
-  turnRunning
+  status
 }: {
   call: ToolCall
   summary: string
-  turnRunning: boolean
+  status: ToolCallStatus
 }): React.JSX.Element {
   const t = useT()
   const locale = useI18n((state) => state.locale)
   const [open, setOpen] = useState(false)
   const { name, worker, started, finished, input, output } = call
-  const status = call.status === 'running' && !turnRunning ? 'unreported' : call.status
   const record = input && typeof input === 'object' ? (input as Record<string, unknown>) : null
   const command = typeof record?.command === 'string' ? record.command : ''
   const inputText = open && input != null ? (command ? `$ ${command}` : JSON.stringify(input, null, 2)) : ''
@@ -55,15 +54,6 @@ export function ToolCallRow({
       }).format(elapsedMs < 1000 ? elapsedMs : elapsedMs / 1000)
     : null
 
-  const eventTime = (timestamp: string): React.JSX.Element | null => {
-    const date = new Date(timestamp)
-    if (!Number.isFinite(date.getTime())) return null
-    return (
-      <time dateTime={timestamp} title={timestamp}>
-        {date.toLocaleString(locale)}
-      </time>
-    )
-  }
 
   return (
     <details className="group" onToggle={(event) => setOpen(event.currentTarget.open)}>
@@ -89,11 +79,11 @@ export function ToolCallRow({
               </>
             ) : null}
             <dt className="text-muted">{t('chat.toolStarted')}</dt>
-            <dd className="font-mono">#{started.sequence} {eventTime(started.timestamp)}</dd>
+            <dd className="font-mono">#{started.sequence} <ToolEventTime timestamp={started.timestamp} /></dd>
             {finished ? (
               <>
                 <dt className="text-muted">{t('chat.toolFinished')}</dt>
-                <dd className="font-mono">#{finished.sequence} {eventTime(finished.timestamp)}</dd>
+                <dd className="font-mono">#{finished.sequence} <ToolEventTime timestamp={finished.timestamp} /></dd>
               </>
             ) : null}
             {elapsed === null ? null : (
@@ -125,5 +115,16 @@ export function ToolCallRow({
         </div>
       ) : null}
     </details>
+  )
+}
+
+export function ToolEventTime({ timestamp }: { timestamp: string }): React.JSX.Element | null {
+  const locale = useI18n((state) => state.locale)
+  const date = new Date(timestamp)
+  if (!Number.isFinite(date.getTime())) return null
+  return (
+    <time dateTime={timestamp} title={timestamp}>
+      {date.toLocaleString(locale)}
+    </time>
   )
 }

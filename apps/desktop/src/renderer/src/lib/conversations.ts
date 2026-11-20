@@ -253,7 +253,8 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
-      toolCalls: []
+      toolCalls: [],
+      toolEvents: []
     }
     out.push(open)
     return open
@@ -295,14 +296,26 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           input: toolInput(item)
         }
         message.toolCalls?.push(call)
+        message.toolEvents?.push({
+          ...call.started, tool: call.name, worker: item.worker, outcome: 'invoked'
+        })
         if (item.tool_use_id) callsById.set(item.tool_use_id, call)
         break
       }
       case 'tool_result': {
         const call = callsById.get(item.tool_use_id ?? '')
+        const event = { sequence: item.seq, timestamp: item.ts }
+        const outcome = item.is_error ? 'error' : 'done'
+        assistant(item.seq).toolEvents?.push({
+          ...event,
+          tool: item.tool || call?.name || 'tool',
+          worker: item.worker,
+          outcome,
+          relatedCallSequence: call?.started.sequence
+        })
         if (call) {
-          call.status = item.is_error ? 'error' : 'done'
-          call.finished = { sequence: item.seq, timestamp: item.ts }
+          call.status = outcome
+          call.finished = event
           call.output = item.detail || item.summary
         }
         break

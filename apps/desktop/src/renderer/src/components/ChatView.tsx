@@ -94,6 +94,7 @@ function MessageRow({
   const canRegenerate =
     !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
   const toolCalls = message.toolCalls ?? []
+  const toolEvents = message.toolEvents ?? []
   // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
   // 后端会先把错误写成 text 行，因此正文里可能夹着 403 原文，这里只保留叙述部分。
   const failureText = message.error ?? message.content
@@ -164,7 +165,7 @@ function MessageRow({
             />
           ) : message.streaming ||
             message.attachments?.length ||
-            toolCalls.length ||
+            toolEvents.length ||
             quotaExhausted ? null : (
             <div className="text-muted">…</div>
           )}
@@ -191,10 +192,10 @@ function MessageRow({
               </div>
             )
           ) : null}
-          {toolCalls.length ? (
-            <ToolActivity calls={toolCalls} running={Boolean(message.streaming)} />
+          {toolEvents.length ? (
+            <ToolActivity calls={toolCalls} events={toolEvents} running={Boolean(message.streaming)} />
           ) : null}
-          {message.streaming && !message.content && toolCalls.length === 0 ? (
+          {message.streaming && !message.content && toolEvents.length === 0 ? (
             <div className="mt-1">
               <AgentLoading />
             </div>

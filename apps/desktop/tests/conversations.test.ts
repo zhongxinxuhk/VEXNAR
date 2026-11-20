@@ -119,6 +119,16 @@ describe('toChatMessages', () => {
       { id: 'b', status: 'error', output: 'missing file' }
     ])
     expect(messages[2].toolCalls).toEqual([])
+    expect(messages[0].toolEvents).toMatchObject([
+      { tool: 'stat_file', outcome: 'invoked' },
+      { tool: 'read_file', outcome: 'invoked' },
+      { tool: 'read_file', outcome: 'error' },
+      { tool: 'stat_file', outcome: 'done' }
+    ])
+    const events = messages[0].toolEvents!
+    expect(events[2].relatedCallSequence).toBe(events[1].sequence)
+    expect(events[3].relatedCallSequence).toBe(events[0].sequence)
+    expect(messages[2].toolEvents).toMatchObject([{ outcome: 'done', relatedCallSequence: undefined }])
   })
 
   it('retains the recorded worker and timestamps when a tool result arrives', () => {

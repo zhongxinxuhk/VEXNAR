@@ -54,14 +54,24 @@ const conversationActivities = {
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:00Z', kind: 'user', summary: '把官网搭起来', detail: JSON.stringify({ text: '把官网搭起来', attachments: [] }) },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:05Z', kind: 'thinking', summary: '先看目录结构', detail: '先看目录结构，再决定用 React 还是静态页。' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.125Z', kind: 'tool_use', tool: 'Bash', tool_use_id: 'tool-1', summary: 'Bash ls', detail: JSON.stringify({ command: 'ls' }) },
+    { seq: ++activitySeq, worker: 'reader', ts: '2026-11-20T10:00:06.250Z', kind: 'tool_use', tool: 'read_file', tool_use_id: 'read-0', detail: '{"path":"notes-0.md"}' },
+    { seq: ++activitySeq, worker: 'reader', ts: '2026-11-20T10:00:06.375Z', kind: 'tool_result', tool: 'read_file', tool_use_id: 'read-0', detail: 'output 0' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:06.500Z', kind: 'tool_result', tool: 'Bash', tool_use_id: 'tool-1', summary: 'README.md', detail: 'README.md\nsrc\n' },
-    ...Array.from({ length: 119 }, (_, index) => {
+    ...Array.from({ length: 118 }, (_, offset) => {
+      const index = offset + 1
       const tool_use_id = `read-${index}`
       const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool: 'read_file', tool_use_id }
       const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: 'read_file', detail: JSON.stringify({ path: `notes-${index}.md` }) }
       return index === 1
         ? [call]
-        : [call, { ...activity, seq: ++activitySeq, kind: 'tool_result', summary: 'done', detail: `output ${index}` }]
+        : [call, {
+            ...activity,
+            seq: ++activitySeq,
+            kind: 'tool_result',
+            is_error: index === 63,
+            summary: index === 63 ? 'file not found' : 'done',
+            detail: index === 63 ? 'file not found' : `output ${index}`
+          }]
     }).flat(),
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:09Z', kind: 'text', summary: '已经搭好官网骨架', detail: '已经搭好官网骨架，并补上交互式架构图和部署脚本。' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:10Z', kind: 'result', summary: '完成', detail: '完成', input_tokens: 3200 }
@@ -109,6 +119,7 @@ contextBridge.exposeInMainWorld('__uiFixture', {
     resumeDraft = true
     conversationActivities[2] = [
       { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:00Z', kind: 'user', summary: '显示问候' },
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:00.500Z', kind: 'tool_use', tool: 'read_file', tool_use_id: 'welcome', detail: '{"path":"welcome.md"}' },
       { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:01Z', kind: 'text', summary: '你好', detail: '你好' }
     ]
   },
@@ -116,9 +127,10 @@ contextBridge.exposeInMainWorld('__uiFixture', {
     resumeDraft = false
     const row = conversationActivities[2].at(-1)
     row.summary = row.detail = '你好，已恢复到完整答复。'
-    conversationActivities[2].push({
-      seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:02Z', kind: 'result', summary: ''
-    })
+    conversationActivities[2].push(
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:01.500Z', kind: 'tool_result', tool: 'read_file', tool_use_id: 'welcome', is_error: true, detail: 'file not found' },
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:10:02Z', kind: 'result', summary: '' }
+    )
   }
 })
 let settings = {
