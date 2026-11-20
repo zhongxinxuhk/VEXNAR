@@ -31,8 +31,8 @@ import {
   terminalWriteSchema,
   workspaceListSchema,
   type ImageAttachment,
-  type IpcResult
-} from '@shared/contracts'
+  type IpcResult,
+  gitBranchSchema} from '@shared/contracts'
 import type { UpdateManager } from './updates'
 import { AgentManager } from './agent'
 import type { BackendManager } from './backend'
@@ -45,7 +45,7 @@ import {
   renameSession,
   setSessionPinned
 } from './db'
-import { createChatWorktree, gitBranches, gitDiff, gitStatus } from './git'
+import { checkoutBranch, createBranch, createChatWorktree, gitBranches, gitDiff, gitStatus } from './git'
 import { NewApiManager } from './newapi'
 import { getSettings, setSettings } from './settings'
 import { TerminalManager } from './terminal'
@@ -155,6 +155,8 @@ export function registerIpc(services: Services): void {
   handle(IPC.workspaceChoose, noInput, () => chooseWorkspace())
 
   handle(IPC.gitBranches, noInput, gitBranches)
+  handle(IPC.gitCheckout, gitBranchSchema, ({ branch }) => checkoutBranch(branch))
+  handle(IPC.gitCreateBranch, gitBranchSchema, ({ branch }) => createBranch(branch))
   handle(IPC.gitWorktree, z.object({ sessionId: z.string().min(1), branch: z.string().min(1).max(255) }), async ({ sessionId, branch }) => {
     if (services.agent.isBusy() || services.updates.status().phase === 'installing') throw new Error('当前无法创建工作树')
     const session = (await listSessions()).find((entry) => entry.id === sessionId)

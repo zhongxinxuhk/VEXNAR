@@ -72,6 +72,8 @@ const api: VexnarApi = {
   },
   git: {
     branches: () => invoke(IPC.gitBranches),
+    checkout: (input) => invoke(IPC.gitCheckout, input),
+    createBranch: (input) => invoke(IPC.gitCreateBranch, input),
     createWorktree: (input) => invoke(IPC.gitWorktree, input),
     status: () => invoke(IPC.gitStatus),
     diff: (input: { path: string }) => invoke(IPC.gitDiff, input)

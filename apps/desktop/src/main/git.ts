@@ -74,6 +74,20 @@ export async function gitBranches(): Promise<string[]> {
   return refs.split('\n').filter(Boolean)
 }
 
+export async function checkoutBranch(branch: string): Promise<{ branch: string }> {
+  const name = branch.trim()
+  if (!name) throw new Error('分支名不能为空')
+  await simpleGit({ baseDir: root() }).raw(['checkout', name])
+  return { branch: name }
+}
+
+export async function createBranch(branch: string): Promise<{ branch: string }> {
+  const name = branch.trim()
+  if (!name) throw new Error('分支名不能为空')
+  await simpleGit({ baseDir: root() }).raw(['checkout', '-b', name])
+  return { branch: name }
+}
+
 export async function createChatWorktree(
   baseDir: string,
   branch: string
