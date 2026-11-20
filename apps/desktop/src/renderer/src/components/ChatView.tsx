@@ -828,17 +828,14 @@ export function ChatView(): React.JSX.Element {
       <header
         className={cn(
           // 整条顶栏可拖动窗口；交互控件各自 no-drag。
-          // 侧栏收起时左侧留一条 no-drag 安全区，盖住顶栏的窗口控件与侧栏开关，
-          // 否则拖动区会吞掉开关的点击（坐标在开关正上方）。
-          'chat-glass drag-region absolute inset-x-0 top-0 z-20 flex h-11 items-center gap-2 px-4',
-          'transition-[padding-left] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
-          !sidebarOpen && 'pl-[124px]'
+          // 侧栏收起时顶栏从开关右侧 (x=130) 起——物理上不与窗口控件重叠，
+          // 不再依赖透明安全区：透明元素在原生拖动区计算里不可靠，会把点击吃成拖动。
+          'chat-glass drag-region absolute top-0 z-20 flex h-11 items-center gap-2 px-4',
+          'transition-[left] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
+          sidebarOpen ? 'inset-x-0' : 'left-[130px] right-0'
         )}
         aria-label="会话工具栏"
       >
-        {!sidebarOpen ? (
-          <div className="no-drag pointer-events-none absolute inset-y-0 left-0 w-[130px]" aria-hidden="true" />
-        ) : null}
         <Tooltip label={projectLabel} side="bottom">
           <span
             aria-label={projectLabel}
