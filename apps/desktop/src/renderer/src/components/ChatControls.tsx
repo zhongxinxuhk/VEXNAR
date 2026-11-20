@@ -289,24 +289,10 @@ export function ContextBar({
             className={content}
             sideOffset={8}
           >
-            <DropdownMenu.Label className="px-3 py-2 text-xs text-muted">
-              执行环境
-            </DropdownMenu.Label>
             <DropdownMenu.Item className={item}>
               <Monitor className="h-4 w-4" />
-              <div className="flex-1">
-                此计算机
-                <p className="mt-1 text-[10px] text-muted">
-                  {info?.platform} · {info?.arch} · 本地运行
-                </p>
-              </div>
+              <span className="flex-1">此计算机</span>
               <Check className="h-4 w-4" />
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              className={item}
-              onSelect={() => setRightTab('terminal')}
-            >
-              打开本地终端
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -332,19 +318,9 @@ export function ContextBar({
             sideOffset={8}
             className={`${content} max-h-80 overflow-y-auto`}
           >
-            <DropdownMenu.Label className="px-3 py-2 text-xs text-muted">
-              会话工作区
-            </DropdownMenu.Label>
             <DropdownMenu.Item className={item} onSelect={() => void choose()}>
               <Folder className="h-4 w-4" />
               选择文件夹…
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              className={item}
-              onSelect={() => void create('')}
-            >
-              无工作区的新聊天
-              {!active?.workspace && <Check className="ml-auto h-3.5 w-3.5" />}
             </DropdownMenu.Item>
             {projects.map((session) => (
               <DropdownMenu.Item

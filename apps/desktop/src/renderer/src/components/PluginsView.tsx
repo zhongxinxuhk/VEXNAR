@@ -18,6 +18,8 @@ import {
   Sparkles,
   SquareTerminal
 } from 'lucide-react'
+import { useEffect } from 'react'
+import { consoleRequest } from '@/lib/console'
 import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
 
@@ -81,10 +83,55 @@ function PluginCard({
   )
 }
 
+type SkillItem = {
+  name: string
+  description?: string
+  calls: number
+  tasks: number
+  last_used?: string
+}
+
+type McpItem = {
+  id: number
+  name: string
+  transport: string
+  command?: string
+  url?: string
+  enabled: boolean
+  tools?: string[]
+}
+
 export function PluginsView(): React.JSX.Element {
   const setView = useAppStore((state) => state.setView)
+  const backend = useAppStore((state) => state.backend)
+  const [tab, setTab] = useState<'plugins' | 'skills'>('plugins')
+  const [skills, setSkills] = useState<SkillItem[]>([])
+  const [mcps, setMcps] = useState<McpItem[]>([])
+  const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState('')
+
+  // 技能与 MCP 均来自后端（/skills、/mcp），后端未连接时列表为空并给出提示
+  useEffect(() => {
+    if (!backend?.connected) return
+    let cancelled = false
+    setLoading(true)
+    void Promise.all([
+      consoleRequest<{ skills: SkillItem[] }>('/skills').catch(() => ({ skills: [] })),
+      consoleRequest<{ servers: McpItem[] }>('/mcp').catch(() => ({ servers: [] }))
+    ])
+      .then(([skillData, mcpData]) => {
+        if (cancelled) return
+        setSkills(skillData.skills ?? [])
+        setMcps(mcpData.servers ?? [])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [backend?.connected])
 
   const filter = (list: Plugin[]): Plugin[] =>
     list.filter(
@@ -114,15 +161,22 @@ export function PluginsView(): React.JSX.Element {
         <div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted">自定义</div>
         <button
           type="button"
-          className="flex h-[30px] items-center gap-2 rounded-lg bg-panel-2 px-2 text-[12.5px] text-ink"
+          onClick={() => setTab('plugins')}
+          className={cn(
+            'flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] transition-colors',
+            tab === 'plugins' ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2 hover:text-ink'
+          )}
         >
           <Puzzle className="h-3.5 w-3.5" strokeWidth={1.8} />
           插件
         </button>
         <button
           type="button"
-          onClick={() => setView('schedules')}
-          className="flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] text-ink-soft transition-colors hover:bg-panel-2 hover:text-ink"
+          onClick={() => setTab('skills')}
+          className={cn(
+            'flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] transition-colors',
+            tab === 'skills' ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2 hover:text-ink'
+          )}
         >
           <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
           技能
@@ -130,23 +184,60 @@ export function PluginsView(): React.JSX.Element {
 
         <div className="px-2 pb-1.5 pt-4 text-[11px] font-medium text-muted">已安装</div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {installed.map((plugin) => {
-            const Icon = plugin.icon
-            return (
-              <div
-                key={plugin.id}
-                className="flex h-[28px] items-center gap-2 rounded-lg px-2 text-[12.5px] text-ink-soft"
-              >
-                <Icon className="h-3.5 w-3.5 text-muted" strokeWidth={1.8} />
-                <span className="truncate">{plugin.name}</span>
-              </div>
-            )
-          })}
+          {skills.map((skill) => (
+            <div
+              key={skill.name}
+              title={skill.description || skill.name}
+              className="flex h-[28px] items-center gap-2 rounded-lg px-2 text-[12.5px] text-ink-soft"
+            >
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
+              <span className="truncate">{skill.name}</span>
+            </div>
+          ))}
+          {skills.length === 0 ? (
+            <div className="px-2 py-2 text-[11px] text-muted">
+              {backend?.connected ? '暂无技能' : '后端未连接'}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* 右侧：插件市场 */}
+      {/* 右侧：插件市场 / 技能列表 */}
       <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
+        {tab === 'skills' ? (
+          <div>
+            <h1 className="text-[19px] font-semibold text-ink">技能</h1>
+            <p className="mt-1 text-[12.5px] text-muted">
+              来自后端的技能包（{skills.length} 个）· {loading ? '读取中…' : '已同步'}
+            </p>
+            <div className="mt-4 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
+              {skills.map((skill) => (
+                <div key={skill.name} className="flex items-start gap-3 px-3.5 py-2.5">
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[12.5px] font-medium text-ink">{skill.name}</div>
+                    {skill.description ? (
+                      <div className="mt-0.5 line-clamp-2 text-[11.5px] leading-5 text-muted">
+                        {skill.description}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 text-right text-[10.5px] text-muted">
+                    <div>{skill.calls} 次调用</div>
+                    <div>{skill.tasks} 个任务</div>
+                  </div>
+                </div>
+              ))}
+              {skills.length === 0 ? (
+                <div className="px-3.5 py-10 text-center text-[12px] text-muted">
+                  {backend?.connected ? '后端尚未安装技能' : '后端未连接，无法读取技能'}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {tab === 'plugins' ? (
+        <>
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-[19px] font-semibold text-ink">插件</h1>
@@ -190,6 +281,74 @@ export function PluginsView(): React.JSX.Element {
           </div>
         </div>
 
+        <section className="mt-6">
+          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
+            已连接的 MCP <span className="text-muted">›</span>
+          </div>
+          <div className="mt-2 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
+            {mcps.map((server) => (
+              <div key={server.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                <Blocks className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12.5px] font-medium text-ink">{server.name}</div>
+                  <div className="truncate text-[11px] text-muted">
+                    {server.transport}
+                    {server.command ? ` · ${server.command}` : server.url ? ` · ${server.url}` : ''}
+                    {server.tools?.length ? ` · ${server.tools.length} 个工具` : ''}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10.5px]',
+                    server.enabled ? 'bg-accent/10 text-accent' : 'bg-panel-2 text-muted'
+                  )}
+                >
+                  {server.enabled ? '已启用' : '已停用'}
+                </span>
+              </div>
+            ))}
+            {mcps.length === 0 ? (
+              <div className="px-3.5 py-6 text-center text-[12px] text-muted">
+                {backend?.connected ? '尚未配置 MCP 服务器' : '后端未连接，无法读取 MCP'}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
+            已连接的 MCP <span className="text-muted">›</span>
+          </div>
+          <div className="mt-2 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
+            {mcps.map((server) => (
+              <div key={server.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                <Blocks className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[12.5px] font-medium text-ink">{server.name}</div>
+                  <div className="truncate text-[11px] text-muted">
+                    {server.transport}
+                    {server.command ? ` · ${server.command}` : server.url ? ` · ${server.url}` : ''}
+                    {server.tools?.length ? ` · ${server.tools.length} 个工具` : ''}
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10.5px]',
+                    server.enabled ? 'bg-accent/10 text-accent' : 'bg-panel-2 text-muted'
+                  )}
+                >
+                  {server.enabled ? '已启用' : '已停用'}
+                </span>
+              </div>
+            ))}
+            {mcps.length === 0 ? (
+              <div className="px-3.5 py-6 text-center text-[12px] text-muted">
+                {backend?.connected ? '尚未配置 MCP 服务器' : '后端未连接，无法读取 MCP'}
+              </div>
+            ) : null}
+          </div>
+        </section>
+
         <section className="mt-7">
           <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
             热门 <span className="text-muted">›</span>
@@ -214,6 +373,8 @@ export function PluginsView(): React.JSX.Element {
 
         {hot.length + fresh.length === 0 ? (
           <div className="py-16 text-center text-[12.5px] text-muted">没有匹配的插件</div>
+        ) : null}
+        </>
         ) : null}
       </div>
 
