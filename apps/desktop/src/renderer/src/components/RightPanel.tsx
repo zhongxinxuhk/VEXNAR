@@ -15,6 +15,7 @@ import {
   FolderOpen,
   GitBranch,
   Loader2,
+  Ellipsis,
   PanelRightClose,
   Plus,
   RefreshCw,
@@ -359,52 +360,50 @@ export function RightPanel(): React.JSX.Element {
 
   if (panelLauncher) {
     return (
-      <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-panel/50">
-        <div className="flex items-center gap-1 border-b border-line-soft px-3 py-2">
-          <div className="ml-auto">
-            <Tooltip label={t('app.hidePanel')} side="bottom">
-              <Button variant="ghost" size="icon" onClick={toggleRight} aria-label={t('app.hidePanel')}>
-                <PanelRightClose className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-6">
+      <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-bg">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-5">
           <input
             value={launcherQuery}
             onChange={(event) => setLauncherQuery(event.target.value)}
             placeholder={t('panel.searchPlaceholder')}
-            className="h-9 w-full rounded-xl border border-line bg-bg px-3.5 text-[12.5px] text-ink outline-none placeholder:text-muted/80 focus:border-accent/50"
+            className="h-11 w-full rounded-full bg-panel-2 px-4 text-[13px] text-ink outline-none placeholder:text-muted/85 focus:bg-panel-3/70"
           />
-          <div>
-            <div className="px-1 pb-2 text-[11px] text-muted">Open</div>
-            <div className="grid grid-cols-4 gap-2.5">
-              {visibleCards.map((card) => {
-                const Icon = card.icon
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => {
-                      if (card.tab) setRightTab(card.tab)
-                      else {
-                        void newSession()
-                        toggleRight()
-                      }
-                    }}
-                    className="flex flex-col items-center gap-2 rounded-xl border border-line-soft bg-bg px-2 py-3.5 text-[12px] text-ink-soft transition-colors hover:bg-panel-2 hover:text-ink"
-                  >
-                    <Icon className="h-4 w-4" strokeWidth={1.7} />
-                    {card.label}
-                  </button>
-                )
-              })}
-              {visibleCards.length === 0 ? (
-                <div className="col-span-4 py-6 text-center text-[12px] text-muted">
-                  {t('app.noResults')}
-                </div>
-              ) : null}
-            </div>
+          <div className="mt-1 flex items-center justify-between px-0.5">
+            <span className="text-[12px] font-medium text-ink">Open</span>
+            <button
+              type="button"
+              aria-label="更多"
+              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+            >
+              <Ellipsis className="h-4 w-4" strokeWidth={1.8} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {visibleCards.map((card) => {
+              const Icon = card.icon
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => {
+                    if (card.tab) setRightTab(card.tab)
+                    else {
+                      void newSession()
+                      toggleRight()
+                    }
+                  }}
+                  className="flex h-[112px] flex-col justify-between rounded-2xl bg-panel-2 px-4 py-4 text-left transition-colors hover:bg-panel-3/80"
+                >
+                  <Icon className="h-4 w-4 text-muted" strokeWidth={1.8} />
+                  <span className="text-[13px] font-medium text-ink">{card.label}</span>
+                </button>
+              )
+            })}
+            {visibleCards.length === 0 ? (
+              <div className="col-span-2 py-6 text-center text-[12px] text-muted">
+                {t('app.noResults')}
+              </div>
+            ) : null}
           </div>
         </div>
       </aside>

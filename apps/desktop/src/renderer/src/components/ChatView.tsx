@@ -5,20 +5,20 @@
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
-  AudioLines,
-  ArrowUp,
   ArrowDown,
-  Folder,
-  PanelRight,
-  CircleGauge,
+  ArrowUp,
+  AudioLines,
   BookOpen,
-  SquareTerminal,
   Check,
   ChevronDown,
+  CircleGauge,
+  Folder,
   Loader2,
   Mic,
+  PanelRight,
   Plus,
   Square,
+  SquareTerminal,
   Wrench,
   X
 } from 'lucide-react'
@@ -828,6 +828,15 @@ export function ChatView(): React.JSX.Element {
   const [away, setAway] = useState(false)
   const toggleRight = useAppStore((state) => state.toggleRight)
   const rightOpen = useAppStore((state) => state.rightOpen)
+  const rightTab = useAppStore((state) => state.rightTab)
+  const panelLauncher = useAppStore((state) => state.panelLauncher)
+  const rightTabLabel = panelLauncher
+    ? '新标签页'
+    : rightTab === 'terminal'
+      ? '终端'
+      : rightTab === 'diff'
+        ? '变更'
+        : '文件'
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const session = useMemo(
     () => sessions.find((item) => item.id === activeSessionId),
@@ -896,14 +905,27 @@ export function ChatView(): React.JSX.Element {
           )}
         </div>
         <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
+        {rightOpen ? (
+          <div className="no-drag flex h-8 shrink-0 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
+            <span className="text-[12.5px] text-ink">{rightTabLabel}</span>
+            <button
+              type="button"
+              aria-label="关闭右侧面板"
+              onClick={toggleRight}
+              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={toggleRight}
           aria-label="切换右侧面板"
           aria-pressed={rightOpen}
           className={cn(
-            'no-drag grid size-7 shrink-0 place-items-center rounded-lg transition-colors',
-            rightOpen ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2'
+            'no-drag grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full transition-colors',
+            rightOpen ? 'bg-panel-3 text-ink' : 'text-ink-soft hover:bg-panel-2'
           )}
         >
           <PanelRight className="size-4" />
