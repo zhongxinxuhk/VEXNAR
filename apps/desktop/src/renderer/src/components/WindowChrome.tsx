@@ -149,18 +149,21 @@ export function SidebarResizeHandle(): React.JSX.Element {
         const target = event.currentTarget
         const start = event.clientX
         target.setPointerCapture(event.pointerId)
+        // 收起时先把宽度记回拖动前的值，恢复才能回到原样
+        const startWidth = width
         const move = (e: PointerEvent): void => {
           const dx = e.clientX - start
           if (open) {
             const next = width + dx
             if (next < 170) {
+              setWidth(startWidth)
               setSidebarOpen(false)
               return
             }
             setWidth(next)
           } else if (dx > 36) {
+            // 往右拉回原宽度（不跟随指针，避免只剩最小值）
             setSidebarOpen(true)
-            setWidth(Math.max(200, e.clientX - 52))
           }
         }
         const done = (): void => {
