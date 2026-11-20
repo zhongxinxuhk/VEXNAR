@@ -19,6 +19,7 @@ import {
   PanelRight,
   Pencil,
   Plus,
+  RefreshCw,
   Square,
   SquareTerminal,
   Wrench,
@@ -155,6 +156,12 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const patchDraft = useDrafts((state) => state.patch)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const messages = useAppStore((state) => state.messages)
+  const send = useAppStore((state) => state.send)
+  const busy = useAppStore((state) => state.busy)
+  const lastUser = [...messages].reverse().find((item) => item.role === 'user')
+  const canRegenerate =
+    !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
   const copy = async (): Promise<void> => {
     const result = await window.vexnar.app.copyText(message.content)
     if (result.ok) {
@@ -217,6 +224,17 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
               >
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
+              {canRegenerate ? (
+                <button
+                  type="button"
+                  aria-label="重新生成"
+                  title="重新生成"
+                  onClick={() => void send(lastUser!.content, [], undefined)}
+                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
               {isUser && activeSessionId ? (
                 <button
                   type="button"
@@ -231,8 +249,18 @@ function MessageRow({ message }: { message: ChatMessage }): React.JSX.Element {
             </div>
           ) : null}
           {message.failed ? (
-            <div className="mt-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
-              {t('chat.runtimeError')}
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
+              <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
+              {lastUser?.content ? (
+                <button
+                  type="button"
+                  onClick={() => void send(lastUser.content, [], undefined)}
+                  disabled={busy}
+                  className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
+                >
+                  重试
+                </button>
+              ) : null}
             </div>
           ) : null}
           {message.streaming && message.toolCalls?.length ? (

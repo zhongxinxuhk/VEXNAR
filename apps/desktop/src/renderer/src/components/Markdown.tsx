@@ -3,6 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from 'react'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import json from 'highlight.js/lib/languages/json'
+import bash from 'highlight.js/lib/languages/bash'
+import python from 'highlight.js/lib/languages/python'
+import go from 'highlight.js/lib/languages/go'
+import css from 'highlight.js/lib/languages/css'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import sqlFns from 'highlight.js/lib/languages/sql'
 import { Check, Copy } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -35,6 +46,46 @@ function Inline({ text }: { text: string }): React.JSX.Element {
   )
 }
 
+// 只注册常用语言，按需加载保持包体积可控
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('go', go)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('sql', sqlFns)
+hljs.registerLanguage('yaml', yaml)
+
+const LANG_ALIAS: Record<string, string> = {
+  js: 'javascript',
+  jsx: 'javascript',
+  ts: 'typescript',
+  tsx: 'typescript',
+  sh: 'bash',
+  shell: 'bash',
+  zsh: 'bash',
+  py: 'python',
+  yml: 'yaml',
+  html: 'xml',
+  vue: 'xml'
+}
+
+function highlight(code: string, language: string): string {
+  const name = LANG_ALIAS[language.toLowerCase()] ?? language.toLowerCase()
+  if (!name || !hljs.getLanguage(name)) return escapeHtml(code)
+  try {
+    return hljs.highlight(code, { language: name, ignoreIllegals: true }).value
+  } catch {
+    return escapeHtml(code)
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function CodeBlock({ language, code }: { language: string; code: string }): React.JSX.Element {
   const t = useT()
   const [copied, setCopied] = useState(false)
@@ -58,8 +109,12 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
           {copied ? t('app.copied') : t('app.copy')}
         </button>
       </div>
-      <pre className="max-h-[360px] overflow-auto p-3.5 font-mono text-[11.5px] leading-5 text-ink-soft">
-        <code>{code}</code>
+      <pre className="hljs max-h-[360px] overflow-auto bg-transparent p-3.5 font-mono text-[11.5px] leading-5 text-ink-soft">
+        <code
+          className="hljs-code"
+          // highlight.js 输出已转义的安全 HTML
+          dangerouslySetInnerHTML={{ __html: highlight(code, language) }}
+        />
       </pre>
     </div>
   )
