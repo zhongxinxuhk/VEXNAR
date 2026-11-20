@@ -122,33 +122,6 @@ export function IconRail(): React.JSX.Element {
           <Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>
 
-        {/* 「更多」里钉住的分区：按钉住顺序从上到下 */}
-        {railPins.map((pinId) => {
-          const item = consoleItems.find((entry) => entry.id === pinId)
-          if (!item) return null
-          const Icon = item.icon
-          return (
-            <RailButton
-              key={pinId}
-              label={item.label}
-              active={view === item.id}
-              onClick={() => setView(item.id)}
-            >
-              <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
-            </RailButton>
-          )
-        })}
-
-        <RailButton
-          label={t('rail.docs')}
-          onClick={() => {
-            setView('chat')
-            setRightTab('workspace')
-          }}
-        >
-          <BookOpenText className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </RailButton>
-
         <RailButton
           label={t('rail.browse')}
           active={view === 'assets'}
@@ -215,9 +188,27 @@ export function IconRail(): React.JSX.Element {
         </DropdownMenu.Root>
       </nav>
 
-      <div className="mt-[136px]" />
+      {/* 分隔线：图钉分区与固定按钮分组，ChatGPT 同款 */}
+      <div className="my-1.5 h-px w-6 bg-line" aria-hidden="true" />
 
       <nav className="flex flex-col items-center gap-1.5">
+        {/* 「更多」里钉住的分区：按钉住顺序从上到下 */}
+        {railPins.map((pinId) => {
+          const item = consoleItems.find((entry) => entry.id === pinId)
+          if (!item) return null
+          const Icon = item.icon
+          return (
+            <RailButton
+              key={pinId}
+              label={item.label}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+            >
+              <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+            </RailButton>
+          )
+        })}
+
         <RailButton label={t('rail.workspace')} onClick={() => void chooseWorkspace()}>
           <FolderClosed className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>

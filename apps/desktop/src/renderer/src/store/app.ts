@@ -55,6 +55,8 @@ export type AppView =
 type AppState = {
   info: AppInfo | null
   view: AppView
+  history: AppView[]
+  historyAt: number
   backend: BackendStatus | null
   backendLoading: boolean
   settings: PublicSettings
@@ -66,6 +68,7 @@ type AppState = {
   agentStatus: AgentStatus
   busy: boolean
   rightTab: RightTab
+  panelLauncher: boolean
   rightOpen: boolean
   settingsOpen: boolean
   settingsSection: SettingsSection
@@ -82,6 +85,8 @@ type AppState = {
 
   init: () => Promise<void>
   setView: (view: AppView) => void
+  goBack: () => void
+  goForward: () => void
   usage: NewApiUsage | null
   usageLoading: boolean
   refreshUsage: () => Promise<void>
@@ -154,6 +159,8 @@ function lastStreaming(messages: ChatMessage[]): ChatMessage | undefined {
 export const useAppStore = create<AppState>((set, get) => ({
   info: null,
   view: 'chat',
+  history: ['chat'],
+  historyAt: 0,
   backend: null,
   backendLoading: false,
   settings: emptySettings,
@@ -167,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   agentStatus: 'idle',
   busy: false,
   rightTab: 'workspace',
+  panelLauncher: true,
   rightOpen: false,
   contextUsage: {},
   settingsOpen: false,
@@ -221,7 +229,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  setView: (view) => set({ view }),
+  setView: (view) =>
+    set((state) => {
+      if (view === state.view) return {}
+      const history = [...state.history.slice(0, state.historyAt + 1), view]
+      return { view, history, historyAt: history.length - 1 }
+    }),
+  goBack: () =>
+    set((state) =>
+      state.historyAt > 0
+        ? { view: state.history[state.historyAt - 1], historyAt: state.historyAt - 1 }
+        : {}
+    ),
+  goForward: () =>
+    set((state) =>
+      state.historyAt < state.history.length - 1
+        ? { view: state.history[state.historyAt + 1], historyAt: state.historyAt + 1 }
+        : {}
+    ),
 
   refreshUsage: async () => {
     if (get().usageLoading) return
@@ -605,8 +630,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  setRightTab: (rightTab) => set({ rightTab, rightOpen: true }),
-  toggleRight: () => set((state) => ({ rightOpen: !state.rightOpen })),
+  setRightTab: (rightTab) => set({ rightTab, rightOpen: true, panelLauncher: false }),
+  toggleRight: () =>
+    set((state) => ({ rightOpen: !state.rightOpen, panelLauncher: !state.rightOpen })),
   setSettingsOpen: (settingsOpen) =>
     set(settingsOpen ? { settingsOpen: true, settingsSection: 'general' } : { settingsOpen: false }),
   openSettings: (settingsSection = 'general') => set({ settingsOpen: true, settingsSection }),

@@ -83,7 +83,7 @@ function WorkspaceApp(): React.JSX.Element {
   }, [newSession, setSettingsOpen, toggleRight, toggleSidebar])
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-bg text-ink">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-b-[10px] bg-bg text-ink">
       <WindowChrome compact={bare} />
       <div className="flex min-h-0 flex-1">
       <IconRail />
