@@ -2,390 +2,310 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useMemo, useState } from 'react'
-import {
-  Blocks,
-  CircleHelp,
-  Cloud,
-  FileCode2,
-  GitBranch as Github,
-  Globe2,
-  Mail,
-  Puzzle,
-  RefreshCw,
-  Search,
-  Shield,
-  Sparkles,
-  SquareTerminal
-} from 'lucide-react'
-import { useEffect } from 'react'
-import { consoleRequest } from '@/lib/console'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Blocks, Compass, PlugZap, RefreshCw, Sparkles, Store } from 'lucide-react'
 import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
+import { marketApi, mcpApi, skillApi } from './plugins/api'
+import type { MarketSource, McpServer, Skill } from './plugins/types'
+import { Toast, friendlyError } from './plugins/common'
+import { McpManager } from './plugins/McpManager'
+import { McpMarket } from './plugins/McpMarket'
+import { SkillsManager } from './plugins/SkillsManager'
+import { SkillsMarket } from './plugins/SkillsMarket'
+import { MarketSourceDialog, ConfirmDialog } from './plugins/dialogs'
 
-type Plugin = {
-  id: string
-  name: string
-  desc: string
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
-  tone: string
-  installed?: boolean
-}
+type Tab = 'mcp' | 'mcp-market' | 'skills' | 'skills-market'
 
-/** 热门：已接入或可一键接入的能力 */
-const HOT: Plugin[] = [
-  { id: 'github', name: 'GitHub', desc: '提交 PR、查看 Issue、读取 CI 结果', icon: Github, tone: 'text-ink' },
-  { id: 'platform', name: '平台控制台', desc: '读取额度、推荐计划与账号状态', icon: Cloud, tone: 'text-[#4a86e8]' },
-  { id: 'terminal', name: '终端', desc: '在本机执行命令，输出回到对话里', icon: SquareTerminal, tone: 'text-ink', installed: true },
-  { id: 'files', name: '工作区文件', desc: '读写项目文件、查看变更 diff', icon: FileCode2, tone: 'text-ink', installed: true },
-  { id: 'scanner', name: '安全扫描', desc: '任务、发现与资产的多级链路分析', icon: Shield, tone: 'text-ink', installed: true },
-  { id: 'browse', name: '网页抓取', desc: '抓取页面正文并转成可读文本', icon: Globe2, tone: 'text-ink' }
+type ToastState = { message: string; tone: 'ok' | 'error' | 'info' }
+
+const NAV: { id: Tab; label: string; icon: typeof Blocks; group: '管理' | '市场' }[] = [
+  { id: 'mcp', label: 'MCP 管理', icon: Blocks, group: '管理' },
+  { id: 'skills', label: '技能管理', icon: Sparkles, group: '管理' },
+  { id: 'mcp-market', label: 'MCP 市场', icon: Store, group: '市场' },
+  { id: 'skills-market', label: '技能市场', icon: Compass, group: '市场' }
 ]
 
-/** 新品推荐：尚在接入中的连接器 */
-const NEW: Plugin[] = [
-  { id: 'mail', name: '邮件', desc: '读取收件箱、起草与发送邮件', icon: Mail, tone: 'text-[#d93025]' },
-  { id: 'codex-security', name: 'Codex Security', desc: '与安全审计工作流联动', icon: Shield, tone: 'text-[#6b4fbb]' },
-  { id: 'notion', name: '知识库', desc: '检索团队文档与规范', icon: Blocks, tone: 'text-ink' },
-  { id: 'skills', name: '技能市场', desc: '安装他人整理的技能包', icon: Sparkles, tone: 'text-[#c58b00]' }
-]
+/** 插件页：左侧是「管理 / 市场 / 市场源」导航，右侧是四个面板之一。 */
+export function PluginsView(): React.JSX.Element {
+  const backend = useAppStore((state) => state.backend)
+  const [tab, setTab] = useState<Tab>('mcp')
+  const [servers, setServers] = useState<McpServer[]>([])
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [sources, setSources] = useState<MarketSource[]>([])
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState<ToastState | null>(null)
+  const [sourceOpen, setSourceOpen] = useState(false)
+  const [removingSource, setRemovingSource] = useState<MarketSource | null>(null)
+  const toastTimer = useRef<number | null>(null)
+  const connected = Boolean(backend?.connected)
 
-function PluginCard({
-  plugin,
-  onAction
-}: {
-  plugin: Plugin
-  onAction: (plugin: Plugin) => void
-}): React.JSX.Element {
-  const Icon = plugin.icon
+  const notify = useCallback((message: string, tone: 'ok' | 'error' | 'info' = 'ok') => {
+    setToast({ message: tone === 'error' ? friendlyError(message) : message, tone })
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(null), 3600)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    },
+    []
+  )
+
+  const reloadMcp = useCallback(async () => {
+    try {
+      const data = await mcpApi.list()
+      setServers(data.servers ?? [])
+    } catch (err) {
+      notify(err instanceof Error ? err.message : String(err), 'error')
+    }
+  }, [notify])
+
+  const reloadSkills = useCallback(async () => {
+    try {
+      const data = await skillApi.list()
+      setSkills(data.skills ?? [])
+    } catch (err) {
+      notify(err instanceof Error ? err.message : String(err), 'error')
+    }
+  }, [notify])
+
+  const reloadSources = useCallback(async () => {
+    try {
+      const data = await marketApi.sources()
+      setSources(data.sources ?? [])
+    } catch (err) {
+      notify(err instanceof Error ? err.message : String(err), 'error')
+    }
+  }, [notify])
+
+  const reloadAll = useCallback(async () => {
+    if (!connected) return
+    setLoading(true)
+    try {
+      await Promise.all([reloadMcp(), reloadSkills(), reloadSources()])
+    } finally {
+      setLoading(false)
+    }
+  }, [connected, reloadMcp, reloadSkills, reloadSources])
+
+  useEffect(() => {
+    void reloadAll()
+  }, [reloadAll])
+
+  // 旧版内置后端不会返回 enabled 字段 / 没有启停路由：给一条明确的提示，
+  // 而不是让用户面对一排"已停用"和 404。
+  const staleBackend = connected && skills.length > 0 && skills.some((skill) => typeof skill.enabled !== 'boolean')
+
+  const sourceCount = (kind: 'mcp' | 'skills'): number =>
+    sources.filter((source) => source.kind === 'all' || source.kind === kind).length
+
   return (
-    <button
-      type="button"
-      onClick={() => onAction(plugin)}
-      className="group flex items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-panel-2"
-    >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-line-soft bg-bg">
-        <Icon className={cn('h-[18px] w-[18px]', plugin.tone)} strokeWidth={1.7} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-ink">{plugin.name}</span>
-        <span className="block truncate text-[11.5px] text-muted">{plugin.desc}</span>
-      </span>
-      <span
-        className={cn(
-          'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted',
-          'opacity-0 transition-opacity group-hover:opacity-100'
-        )}
-      >
-        {plugin.installed ? '···' : '+'}
-      </span>
-    </button>
+    <div className="flex h-full min-h-0 w-full">
+      <aside className="flex w-[200px] shrink-0 flex-col border-r border-line-soft bg-bg px-2.5 py-3">
+        <div className="px-2 pb-1 text-[11px] font-medium text-muted">管理</div>
+        {NAV.filter((item) => item.group === '管理').map((item) => (
+          <NavRow
+            key={item.id}
+            active={tab === item.id}
+            label={item.label}
+            icon={<item.icon className="h-3.5 w-3.5" strokeWidth={1.8} />}
+            count={item.id === 'mcp' ? servers.length : skills.length}
+            onClick={() => setTab(item.id)}
+          />
+        ))}
+
+        <div className="px-2 pb-1 pt-4 text-[11px] font-medium text-muted">市场</div>
+        {NAV.filter((item) => item.group === '市场').map((item) => (
+          <NavRow
+            key={item.id}
+            active={tab === item.id}
+            label={item.label}
+            icon={<item.icon className="h-3.5 w-3.5" strokeWidth={1.8} />}
+            count={sourceCount(item.id === 'mcp-market' ? 'mcp' : 'skills')}
+            countSuffix="源"
+            onClick={() => setTab(item.id)}
+          />
+        ))}
+
+        <div className="flex items-center justify-between px-2 pb-1 pt-4">
+          <span className="text-[11px] font-medium text-muted">市场源</span>
+          <button
+            type="button"
+            onClick={() => setSourceOpen(true)}
+            className="text-[11px] text-muted transition-colors hover:text-ink"
+          >
+            添加
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {sources.map((source) => (
+            <div
+              key={source.id}
+              className="group flex h-[28px] items-center gap-1.5 rounded-lg px-2 text-[11.5px] text-ink-soft hover:bg-panel-2"
+              title={source.last_error ? `同步失败：${source.last_error}` : `${source.repo}/${source.path}`}
+            >
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 shrink-0 rounded-full',
+                  source.last_error ? 'bg-danger' : source.official ? 'bg-accent' : 'bg-accent-2'
+                )}
+              />
+              <span className="min-w-0 flex-1 truncate">{source.name}</span>
+              {!source.official ? (
+                <button
+                  type="button"
+                  onClick={() => setRemovingSource(source)}
+                  className="hidden shrink-0 text-[10px] text-muted transition-colors hover:text-danger group-hover:block"
+                >
+                  移除
+                </button>
+              ) : null}
+            </div>
+          ))}
+          {sources.length === 0 ? (
+            <div className="px-2 py-2 text-[11px] text-muted">{connected ? '暂无市场源' : '后端未连接'}</div>
+          ) : null}
+        </div>
+        <div className="mt-2 border-t border-line-soft px-2 pt-2 text-[10.5px] leading-4 text-muted">
+          市场 = GitHub 仓库目录
+        </div>
+      </aside>
+
+      <section className="min-h-0 min-w-0 flex-1 overflow-y-auto px-7 py-6">
+        <div className="mx-auto w-full max-w-[1040px]">
+          {staleBackend ? (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-warn/25 bg-warn/5 px-3 py-2 text-[11.5px] leading-5 text-warn">
+              <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+              <span>
+                桌面端内置的 Go 后端是旧版本：列表缺少启用状态，启停会返回 404。重新构建
+                （<span className="font-mono">npm run backend:prepare</span>）并重启应用即可。
+              </span>
+            </div>
+          ) : null}
+          {!connected ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-line-soft px-6 py-16 text-center">
+              <span className="grid h-11 w-11 place-items-center rounded-xl border border-line-soft bg-panel-2 text-muted">
+                <PlugZap className="h-5 w-5" />
+              </span>
+              <div className="mt-3 text-[13px] font-medium text-ink">Go 后端未连接</div>
+              <div className="mt-1 max-w-[420px] text-[12px] leading-5 text-muted">
+                MCP 与技能都由后端管理（配置在 PostgreSQL、技能在 skills 目录），后端启动后这里会自动加载。
+              </div>
+              <button
+                type="button"
+                onClick={() => void reloadAll()}
+                className="mt-4 flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[11.5px] text-ink-soft transition-colors hover:bg-panel-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                重试
+              </button>
+            </div>
+          ) : tab === 'mcp' ? (
+            <McpManager
+              servers={servers}
+              loading={loading}
+              onReload={async () => {
+                await reloadMcp()
+              }}
+              onToast={notify}
+              onBrowseMarket={() => setTab('mcp-market')}
+            />
+          ) : tab === 'mcp-market' ? (
+            <McpMarket
+              servers={servers}
+              sources={sources}
+              onReload={async () => {
+                await Promise.all([reloadMcp(), reloadSources()])
+              }}
+              onToast={notify}
+              onGoManage={() => setTab('mcp')}
+            />
+          ) : tab === 'skills' ? (
+            <SkillsManager
+              skills={skills}
+              loading={loading}
+              onReload={async () => {
+                await reloadSkills()
+              }}
+              onToast={notify}
+              onBrowseMarket={() => setTab('skills-market')}
+            />
+          ) : (
+            <SkillsMarket
+              skills={skills}
+              sources={sources}
+              onReload={async () => {
+                await Promise.all([reloadSkills(), reloadSources()])
+              }}
+              onToast={notify}
+              onGoManage={() => setTab('skills')}
+            />
+          )}
+        </div>
+      </section>
+
+      <MarketSourceDialog
+        open={sourceOpen}
+        kind="all"
+        onClose={() => setSourceOpen(false)}
+        onAdded={(message) => {
+          notify(message, message.includes('失败') ? 'error' : 'ok')
+          void reloadSources()
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(removingSource)}
+        title={`移除市场源「${removingSource?.name ?? ''}」？`}
+        description="只会从列表移除这个源及其缓存条目，已安装的 MCP / 技能不受影响。"
+        confirmLabel="移除"
+        onClose={() => setRemovingSource(null)}
+        onConfirm={async () => {
+          if (!removingSource) return
+          await marketApi.removeSource(removingSource.id)
+          notify(`已移除 ${removingSource.name}`)
+          await reloadSources()
+        }}
+      />
+
+      {toast ? <Toast message={toast.message} tone={toast.tone} /> : null}
+    </div>
   )
 }
 
-type SkillItem = {
-  name: string
-  description?: string
-  calls: number
-  tasks: number
-  last_used?: string
-}
-
-type McpItem = {
-  id: number
-  name: string
-  transport: string
-  command?: string
-  url?: string
-  enabled: boolean
-  tools?: string[]
-}
-
-export function PluginsView(): React.JSX.Element {
-  const setView = useAppStore((state) => state.setView)
-  const backend = useAppStore((state) => state.backend)
-  const [tab, setTab] = useState<'plugins' | 'skills'>('plugins')
-  const [skills, setSkills] = useState<SkillItem[]>([])
-  const [mcps, setMcps] = useState<McpItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
-  const [notice, setNotice] = useState('')
-
-  // 技能与 MCP 均来自后端（/skills、/mcp），后端未连接时列表为空并给出提示
-  useEffect(() => {
-    if (!backend?.connected) return
-    let cancelled = false
-    setLoading(true)
-    void Promise.all([
-      consoleRequest<{ skills: SkillItem[] }>('/skills').catch(() => ({ skills: [] })),
-      consoleRequest<{ servers: McpItem[] }>('/mcp').catch(() => ({ servers: [] }))
-    ])
-      .then(([skillData, mcpData]) => {
-        if (cancelled) return
-        setSkills(skillData.skills ?? [])
-        setMcps(mcpData.servers ?? [])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [backend?.connected])
-
-  const filter = (list: Plugin[]): Plugin[] =>
-    list.filter(
-      (plugin) =>
-        !query.trim() ||
-        plugin.name.toLowerCase().includes(query.trim().toLowerCase()) ||
-        plugin.desc.includes(query.trim())
-    )
-
-  const installed = useMemo(() => [...HOT, ...NEW].filter((plugin) => plugin.installed), [])
-  const hot = filter(HOT)
-  const fresh = filter(NEW)
-
-  const onAction = (plugin: Plugin): void => {
-    setNotice(
-      plugin.installed
-        ? `${plugin.name} 已启用，无需重复安装`
-        : `${plugin.name} 需要连接器授权，当前版本尚未开放`
-    )
-    window.setTimeout(() => setNotice(''), 2600)
-  }
-
+function NavRow({
+  active,
+  label,
+  icon,
+  count,
+  countSuffix,
+  onClick
+}: {
+  active: boolean
+  label: string
+  icon: React.ReactNode
+  count?: number
+  countSuffix?: string
+  onClick: () => void
+}): React.JSX.Element {
   return (
-    <div className="flex h-full min-h-0">
-      {/* 左侧：自定义 / 已安装 */}
-      <div className="flex w-[188px] shrink-0 flex-col gap-1 border-r border-line-soft px-2.5 py-3">
-        <div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted">自定义</div>
-        <button
-          type="button"
-          onClick={() => setTab('plugins')}
-          className={cn(
-            'flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] transition-colors',
-            tab === 'plugins' ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2 hover:text-ink'
-          )}
-        >
-          <Puzzle className="h-3.5 w-3.5" strokeWidth={1.8} />
-          插件
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('skills')}
-          className={cn(
-            'flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] transition-colors',
-            tab === 'skills' ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2 hover:text-ink'
-          )}
-        >
-          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} />
-          技能
-        </button>
-
-        <div className="px-2 pb-1.5 pt-4 text-[11px] font-medium text-muted">已安装</div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {skills.map((skill) => (
-            <div
-              key={skill.name}
-              title={skill.description || skill.name}
-              className="flex h-[28px] items-center gap-2 rounded-lg px-2 text-[12.5px] text-ink-soft"
-            >
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
-              <span className="truncate">{skill.name}</span>
-            </div>
-          ))}
-          {skills.length === 0 ? (
-            <div className="px-2 py-2 text-[11px] text-muted">
-              {backend?.connected ? '暂无技能' : '后端未连接'}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* 右侧：插件市场 / 技能列表 */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
-        {tab === 'skills' ? (
-          <div>
-            <h1 className="text-[19px] font-semibold text-ink">技能</h1>
-            <p className="mt-1 text-[12.5px] text-muted">
-              来自后端的技能包（{skills.length} 个）· {loading ? '读取中…' : '已同步'}
-            </p>
-            <div className="mt-4 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
-              {skills.map((skill) => (
-                <div key={skill.name} className="flex items-start gap-3 px-3.5 py-2.5">
-                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12.5px] font-medium text-ink">{skill.name}</div>
-                    {skill.description ? (
-                      <div className="mt-0.5 line-clamp-2 text-[11.5px] leading-5 text-muted">
-                        {skill.description}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 text-right text-[10.5px] text-muted">
-                    <div>{skill.calls} 次调用</div>
-                    <div>{skill.tasks} 个任务</div>
-                  </div>
-                </div>
-              ))}
-              {skills.length === 0 ? (
-                <div className="px-3.5 py-10 text-center text-[12px] text-muted">
-                  {backend?.connected ? '后端尚未安装技能' : '后端未连接，无法读取技能'}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        {tab === 'plugins' ? (
-        <>
-        <div className="flex items-start gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[19px] font-semibold text-ink">插件</h1>
-            <p className="mt-1 text-[12.5px] text-muted">
-              连接插件，让 VEXNAR 在你的各类工具中协同工作
-            </p>
-            <span className="mt-3 inline-flex items-center rounded-full border border-line-soft px-2.5 py-0.5 text-[11px] text-ink-soft">
-              公开
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="flex h-8 w-[220px] items-center gap-2 rounded-full bg-panel-2 px-3">
-              <Search className="h-3.5 w-3.5 text-muted" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="搜索插件"
-                className="h-full w-full bg-transparent text-[12px] text-ink outline-none placeholder:text-muted"
-              />
-            </div>
-            <button
-              type="button"
-              aria-label="刷新"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="帮助"
-              className="grid h-8 w-8 place-items-center rounded-full text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-            >
-              <CircleHelp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              className="flex h-8 items-center gap-1.5 rounded-full bg-[#1f2023] px-3 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-            >
-              添加
-            </button>
-          </div>
-        </div>
-
-        <section className="mt-6">
-          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
-            已连接的 MCP <span className="text-muted">›</span>
-          </div>
-          <div className="mt-2 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
-            {mcps.map((server) => (
-              <div key={server.id} className="flex items-center gap-3 px-3.5 py-2.5">
-                <Blocks className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-medium text-ink">{server.name}</div>
-                  <div className="truncate text-[11px] text-muted">
-                    {server.transport}
-                    {server.command ? ` · ${server.command}` : server.url ? ` · ${server.url}` : ''}
-                    {server.tools?.length ? ` · ${server.tools.length} 个工具` : ''}
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[10.5px]',
-                    server.enabled ? 'bg-accent/10 text-accent' : 'bg-panel-2 text-muted'
-                  )}
-                >
-                  {server.enabled ? '已启用' : '已停用'}
-                </span>
-              </div>
-            ))}
-            {mcps.length === 0 ? (
-              <div className="px-3.5 py-6 text-center text-[12px] text-muted">
-                {backend?.connected ? '尚未配置 MCP 服务器' : '后端未连接，无法读取 MCP'}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
-            已连接的 MCP <span className="text-muted">›</span>
-          </div>
-          <div className="mt-2 divide-y divide-line-soft overflow-hidden rounded-xl border border-line-soft">
-            {mcps.map((server) => (
-              <div key={server.id} className="flex items-center gap-3 px-3.5 py-2.5">
-                <Blocks className="h-3.5 w-3.5 shrink-0 text-muted" strokeWidth={1.8} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-medium text-ink">{server.name}</div>
-                  <div className="truncate text-[11px] text-muted">
-                    {server.transport}
-                    {server.command ? ` · ${server.command}` : server.url ? ` · ${server.url}` : ''}
-                    {server.tools?.length ? ` · ${server.tools.length} 个工具` : ''}
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[10.5px]',
-                    server.enabled ? 'bg-accent/10 text-accent' : 'bg-panel-2 text-muted'
-                  )}
-                >
-                  {server.enabled ? '已启用' : '已停用'}
-                </span>
-              </div>
-            ))}
-            {mcps.length === 0 ? (
-              <div className="px-3.5 py-6 text-center text-[12px] text-muted">
-                {backend?.connected ? '尚未配置 MCP 服务器' : '后端未连接，无法读取 MCP'}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="mt-7">
-          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
-            热门 <span className="text-muted">›</span>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-x-8">
-            {hot.map((plugin) => (
-              <PluginCard key={plugin.id} plugin={plugin} onAction={onAction} />
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-7">
-          <div className="flex items-center gap-1 text-[12px] font-medium text-ink">
-            新品推荐 <span className="text-muted">›</span>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-x-8">
-            {fresh.map((plugin) => (
-              <PluginCard key={plugin.id} plugin={plugin} onAction={onAction} />
-            ))}
-          </div>
-        </section>
-
-        {hot.length + fresh.length === 0 ? (
-          <div className="py-16 text-center text-[12.5px] text-muted">没有匹配的插件</div>
-        ) : null}
-        </>
-        ) : null}
-      </div>
-
-      {notice ? (
-        <div
-          role="status"
-          className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-lg border border-line bg-bg px-3.5 py-2 text-[12px] text-ink codex-popover"
-        >
-          {notice}
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex h-[30px] items-center gap-2 rounded-lg px-2 text-[12.5px] transition-colors',
+        active ? 'bg-panel-2 text-ink' : 'text-ink-soft hover:bg-panel-2 hover:text-ink'
+      )}
+    >
+      <span className={cn('shrink-0', active ? 'text-ink' : 'text-muted')}>{icon}</span>
+      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      {typeof count === 'number' && count > 0 ? (
+        <span className="shrink-0 font-mono text-[10px] text-muted">
+          {count}
+          {countSuffix ?? ''}
+        </span>
       ) : null}
-    </div>
+    </button>
   )
 }

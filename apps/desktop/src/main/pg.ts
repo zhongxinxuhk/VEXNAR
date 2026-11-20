@@ -242,6 +242,113 @@ async function ensureDatabase(port: number, password: string): Promise<void> {
 }
 
 /**
+ * 读取"项目配置文件"里的 PostgreSQL 连接信息（与 `cmd/vexnar`、web 控制台同源）。
+ *
+ * 存在的意义：桌面端默认用内置 PG + 独立库（`vexnar` / `vexnar_backend`），
+ * 而自托管部署的 MCP / 技能数据在 `config.json` 指向的库里。开发或本地自托管时
+ * 需要"同一份数据两边都能看到"，因此允许把 **Go 后端的库** 指到 config.json：
+ *
+ *   - Electron 会话库仍然独立（`vexnar` 或内置 PG），绝不与 Go 的 sessions 表混用；
+ *   - 支持三种来源，优先级从高到低：`VEXNAR_BACKEND_PG_DSN` → 项目/config.json
+ *     → 内置 PG；`VEXNAR_IGNORE_CONFIG_JSON=1` 可强制忽略 config.json。
+ *   - 连接不上（docker 没起、端口不对）时返回 null，调用方回落到内置 PG。
+ */
+function projectConfigPaths(): string[] {
+  const paths: string[] = []
+  const explicit = process.env.VEXNAR_CONFIG_PATH?.trim()
+  if (explicit) paths.push(explicit)
+  paths.push(path.join(app.getPath('userData'), 'config.json'))
+  if (!app.isPackaged) {
+    // 开发态：仓库根目录（apps/desktop/../../config.json）
+    paths.push(path.resolve(app.getAppPath(), '..', '..', 'config.json'))
+  } else {
+    // 打包态：允许把 config.json 放在 .app 旁边（release/mac-arm64/ 或 release/），
+    // 不进安装包，避免把自托管库的凭据打进 dmg。
+    const exeDir = path.dirname(app.getPath('exe'))
+    paths.push(path.resolve(exeDir, '..', '..', '..', 'config.json'))
+    paths.push(path.resolve(exeDir, '..', '..', '..', '..', 'config.json'))
+  }
+  paths.push(path.join(process.cwd(), 'config.json'))
+  return paths
+}
+
+type DatabaseBlock = {
+  dsn?: string
+  host?: string
+  port?: number | string
+  user?: string
+  password?: string
+  dbname?: string
+  sslmode?: string
+}
+
+function dsnFromDatabaseBlock(block: DatabaseBlock | undefined): string | null {
+  if (!block) return null
+  if (typeof block.dsn === 'string' && block.dsn.trim()) return block.dsn.trim()
+  if (!block.host || !block.dbname) return null
+  const user = encodeURIComponent(block.user ?? 'postgres')
+  const password = block.password ? `:${encodeURIComponent(block.password)}` : ''
+  const port = block.port ? `:${block.port}` : ''
+  const sslmode = block.sslmode ? `?sslmode=${encodeURIComponent(block.sslmode)}` : ''
+  return `postgres://${user}${password}@${block.host}${port}/${block.dbname}${sslmode}`
+}
+
+async function probeDsn(dsn: string): Promise<string | null> {
+  const client = new Client({ connectionString: dsn, connectionTimeoutMillis: 2500 })
+  try {
+    await client.connect()
+    await client.query('SELECT 1')
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  } finally {
+    try {
+      await client.end()
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/** 返回 config.json（或显式环境变量）指定的 **Go 后端** 库连接串。 */
+export async function resolveConfiguredBackendDsn(): Promise<{ dsn: string; source: string } | null> {
+  const explicit = process.env.VEXNAR_BACKEND_PG_DSN?.trim()
+  if (explicit) {
+    const problem = await probeDsn(explicit)
+    if (problem) {
+      console.error(`[pg] VEXNAR_BACKEND_PG_DSN 连接失败，回落内置 PG: ${problem}`)
+      return null
+    }
+    return { dsn: explicit, source: 'VEXNAR_BACKEND_PG_DSN' }
+  }
+  if (process.env.VEXNAR_IGNORE_CONFIG_JSON === '1') return null
+  for (const candidate of projectConfigPaths()) {
+    let raw: string
+    try {
+      raw = await fs.readFile(candidate, 'utf8')
+    } catch {
+      continue
+    }
+    let parsed: { database?: DatabaseBlock }
+    try {
+      parsed = JSON.parse(raw) as { database?: DatabaseBlock }
+    } catch (error) {
+      console.error(`[pg] ${candidate} 不是合法 JSON，已忽略: ${String(error)}`)
+      continue
+    }
+    const dsn = dsnFromDatabaseBlock(parsed.database)
+    if (!dsn) continue
+    const problem = await probeDsn(dsn)
+    if (problem) {
+      console.error(`[pg] ${candidate} 的数据库连不上，回落内置 PG: ${problem}`)
+      continue
+    }
+    return { dsn, source: candidate }
+  }
+  return null
+}
+
+/**
  * Starts the portable PostgreSQL shipped inside the desktop app.
  *
  * An explicit VEXNAR_PG_DSN always wins (useful for development and CI). The

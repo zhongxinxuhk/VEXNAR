@@ -28,7 +28,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/Autumn-27/norma/llm"
-	"github.com/Autumn-27/norma/skill"
 	"github.com/zhongxinxuhk/vexnar/agent"
 	"github.com/zhongxinxuhk/vexnar/db"
 )
@@ -968,6 +967,10 @@ type skillFileNode struct {
 	Compatibility string   `json:"compatibility,omitempty"`
 	MCPs          []string `json:"mcps,omitempty"`
 	Files         []string `json:"files"`
+	// Enabled=false 表示 SKILL.md 被改名成 SKILL.md.disabled（agent 不会加载）。
+	Enabled bool `json:"enabled"`
+	// Source 是从 GitHub 安装时记录下来的来源，用于「更新」与展示。
+	Source *skillProvenance `json:"source,omitempty"`
 	// Usage ledger (db/skill_usage.go). Calls is 0 and LastUsed nil for a skill that
 	// was never invoked — the ledger only has rows for skills agents actually loaded.
 	Calls    int        `json:"calls"`
@@ -978,16 +981,7 @@ type skillFileNode struct {
 
 func (s *Server) fsListSkills(w http.ResponseWriter, r *http.Request) {
 	_ = os.MkdirAll(s.skillDir, 0o755)
-	allReg, _ := skill.LoadDir(s.skillDir)
-	metaByDir := map[string]skill.Skill{}
-	if allReg != nil {
-		for _, sk := range allReg.List() {
-			if sk.Dir != "" {
-				metaByDir[filepath.Base(sk.Dir)] = sk
-			}
-		}
-	}
-	entries, err := os.ReadDir(s.skillDir)
+	entries, err := s.scanSkillEntries()
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -1006,24 +1000,18 @@ func (s *Server) fsListSkills(w http.ResponseWriter, r *http.Request) {
 	}
 	nodes := []skillFileNode{}
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		dirName := e.Name()
-		node := skillFileNode{Name: dirName, Agents: []string{}}
-		if st, ok := statBySkill[dirName]; ok {
+		node := skillFileNode{Name: e.Name, Agents: []string{}, Enabled: e.Enabled}
+		if st, ok := statBySkill[e.Name]; ok {
 			node.Calls, node.Tasks, node.Agents, node.LastUsed = st.Calls, st.Tasks, st.Agents, st.LastUsed
 		}
-		if meta, ok := metaByDir[dirName]; ok {
-			node.Description = meta.Description
-			node.License = meta.License
-			node.Compatibility = meta.Compatibility
-			node.MCPs = meta.MCPs
+		if raw, err := os.ReadFile(e.skillMDFile()); err == nil {
+			_, desc, license, compat, mcps := skillMetaFromFile(raw)
+			node.Description, node.License, node.Compatibility, node.MCPs = desc, license, compat, mcps
 		}
-		node.Files, _ = walkSkillFiles(filepath.Join(s.skillDir, dirName))
-		if node.Files == nil {
-			node.Files = []string{}
+		if e.Dir != "" {
+			node.Source = readSkillProvenance(e.Dir)
 		}
+		node.Files = e.skillEntryFiles()
 		nodes = append(nodes, node)
 	}
 	writeJSON(w, 200, map[string]any{"skills": nodes})

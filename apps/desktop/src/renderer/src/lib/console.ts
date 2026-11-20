@@ -137,9 +137,15 @@ export interface CommandsPage {
 export async function consoleRequest<T>(
   path: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
-  body?: unknown
+  body?: unknown,
+  options?: { timeoutMs?: number }
 ): Promise<T> {
-  const result = await window.vexnar.backend.request<T>({ path, method, body })
+  const result = await window.vexnar.backend.request<T>({
+    path,
+    method,
+    body,
+    ...(options?.timeoutMs ? { timeoutMs: options.timeoutMs } : {})
+  })
   if (!result.ok) throw new Error(result.error)
   return result.data
 }
