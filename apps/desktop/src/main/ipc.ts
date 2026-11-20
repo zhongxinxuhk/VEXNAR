@@ -27,7 +27,7 @@ import {
   type IpcResult
 } from '@shared/contracts'
 import { AgentManager } from './agent'
-import { backendRequest, backendStatus } from './backend'
+import type { BackendManager } from './backend'
 import {
   appendMessage,
   createSession,
@@ -45,6 +45,7 @@ import { chooseWorkspace, listWorkspace, readWorkspaceFile } from './workspace'
 
 type Services = {
   agent: AgentManager
+  backend: BackendManager
   terminal: TerminalManager
   newapi: NewApiManager
   getWindow: () => BrowserWindow | null
@@ -89,7 +90,7 @@ export function registerIpc(services: Services): void {
   handle(IPC.settingsGet, noInput, () => getSettings())
   handle(IPC.settingsSet, settingsSchema, async (input) => {
     const settings = await setSettings(input)
-    services.agent.reconfigure()
+    await services.agent.reconfigure()
     return settings
   })
 
@@ -134,8 +135,8 @@ export function registerIpc(services: Services): void {
   handle(IPC.agentSend, agentSendSchema, (input) => services.agent.send(input))
   handle(IPC.agentCancel, noInput, () => services.agent.cancel())
 
-  handle(IPC.backendStatus, noInput, () => backendStatus())
-  handle(IPC.backendRequest, backendRequestSchema, (input) => backendRequest(input))
+  handle(IPC.backendStatus, noInput, () => services.backend.status())
+  handle(IPC.backendRequest, backendRequestSchema, (input) => services.backend.request(input))
 
   handle(IPC.newapiStatus, noInput, () => services.newapi.getState())
   handle(IPC.newapiBootstrap, noInput, () => services.newapi.bootstrap())

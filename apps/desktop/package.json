@@ -13,16 +13,17 @@
   "scripts": {
     "dev": "bash scripts/dev.sh",
     "build": "electron-vite build",
+    "backend:prepare": "bash scripts/prepare-backend.sh",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "npm run build && VEXNAR_SMOKE=1 electron .",
-    "dist": "npm run build && electron-builder --mac --dir",
-    "dist:mac": "npm run build && electron-builder --mac",
+    "smoke": "npm run build && npm run backend:prepare && VEXNAR_SMOKE=1 electron .",
+    "dist": "npm run build && npm run backend:prepare && electron-builder --mac --dir",
+    "dist:mac": "npm run build && npm run backend:prepare && electron-builder --mac",
     "pg:fetch": "bash scripts/fetch-pg.sh",
-    "dist:linux": "npm run build && electron-builder --linux --x64",
-    "dist:win": "npm run build && electron-builder --win --x64"
+    "dist:linux": "npm run build && npm run backend:prepare && electron-builder --linux --x64",
+    "dist:win": "npm run build && npm run backend:prepare && electron-builder --win --x64"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

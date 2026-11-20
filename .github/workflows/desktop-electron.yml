@@ -82,6 +82,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -118,6 +124,11 @@ jobs:
       - name: Build renderer/main
         working-directory: apps/desktop
         run: npm run build
+
+      - name: Build Go sidecar
+        working-directory: apps/desktop
+        shell: bash
+        run: npm run backend:prepare
 
       - name: Package macOS
         if: matrix.platform == 'mac'

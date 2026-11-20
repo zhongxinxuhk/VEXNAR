@@ -139,6 +139,15 @@ export function getAgentConfig(): { model: string; baseUrl: string; apiKey: stri
   }
 }
 
+/** Remove the legacy renderer-side key after it has been handed to the Go backend. */
+export async function clearStoredApiKey(): Promise<void> {
+  if (!cache.apiKeyCipher) return
+  const stored = { ...cache }
+  delete stored.apiKeyCipher
+  await writeStored(stored)
+  cache = stored
+}
+
 export type ManagedConnection = {
   baseUrl: string
   apiKey: string
@@ -147,8 +156,9 @@ export type ManagedConnection = {
 }
 
 /**
- * Persist the NewAPI-derived runtime config. The raw key never leaves the main
- * process: only its encrypted ciphertext is written to PostgreSQL.
+ * Cache the NewAPI-derived model metadata. The API key itself is intentionally
+ * not persisted here: it lives only in the Go backend, which is the single
+ * source of truth for provider credentials and routing.
  */
 export async function applyManagedConnection(input: ManagedConnection): Promise<PublicSettings> {
   const models = Array.from(new Set(input.models.map((item) => item.trim()).filter(Boolean)))
@@ -160,23 +170,22 @@ export async function applyManagedConnection(input: ManagedConnection): Promise<
   }
 
   const stored = { ...cache }
-  const currentKey = decryptSecret(stored.apiKeyCipher)
   const sameModels =
     stored.newApiModels.length === models.length &&
     stored.newApiModels.every((item, index) => item === models[index])
   if (
     stored.baseUrl === baseUrl &&
-    currentKey === apiKey &&
     stored.model === model &&
-    sameModels
+    sameModels &&
+    !stored.apiKeyCipher
   ) {
     return toPublic(stored)
   }
 
   stored.baseUrl = baseUrl
-  stored.apiKeyCipher = encryptSecret(apiKey, 'API Key')
   stored.model = model
   stored.newApiModels = models
+  delete stored.apiKeyCipher
   await writeStored(stored)
   cache = stored
   return toPublic(stored)

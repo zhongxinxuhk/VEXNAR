@@ -125,6 +125,14 @@ func (d *DB) ActiveProfile() (*LLMProfile, error) {
 	return &p, err
 }
 
+// ClearActiveProfileAPIKey removes the stored upstream credential after logout.
+// The profile row and model selection stay, but no request can be made until the
+// user signs in again and the desktop gateway configures a fresh key.
+func (d *DB) ClearActiveProfileAPIKey() error {
+	_, err := d.Exec(`UPDATE llm_profiles SET api_key='' WHERE is_default`)
+	return err
+}
+
 // ProfileByID returns one profile with its api key by id, or nil if not found.
 // Used to run a task on a specific (non-default) LLM profile.
 func (d *DB) ProfileByID(id int64) (*LLMProfile, error) {

@@ -6,11 +6,12 @@ import { app, BrowserWindow, Menu, dialog, shell } from 'electron'
 import os from 'node:os'
 import path from 'node:path'
 import { AgentManager } from './agent'
+import { BackendManager } from './backend'
 import { NewApiManager } from './newapi'
 import { closeDb, initDb } from './db'
 import { registerIpc } from './ipc'
 import { startPortablePostgres, type PostgresRuntime } from './pg'
-import { loadSettings } from './settings'
+import { clearStoredApiKey, getAgentConfig, getSettings, loadSettings } from './settings'
 import { TerminalManager } from './terminal'
 import { runSmoke } from './smoke'
 import { IPC } from '@shared/contracts'
@@ -38,8 +39,9 @@ const terminal = new TerminalManager({
   onExit: (event) => emit(IPC.terminalExit, event)
 })
 
-const agent = new AgentManager((event) => emit(IPC.agentEvent, event))
-const newapi = new NewApiManager(emit)
+const backend = new BackendManager()
+const agent = new AgentManager((event) => emit(IPC.agentEvent, event), backend)
+const newapi = new NewApiManager(emit, backend)
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -84,19 +86,44 @@ function createWindow(): void {
   }
 }
 
+async function restoreModelConnection(): Promise<void> {
+  const legacy = getAgentConfig()
+  if (legacy.apiKey && legacy.baseUrl && legacy.model) {
+    try {
+      await backend.configureLLM({
+        baseUrl: legacy.baseUrl,
+        apiKey: legacy.apiKey,
+        model: legacy.model
+      })
+      await clearStoredApiKey()
+      console.log('[backend] migrated legacy model credential into the Go service')
+    } catch (error) {
+      console.error('[backend] migrate legacy model credential failed', error)
+    }
+  }
+  try {
+    await backend.syncModel(getSettings().model)
+  } catch {
+    // A fresh install has no model yet; NewAPI login configures it later.
+  }
+}
+
 async function boot(): Promise<void> {
   postgres = await startPortablePostgres()
   await initDb(postgres.dsn)
   await loadSettings()
+  await backend.start(postgres.backendDsn)
+  await restoreModelConnection()
 
   if (smoke) {
     Menu.setApplicationMenu(null)
-    await runSmoke(postgres)
+    await runSmoke(postgres, backend)
     return
   }
 
   registerIpc({
     agent,
+    backend,
     terminal,
     newapi,
     getWindow: () => mainWindow
@@ -114,6 +141,7 @@ async function shutdown(): Promise<void> {
   agent.dispose()
   terminal.disposeAll()
   newapi.dispose()
+  await backend.stop().catch(() => undefined)
   await closeDb().catch(() => undefined)
   await postgres?.stop().catch(() => undefined)
   postgres = null

@@ -7,18 +7,26 @@ import { app } from 'electron'
 import path from 'node:path'
 import type { AgentEvent, AgentSendInput } from '@shared/contracts'
 import { agentEventSchema } from '@shared/contracts'
-import { getAgentConfig, getSettings } from './settings'
+import type { BackendManager } from './backend'
+import { getSettings } from './settings'
 
 export class AgentManager {
   private child: ChildProcess | null = null
   private ready = false
   private disposed = false
 
-  constructor(private readonly onEvent: (event: AgentEvent) => void) {}
+  private starting: Promise<void> | null = null
 
-  send(input: AgentSendInput): { accepted: true } {
-    this.ensureStarted()
-    this.child?.send({ type: 'user_message', sessionId: input.sessionId, text: input.text })
+  constructor(
+    private readonly onEvent: (event: AgentEvent) => void,
+    private readonly backend: BackendManager
+  ) {}
+
+  async send(input: AgentSendInput): Promise<{ accepted: true }> {
+    await this.ensureStarted()
+    await this.reconfigure()
+    if (!this.child || !this.child.connected) throw new Error('Agent Runtime 尚未就绪')
+    this.child.send({ type: 'user_message', sessionId: input.sessionId, text: input.text })
     return { accepted: true }
   }
 
@@ -28,17 +36,31 @@ export class AgentManager {
   }
 
   /** Push new workspace/model/provider settings into a live runtime. */
-  reconfigure(): void {
-    if (!this.child || !this.child.connected) return
+  async reconfigure(): Promise<void> {
     const settings = getSettings()
-    const config = getAgentConfig()
-    this.child.send({
-      type: 'init',
-      workspace: settings.workspaceRoot,
-      model: config.model,
-      baseUrl: config.baseUrl,
-      apiKey: config.apiKey
-    })
+    if (this.child && this.child.connected) {
+      try {
+        await this.backend.syncModel(settings.model)
+      } catch (error) {
+        this.onEvent({
+          type: 'error',
+          message: `同步模型到 Go 后端失败：${error instanceof Error ? error.message : String(error)}`
+        })
+      }
+    }
+    if (!this.child || !this.child.connected) return
+    try {
+      this.child.send({
+        type: 'init',
+        workspace: settings.workspaceRoot,
+        ...this.backend.agentConfig(settings.model)
+      })
+    } catch (error) {
+      this.onEvent({
+        type: 'error',
+        message: `Agent Runtime 配置失败：${error instanceof Error ? error.message : String(error)}`
+      })
+    }
   }
 
   dispose(): void {
@@ -50,13 +72,28 @@ export class AgentManager {
     this.child = null
   }
 
-  private ensureStarted(): void {
-    if (this.child || this.disposed) return
+  private async ensureStarted(): Promise<void> {
+    if ((this.child && this.child.connected) || this.disposed) return
+    if (this.starting) return this.starting
+    this.starting = this.startRuntime()
+    try {
+      await this.starting
+    } finally {
+      this.starting = null
+    }
+  }
+
+  private async startRuntime(): Promise<void> {
     const runtime = app.isPackaged
       ? path.join(process.resourcesPath, 'agent-runtime', 'index.cjs')
       : path.join(app.getAppPath(), 'src', 'agent-runtime', 'index.cjs')
     const settings = getSettings()
-    const config = getAgentConfig()
+    try {
+      await this.backend.syncModel(settings.model)
+    } catch {
+      // No model configured yet; the gateway will report a clear error when used.
+    }
+    const config = this.backend.agentConfig(settings.model)
 
     const child = fork(runtime, [], {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
@@ -66,6 +103,10 @@ export class AgentManager {
 
     child.stdout?.on('data', (chunk: Buffer) => console.log(`[agent] ${chunk.toString().trimEnd()}`))
     child.stderr?.on('data', (chunk: Buffer) => console.error(`[agent] ${chunk.toString().trimEnd()}`))
+    child.on('error', (error) => {
+      if (this.disposed) return
+      this.onEvent({ type: 'error', message: `Agent Runtime 启动失败：${error.message}` })
+    })
 
     child.on('message', (message) => {
       const parsed = agentEventSchema.safeParse(message)

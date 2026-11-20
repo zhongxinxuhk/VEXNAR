@@ -4,6 +4,7 @@
 
 import { app } from 'electron'
 import { AgentManager } from './agent'
+import type { BackendManager } from './backend'
 import { appendMessage, closeDb, createSession, listMessages } from './db'
 import { TerminalManager } from './terminal'
 import type { AgentEvent } from '@shared/contracts'
@@ -17,7 +18,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ])
 }
 
-export async function runSmoke(pg: PostgresHandle): Promise<void> {
+export async function runSmoke(pg: PostgresHandle, backend: BackendManager): Promise<void> {
   console.log('[smoke] Electron desktop smoke starting')
   try {
     const session = await createSession({ title: 'Smoke', workspace: '' })
@@ -31,6 +32,12 @@ export async function runSmoke(pg: PostgresHandle): Promise<void> {
       throw new Error('PostgreSQL round-trip failed')
     }
     console.log('[smoke] postgres ok')
+
+    const backendStatus = await backend.status()
+    if (!backendStatus.connected) {
+      throw new Error(`Go backend health failed: ${backendStatus.error ?? 'unknown'}`)
+    }
+    console.log('[smoke] Go backend ok')
 
     let ptyData = ''
     let ptyResolve: (() => void) | null = null
@@ -59,19 +66,21 @@ export async function runSmoke(pg: PostgresHandle): Promise<void> {
       if (event.type === 'assistant_delta') process.stdout.write(event.text)
       if (event.type === 'assistant_done') doneResolve?.()
       if (event.type === 'error') console.error(`[smoke] agent error: ${event.message}`)
-    })
-    agent.send({ sessionId: session.id, text: 'smoke' })
+    }, backend)
+    await agent.send({ sessionId: session.id, text: 'smoke' })
     await withTimeout(agentDone, 15_000, 'Agent Runtime')
     agent.dispose()
     console.log('\n[smoke] agent runtime ok')
 
     await closeDb()
+    await backend.stop()
     await pg.stop()
     console.log('[smoke] ok')
     app.exit(0)
   } catch (error) {
     console.error('[smoke] failed', error)
     await closeDb().catch(() => undefined)
+    await backend.stop().catch(() => undefined)
     await pg.stop().catch(() => undefined)
     app.exit(1)
   }

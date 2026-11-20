@@ -18,9 +18,9 @@ import { defaultNewApiAuthMethods, IPC } from '@shared/contracts'
 import {
   applyManagedConnection,
   clearManagedConnection,
-  getAgentConfig,
   getSettings
 } from './settings'
+import type { BackendManager } from './backend'
 import {
   authMethodsFromStatus,
   isAuthBundle,
@@ -142,7 +142,10 @@ export class NewApiManager {
   private externalStarting = false
   private readonly emit: Emit
 
-  constructor(emit: Emit) {
+  constructor(
+    emit: Emit,
+    private readonly backend: BackendManager
+  ) {
     this.emit = emit
   }
 
@@ -360,15 +363,14 @@ export class NewApiManager {
     }
     this.auth = null
     await this.clearAuth()
+    await this.backend.clearLLM().catch(() => undefined)
     await clearManagedConnection()
     this.setAnonymous()
     return { loggedOut: true }
   }
 
-  copyKey(): { copied: true } {
-    const { apiKey } = getAgentConfig()
-    if (!apiKey) throw new Error('尚未配置 App-managed API Key')
-    clipboard.writeText(apiKey)
+  async copyKey(): Promise<{ copied: true }> {
+    clipboard.writeText(await this.backend.apiKey())
     return { copied: true }
   }
 
@@ -791,7 +793,7 @@ export class NewApiManager {
 
     const modelsResult = await this.authRequest('/api/user/models')
     const modelsPayload = modelsResult.json as { success?: boolean; data?: unknown } | null
-    const models = normalizeModels(modelsPayload?.data)
+    let models = normalizeModels(modelsPayload?.data)
 
     const statusResult = await this.authRequest('/api/status')
     const statusPayload = statusResult.json as { data?: Record<string, unknown> } | null
@@ -800,11 +802,33 @@ export class NewApiManager {
 
     let token: NewApiToken | null = null
     let tokenError: string | null = null
+    let model = pickDefaultModel(models, getSettings().model)
     try {
       const managed = await this.ensureManagedToken(user, rawUser)
       token = managed.token
       const current = getSettings()
-      const model = pickDefaultModel(models, current.model)
+      model = pickDefaultModel(models, current.model)
+      // The Go backend owns the upstream base URL/key. Electron only receives
+      // a loopback proxy URL and a per-launch token for inference.
+      await this.backend.configureLLM({
+        baseUrl: NEWAPI_API_BASE,
+        apiKey: managed.apiKey,
+        model
+      })
+      try {
+        const liveModels = await this.backend.listModels()
+        if (liveModels.length > 0) {
+          models = liveModels
+          const next = pickDefaultModel(models, current.model)
+          if (next !== model) {
+            await this.backend.syncModel(next)
+            model = next
+          }
+        }
+      } catch {
+        // Keep the authenticated platform list as a display fallback; the
+        // gateway still has a valid configured model.
+      }
       await applyManagedConnection({
         baseUrl: NEWAPI_API_BASE,
         apiKey: managed.apiKey,

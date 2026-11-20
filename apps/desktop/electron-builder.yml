@@ -15,6 +15,10 @@ extraResources:
     to: agent-runtime
   - from: resources/pg
     to: pg
+  - from: resources/vexnar
+    to: vexnar
+  - from: resources/skills
+    to: skills
 asar: true
 asarUnpack:
   - node_modules/node-pty/**

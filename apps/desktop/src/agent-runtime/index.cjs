@@ -180,7 +180,8 @@ async function llmReply(text) {
     signal: controller.signal,
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${state.apiKey}`
+      authorization: `Bearer ${state.apiKey}`,
+      'x-vexnar-desktop-token': state.apiKey
     },
     body: JSON.stringify({
       model: state.model,

@@ -45,16 +45,22 @@ Preload + IPC Gateway
 Electron Main
   window lifecycle · settings · workspace · git · PTY
         │
-  ┌─────┴──────────────────┐
-  │                        │
-Portable PostgreSQL     Agent Runtime (separate Node process)
-  pgdata in userData       JSON IPC · tools · LLM SSE
+  ├──────────────────────┐
+  │                      │
+Agent Runtime        Go sidecar (bundled `vexnar`)
+  separate Node proc    loopback `/api/desktop/*`
+  JSON IPC · tools      model config · catalog · inference proxy
+        │                      │
+        └────── SSE ───────────┘
+                               │
+                    PostgreSQL `vexnar_backend`
 ```
 
 - Renderer 不具备 Node 权限；`contextIsolation: true`、`nodeIntegration: false`。
 - 所有文件/Git 路径都经过 `ensureInside()` 限制在当前工作区内。
-- API Key 使用 Electron `safeStorage` 加密后写入本地 PG。
-- Agent Runtime 通过 `child_process.fork` 启动，UI 重载不会中断工具执行。
+- Go 进程是模型提供方、模型目录、选择、凭据、路由和推理的唯一权威来源。
+- Electron 主进程只持有 Go sidecar 的随机回环端口与每次启动随机令牌；渲染层和 Agent Runtime 都拿不到上游 API Key。
+- Agent Runtime 通过 `child_process.fork` 启动，使用主进程下发的回环网关地址访问 `/api/desktop/openai/v1/chat/completions`。
 
 ## 便携 PostgreSQL
 
@@ -65,8 +71,9 @@ Portable PostgreSQL     Agent Runtime (separate Node process)
 1. 从打包资源 `resources/pg`（安装后为 `process.resourcesPath/pg`）找到 `initdb`。
 2. 在 `app.getPath('userData')/pgdata` 初始化本地集群。
 3. 生成 `userData/pgpassword`（0600）并使用 `scram-sha-256`。
-4. 在随机 loopback 端口启动 `postgres`，创建 `vexnar` 数据库。
-5. 退出时执行 `pg_ctl -m fast stop`，并清理子进程。
+4. 在随机 loopback 端口启动 `postgres`，创建 `vexnar`（Electron 会话/设置）与 `vexnar_backend`（Go 模型、任务、资产等）两个数据库。
+5. 启动 `resources/vexnar/vexnar` sidecar，随机回环端口 + `VEXNAR_DESKTOP_TOKEN`，等待 `/api/health`。
+6. 退出时先停 sidecar，再执行 `pg_ctl -m fast stop`，并清理子进程。
 
 日志：`userData/logs/postgres.log`。
 
@@ -87,7 +94,7 @@ GoLand 的运行配置：
 - `VEXNAR Desktop`：本目录的 Electron/Codex UI（默认）。
 - `VEXNAR Desktop (Tauri)` / `(Tauri fast)`：旧的 Tauri + Go sidecar 壳层。
 
-`npm run smoke` 会依次验证 PG、PTY、Agent Runtime。
+`npm run smoke` 会依次验证 PG、Go sidecar 健康检查、PTY、Agent Runtime。Go sidecar 未构建时 `npm run dev` 会自动调用 `npm run backend:prepare`。
 
 ## 开发命令
 
@@ -98,6 +105,7 @@ npm run dev          # 自动探测 portable PG 后启动 Electron + Vite
 npm run typecheck
 npm run test
 npm run build
+npm run backend:prepare  # 构建 resources/vexnar/vexnar（需要 Go）
 npm run smoke        # 需要便携 PG；可使用 VEXNAR_PG_BIN / VEXNAR_PG_DSN
 
 # 安装本地/CI 产出的便携 PG 到 resources/pg
@@ -122,11 +130,12 @@ macOS 使用 `scripts/ci/build-pg-macos.sh`，Linux 使用 `scripts/ci/build-pg-
 
 ```text
 apps/desktop/
-  src/main/           Electron main：PG、DB、settings、workspace、git、PTY、IPC
+  src/main/           Electron main：PG、Go sidecar、DB、settings、workspace、git、PTY、IPC
   src/preload/        contextBridge API
   src/renderer/       React UI
   src/agent-runtime/  独立 Node.js Agent Runtime
   resources/pg/       CI 注入的便携 PostgreSQL（git 忽略）
+  resources/vexnar/   Go sidecar（git 忽略，由 backend:prepare 生成）
   scripts/            本地 PG 获取与平台 CI 脚本
   tests/              Vitest：contracts + agent-runtime
 ```
@@ -135,5 +144,6 @@ apps/desktop/
 
 - 不签名/不公证（`identity: null`）；分发前由发布方自行处理。
 - Renderer 不直接访问文件系统、Git 或 PTY。
-- 当前 Agent Runtime 在未配置 `baseUrl` + API Key 时使用本地工具巡检回退；配置后走 OpenAI-compatible `/chat/completions` SSE。
+- 未登录/未配置模型时，Agent Runtime 只返回本地工具巡检结果；模型请求必须经过 Go sidecar，不存在桌面端直连中转站的推理路径。
 - 便携 PG 只监听 `127.0.0.1`，不对外暴露。
+- `/api/desktop/*` 仅在设置 `VEXNAR_DESKTOP_TOKEN` 时启用，并只接受回环请求；普通服务端仍使用 JWT 鉴权。
