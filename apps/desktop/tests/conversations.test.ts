@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
+import { executionGroup } from '@/lib/execution-groups'
 import {
   lastTurnUsage,
   mergeActivities,
@@ -308,5 +309,17 @@ describe('toSession', () => {
       pinned: true
     })
     expect(session.updatedAt).toBeGreaterThan(session.createdAt)
+  })
+})
+
+describe('executionGroup', () => {
+  it('groups recorded tool names without inferring a runtime parent or session', () => {
+    expect(executionGroup('Skill')).toEqual({ category: 'skill' })
+    expect(executionGroup('Bash')).toEqual({ category: 'terminal' })
+    expect(executionGroup('mcp__local_files__read')).toEqual({ category: 'mcp', source: 'local_files' })
+    expect(executionGroup('mcp__browser__open')).toEqual({ category: 'browser', source: 'browser' })
+    expect(executionGroup('mcp__software__inspect_window')).toEqual({ category: 'software', source: 'software' })
+    expect(executionGroup('WebFetch')).toEqual({ category: 'api' })
+    expect(executionGroup('browser_unknown')).toEqual({ category: 'other' })
   })
 })

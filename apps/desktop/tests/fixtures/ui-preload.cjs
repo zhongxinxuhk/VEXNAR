@@ -60,13 +60,18 @@ const conversationActivities = {
     ...Array.from({ length: 118 }, (_, offset) => {
       const index = offset + 1
       const tool_use_id = `read-${index}`
-      const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool: 'read_file', tool_use_id }
+      const tool = ({
+        20: 'mcp__files__read_file', 21: 'Skill', 22: 'mcp__browser__navigate',
+        23: 'mcp__software__inspect_window', 24: 'WebFetch'
+      })[index] || 'read_file'
+      const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool, tool_use_id }
       const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: 'read_file', detail: JSON.stringify({ path: `notes-${index}.md` }) }
       if (index === 1 || index === 2) return [call]
       const result = {
         ...activity,
         seq: ++activitySeq,
         kind: 'tool_result',
+        ts: index === 3 ? '2026-11-20T10:00:08.500Z' : activity.ts,
         is_error: index === 63,
         summary: index === 63 ? 'file not found' : 'done',
         detail: index === 63 ? 'file not found' : `output ${index}`

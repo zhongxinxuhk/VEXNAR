@@ -177,6 +177,23 @@ app.whenReady().then(async () => {
     if (await run(`(${activity}).parentElement.querySelector('details') !== null`)) throw Error('Collapsed trace mounted tool rows')
     await wait(`(${activity}).textContent.includes('1 项失败') && (${activity}).textContent.includes('1 项未记录结果')`)
     await run(`(${activity}).click()`)
+    const traceSelector = (label) => `(${activity}).parentElement.querySelector('select[aria-label="${label}"]')`
+    const changeSelect = async (selector, value) => run(
+      `(()=>{const select=${selector};select.value=${JSON.stringify(value)};select.dispatchEvent(new Event('change',{bubbles:true}))})()`
+    )
+    await wait(`!!${traceSelector('按类别筛选')}`)
+    await changeSelect(traceSelector('按类别筛选'), 'mcp')
+    await wait(`(${activity}).parentElement.textContent.includes('mcp__files__read_file') && (${activity}).parentElement.querySelectorAll('details summary').length > 1`)
+    await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='折叠全部分组').click()`)
+    await wait(`!(${activity}).parentElement.querySelector('div[tabindex="0"] > details').open`)
+    await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='展开全部分组').click()`)
+    await wait(`(${activity}).parentElement.querySelector('div[tabindex="0"] > details').open`)
+    await changeSelect(traceSelector('按类别筛选'), 'all')
+    await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
+    await changeSelect(traceSelector('活动排序'), 'duration')
+    await wait(`(${activity}).parentElement.querySelector('div[tabindex="0"] > details').textContent.includes('notes-3.md')`)
+    await changeSelect(traceSelector('活动排序'), 'sequence')
+
     await wait(`(${activity}).parentElement.querySelectorAll('details').length === 25`)
     await wait(`(${activity}).parentElement.textContent.includes('未记录结果')`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='下一页').click()`)
