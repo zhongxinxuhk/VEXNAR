@@ -94,6 +94,10 @@ export function ExecutionTimeline({ events }: { events: ToolTraceEvent[] }): Rea
                   >
                     {t('chat.toolRelatedCall', { sequence: related })}
                   </button>
+                ) : event.relation ? (
+                  <span className="shrink-0 text-muted">
+                    {t(event.relation === 'ambiguous' ? 'chat.toolRelationAmbiguous' : 'chat.toolRelationMissing')}
+                  </span>
                 ) : null}
                 <span className="hidden shrink-0 text-muted md:inline">
                   <ToolEventTime timestamp={event.timestamp} />

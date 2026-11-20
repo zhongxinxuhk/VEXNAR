@@ -251,7 +251,7 @@ export function ToolActivity({
                             {source ? <p className="px-2 py-1 text-[11px] font-mono text-muted">{source}</p> : null}
                             <div className={source ? 'ml-2 border-l border-line-soft pl-1' : undefined}>
                               {rows.map(({ call, status }) => (
-                                <ToolCallRow key={call.id} conversationId={conversationId} call={call} status={status} />
+                                <ToolCallRow key={call.started.sequence} conversationId={conversationId} call={call} status={status} />
                               ))}
                             </div>
                           </div>
@@ -262,7 +262,7 @@ export function ToolActivity({
                 })
               ) : (
                 pageCalls.map(({ call, status }) => (
-                  <ToolCallRow key={call.id} conversationId={conversationId} call={call} status={status} />
+                  <ToolCallRow key={call.started.sequence} conversationId={conversationId} call={call} status={status} />
                 ))
               )}
             </div>

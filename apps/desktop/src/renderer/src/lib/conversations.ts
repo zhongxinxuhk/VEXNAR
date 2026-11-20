@@ -237,7 +237,7 @@ export function parseUserActivity(activity: BackendActivity): {
  */
 export function toChatMessages(activities: BackendActivity[], sessionId: string): ChatMessage[] {
   const out: ChatMessage[] = []
-  const callsById = new Map<string, ToolCall>()
+  const callsById = new Map<string, ToolCall[]>()
   let open: ChatMessage | null = null
   let turnStartedAt: number | undefined
 
@@ -309,11 +309,22 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         message.toolEvents?.push({
           ...call.started, tool: call.name, worker: item.worker, outcome: 'invoked'
         })
-        if (item.tool_use_id) callsById.set(item.tool_use_id, call)
+        if (item.tool_use_id) {
+          const candidates = callsById.get(item.tool_use_id) ?? []
+          candidates.push(call)
+          callsById.set(item.tool_use_id, candidates)
+        }
         break
       }
       case 'tool_result': {
-        const call = callsById.get(item.tool_use_id ?? '')
+        const pending = (callsById.get(item.tool_use_id ?? '') ?? []).filter((call) => !call.finished)
+        const sameWorker = pending.filter((call) => call.worker === item.worker)
+        // Prefer the recorded worker. Older records with a missing worker can
+        // only be paired when the remaining call is unambiguous.
+        const candidates = item.worker
+          ? sameWorker.length > 0 ? sameWorker : pending.filter((call) => !call.worker)
+          : pending
+        const call = candidates.length === 1 ? candidates[0] : undefined
         const event = { sequence: item.seq, timestamp: item.ts }
         const outcome = item.is_error ? 'error' : 'done'
         assistant(item).toolEvents?.push({
@@ -321,7 +332,8 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           tool: item.tool || call?.name || 'tool',
           worker: item.worker,
           outcome,
-          relatedCallSequence: call?.started.sequence
+          relatedCallSequence: call?.started.sequence,
+          relation: call ? undefined : candidates.length > 1 ? 'ambiguous' : 'unmatched'
         })
         if (call) {
           call.status = outcome

@@ -41,6 +41,7 @@ export type ToolTraceEvent = ToolCallEvent & {
   worker: string
   outcome: 'invoked' | 'done' | 'error'
   relatedCallSequence?: number
+  relation?: 'unmatched' | 'ambiguous'
 }
 
 export type ToolCall = {
@@ -52,7 +53,7 @@ export type ToolCall = {
   status: 'running' | 'done' | 'error'
 }
 
-export type ChatMessage = Message & {
+export type ChatMessage = Omit<Message, 'toolCalls'> & {
   toolCalls?: ToolCall[]
   toolEvents?: ToolTraceEvent[]
   execution?: { worker: string; model?: string; startedAt?: number; completedAt?: number; cancelled?: boolean }

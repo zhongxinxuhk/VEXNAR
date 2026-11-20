@@ -172,6 +172,23 @@ describe('toChatMessages', () => {
     expect(messages[2].toolEvents).toMatchObject([{ outcome: 'done', relatedCallSequence: undefined }])
   })
 
+  it('keeps duplicate call IDs isolated by worker and surfaces ambiguous results without guessing', () => {
+    const a = step({ kind: 'tool_use', worker: 'a', tool: 'read_file', tool_use_id: 'shared' })
+    const b = step({ kind: 'tool_use', worker: 'b', tool: 'read_file', tool_use_id: 'shared' })
+    const bResult = step({ kind: 'tool_result', worker: 'b', tool_use_id: 'shared' })
+    const wrongWorker = step({ kind: 'tool_result', worker: 'c', tool_use_id: 'shared' })
+    const aResult = step({ kind: 'tool_result', worker: '', tool_use_id: 'shared' })
+    const duplicate1 = step({ kind: 'tool_use', worker: 'a', tool_use_id: 'ambiguous' })
+    const duplicate2 = step({ kind: 'tool_use', worker: 'a', tool_use_id: 'ambiguous' })
+    const ambiguous = step({ kind: 'tool_result', worker: 'a', tool_use_id: 'ambiguous' })
+    const [message] = toChatMessages([a, b, bResult, wrongWorker, aResult, duplicate1, duplicate2, ambiguous], '1')
+    expect(message.toolEvents?.[2].relatedCallSequence).toBe(b.seq)
+    expect(message.toolEvents?.[3]).toMatchObject({ relation: 'unmatched', relatedCallSequence: undefined })
+    expect(message.toolEvents?.[4].relatedCallSequence).toBe(a.seq)
+    expect(message.toolEvents?.[7]).toMatchObject({ relation: 'ambiguous', relatedCallSequence: undefined })
+    expect(message.toolCalls?.slice(-2).every((call) => !call.finished)).toBe(true)
+  })
+
   it('retains the recorded worker and timestamps when a tool result arrives', () => {
     const call = step({ kind: 'tool_use', worker: 'reviewer', tool_use_id: 'read-1' })
     const result = step({ kind: 'tool_result', worker: 'reviewer', tool_use_id: 'read-1' })
