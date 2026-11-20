@@ -5,12 +5,12 @@
 export const REPO = 'https://github.com/zhongxinxuhk/VEXNAR';
 export const pages = [
   { id: 'index', label: '总览' },
-  { id: 'downloads', label: '下载中心', eyebrow: 'DESIGNED FOR YOUR WORKSPACE', title: '你的工作台，准备就绪。', description: '选择适合你的平台。下载链接直接指向 GitHub 正式 Release 资产。' },
-  { id: 'releases', label: '版本更新', eyebrow: 'THE CHANGELOG', title: '持续演进，步步可见。', description: '跟随每一次公开发行，了解 VEXNAR 的能力与变化。' },
-  { id: 'branches', label: '分支', eyebrow: 'DEVELOPMENT BRANCHES', title: '看见开发的每一条路径。', description: '从默认分支到功能分支，探索项目正在发生的变化。' },
-  { id: 'commits', label: '提交记录', eyebrow: 'A RECORD OF PROGRESS', title: '每一次提交，都是向前。', description: '阅读默认分支的真实提交，追踪项目的细节与进展。' },
-  { id: 'contributors', label: '合作者', eyebrow: 'BUILT TOGETHER', title: '由每一份贡献，连接而成。', description: '感谢参与代码建设的开源贡献者，让安全探索的工具持续变好。' },
-  { id: 'credits', label: '开源致谢', eyebrow: 'OPEN SOURCE CREDITS', title: '让每一份贡献，被看见。', description: '致谢 VEXNAR 使用、参考与借鉴的开源项目，以及持续创造的作者与社区。' }
+  { id: 'downloads', label: '下载中心', title: '下载 VEXNAR', description: '选择平台，查看公开发行包与安装方式。' },
+  { id: 'releases', label: '版本更新', title: '版本与更新', description: '公开发行记录、版本说明与预发布信息。' },
+  { id: 'branches', label: '分支', title: '开发分支', description: '查看公开分支、默认分支与对应的提交历史。' },
+  { id: 'commits', label: '提交记录', title: '代码提交', description: '默认分支最近的公开变更，支持按说明、作者或 SHA 检索。' },
+  { id: 'contributors', label: '合作者', title: '项目合作者', description: '参与 VEXNAR 代码建设的开源贡献者。' },
+  { id: 'credits', label: '开源致谢', title: '开源致谢', description: 'VEXNAR 使用的开源软件，以及开发过程中参考的项目。' }
 ];
 export function pageFromPath(path) {
   const file = path.split('/').filter(Boolean).at(-1) || 'index';

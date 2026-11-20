@@ -44,18 +44,18 @@ export default function Architecture() {
     document.getElementById(`tab-${architectures[next].id}`).focus();
   }
   return <section id="architecture" className="architecture-section section reveal">
-    <div className="section-heading"><div><div className="eyebrow">ENGINEERING, MADE VISIBLE</div><h2>深入内核，<span className="gradient">看见设计。</span></h2></div><p>四张架构图，读懂一条探索链路。<br />选择节点，沿着源码理解每个设计决策。</p></div>
+    <div className="section-heading"><div><div className="eyebrow">技术架构</div><h2>系统如何运行。</h2></div><p>系统、缓存、工具与双图的实现关系。<br />选择节点查看说明及源码。</p></div>
     <div className="architecture-tabs" role="tablist" aria-label="技术架构图">
-      {architectures.map((item, index) => <button key={item.id} role="tab" id={`tab-${item.id}`} aria-selected={viewId === item.id} aria-controls="architecture-panel" tabIndex={viewId === item.id ? 0 : -1} onClick={() => chooseView(item.id)} onKeyDown={event => tabKeys(event, index)}><span>{item.label}</span><small>{item.eyebrow}</small></button>)}
+      {architectures.map((item, index) => <button key={item.id} role="tab" id={`tab-${item.id}`} aria-selected={viewId === item.id} aria-controls="architecture-panel" tabIndex={viewId === item.id ? 0 : -1} onClick={() => chooseView(item.id)} onKeyDown={event => tabKeys(event, index)}><span>{item.label}</span></button>)}
     </div>
     <div id="architecture-panel" className="architecture-panel" role="tabpanel" aria-labelledby={`tab-${viewId}`}>
-      <div className="diagram-heading"><div><h3>{view.title}</h3><p>{view.description}</p></div><button className={`tour-button ${playing ? 'playing' : ''}`} onClick={() => setPlaying(!playing)} aria-pressed={playing}>{playing ? '暂停导览' : '播放设计导览'}</button></div>
+      <div className="diagram-heading"><div><h3>{view.title}</h3><p>{view.description}</p></div><button className={`tour-button ${playing ? 'playing' : ''}`} onClick={() => setPlaying(!playing)} aria-pressed={playing}>{playing ? '暂停浏览' : '逐步浏览'}</button></div>
       <div className="diagram-layout">
         <div className="diagram-scroll" tabIndex="0" role="region" aria-label={`${view.label}节点图，可横向滚动`}>
           <div className="diagram-board" key={view.id}>
             <div className="diagram-grid" aria-hidden="true" />
             <svg viewBox="0 0 1000 530" className="diagram-lines" aria-hidden="true">
-              <defs><marker id={`head-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#5d7c9d" /></marker><marker id={`lit-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#80e5ff" /></marker></defs>
+              <defs><marker id={`head-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#9aa9bd" /></marker><marker id={`lit-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#315cc9" /></marker></defs>
               {view.edges.map(([from, to]) => {
                 const a = view.nodes.find(n => n.id === from), b = view.nodes.find(n => n.id === to);
                 const lit = from === selected.id || to === selected.id;
@@ -66,7 +66,7 @@ export default function Architecture() {
           </div>
         </div>
         <aside className="diagram-detail" aria-live={playing ? 'off' : 'polite'} aria-atomic="true">
-          <div className="eyebrow">DESIGN INSIGHT</div><h4>{selected.label}</h4><p>{selected.detail}</p><div className="detail-tags">{selected.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
+          <div className="eyebrow">节点说明</div><h4>{selected.label}</h4><p>{selected.detail}</p><div className="detail-tags">{selected.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
           <a className="source-link" href={`${REPO}/blob/${sourceRevision}/${selected.source}#L${selected.line}`} target="_blank" rel="noopener noreferrer"><span>查看实现源码</span><code>{selected.source}:{selected.line}</code></a>
         </aside>
       </div>

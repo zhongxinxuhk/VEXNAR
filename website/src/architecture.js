@@ -6,7 +6,7 @@ export const sourceRevision = 'c33874497a672f08276fb8e842139df0f66bdffa';
 const node = (id, label, subtitle, x, y, detail, source, line = 1, tags = []) => ({ id, label, subtitle, x, y, detail, source, line, tags });
 export const architectures = [
   {
-    id: 'system', label: '系统架构', eyebrow: 'SYSTEM ARCHITECTURE', title: '一个 Go 内核，连接完整探索流程。',
+    id: 'system', label: '系统架构', eyebrow: 'SYSTEM ARCHITECTURE', title: 'Go 服务端与任务编排',
     description: '客户端负责呈现与控制。任务生命周期、模型配置、Agent 编排和双图真值由 Go 服务与 PostgreSQL 承载。',
     nodes: [
       node('client', 'Web 工作台', '展示 · 控制 · 人在环路', 60, 45, 'Next.js 静态界面经 Go 内嵌提供，使用 HTTP API 与 SSE 观察任务，并通过对话与审批介入流程。', 'README.md', 335, ['HTTP', 'SSE']),
@@ -23,7 +23,7 @@ export const architectures = [
     sequence: ['client', 'api', 'engine', 'planner', 'worker', 'exploration', 'assets']
   },
   {
-    id: 'cache', label: '缓存设计', eyebrow: 'CACHE & CONTEXT', title: '复用有边界，失效有依据。',
+    id: 'cache', label: '缓存设计', eyebrow: 'CACHE & CONTEXT', title: '缓存与上下文复用策略',
     description: '不同数据采用不同复用策略。配置变更、快照身份、内容版本与 TTL 分别决定何时复用、何时重建。',
     nodes: [
       node('request', '服务端请求', '按数据用途选择策略', 60, 220, '按数据语义进入相应的复用路径。这里展示代码中的几种机制，不代表每次请求都会经过所有缓存。', 'server/server.go', 562, ['按用途分流']),
@@ -38,7 +38,7 @@ export const architectures = [
     sequence: ['request', 'provider', 'mcp', 'snapshot', 'digest', 'release', 'result']
   },
   {
-    id: 'tools', label: '工具调用', eyebrow: 'TOOL EXECUTION PIPELINE', title: '从一个工具意图，到一份可复核证据。',
+    id: 'tools', label: '工具调用', eyebrow: 'TOOL EXECUTION PIPELINE', title: '工具调用与结果写回',
     description: '工具装配、运行前审查、执行与结果写回各有职责。点击节点，查看链路中的约束与实现。',
     nodes: [
       node('intent', '任务意图', 'Planner 规划 / Worker 领取', 60, 45, 'Worker 以任务图中的意图为上下文执行；工具能力由当前 Agent 的配置与可见性决定。', 'agent/tools.go', 56, ['Task context']),
@@ -55,7 +55,7 @@ export const architectures = [
     sequence: ['intent', 'catalog', 'deferred', 'guard', 'approval', 'execute', 'evidence', 'verify', 'feedback']
   },
   {
-    id: 'graphs', label: '双图关联', eyebrow: 'DUAL GRAPH INTELLIGENCE', title: '把正在探索的方向，锚定到真实资产。',
+    id: 'graphs', label: '双图关联', eyebrow: 'DUAL GRAPH INTELLIGENCE', title: '探索图与资产图的关联',
     description: '探索图回答任务怎样推进；资产图回答对象是什么。锚点建立关联，保留从意图到事实、从发现到资产的来源。',
     nodes: [
       node('goal', 'Goal', '目标', 60, 45, '用户目标进入任务探索图，作为后续意图与事实的上下文。', 'README.md', 395, ['Exploration graph']),
