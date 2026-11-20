@@ -105,6 +105,56 @@ function NavArrow({
   )
 }
 
+/** 右侧面板左缘把手：左拖变宽、右拖变窄（280–720）。 */
+export function PanelResizeHandle(): React.JSX.Element {
+  const width = useAppStore((state) => state.panelWidth)
+  const setPanelWidth = useAppStore((state) => state.setPanelWidth)
+  return (
+    <div
+      role="separator"
+      aria-label="调整右侧面板宽度"
+      aria-orientation="vertical"
+      aria-valuenow={width}
+      aria-valuemin={280}
+      aria-valuemax={720}
+      tabIndex={0}
+      onDoubleClick={() => setPanelWidth(360)}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          setPanelWidth(width + 16)
+        }
+        if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          setPanelWidth(width - 16)
+        }
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault()
+        const target = event.currentTarget
+        const start = event.clientX
+        const startWidth = width
+        target.setPointerCapture(event.pointerId)
+        const move = (e: PointerEvent): void =>
+          setPanelWidth(startWidth - (e.clientX - start))
+        const done = (): void => {
+          target.removeEventListener('pointermove', move)
+          target.removeEventListener('pointerup', done)
+          target.removeEventListener('pointercancel', done)
+        }
+        target.addEventListener('pointermove', move)
+        target.addEventListener('pointerup', done)
+        target.addEventListener('pointercancel', done)
+      }}
+      className={cn(
+        'no-drag relative z-30 -mx-[3px] w-[6px] shrink-0 cursor-col-resize touch-none outline-none',
+        'before:absolute before:inset-y-0 before:left-1/2 before:w-[2px] before:-translate-x-1/2',
+        'before:bg-transparent hover:before:bg-ink/15 focus-visible:before:bg-accent'
+      )}
+    />
+  )
+}
+
 export function SidebarResizeHandle(): React.JSX.Element {
   const width = useLayout((state) => state.sidebarWidth)
   const setWidth = useLayout((state) => state.setWidth)
