@@ -13,10 +13,12 @@ import { Client } from 'pg'
 
 const PG_USER = 'vexnar'
 const PG_DATABASE = 'vexnar'
+const PG_BACKEND_DATABASE = 'vexnar_backend'
 const READY_TIMEOUT_MS = 30_000
 
 export type PostgresRuntime = {
   dsn: string
+  backendDsn: string
   port: number
   external: boolean
   stop: () => Promise<void>
@@ -199,6 +201,24 @@ async function waitReady(
   throw new Error(`postgres 在 ${READY_TIMEOUT_MS / 1000} 秒内未就绪: ${lastError}`)
 }
 
+async function ensureBackendDatabase(dsn: string): Promise<string> {
+  const url = new URL(dsn)
+  url.pathname = `/${PG_BACKEND_DATABASE}`
+  const client = new Client({ connectionString: dsn, connectionTimeoutMillis: 3000 })
+  await client.connect()
+  try {
+    const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+      PG_BACKEND_DATABASE
+    ])
+    if (result.rowCount === 0) {
+      await client.query(`CREATE DATABASE "${PG_BACKEND_DATABASE}"`)
+    }
+  } finally {
+    await client.end()
+  }
+  return url.toString()
+}
+
 async function ensureDatabase(port: number, password: string): Promise<void> {
   const client = new Client({
     host: '127.0.0.1',
@@ -233,6 +253,7 @@ export async function startPortablePostgres(): Promise<PostgresRuntime> {
     console.log('[pg] using VEXNAR_PG_DSN')
     return {
       dsn: externalDsn,
+      backendDsn: await ensureBackendDatabase(externalDsn),
       port: 0,
       external: true,
       stop: async () => undefined
@@ -311,6 +332,7 @@ export async function startPortablePostgres(): Promise<PostgresRuntime> {
 
   const runtime: PostgresRuntime = {
     dsn: `postgres://${PG_USER}:${encodeURIComponent(password)}@127.0.0.1:${port}/${PG_DATABASE}?sslmode=disable`,
+    backendDsn: '',
     port,
     external: false,
     stop: async () => {
@@ -344,6 +366,7 @@ export async function startPortablePostgres(): Promise<PostgresRuntime> {
       return exited
     })
     await ensureDatabase(port, password)
+    runtime.backendDsn = await ensureBackendDatabase(runtime.dsn)
     process.env.VEXNAR_PG_DSN = runtime.dsn
     console.log(`[pg] portable PostgreSQL ready on 127.0.0.1:${port}`)
     return runtime

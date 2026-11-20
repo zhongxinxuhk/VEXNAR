@@ -47,8 +47,9 @@ type Server struct {
 	engine *Engine
 	ctx    context.Context
 
-	skillDir string // root directory for skill subdirectories
-	jwtKey   []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
+	skillDir     string // root directory for skill subdirectories
+	jwtKey       []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
+	desktopToken string // loopback-only bearer token for the Electron sidecar gateway
 
 	// concMu serializes concurrency-cap decisions (admission + reconcile) so a
 	// scheduler tick and an HTTP settings change / task creation can't both count
@@ -149,7 +150,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 	if err != nil {
 		log.Fatalf("[auth] JWT key: %v", err)
 	}
-	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, jwtKey: key, chatBusy: map[string]bool{},
+	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, jwtKey: key, desktopToken: strings.TrimSpace(os.Getenv("VEXNAR_DESKTOP_TOKEN")), chatBusy: map[string]bool{},
 		chatCancel: map[string]context.CancelCauseFunc{}, triggerQ: map[string][]triggeredRun{},
 		triggerActive: map[string]int{}, triggerCfg: map[string]triggerBehavior{},
 		profChatAgents: map[int64]*agent.ChatAgent{},
@@ -745,6 +746,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/llm", s.getLLM)
 	mux.HandleFunc("POST /api/llm", s.setLLM)
 	mux.HandleFunc("POST /api/llm/test", s.testLLM)
+
+	// Loopback gateway used by the bundled Electron app. These routes are
+	// authenticated with VEXNAR_DESKTOP_TOKEN instead of the browser JWT;
+	// requireAuth rejects them when no desktop token was configured.
+	mux.HandleFunc("GET /api/desktop/preferences", s.desktopGetPreferences)
+	mux.HandleFunc("PUT /api/desktop/preferences", s.desktopPutPreferences)
+	mux.HandleFunc("GET /api/desktop/llm", s.desktopGetLLM)
+	mux.HandleFunc("POST /api/desktop/llm/configure", s.desktopConfigureLLM)
+	mux.HandleFunc("GET /api/desktop/llm/models", s.desktopListModels)
+	mux.HandleFunc("GET /api/desktop/llm/key", s.desktopGetLLMKey)
+	mux.HandleFunc("POST /api/desktop/llm/clear", s.desktopClearLLM)
+	mux.HandleFunc("GET /api/desktop/openai/v1/models", s.desktopListModels)
+	mux.HandleFunc("POST /api/desktop/openai/v1/chat/completions", s.desktopChatProxy)
 
 	// asset system
 	mux.HandleFunc("GET /api/assets", s.listAssets)

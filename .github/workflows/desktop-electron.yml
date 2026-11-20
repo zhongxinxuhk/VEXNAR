@@ -82,6 +82,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -115,14 +121,55 @@ jobs:
         working-directory: apps/desktop
         run: npm ci
 
+      - name: Set desktop version from release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e 'const v=process.env.RELEASE_TAG.replace(/^v/, ""); if (!/^\d+\.\d+\.\d+$/.test(v)) throw new Error("Desktop releases require a stable vX.Y.Z tag")'
+          npm version "${RELEASE_TAG#v}" --no-git-tag-version --allow-same-version
+
+      - name: Validate macOS release signing
+        if: matrix.platform == 'mac' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          test -n "$CSC_LINK" && test -n "$CSC_KEY_PASSWORD" || {
+            echo "macOS automatic updates require a signed release; configure CSC_LINK and CSC_KEY_PASSWORD."
+            exit 1
+          }
+
+      - name: Validate contracts and lifecycle
+        working-directory: apps/desktop
+        run: npm run typecheck && npm test
+
       - name: Build renderer/main
         working-directory: apps/desktop
         run: npm run build
 
+      - name: Build Go sidecar
+        working-directory: apps/desktop
+        shell: bash
+        run: npm run backend:prepare
+
       - name: Package macOS
         if: matrix.platform == 'mac'
         working-directory: apps/desktop
-        run: npx electron-builder --mac --arm64 --publish never
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npx electron-builder --mac --arm64 --publish never --config.forceCodeSigning=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Smoke packaged macOS app and Go settings
+        if: matrix.platform == 'mac'
+        working-directory: apps/desktop
+        env:
+          VEXNAR_SMOKE: "1"
+        run: release/mac-arm64/VEXNAR.app/Contents/MacOS/VEXNAR
 
       - name: Package Linux
         if: matrix.platform == 'linux'
@@ -142,4 +189,36 @@ jobs:
             apps/desktop/release/*.zip
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.exe
+            apps/desktop/release/latest*.yml
+            apps/desktop/release/*.blockmap
           retention-days: 14
+
+  publish:
+    name: publish-desktop-update
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vexnar-desktop-*
+          merge-multiple: true
+          path: desktop-release
+      - name: Verify complete update feed
+        shell: bash
+        run: |
+          test -f desktop-release/latest-mac.yml
+          test -f desktop-release/latest-linux.yml
+          test -f desktop-release/latest.yml
+      - uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            desktop-release/*.dmg
+            desktop-release/*.zip
+            desktop-release/*.AppImage
+            desktop-release/*.exe
+            desktop-release/*.yml
+            desktop-release/*.blockmap

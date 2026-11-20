@@ -15,6 +15,10 @@ extraResources:
     to: agent-runtime
   - from: resources/pg
     to: pg
+  - from: resources/vexnar
+    to: vexnar
+  - from: resources/skills
+    to: skills
 asar: true
 asarUnpack:
   - node_modules/node-pty/**
@@ -28,7 +32,6 @@ mac:
     - target: zip
       arch:
         - arm64
-  identity: null
   hardenedRuntime: false
   gatekeeperAssess: false
   icon: build/icon.icns
@@ -44,3 +47,10 @@ win:
   target:
     - nsis
   icon: build/icon.ico
+
+# Stable updates are read only from this repository.
+publish:
+  provider: github
+  owner: zhongxinxuhk
+  repo: VEXNAR
+  releaseType: release

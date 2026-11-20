@@ -55,13 +55,14 @@ export function ProfileAvatar({
 }: {
   name: string
   color: AvatarColor
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }): React.JSX.Element {
   const sizes = {
     sm: 'h-7 w-7 text-[10px]',
     md: 'h-8 w-8 text-[11px]',
-    lg: 'h-12 w-12 text-[16px]'
+    lg: 'h-12 w-12 text-[16px]',
+    xl: 'h-28 w-28 text-[34px]'
   }
   return (
     <span
@@ -120,7 +121,7 @@ function ShortcutRow({ keys, label }: { keys: string; label: string }): React.JS
   )
 }
 
-function ProfileDialog({
+export function ProfileDialog({
   open,
   onOpenChange
 }: {
@@ -346,8 +347,9 @@ export function ProfileMenu(): React.JSX.Element {
   const info = useAppStore((state) => state.info)
   const openSettings = useAppStore((state) => state.openSettings)
   const setRightTab = useAppStore((state) => state.setRightTab)
+  const setView = useAppStore((state) => state.setView)
   const logout = useAppStore((state) => state.logout)
-  const [dialog, setDialog] = useState<'profile' | 'help' | 'logout' | null>(null)
+  const [dialog, setDialog] = useState<'help' | 'logout' | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
 
@@ -433,7 +435,7 @@ export function ProfileMenu(): React.JSX.Element {
             <MenuRow
               icon={<CircleUserRound className="h-4 w-4" strokeWidth={1.8} />}
               label={t('profile.profile')}
-              onSelect={() => setDialog('profile')}
+              onSelect={() => setView('profile')}
             />
             <MenuRow
               icon={<Settings className="h-4 w-4" strokeWidth={1.8} />}
@@ -460,10 +462,6 @@ export function ProfileMenu(): React.JSX.Element {
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
 
-      <ProfileDialog
-        open={dialog === 'profile'}
-        onOpenChange={(open) => setDialog(open ? 'profile' : null)}
-      />
       <HelpDialog
         open={dialog === 'help'}
         onOpenChange={(open) => setDialog(open ? 'help' : null)}

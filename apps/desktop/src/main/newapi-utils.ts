@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type {
+  NewApiAccessToken,
   NewApiAuthMethods,
   NewApiAuthProvider,
   NewApiQuota,
   NewApiToken,
+  NewApiUsageRecord,
 } from "@shared/contracts";
 
 export type TokenRecord = {
@@ -244,4 +246,113 @@ export function isAuthBundle(value: unknown): value is {
   if (!value || typeof value !== "object") return false;
   const token = (value as { access_token?: unknown }).access_token;
   return typeof token === "string" && token.length > 0;
+}
+
+function toNumber(value: unknown): number {
+  const num = Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+}
+
+/**
+ * NewAPI 的 /api/log/self 在不同版本下返回 data 数组或 data.items 数组，
+ * 这里两种都接受；结构不符（例如平台未开放日志接口）时返回 null。
+ */
+export function logItemsFromPayload(payload: unknown): unknown[] | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as { success?: unknown; data?: unknown };
+  if (record.success === false) return null;
+  const data = record.data;
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object") {
+    const items = (data as { items?: unknown }).items;
+    if (Array.isArray(items)) return items;
+  }
+  return null;
+}
+
+/** 把一行消费日志映射成本地统计需要的字段；时间统一成毫秒。 */
+export function toUsageRecord(item: unknown): NewApiUsageRecord | null {
+  if (!item || typeof item !== "object") return null;
+  const record = item as Record<string, unknown>;
+  const raw = toNumber(record.created_at);
+  if (raw <= 0) return null;
+  return {
+    at: raw < 1e12 ? raw * 1000 : raw,
+    model: typeof record.model_name === "string" ? record.model_name : "",
+    promptTokens: Math.max(0, Math.trunc(toNumber(record.prompt_tokens))),
+    completionTokens: Math.max(0, Math.trunc(toNumber(record.completion_tokens))),
+    quota: toNumber(record.quota),
+  };
+}
+
+/** 访问令牌列表：NewAPI 返回 data.items[]。 */
+export function accessTokenItemsFromPayload(payload: unknown): unknown[] | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as { success?: unknown; data?: unknown };
+  if (record.success === false) return null;
+  const data = record.data;
+  if (!data || typeof data !== "object") return null;
+  const items = (data as { items?: unknown }).items;
+  return Array.isArray(items) ? items : null;
+}
+
+export function toAccessToken(item: unknown): NewApiAccessToken | null {
+  if (!item || typeof item !== "object") return null;
+  const record = item as Record<string, unknown>;
+  const id = Number(record.id ?? 0);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const scopes = Array.isArray(record.scopes)
+    ? record.scopes.filter((scope): scope is string => typeof scope === "string")
+    : [];
+  return {
+    id,
+    name: typeof record.name === "string" ? record.name : "",
+    scopes,
+    expiresAt: toNumber(record.expires_at),
+    createdAt: toNumber(record.created_at),
+  };
+}
+
+/**
+ * 权限目录 → scope 列表。目录结构：
+ * data.groups[].resources[].actions[].action，scope = `${resource}:${action}`。
+ * 这等价于创建对话框里的「全选」。
+ */
+export function accessTokenScopesFromCatalog(payload: unknown): string[] {
+  const data = (payload as { data?: unknown } | null)?.data;
+  const groups = (data as { groups?: unknown } | null)?.groups;
+  if (!Array.isArray(groups)) return [];
+  const scopes = new Set<string>();
+  for (const group of groups) {
+    const resources = (group as { resources?: unknown } | null)?.resources;
+    if (!Array.isArray(resources)) continue;
+    for (const resource of resources) {
+      const name = (resource as { resource?: unknown } | null)?.resource;
+      const actions = (resource as { actions?: unknown } | null)?.actions;
+      if (typeof name !== "string" || !name || !Array.isArray(actions)) continue;
+      for (const action of actions) {
+        const value = (action as { action?: unknown } | null)?.action;
+        if (typeof value === "string" && value) scopes.add(`${name}:${value}`);
+      }
+    }
+  }
+  return Array.from(scopes).sort();
+}
+
+/** 验证方式列表 → 是否有可用密码验证。 */
+export function hasPasswordProofMethod(payload: unknown): boolean {
+  const data = (payload as { data?: unknown } | null)?.data;
+  const methods = (data as { methods?: unknown } | null)?.methods;
+  if (!Array.isArray(methods)) return false;
+  return methods.some((item) => {
+    const record = item as { method?: unknown; available?: unknown } | null;
+    return record?.method === "password" && record?.available !== false;
+  });
+}
+
+/** /api/verify 返回的 proof_token。 */
+export function proofTokenFromPayload(payload: unknown): string {
+  const data = (payload as { data?: unknown } | null)?.data;
+  const token = (data as { proof_token?: unknown } | null)?.proof_token;
+  return typeof token === "string" ? token : "";
 }

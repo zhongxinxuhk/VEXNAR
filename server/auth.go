@@ -128,6 +128,17 @@ func (s *Server) requireAuth(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 			return
 		}
+		// The Electron sidecar gateway uses a random per-launch loopback token,
+		// never the browser JWT. An empty token disables the bypass, so a normal
+		// server deployment still requires user auth for every route.
+		if s.desktopAuthorized(r) {
+			h.ServeHTTP(w, r)
+			return
+		}
+		if strings.HasPrefix(p, "/api/desktop/") {
+			writeErr(w, 401, "桌面端令牌无效")
+			return
+		}
 		tok := extractToken(r)
 		if tok == "" {
 			writeErr(w, 401, "未授权")

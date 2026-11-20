@@ -12,3 +12,5 @@ dist/
 
 resources/pg/*
 !resources/pg/.keep
+resources/vexnar/
+resources/skills/

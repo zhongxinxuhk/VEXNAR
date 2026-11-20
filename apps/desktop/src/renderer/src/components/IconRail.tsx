@@ -23,8 +23,10 @@ import {
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { useAppStore, type AppView } from '@/store/app'
+import { useLayout } from '@/store/layout'
 import { cn } from '@/lib/utils'
 import { ProfileMenu } from '@/components/ProfileMenu'
+import { UpdateNotice } from '@/components/UpdateNotice'
 import { QuotaMenu } from '@/components/QuotaMenu'
 import { Tooltip } from '@/components/ui'
 
@@ -65,19 +67,13 @@ function RailButton({
 export function IconRail(): React.JSX.Element {
   const t = useT()
   const view = useAppStore((state) => state.view)
+  // 侧栏收起时图标栏与内容区同色，避免左侧留一条灰带
+  const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const setView = useAppStore((state) => state.setView)
-  const sessions = useAppStore((state) => state.sessions)
-  const activeSessionId = useAppStore((state) => state.activeSessionId)
-  const selectSession = useAppStore((state) => state.selectSession)
-  const newSession = useAppStore((state) => state.newSession)
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
-  const info = useAppStore((state) => state.info)
 
-  const mac =
-    (info?.platform ?? (navigator.userAgent.includes('Mac') ? 'darwin' : '')) === 'darwin'
-  const recent = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 8)
   const consoleItems: Array<{ id: AppView; label: string; icon: typeof LayoutDashboard }> = [
     { id: 'overview', label: t('nav.overview'), icon: LayoutDashboard },
     { id: 'tasks', label: t('nav.tasks'), icon: Target },
@@ -88,10 +84,18 @@ export function IconRail(): React.JSX.Element {
   ]
 
   return (
-    <aside className="relative z-20 flex w-[56px] shrink-0 flex-col items-center border-r border-line-soft bg-panel">
+    <aside
+      className={cn(
+        'relative z-20 flex w-[52px] shrink-0 flex-col items-center transition-colors duration-200',
+        sidebarOpen ? 'bg-panel' : 'bg-bg',
+        // 展开时与 ChatGPT 一致：图标栏与侧栏之间有一条 1px 分隔线；收起后通铺无线
+        sidebarOpen &&
+          'before:absolute before:bottom-0 before:right-0 before:top-2 before:w-px before:bg-line'
+      )}
+    >
       <div
         className="drag-region w-full shrink-0"
-        style={{ height: mac ? 51 : 8 }}
+        style={{ height: 8 }}
       />
 
       <nav className="flex flex-col items-center gap-1.5">
@@ -107,48 +111,13 @@ export function IconRail(): React.JSX.Element {
           <SquareCheckBig className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>
 
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button
-              type="button"
-              aria-label={t('rail.recent')}
-              className="no-drag grid h-8 w-8 place-items-center rounded-[9px] text-muted transition-colors hover:bg-panel-3/70 hover:text-ink"
-            >
-              <Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content side="right" align="start" sideOffset={10} className={menuContent}>
-              <div className={menuLabel}>{t('rail.recent')}</div>
-              {recent.length === 0 ? (
-                <div className="px-2.5 py-2 text-[12px] text-muted">{t('app.noChats')}</div>
-              ) : (
-                recent.map((session) => (
-                  <DropdownMenu.Item
-                    key={session.id}
-                    className={cn(menuItem, session.id === activeSessionId && 'bg-panel-2 text-ink')}
-                    onSelect={() => {
-                      setView('chat')
-                      void selectSession(session.id)
-                    }}
-                  >
-                    <span className="truncate">{session.title}</span>
-                  </DropdownMenu.Item>
-                ))
-              )}
-              <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-              <DropdownMenu.Item
-                className={menuItem}
-                onSelect={() => {
-                  setView('chat')
-                  void newSession()
-                }}
-              >
-                {t('app.newChat')}
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <RailButton
+          label="定时任务"
+          active={view === 'schedules'}
+          onClick={() => setView('schedules')}
+        >
+          <Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />
+        </RailButton>
 
         <RailButton
           label={t('rail.docs')}
@@ -225,6 +194,7 @@ export function IconRail(): React.JSX.Element {
       </nav>
 
       <div className="mt-auto flex flex-col items-center gap-3 pb-3">
+        <UpdateNotice />
         <QuotaMenu />
         <ProfileMenu />
       </div>

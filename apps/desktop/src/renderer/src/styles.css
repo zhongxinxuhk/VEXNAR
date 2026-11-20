@@ -113,14 +113,47 @@ button {
 
 .rail-active,
 .rail-active:hover {
-  background: #2b2d31;
-  color: #ffffff;
+  background: #ececee;
+  color: #1f2023;
 }
 
 [data-theme='dark'] .rail-active,
 [data-theme='dark'] .rail-active:hover {
   background: #3a3b40;
   color: #ffffff;
+}
+
+/*
+ * 输入框左右内边距按黄金比例分配：左 16px : 右 26px ≈ 1 : 1.618 (φ)。
+ * 输入区、工具栏、附件区、错误提示共用同一条内边距，避免左右基线漂移。
+ */
+.composer-inset-x {
+  padding-left: 16px;
+  padding-right: 26px;
+}
+
+/*
+ * Token 活动热力图（GitHub / ChatGPT 风格）的 5 档强度。
+ * 用 color-mix 基于主题色生成，亮/暗主题自动跟随。
+ */
+.heat-0 {
+  background: color-mix(in srgb, var(--color-line) 55%, var(--color-bg));
+}
+
+.heat-1 {
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg));
+}
+
+.heat-2 {
+  background: color-mix(in srgb, var(--color-accent) 38%, var(--color-bg));
+}
+
+.heat-3 {
+  background: color-mix(in srgb, var(--color-accent) 66%, var(--color-bg));
+}
+
+.heat-4 {
+  background: var(--color-accent);
 }
 
 .codex-composer-shadow {
@@ -205,3 +238,99 @@ button {
 .stream-caret {
   animation: codex-blink 1s steps(1) infinite;
 }
+/*
+ * 液态玻璃顶栏：两层玻璃叠加做「渐进模糊」——
+ * 内层短半径、偏实的模糊负责顶栏本身；外层长尾、弱模糊把边缘化开，
+ * 两层都用多段 mask 做近似高斯衰减，避免出现一条被切断的硬边。
+ * 玻璃层放 z-index:-1，不遮住工具条里的图标和文字。
+ */
+.chat-glass {
+  background: transparent;
+}
+
+.chat-glass::before,
+.chat-glass::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.chat-glass::before {
+  /* 主玻璃：覆盖顶栏并向下延伸 4px */
+  inset: 0 0 -4px 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-bg) 90%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg) 70%, transparent) 40%,
+    color-mix(in srgb, var(--color-bg) 30%, transparent) 72%,
+    color-mix(in srgb, var(--color-bg) 6%, transparent) 90%,
+    transparent 100%
+  );
+  -webkit-backdrop-filter: blur(16px) saturate(175%);
+  backdrop-filter: blur(16px) saturate(175%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 26%,
+    rgba(0, 0, 0, 0.88) 40%,
+    rgba(0, 0, 0, 0.6) 55%,
+    rgba(0, 0, 0, 0.3) 70%,
+    rgba(0, 0, 0, 0.08) 85%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 26%,
+    rgba(0, 0, 0, 0.88) 40%,
+    rgba(0, 0, 0, 0.6) 55%,
+    rgba(0, 0, 0, 0.3) 70%,
+    rgba(0, 0, 0, 0.08) 85%,
+    transparent 100%
+  );
+}
+
+.chat-glass::after {
+  /* 长尾柔光：向下多拖 10px 收尾，总过渡与 ChatGPT 相当 */
+  inset: 0 0 -10px 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-bg) 55%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg) 18%, transparent) 62%,
+    transparent 100%
+  );
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.5) 52%,
+    rgba(0, 0, 0, 0.16) 80%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    rgba(0, 0, 0, 0.5) 52%,
+    rgba(0, 0, 0, 0.16) 80%,
+    transparent 100%
+  );
+}
+
+/* 侧栏收起/展开：宽度与透明度同步过渡，内部宽度固定不回流 */
+.sidebar-shell {
+  overflow: hidden;
+  /* 只过渡宽度：淡出会让侧栏文字半透明地叠在内容上，出现重影 */
+  transition: width 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: width;
+}
+
+.sidebar-shell[data-open='false'] {
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    width 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 240ms;
+}
+

@@ -114,3 +114,12 @@ describe("HXSEC API login contracts", () => {
     expect(state.verificationMethods).toEqual(["2fa"]);
   });
 });
+
+describe('image message contracts', () => {
+  const image = { id: 'image', name: 'pasted.png', dataUrl: 'data:image/png;base64,aGVsbG8=' }
+  it('accepts image-only messages and rejects unsupported or oversized attachments', () => {
+    expect(messageAppendSchema.safeParse({ sessionId: 's', role: 'user', content: '', attachments: [image] }).success).toBe(true)
+    expect(messageAppendSchema.safeParse({ sessionId: 's', role: 'user', content: '', attachments: [{ ...image, dataUrl: 'data:image/svg+xml;base64,aGVsbG8=' }] }).success).toBe(false)
+    expect(messageAppendSchema.safeParse({ sessionId: 's', role: 'user', content: '', attachments: Array(7).fill(image) }).success).toBe(false)
+  })
+})

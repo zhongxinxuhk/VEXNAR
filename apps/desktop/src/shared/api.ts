@@ -19,6 +19,7 @@ import type {
   NewApiExternalAuthInput,
   NewApiLoginInput,
   NewApiState,
+  NewApiUsage,
   NewApiVerifyInput,
   PublicSettings,
   Session,
@@ -36,7 +37,28 @@ import type {
 
 export type Unsubscribe = () => void
 
+export type UpdateState = {
+  phase: 'idle' | 'checking' | 'available' | 'current' | 'downloading' | 'downloaded' | 'installing' | 'error' | 'disabled'
+  currentVersion: string
+  version?: string
+  notes?: string
+  publishedAt?: string
+  percent: number
+  transferred?: number
+  total?: number
+  bytesPerSecond?: number
+  checkedAt?: number
+  error?: string
+}
+
 export interface VexnarApi {
+  updates: {
+    status: () => Promise<IpcResult<UpdateState>>
+    check: () => Promise<IpcResult<UpdateState>>
+    download: () => Promise<IpcResult<UpdateState>>
+    install: () => Promise<IpcResult<UpdateState>>
+    onChange: (listener: (state: UpdateState) => void) => Unsubscribe
+  }
   app: {
     info: () => Promise<IpcResult<AppInfo>>
     copyText: (text: string) => Promise<IpcResult<{ copied: true }>>
@@ -62,6 +84,8 @@ export interface VexnarApi {
     choose: () => Promise<IpcResult<string | null>>
   }
   git: {
+    branches: () => Promise<IpcResult<string[]>>
+    createWorktree: (input: { sessionId: string; branch: string }) => Promise<IpcResult<string>>
     status: () => Promise<IpcResult<GitStatus>>
     diff: (input: GitDiffInput) => Promise<IpcResult<DiffPayload>>
   }
@@ -95,6 +119,7 @@ export interface VexnarApi {
     logout: () => Promise<IpcResult<{ loggedOut: true }>>
     copyKey: () => Promise<IpcResult<{ copied: true }>>
     openPlatform: () => Promise<IpcResult<{ opened: true }>>
+    usage: () => Promise<IpcResult<NewApiUsage>>
     onChange: (listener: (state: NewApiState) => void) => Unsubscribe
   }
 }

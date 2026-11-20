@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { contextBridge, ipcRenderer } from 'electron'
-import type { VexnarApi, Unsubscribe } from '@shared/api'
+import type { VexnarApi, Unsubscribe, UpdateState } from '@shared/api'
 import type {
   AgentEvent,
   AgentSendInput,
@@ -39,6 +39,13 @@ function subscribe<T>(channel: string, listener: (payload: T) => void): Unsubscr
 }
 
 const api: VexnarApi = {
+  updates: {
+    status: () => invoke(IPC.updateStatus),
+    check: () => invoke(IPC.updateCheck),
+    download: () => invoke(IPC.updateDownload),
+    install: () => invoke(IPC.updateInstall),
+    onChange: (listener: (state: UpdateState) => void) => subscribe(IPC.updateChanged, listener)
+  },
   app: {
     info: () => invoke(IPC.appInfo),
     copyText: (text: string) => invoke(IPC.appCopyText, text)
@@ -64,6 +71,8 @@ const api: VexnarApi = {
     choose: () => invoke(IPC.workspaceChoose)
   },
   git: {
+    branches: () => invoke(IPC.gitBranches),
+    createWorktree: (input) => invoke(IPC.gitWorktree, input),
     status: () => invoke(IPC.gitStatus),
     diff: (input: { path: string }) => invoke(IPC.gitDiff, input)
   },
@@ -98,6 +107,7 @@ const api: VexnarApi = {
     logout: () => invoke(IPC.newapiLogout),
     copyKey: () => invoke(IPC.newapiCopyKey),
     openPlatform: () => invoke(IPC.newapiOpenPlatform),
+    usage: () => invoke(IPC.newapiUsage),
     onChange: (listener: (state: NewApiState) => void) =>
       subscribe(IPC.newapiChanged, listener)
   }

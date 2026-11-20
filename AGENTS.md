@@ -27,9 +27,11 @@ clients are presentation and control surfaces, not independent model runtimes.
   explicitly, open a migration task, and remove it before the feature is considered complete.
 - Backend APIs used by clients must have stable JSON contracts and tests. The client must handle
   backend errors instead of silently falling back to a local model runtime.
-- Known migration debt: the current Electron model picker and agent runtime still contain a
-  direct relay path. Do not extend that path; move model discovery, selection and inference to
-  the Go backend before treating the desktop model integration as complete.
+- The desktop agent runtime may only receive a loopback gateway URL plus a per-launch token
+  from Electron's main process. Upstream base URLs and API keys stay inside the Go process.
+- The desktop gateway is exposed under `/api/desktop/*`, accepted only from loopback with
+  `VEXNAR_DESKTOP_TOKEN`, and must be disabled when that token is unset. It is not a substitute
+  for normal server authentication.
 
 ### Packaged app requirement
 
@@ -42,10 +44,12 @@ When embedding the backend, preserve these invariants:
 
 - No backend URL or token configuration in the renderer.
 - PostgreSQL migrations and required assets ship with the app.
+- Desktop session storage and the Go backend use separate databases (`vexnar` and
+  `vexnar_backend`). Never point the Go schema/migrations at the Electron session database.
 - Only one backend instance per app instance; port conflicts are handled deterministically.
 - Backend logs are captured and bounded; secrets never appear in renderer logs.
 - Packaging is covered by a smoke test that starts the bundled app and verifies the backend is
-  reachable through the app's own IPC boundary.
+  reachable through the app's main-process service boundary.
 
 ## Authorship, repository and license headers
 

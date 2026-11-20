@@ -50,6 +50,9 @@ export async function initDb(dsn: string): Promise<void> {
       created_at BIGINT NOT NULL
     );
 
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS tool_calls JSONB NOT NULL DEFAULT '[]'::jsonb;
     CREATE INDEX IF NOT EXISTS messages_session_created_idx
       ON messages (session_id, created_at);
 
@@ -81,6 +84,8 @@ type MessageRow = {
   session_id: string
   role: Message['role']
   content: string
+  attachments: Message['attachments']
+  tool_calls: Message['toolCalls']
   created_at: string | number
 }
 
@@ -101,6 +106,8 @@ function toMessage(row: MessageRow): Message {
     sessionId: row.session_id,
     role: row.role,
     content: row.content,
+    attachments: row.attachments ?? [],
+    toolCalls: row.tool_calls ?? [],
     createdAt: Number(row.created_at)
   }
 }
@@ -112,7 +119,9 @@ export async function listSessions(): Promise<Session[]> {
   return result.rows.map(toSession)
 }
 
-export async function createSession(input: SessionCreateInput): Promise<Session> {
+export async function createSession(
+  input: SessionCreateInput
+): Promise<Session> {
   const now = Date.now()
   const id = randomUUID()
   const result = await getPool().query<SessionRow>(
@@ -124,7 +133,10 @@ export async function createSession(input: SessionCreateInput): Promise<Session>
   return toSession(result.rows[0])
 }
 
-export async function renameSession(id: string, title: string): Promise<Session> {
+export async function renameSession(
+  id: string,
+  title: string
+): Promise<Session> {
   const result = await getPool().query<SessionRow>(
     `UPDATE sessions SET title = $2, updated_at = $3
      WHERE id = $1
@@ -135,7 +147,10 @@ export async function renameSession(id: string, title: string): Promise<Session>
   return toSession(result.rows[0])
 }
 
-export async function setSessionPinned(id: string, pinned: boolean): Promise<Session> {
+export async function setSessionPinned(
+  id: string,
+  pinned: boolean
+): Promise<Session> {
   const result = await getPool().query<SessionRow>(
     `UPDATE sessions SET pinned = $2 WHERE id = $1
      RETURNING id, title, workspace, pinned, created_at, updated_at`,
@@ -151,24 +166,34 @@ export async function removeSession(id: string): Promise<void> {
 
 export async function listMessages(sessionId: string): Promise<Message[]> {
   const result = await getPool().query<MessageRow>(
-    `SELECT id, session_id, role, content, created_at
+    `SELECT id, session_id, role, content, attachments, tool_calls, created_at
      FROM messages WHERE session_id = $1 ORDER BY created_at ASC`,
     [sessionId]
   )
   return result.rows.map(toMessage)
 }
 
-export async function appendMessage(input: MessageAppendInput): Promise<Message> {
+export async function appendMessage(
+  input: MessageAppendInput
+): Promise<Message> {
   const now = Date.now()
   const id = randomUUID()
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
     const result = await client.query<MessageRow>(
-      `INSERT INTO messages (id, session_id, role, content, created_at)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, session_id, role, content, created_at`,
-      [id, input.sessionId, input.role, input.content, now]
+      `INSERT INTO messages (id, session_id, role, content, created_at, attachments, tool_calls)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+       RETURNING id, session_id, role, content, attachments, tool_calls, created_at`,
+      [
+        id,
+        input.sessionId,
+        input.role,
+        input.content,
+        now,
+        JSON.stringify(input.attachments ?? []),
+        JSON.stringify(input.toolCalls ?? [])
+      ]
     )
     await client.query('UPDATE sessions SET updated_at = $2 WHERE id = $1', [
       input.sessionId,

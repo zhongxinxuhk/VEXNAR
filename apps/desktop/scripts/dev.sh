@@ -65,5 +65,10 @@ EOF
   exit 1
 fi
 
+if [[ ! -x "$DESKTOP/resources/vexnar/vexnar" && ! -x "$ROOT/desktop/binaries/vexnar" ]]; then
+  echo "[desktop] Go sidecar not found; building it..."
+  "$DESKTOP/scripts/prepare-backend.sh"
+fi
+
 echo "[desktop] starting Electron dev shell..."
 exec "$DESKTOP/node_modules/.bin/electron-vite" dev "$@"
