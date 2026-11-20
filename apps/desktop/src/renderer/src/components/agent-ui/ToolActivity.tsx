@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useT } from '@/lib/i18n'
+import { useI18n, useT } from '@/lib/i18n'
 import type { ToolCall, ToolTraceEvent } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { ToolCallRow, ToolEventTime, type ToolCallStatus } from './ToolCallRow'
@@ -18,6 +18,13 @@ const statusFilters = {
 } as const
 
 type StatusFilter = keyof typeof statusFilters
+
+export const executionStatusLabels = {
+  running: 'chat.executionRunning',
+  completed: 'chat.executionCompleted',
+  failed: 'chat.executionFailed',
+  unknown: 'chat.executionUnknown'
+} as const
 
 const traceEventLabels = {
   invoked: 'chat.toolInvoked',
@@ -51,13 +58,18 @@ function toolTitle(tool: ToolCall): string {
 export function ToolActivity({
   calls,
   events,
-  running
+  running,
+  executionStatus,
+  elapsedMs
 }: {
   calls: ToolCall[]
   events: ToolTraceEvent[]
   running: boolean
+  executionStatus: keyof typeof executionStatusLabels
+  elapsedMs?: number
 }): React.JSX.Element {
   const t = useT()
+  const locale = useI18n((state) => state.locale)
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(0)
   const [filter, setFilter] = useState<StatusFilter>('all')
@@ -111,9 +123,14 @@ export function ToolActivity({
         {calls.length > 0
           ? t('chat.toolActivity', { count: calls.length })
           : t('chat.toolEventCount', { count: events.length })}
+        {executionStatus !== 'unknown' ? ` · ${t(executionStatusLabels[executionStatus])}` : ''}
+        {counts.done > 0 ? ` · ${t('chat.toolDoneCount', { count: counts.done })}` : ''}
         {counts.running > 0 ? ` · ${t('chat.toolActiveCount', { count: counts.running })}` : ''}
         {counts.error > 0 ? ` · ${t('chat.toolFailedCount', { count: counts.error })}` : ''}
         {counts.unreported > 0 ? ` · ${t('chat.toolUnreportedCount', { count: counts.unreported })}` : ''}
+        {elapsedMs !== undefined ? ` · ${new Intl.NumberFormat(locale, {
+          style: 'unit', unit: 'second', maximumFractionDigits: 2
+        }).format(elapsedMs / 1000)}` : ''}
       </summary>
       {open ? (
         <>

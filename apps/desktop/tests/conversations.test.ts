@@ -90,6 +90,20 @@ describe('toChatMessages', () => {
     expect(JSON.stringify(assistant)).not.toContain('先列目录')
   })
 
+  it('derives signed-off turn duration only from the observed user and terminal events', () => {
+    const user = step({ kind: 'user', ts: '2026-11-20T10:00:00Z' })
+    const text = step({ kind: 'text', worker: 'reviewer', detail: '完成' })
+    const result = step({ kind: 'result', ts: '2026-11-20T10:00:05Z' })
+    const expected = {
+      worker: 'reviewer',
+      startedAt: Date.parse(user.ts),
+      completedAt: Date.parse(result.ts)
+    }
+    expect(toChatMessages([user, text, result], '1')[1].execution).toEqual(expected)
+    expect(toChatMessages([text, result], '1')[0].execution?.startedAt).toBeUndefined()
+    expect(toChatMessages([user, text], '1')[1].execution?.completedAt).toBeUndefined()
+  })
+
   it('preserves the assistant identity when a private reasoning row becomes an answer', () => {
     const user = step({ kind: 'user', detail: '你好' })
     const first = step({ kind: 'thinking', summary: 'private summary', detail: 'private detail' })

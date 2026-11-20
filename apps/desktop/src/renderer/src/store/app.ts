@@ -57,6 +57,7 @@ export type ToolCall = {
 export type ChatMessage = Message & {
   toolCalls?: ToolCall[]
   toolEvents?: ToolTraceEvent[]
+  execution?: { worker: string; startedAt?: number; completedAt?: number }
   streaming?: boolean
   failed?: boolean
   /** Upstream failure text for a failed turn (kept apart from any streamed text). */

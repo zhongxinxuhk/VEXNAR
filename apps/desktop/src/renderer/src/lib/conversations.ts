@@ -244,17 +244,24 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
   const out: ChatMessage[] = []
   const callsById = new Map<string, ToolCall>()
   let open: ChatMessage | null = null
+  let turnStartedAt: number | undefined
 
-  const assistant = (seq: number): ChatMessage => {
+  const observedTime = (value: string): number | undefined => {
+    const timestamp = Date.parse(value)
+    return Number.isFinite(timestamp) ? timestamp : undefined
+  }
+
+  const assistant = (item: BackendActivity): ChatMessage => {
     if (open) return open
     open = {
-      id: `a-${sessionId}-${seq}`,
+      id: `a-${sessionId}-${item.seq}`,
       sessionId,
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
       toolCalls: [],
-      toolEvents: []
+      toolEvents: [],
+      execution: { worker: item.worker, startedAt: turnStartedAt }
     }
     out.push(open)
     return open
@@ -265,6 +272,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       case 'user': {
         open = null
         callsById.clear()
+        turnStartedAt = observedTime(item.ts)
         const parsed = parseUserActivity(item)
         out.push({
           id: `u-${item.seq}`,
@@ -277,16 +285,16 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         break
       }
       case 'text': {
-        const message = assistant(item.seq)
+        const message = assistant(item)
         message.content += item.detail || item.summary
         break
       }
       case 'thinking': {
-        assistant(item.seq)
+        assistant(item)
         break
       }
       case 'tool_use': {
-        const message = assistant(item.seq)
+        const message = assistant(item)
         const call: ToolCall = {
           id: item.tool_use_id || `t-${item.seq}`,
           name: item.tool || 'tool',
@@ -306,7 +314,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         const call = callsById.get(item.tool_use_id ?? '')
         const event = { sequence: item.seq, timestamp: item.ts }
         const outcome = item.is_error ? 'error' : 'done'
-        assistant(item.seq).toolEvents?.push({
+        assistant(item).toolEvents?.push({
           ...event,
           tool: item.tool || call?.name || 'tool',
           worker: item.worker,
@@ -326,7 +334,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         // 用它当正文会在已流式的情况下多出半句话。
         const answer = item.is_error ? (item.detail || item.summary || '').trim() : (item.detail || '').trim()
         if (item.is_error) {
-          const message = assistant(item.seq)
+          const message = assistant(item)
           if (!message.content.trim()) message.content = answer
           message.failed = true
           // Keep the upstream rejection even when narration already streamed:
@@ -334,12 +342,15 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           // partial answer that happens to precede it.
           message.error = answer || message.content
         } else if (answer) {
-          const message = assistant(item.seq)
+          const message = assistant(item)
           const text = message.content.trim()
           // 中间叙述已经作为 text 步骤进了同一条消息 → 接在后面；已包含则不重复。
           if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
         }
+        const completed = out[out.length - 1]
+        if (open && completed?.execution) completed.execution.completedAt = observedTime(item.ts)
         open = null
+        turnStartedAt = undefined
         callsById.clear()
         break
       }
