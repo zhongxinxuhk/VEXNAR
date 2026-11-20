@@ -85,7 +85,9 @@ function WorkspaceApp(): React.JSX.Element {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-bg text-ink">
       <WindowChrome compact={bare} />
-      <div className="flex min-h-0 flex-1">
+      {/* relative：让内容行在绘制序上高于顶栏（同为 positioned、DOM 在后），
+          右侧面板 -mt-11 的顶行才能盖住顶栏右段（ChatGPT 同构） */}
+      <div className="relative flex min-h-0 flex-1">
       <IconRail />
       {bare ? null : (
         <div
@@ -109,14 +111,14 @@ function WorkspaceApp(): React.JSX.Element {
           <ConsoleView view={view} />
         )}
 
-        {/* 右侧面板为功能面板：确定性渲染。framer-motion 的 opacity 入场在
-            无 GPU/后台窗口下可能停在首帧，表现为「点击无响应」 */}
-        {view === 'chat' && rightOpen ? (
-          <div className="absolute inset-y-0 right-0 top-11 z-30 w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]">
-            <RightPanel />
-          </div>
-        ) : null}
       </main>
+      {/* 右侧面板：独立列（内容变窄而非被覆盖），-mt-11 让它的顶行与窗口顶栏同高，
+          药丸与圆形开关都放在面板自己的顶行里（ChatGPT 同构） */}
+      {view === 'chat' && rightOpen ? (
+        <div className="-mt-11 flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line-soft bg-bg">
+          <RightPanel />
+        </div>
+      ) : null}
       </div>
 
       <AnimatePresence>
