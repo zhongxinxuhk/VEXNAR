@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="VEXNAR Desktop" type="js.build_tools.npm" factoryName="npm">
-    <package-json value="$PROJECT_DIR$/desktop/package.json" />
+    <package-json value="$PROJECT_DIR$/apps/desktop/package.json" />
     <command value="run" />
     <scripts>
       <script value="dev" />

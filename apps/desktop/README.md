@@ -74,6 +74,13 @@ VEXNAR_PG_DSN='postgres://user:pass@127.0.0.1:5432/vexnar?sslmode=disable' npm r
 VEXNAR_PG_BIN="$PWD/../../.pg-build/pg-16.16/bin" npm run dev
 ```
 
+`npm run dev` 会依次检查 `node_modules`、`VEXNAR_PG_DSN`、`VEXNAR_PG_BIN`、`resources/pg` 和仓库的 `.pg-build`；缺 PG 时会直接给出可操作的提示，不会先弹出 Electron 错误框。
+
+GoLand 的运行配置：
+
+- `VEXNAR Desktop`：本目录的 Electron/Codex UI（默认）。
+- `VEXNAR Desktop (Tauri)` / `(Tauri fast)`：旧的 Tauri + Go sidecar 壳层。
+
 `npm run smoke` 会依次验证 PG、PTY、Agent Runtime。
 
 ## 开发命令
@@ -81,7 +88,7 @@ VEXNAR_PG_BIN="$PWD/../../.pg-build/pg-16.16/bin" npm run dev
 ```bash
 cd apps/desktop
 npm install
-npm run dev          # Electron + Vite
+npm run dev          # 自动探测 portable PG 后启动 Electron + Vite
 npm run typecheck
 npm run test
 npm run build

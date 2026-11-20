@@ -314,6 +314,7 @@ server {
 - 桌面端使用 **内置便携 PostgreSQL**（不是 SQLite）；首次启动自动 `initdb`，退出时清理本地集群。
 - `apps/desktop/resources/pg` 由 GitHub Actions 按平台构建/注入，安装包随平台携带对应 PG。
 - 开发与打包命令见 [`apps/desktop/README.md`](apps/desktop/README.md)。
+- GoLand 的 `VEXNAR Desktop` 默认启动该 Electron 应用；旧 Tauri 壳层使用 `VEXNAR Desktop (Tauri)`。
 
 ### 手动漏洞复测
 
