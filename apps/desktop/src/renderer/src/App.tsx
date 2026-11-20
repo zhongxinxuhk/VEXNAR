@@ -12,6 +12,7 @@ import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
 import { ProfilePage } from '@/components/ProfilePage'
 import { SchedulesView } from '@/components/SchedulesView'
+import { PluginsView } from '@/components/PluginsView'
 import { RightPanel } from '@/components/RightPanel'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { ConsoleView } from '@/components/console/ConsoleView'
@@ -110,6 +111,8 @@ function WorkspaceApp(): React.JSX.Element {
           <ProfilePage />
         ) : view === 'schedules' ? (
           <SchedulesView />
+        ) : view === 'plugins' ? (
+          <PluginsView />
         ) : (
           <ConsoleView view={view} />
         )}

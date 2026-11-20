@@ -11,6 +11,7 @@ import {
   BookOpen,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleGauge,
   Copy,
   Folder,
@@ -907,6 +908,10 @@ export function ChatView(): React.JSX.Element {
         ? '变更'
         : '文件'
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
+  const projectName = useMemo(() => {
+    const path = sessions.find((item) => item.id === activeSessionId)?.workspace || ''
+    return path.split('/').filter(Boolean).pop() || ''
+  }, [sessions, activeSessionId])
   const session = useMemo(
     () => sessions.find((item) => item.id === activeSessionId),
     [sessions, activeSessionId]
@@ -960,7 +965,13 @@ export function ChatView(): React.JSX.Element {
             <Folder className="size-4" />
           </span>
         </Tooltip>
-        <div className="drag-region min-w-0">
+        <div className="drag-region flex min-w-0 items-center gap-1.5">
+          {projectName ? (
+            <>
+              <span className="max-w-[160px] truncate text-[12px] text-muted">{projectName}</span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-muted/60" strokeWidth={2} />
+            </>
+          ) : null}
           <div
             className="truncate text-[13px] font-semibold"
             title={session?.title}

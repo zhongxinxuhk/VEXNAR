@@ -46,6 +46,7 @@ export type AppView =
   | 'schedules'
   | 'overview'
   | 'tasks'
+  | 'plugins'
   | 'findings'
   | 'traffic'
   | 'assets'

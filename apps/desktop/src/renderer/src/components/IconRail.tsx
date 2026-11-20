@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Network,
   Pin,
+  Puzzle,
   Settings,
   Shield,
   SquareCheckBig,
@@ -107,11 +108,11 @@ export function IconRail(): React.JSX.Element {
         </RailButton>
 
         <RailButton
-          label={t('rail.tasks')}
-          active={view === 'tasks'}
-          onClick={() => setView('tasks')}
+          label="插件"
+          active={view === 'plugins'}
+          onClick={() => setView('plugins')}
         >
-          <SquareCheckBig className="h-[19px] w-[19px]" strokeWidth={1.8} />
+          <Puzzle className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>
 
         <RailButton
