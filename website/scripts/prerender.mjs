@@ -8,7 +8,7 @@ import { pages } from '../src/content.js';
 const template = await fs.readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
 await fs.cp(new URL('../assets', import.meta.url), new URL('../dist/assets', import.meta.url), { recursive: true });
 for (const page of [...pages, { id: 'notfound', label: '页面未找到' }]) {
-  let html = template.replace('<!--app-html-->', () => render(page.id)).replace(/<title>.*?<\/title>/, `<title>${page.label} · VEXNAR — AI 自主安全探索</title>`);
+  let html = template.replace('<!--app-html-->', () => render(page.id)).replace(/<title>.*?<\/title>/, `<title>${page.label} · VEXNAR</title>`);
   if (page.id === 'notfound') html = html.replace('<head>', '<head><base href="/VEXNAR/">');
   await fs.writeFile(new URL(`../dist/${page.id === 'notfound' ? '404' : page.id}.html`, import.meta.url), html);
 }

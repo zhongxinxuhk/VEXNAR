@@ -33,11 +33,15 @@ npm run dev --prefix website
 
 ## React 页面
 
-- `src/App.jsx`：总览、下载、版本、分支、提交、合作者、开源致谢及站内导航。
+- `src/App.jsx`：站点外壳、导航、页面切换与快捷搜索入口。
+- `src/components/Home.jsx`：产品介绍、可切换的工作台示意、能力说明与架构入口。
+- `src/components/ProjectPages.jsx`：下载平台筛选、版本分类、分支检索、按日期分组的提交检索、合作者页面。
+- `src/components/Credits.jsx`：开源项目目录、组合检索、许可证与来源说明。
+- `src/components/QuickSearch.jsx`：原生对话框快速导航，支持 Cmd/Ctrl+K、Esc 和键盘选择。
 - `src/Architecture.jsx`：架构选项卡、节点详情、边高亮、可暂停的设计导览与键盘导航。
 - `src/architecture.js`：系统、缓存、工具调用、双图四套数据；每个节点链接固定公开源码版本与行号。
 - `src/content.js`：路由、平台发行包识别、致谢筛选与链接边界。
-- `src/style.css`：景深、光效、路径动画、滚动显现、过渡与响应式样式，支持减少动画偏好。
+- `src/style.css`：冷白浅色主题、细线条、路径高亮、滚动过渡与响应式样式，支持减少动画偏好。
 - `scripts/prerender.mjs`：从相同 React 组件生成可抓取的页面，再由浏览器 hydrate。
 - `credits.json`：人工核对的项目来源、用途、作者、Logo 来源与许可证；第三方 Logo 及许可证副本在 `assets/credits/`。
 
@@ -60,3 +64,7 @@ npm run dev --prefix website
 ## 检查覆盖
 
 `npm run check` 检查旧链接、站点子路径与 404、Darwin / Windows 平台匹配、预发布排除、致谢组合筛选、架构引用完整性、静态预渲染内容、资源存在性及公开快照的字段边界。浏览器验收还需检查 hydration、架构切换、节点选择、播放暂停、搜索、移动导航、站内前进后退与减少动画偏好。
+
+## 工作台示意
+
+首页工作台由 React 与 SVG 绘制，支持探索图节点选择、工具记录和资产关系三个视图。示例仅使用保留域名 `example.test`；界面明确标明演示数据，不执行网络探测，不呈现虚构的生产结果或性能指标。站内页面保持旧 URL 与静态预渲染。

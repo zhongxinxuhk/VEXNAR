@@ -48,7 +48,7 @@ test('source-backed diagrams contain no dangling edges and point to real public 
   }
 });
 test('all pages ship pre-rendered React content, hashed local assets and no private fields', async () => {
-  const titles = { index: '洞察攻击面', downloads: '你的工作台', releases: '持续演进', branches: '开发的每一条路径', commits: '每一次提交', contributors: '由每一份贡献', credits: 'OPEN SOURCE CREDITS' };
+  const titles = { index: '面向安全研究的', downloads: '下载 VEXNAR', releases: '版本与更新', branches: '开发分支', commits: '代码提交', contributors: '项目合作者', credits: 'Open Source Projects' };
   for (const page of pages) {
     const html = await read(`../dist/${page.id}.html`);
     assert.ok(html.includes(titles[page.id]), page.id);
