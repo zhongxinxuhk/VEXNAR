@@ -6,7 +6,7 @@ import React, { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertTriangle } from 'lucide-react'
 import { UpdateSubscription } from '@/components/UpdateNotice'
-import { WindowChrome, SidebarResizeHandle } from '@/components/WindowChrome'
+import { PanelResizeHandle, SidebarResizeHandle, WindowChrome } from '@/components/WindowChrome'
 import { IconRail } from '@/components/IconRail'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
@@ -34,6 +34,7 @@ function WorkspaceApp(): React.JSX.Element {
   const newSession = useAppStore((state) => state.newSession)
   const view = useAppStore((state) => state.view)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
+  const panelWidth = useAppStore((state) => state.panelWidth)
   const toggleSidebar = useLayout((state) => state.toggleSidebar)
   const sidebarWidth = useLayout((state) => state.sidebarWidth)
   const bare = view === 'profile' || view === 'schedules'
@@ -115,9 +116,15 @@ function WorkspaceApp(): React.JSX.Element {
       {/* 右侧面板：独立列（内容变窄而非被覆盖），-mt-11 让它的顶行与窗口顶栏同高，
           药丸与圆形开关都放在面板自己的顶行里（ChatGPT 同构） */}
       {view === 'chat' && rightOpen ? (
-        <div className="-mt-11 flex w-[360px] shrink-0 flex-col overflow-hidden border-l border-line-soft bg-bg">
-          <RightPanel />
-        </div>
+        <>
+          <PanelResizeHandle />
+          <div
+            className="-mt-11 flex shrink-0 flex-col overflow-hidden border-l border-line-soft bg-bg"
+            style={{ width: panelWidth }}
+          >
+            <RightPanel />
+          </div>
+        </>
       ) : null}
       </div>
 
@@ -127,7 +134,7 @@ function WorkspaceApp(): React.JSX.Element {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-5 left-1/2 z-40 flex max-w-[620px] -translate-x-1/2 items-start gap-2.5 rounded-xl border border-danger/20 bg-bg px-3.5 py-2.5 codex-popover"
+            className="fixed bottom-5 left-1/2 z-40 flex max-w-155 -translate-x-1/2 items-start gap-2.5 rounded-xl border border-danger/20 bg-bg px-3.5 py-2.5 codex-popover"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
             <div className="min-w-0 text-[12px] leading-5 text-ink-soft">{error}</div>

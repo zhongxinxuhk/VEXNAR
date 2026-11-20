@@ -69,6 +69,7 @@ type AppState = {
   busy: boolean
   rightTab: RightTab
   panelLauncher: boolean
+  panelWidth: number
   rightOpen: boolean
   settingsOpen: boolean
   settingsSection: SettingsSection
@@ -109,6 +110,7 @@ type AppState = {
   refreshGit: () => Promise<void>
   openDiff: (path: string) => Promise<void>
   setRightTab: (tab: RightTab) => void
+  setPanelWidth: (width: number) => void
   toggleRight: () => void
   setSettingsOpen: (open: boolean) => void
   openSettings: (section?: SettingsSection) => void
@@ -175,6 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   busy: false,
   rightTab: 'workspace',
   panelLauncher: true,
+  panelWidth: Math.min(720, Math.max(280, Number(localStorage.getItem('vexnar.panel-width')) || 360)),
   rightOpen: false,
   contextUsage: {},
   settingsOpen: false,
@@ -631,6 +634,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setRightTab: (rightTab) => set({ rightTab, rightOpen: true, panelLauncher: false }),
+  setPanelWidth: (width) => {
+    const bounded = Math.round(Math.min(720, Math.max(280, width)))
+    localStorage.setItem('vexnar.panel-width', String(bounded))
+    set({ panelWidth: bounded })
+  },
   toggleRight: () =>
     set((state) => ({ rightOpen: !state.rightOpen, panelLauncher: !state.rightOpen })),
   setSettingsOpen: (settingsOpen) =>
