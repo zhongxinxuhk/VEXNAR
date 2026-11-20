@@ -15,6 +15,7 @@ import {
   House,
   LayoutDashboard,
   Network,
+  Pin,
   Settings,
   Shield,
   SquareCheckBig,
@@ -69,6 +70,8 @@ export function IconRail(): React.JSX.Element {
   const view = useAppStore((state) => state.view)
   // 侧栏收起时图标栏与内容区同色，避免左侧留一条灰带
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
+  const railPins = useLayout((state) => state.railPins)
+  const toggleRailPin = useLayout((state) => state.toggleRailPin)
   const setView = useAppStore((state) => state.setView)
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
   const setRightTab = useAppStore((state) => state.setRightTab)
@@ -119,6 +122,23 @@ export function IconRail(): React.JSX.Element {
           <Clock3 className="h-[19px] w-[19px]" strokeWidth={1.8} />
         </RailButton>
 
+        {/* 「更多」里钉住的分区：按钉住顺序从上到下 */}
+        {railPins.map((pinId) => {
+          const item = consoleItems.find((entry) => entry.id === pinId)
+          if (!item) return null
+          const Icon = item.icon
+          return (
+            <RailButton
+              key={pinId}
+              label={item.label}
+              active={view === item.id}
+              onClick={() => setView(item.id)}
+            >
+              <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+            </RailButton>
+          )
+        })}
+
         <RailButton
           label={t('rail.docs')}
           onClick={() => {
@@ -152,14 +172,36 @@ export function IconRail(): React.JSX.Element {
               <div className={menuLabel}>{t('app.more')}</div>
               {consoleItems.map((item) => {
                 const Icon = item.icon
+                const pinned = railPins.includes(item.id)
                 return (
                   <DropdownMenu.Item
                     key={item.id}
                     className={cn(menuItem, view === item.id && 'bg-panel-2 text-ink')}
-                    onSelect={() => setView(item.id)}
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      setView(item.id)
+                    }}
                   >
                     <Icon className="h-4 w-4 text-muted" strokeWidth={1.8} />
                     {item.label}
+                    <button
+                      type="button"
+                      aria-label={pinned ? '从侧栏取消图钉' : '图钉固定到侧栏'}
+                      title={pinned ? '从侧栏取消图钉' : '图钉固定到侧栏'}
+                      className="ml-auto grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink data-[pinned=true]:text-ink"
+                      data-pinned={pinned}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleRailPin(item.id)
+                      }}
+                      onSelect={(event) => event.stopPropagation()}
+                    >
+                      <Pin
+                        className={cn('h-3.5 w-3.5', pinned && 'fill-current')}
+                        strokeWidth={1.8}
+                      />
+                    </button>
                   </DropdownMenu.Item>
                 )
               })}
