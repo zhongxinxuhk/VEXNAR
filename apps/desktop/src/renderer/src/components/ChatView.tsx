@@ -827,14 +827,18 @@ export function ChatView(): React.JSX.Element {
     >
       <header
         className={cn(
-          // no-drag：这层会盖在窗口顶栏上方，若保留拖动区会吞掉侧栏开关的点击
-          'chat-glass no-drag absolute inset-x-0 top-0 z-20 flex h-11 items-center gap-2 px-4',
+          // 整条顶栏可拖动窗口；交互控件各自 no-drag。
+          // 侧栏收起时左侧留一条 no-drag 安全区，盖住顶栏的窗口控件与侧栏开关，
+          // 否则拖动区会吞掉开关的点击（坐标在开关正上方）。
+          'chat-glass drag-region absolute inset-x-0 top-0 z-20 flex h-11 items-center gap-2 px-4',
           'transition-[padding-left] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
-          // 侧栏收起时给顶栏的窗口控件 + 侧栏开关让出位置，避免压住标题
           !sidebarOpen && 'pl-[124px]'
         )}
         aria-label="会话工具栏"
       >
+        {!sidebarOpen ? (
+          <div className="no-drag absolute inset-y-0 left-0 w-[130px]" aria-hidden="true" />
+        ) : null}
         <Tooltip label={projectLabel} side="bottom">
           <span
             aria-label={projectLabel}
@@ -843,7 +847,7 @@ export function ChatView(): React.JSX.Element {
             <Folder className="size-4" />
           </span>
         </Tooltip>
-        <div className="min-w-0">
+        <div className="drag-region min-w-0">
           <div
             className="truncate text-[13px] font-semibold"
             title={session?.title}
@@ -856,8 +860,6 @@ export function ChatView(): React.JSX.Element {
             </div>
           )}
         </div>
-        {/* 顶栏中段留一条拖动区，保证还能从这里拖窗口 */}
-        <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
         <button
           type="button"
           onClick={toggleRight}
