@@ -120,6 +120,188 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
   )
 }
 
+
+type Block =
+  | { kind: 'p'; lines: string[] }
+  | { kind: 'h'; level: number; text: string }
+  | { kind: 'ul'; items: string[] }
+  | { kind: 'ol'; items: string[] }
+  | { kind: 'quote'; lines: string[] }
+  | { kind: 'hr' }
+  | { kind: 'table'; head: string[]; rows: string[][] }
+
+function splitRow(line: string): string[] {
+  return line
+    .replace(/^\s*\|/, '')
+    .replace(/\|\s*$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+}
+
+function parseBlocks(text: string): Block[] {
+  const lines = text.split('\n')
+  const blocks: Block[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (!line.trim()) {
+      i += 1
+      continue
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line)
+    if (heading) {
+      blocks.push({ kind: 'h', level: heading[1].length, text: heading[2] })
+      i += 1
+      continue
+    }
+    if (/^\s*(---+|\*\*\*+)\s*$/.test(line)) {
+      blocks.push({ kind: 'hr' })
+      i += 1
+      continue
+    }
+    // 表格：表头 + 分隔行
+    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s:-]*-[\s|:-]*$/.test(lines[i + 1])) {
+      const head = splitRow(line)
+      const rows: string[][] = []
+      i += 2
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim()) {
+        rows.push(splitRow(lines[i]))
+        i += 1
+      }
+      blocks.push({ kind: 'table', head, rows })
+      continue
+    }
+    if (/^\s*>\s?/.test(line)) {
+      const quoted: string[] = []
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+        quoted.push(lines[i].replace(/^\s*>\s?/, ''))
+        i += 1
+      }
+      blocks.push({ kind: 'quote', lines: quoted })
+      continue
+    }
+    if (/^\s*[-*+]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*[-*+]\s+/, ''))
+        i += 1
+      }
+      blocks.push({ kind: 'ul', items })
+      continue
+    }
+    if (/^\s*\d+[.)]\s+/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*\d+[.)]\s+/, ''))
+        i += 1
+      }
+      blocks.push({ kind: 'ol', items })
+      continue
+    }
+    const para: string[] = []
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !/^(#{1,6})\s+/.test(lines[i]) &&
+      !/^\s*[-*+]\s+/.test(lines[i]) &&
+      !/^\s*\d+[.)]\s+/.test(lines[i]) &&
+      !/^\s*>\s?/.test(lines[i]) &&
+      !lines[i].includes('|')
+    ) {
+      para.push(lines[i])
+      i += 1
+    }
+    blocks.push({ kind: 'p', lines: para })
+  }
+  return blocks
+}
+
+function BlockView({ block }: { block: Block }): React.JSX.Element | null {
+  switch (block.kind) {
+    case 'h': {
+      const size =
+        block.level === 1
+          ? 'text-[17px] font-semibold'
+          : block.level === 2
+            ? 'text-[15px] font-semibold'
+            : 'text-[13.5px] font-semibold'
+      return (
+        <div className={cn('mt-4 mb-1.5 text-ink first:mt-0', size)}>
+          <Inline text={block.text} />
+        </div>
+      )
+    }
+    case 'ul':
+      return (
+        <ul className="my-2 list-disc space-y-1 pl-5">
+          {block.items.map((item, index) => (
+            <li key={index}>
+              <Inline text={item} />
+            </li>
+          ))}
+        </ul>
+      )
+    case 'ol':
+      return (
+        <ol className="my-2 list-decimal space-y-1 pl-5">
+          {block.items.map((item, index) => (
+            <li key={index}>
+              <Inline text={item} />
+            </li>
+          ))}
+        </ol>
+      )
+    case 'quote':
+      return (
+        <blockquote className="my-2 border-l-2 border-line pl-3 text-muted">
+          {block.lines.map((line, index) => (
+            <div key={index}>
+              <Inline text={line} />
+            </div>
+          ))}
+        </blockquote>
+      )
+    case 'hr':
+      return <hr className="my-4 border-line-soft" />
+    case 'table':
+      return (
+        <div className="my-3 overflow-x-auto rounded-xl border border-line-soft">
+          <table className="w-full border-collapse text-[12px]">
+            <thead className="bg-panel/60">
+              <tr>
+                {block.head.map((cell, index) => (
+                  <th key={index} className="border-b border-line-soft px-3 py-1.5 text-left font-medium text-ink">
+                    <Inline text={cell} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-b border-line-soft last:border-0">
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="px-3 py-1.5 align-top text-ink-soft">
+                      <Inline text={cell} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    case 'p':
+      return (
+        <p className="my-1.5 whitespace-pre-wrap break-words leading-6 first:mt-0 last:mb-0">
+          <Inline text={block.lines.join('\n')} />
+        </p>
+      )
+    default:
+      return null
+  }
+}
+
+
 /**
  * Small, dependency-free Markdown renderer for agent messages.
  * It intentionally handles only fenced code, inline code and bold text so the
@@ -138,8 +320,10 @@ export function Markdown({ content }: { content: string }): React.JSX.Element {
         }
         if (!segment) return null
         return (
-          <div key={index} className={cn('whitespace-pre-wrap break-words leading-6')}>
-            <Inline text={segment} />
+          <div key={index} className="min-w-0">
+            {parseBlocks(segment).map((block, blockIndex) => (
+              <BlockView key={blockIndex} block={block} />
+            ))}
           </div>
         )
       })}
