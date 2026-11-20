@@ -10,7 +10,7 @@ import {
 describe('settings contracts', () => {
   it('applies desktop defaults', () => {
     const settings = settingsSchema.parse({})
-    expect(settings.theme).toBe('dark')
+    expect(settings.theme).toBe('light')
     expect(settings.workspaceRoot).toBe('')
     expect(settings.model).toBe('gpt-5-codex')
     expect(settings.baseUrl).toBe('')
@@ -20,13 +20,11 @@ describe('settings contracts', () => {
     const publicSettings = publicSettingsSchema.parse({
       theme: 'system',
       model: 'local-model',
-      hasApiKey: true,
-      hasBackendToken: true
+      hasApiKey: true
     })
     expect(publicSettings.hasApiKey).toBe(true)
-    expect(publicSettings.hasBackendToken).toBe(true)
     expect('apiKey' in publicSettings).toBe(false)
-    expect('backendToken' in publicSettings).toBe(false)
+    expect('backendUrl' in publicSettings).toBe(false)
   })
 
   it('rejects an empty model', () => {

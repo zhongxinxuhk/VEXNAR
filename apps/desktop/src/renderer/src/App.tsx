@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertTriangle, X } from 'lucide-react'
-import { TopBar } from '@/components/TopBar'
+import { IconRail } from '@/components/IconRail'
 import { Sidebar } from '@/components/Sidebar'
 import { ChatView } from '@/components/ChatView'
 import { RightPanel } from '@/components/RightPanel'
@@ -52,43 +52,43 @@ export default function App(): React.JSX.Element {
 
   return (
     <TooltipProvider>
-      <div className="flex h-full flex-col">
-        <TopBar />
-        <div className="flex min-h-0 flex-1">
-          <Sidebar />
-          <main className="flex min-w-0 flex-1">
-            {view === 'chat' ? <ChatView /> : <ConsoleView view={view} />}
-            <AnimatePresence initial={false}>
-              {view === 'chat' && rightOpen ? (
-                <motion.div
-                  key="right"
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 408, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  className="h-full shrink-0 overflow-hidden"
-                >
-                  <RightPanel />
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </main>
-        </div>
+      <div className="flex h-full w-full overflow-hidden bg-bg text-ink">
+        <IconRail />
+        <Sidebar />
+
+        <main className="relative flex min-w-0 flex-1 overflow-hidden">
+          {view === 'chat' ? <ChatView /> : <ConsoleView view={view} />}
+
+          <AnimatePresence initial={false}>
+            {view === 'chat' && rightOpen ? (
+              <motion.div
+                key="right"
+                initial={{ x: 24, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 24, opacity: 0 }}
+                transition={{ duration: 0.16, ease: 'easeOut' }}
+                className="absolute right-0 top-0 z-30 h-full w-[412px] overflow-hidden border-l border-line bg-bg shadow-[-18px_0_40px_-24px_rgba(0,0,0,0.24)]"
+              >
+                <RightPanel />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </main>
 
         <AnimatePresence>
           {error ? (
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              className="fixed bottom-5 left-1/2 z-40 flex max-w-[640px] -translate-x-1/2 items-start gap-2.5 rounded-xl border border-danger/25 bg-panel px-3.5 py-2.5 shadow-2xl"
+              exit={{ opacity: 0, y: 8 }}
+              className="fixed bottom-5 left-1/2 z-40 flex max-w-[620px] -translate-x-1/2 items-start gap-2.5 rounded-xl border border-danger/20 bg-bg px-3.5 py-2.5 codex-popover"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-              <div className="min-w-0 text-xs leading-5 text-ink-soft">{error}</div>
+              <div className="min-w-0 text-[12px] leading-5 text-ink-soft">{error}</div>
               <button
                 type="button"
                 onClick={clearError}
-                className="rounded p-1 text-muted hover:bg-panel-3 hover:text-ink"
+                className="rounded p-1 text-muted hover:bg-panel-2 hover:text-ink"
                 aria-label={t('app.close')}
               >
                 <X className="h-3.5 w-3.5" />

@@ -2,7 +2,6 @@ import { app, ipcMain, type BrowserWindow } from 'electron'
 import { z } from 'zod'
 import {
   agentSendSchema,
-  backendLoginSchema,
   backendRequestSchema,
   fileReadSchema,
   gitDiffSchema,
@@ -10,6 +9,7 @@ import {
   IPC,
   messageAppendSchema,
   sessionCreateSchema,
+  sessionPinSchema,
   sessionRenameSchema,
   settingsSchema,
   terminalCreateSchema,
@@ -19,14 +19,15 @@ import {
   type IpcResult
 } from '@shared/contracts'
 import { AgentManager } from './agent'
-import { backendLogin, backendLogout, backendRequest, backendStatus } from './backend'
+import { backendRequest, backendStatus } from './backend'
 import {
   appendMessage,
   createSession,
   listMessages,
   listSessions,
   removeSession,
-  renameSession
+  renameSession,
+  setSessionPinned
 } from './db'
 import { gitDiff, gitStatus } from './git'
 import { getSettings, setSettings } from './settings'
@@ -86,6 +87,7 @@ export function registerIpc(services: Services): void {
     })
   )
   handle(IPC.sessionsRename, sessionRenameSchema, (input) => renameSession(input.id, input.title))
+  handle(IPC.sessionsPin, sessionPinSchema, (input) => setSessionPinned(input.id, input.pinned))
   handle(IPC.sessionsRemove, idSchema, async (input) => {
     await removeSession(input.id)
     return { removed: true as const }
@@ -119,7 +121,5 @@ export function registerIpc(services: Services): void {
   handle(IPC.agentCancel, noInput, () => services.agent.cancel())
 
   handle(IPC.backendStatus, noInput, () => backendStatus())
-  handle(IPC.backendLogin, backendLoginSchema, (input) => backendLogin(input))
-  handle(IPC.backendLogout, noInput, () => backendLogout())
   handle(IPC.backendRequest, backendRequestSchema, (input) => backendRequest(input))
 }

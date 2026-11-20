@@ -1,38 +1,34 @@
-import {
-  clearBackendSession,
-  getBackendConfig,
-  getSettings,
-  setBackendSession
-} from './settings'
-import type {
-  BackendLoginInput,
-  BackendRequestInput,
-  BackendStatus,
-  PublicSettings
-} from '@shared/contracts'
+import type { BackendRequestInput, BackendStatus } from '@shared/contracts'
 
+/**
+ * The Go service is shipped with the desktop app. Renderer never sees or edits
+ * an endpoint; the main process owns the loopback address (overridable only by
+ * the build/runtime environment for local development).
+ */
+const DEFAULT_SERVICE_URL = 'http://127.0.0.1:8787'
 const REQUEST_TIMEOUT_MS = 15_000
 
-export function normalizeBackendUrl(raw: string): string {
-  const value = raw.trim()
-  if (!value) throw new Error('请填写后端地址')
+function serviceUrl(): string {
+  const raw = (process.env.VEXNAR_SERVICE_URL ?? DEFAULT_SERVICE_URL).trim()
   let url: URL
   try {
-    url = new URL(value)
+    url = new URL(raw)
   } catch {
-    throw new Error('后端地址不是合法 URL')
+    throw new Error('内置服务地址无效')
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('后端地址只支持 http/https')
+    throw new Error('内置服务地址只支持 http/https')
   }
-  const path = url.pathname.replace(/\/+$/, '')
-  return `${url.origin}${path}`
+  if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+    throw new Error('内置服务必须监听本机回环地址')
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
 }
 
-function apiUrl(baseUrl: string, path: string): string {
-  if (!path.startsWith('/')) throw new Error('后端路径必须以 / 开头')
-  if (path.includes('..')) throw new Error('后端路径不允许包含 ..')
-  return `${normalizeBackendUrl(baseUrl)}/api${path}`
+function apiUrl(path: string): string {
+  if (!path.startsWith('/')) throw new Error('内置服务路径必须以 / 开头')
+  if (path.includes('..')) throw new Error('内置服务路径不允许包含 ..')
+  return `${serviceUrl()}/api${path}`
 }
 
 async function readError(response: Response): Promise<string> {
@@ -49,18 +45,16 @@ async function readError(response: Response): Promise<string> {
 }
 
 async function call(
-  baseUrl: string,
   path: string,
-  init: { method: string; token?: string; body?: unknown }
+  init: { method: string; body?: unknown }
 ): Promise<unknown> {
   const headers: Record<string, string> = { accept: 'application/json' }
-  if (init.token) headers.authorization = `Bearer ${init.token}`
   let body: string | undefined
   if (init.body !== undefined) {
     headers['content-type'] = 'application/json'
     body = JSON.stringify(init.body)
   }
-  const response = await fetch(apiUrl(baseUrl, path), {
+  const response = await fetch(apiUrl(path), {
     method: init.method,
     headers,
     body,
@@ -80,65 +74,28 @@ async function call(
 }
 
 export async function backendStatus(): Promise<BackendStatus> {
-  const config = getBackendConfig()
-  let baseUrl = config.baseUrl
   try {
-    baseUrl = normalizeBackendUrl(baseUrl)
-  } catch (error) {
-    return {
-      baseUrl,
-      connected: false,
-      authenticated: Boolean(config.token),
-      error: error instanceof Error ? error.message : String(error)
-    }
-  }
-  try {
-    const health = (await call(baseUrl, '/health', { method: 'GET' })) as {
+    const health = (await call('/health', { method: 'GET' })) as {
       ok?: boolean
       service?: string
       version?: string
     }
     return {
-      baseUrl,
       connected: health?.ok !== false,
-      authenticated: Boolean(config.token),
       service: health?.service,
       version: health?.version
     }
   } catch (error) {
     return {
-      baseUrl,
       connected: false,
-      authenticated: Boolean(config.token),
       error: error instanceof Error ? error.message : String(error)
     }
   }
 }
 
-export async function backendLogin(input: BackendLoginInput): Promise<PublicSettings> {
-  const config = getBackendConfig()
-  const baseUrl = normalizeBackendUrl(input.baseUrl?.trim() || config.baseUrl)
-  const payload = (await call(baseUrl, '/auth/login', {
-    method: 'POST',
-    body: { username: input.username, password: input.password }
-  })) as { token?: unknown }
-  const token = typeof payload?.token === 'string' ? payload.token.trim() : ''
-  if (!token) throw new Error('后端没有返回登录 token')
-  await setBackendSession(baseUrl, token)
-  return getSettings()
-}
-
-export async function backendLogout(): Promise<PublicSettings> {
-  await clearBackendSession()
-  return getSettings()
-}
-
 export async function backendRequest(input: BackendRequestInput): Promise<unknown> {
-  const config = getBackendConfig()
-  const baseUrl = normalizeBackendUrl(config.baseUrl)
-  return call(baseUrl, input.path, {
+  return call(input.path, {
     method: input.method,
-    token: config.token,
     body: input.body
   })
 }

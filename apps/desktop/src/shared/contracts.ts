@@ -4,22 +4,19 @@ export const themeSchema = z.enum(['dark', 'light', 'system'])
 export type Theme = z.infer<typeof themeSchema>
 
 export const settingsSchema = z.object({
-  theme: themeSchema.default('dark'),
+  theme: themeSchema.default('light'),
   workspaceRoot: z.string().default(''),
   shell: z.string().default(''),
   model: z.string().trim().min(1).max(120).default('gpt-5-codex'),
   baseUrl: z.string().default(''),
   apiKey: z.string().max(4096).optional(),
-  clearApiKey: z.boolean().optional(),
-  backendUrl: z.string().default('http://127.0.0.1:8787'),
-  backendToken: z.string().max(8192).optional(),
-  clearBackendToken: z.boolean().optional()
+  clearApiKey: z.boolean().optional()
 })
 export type SettingsInput = z.infer<typeof settingsSchema>
 
 export const publicSettingsSchema = settingsSchema
-  .omit({ apiKey: true, clearApiKey: true, backendToken: true, clearBackendToken: true })
-  .extend({ hasApiKey: z.boolean(), hasBackendToken: z.boolean() })
+  .omit({ apiKey: true, clearApiKey: true })
+  .extend({ hasApiKey: z.boolean() })
 export type PublicSettings = z.infer<typeof publicSettingsSchema>
 
 export const sessionCreateSchema = z.object({
@@ -33,6 +30,12 @@ export const sessionRenameSchema = z.object({
   title: z.string().trim().min(1).max(120)
 })
 export type SessionRenameInput = z.infer<typeof sessionRenameSchema>
+
+export const sessionPinSchema = z.object({
+  id: z.string().min(1),
+  pinned: z.boolean()
+})
+export type SessionPinInput = z.infer<typeof sessionPinSchema>
 
 export const idSchema = z.object({ id: z.string().min(1) })
 export type IdInput = z.infer<typeof idSchema>
@@ -85,13 +88,6 @@ export const agentSendSchema = z.object({
 })
 export type AgentSendInput = z.infer<typeof agentSendSchema>
 
-export const backendLoginSchema = z.object({
-  baseUrl: z.string().optional(),
-  username: z.string().trim().min(1).max(200),
-  password: z.string().min(1).max(4096)
-})
-export type BackendLoginInput = z.infer<typeof backendLoginSchema>
-
 export const backendRequestSchema = z.object({
   path: z.string().min(1).max(4000).regex(/^\//, '路径必须以 / 开头'),
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('GET'),
@@ -100,9 +96,7 @@ export const backendRequestSchema = z.object({
 export type BackendRequestInput = z.infer<typeof backendRequestSchema>
 
 export type BackendStatus = {
-  baseUrl: string
   connected: boolean
-  authenticated: boolean
   version?: string
   service?: string
   error?: string
@@ -116,6 +110,7 @@ export type Session = {
   id: string
   title: string
   workspace: string
+  pinned: boolean
   createdAt: number
   updatedAt: number
 }
@@ -193,6 +188,7 @@ export const IPC = {
   sessionsList: 'sessions:list',
   sessionsCreate: 'sessions:create',
   sessionsRename: 'sessions:rename',
+  sessionsPin: 'sessions:pin',
   sessionsRemove: 'sessions:remove',
   messagesList: 'messages:list',
   messagesAppend: 'messages:append',
@@ -211,7 +207,5 @@ export const IPC = {
   agentCancel: 'agent:cancel',
   agentEvent: 'agent:event',
   backendStatus: 'backend:status',
-  backendLogin: 'backend:login',
-  backendLogout: 'backend:logout',
   backendRequest: 'backend:request'
 } as const

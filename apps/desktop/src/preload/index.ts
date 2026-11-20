@@ -3,12 +3,12 @@ import type { VexnarApi, Unsubscribe } from '@shared/api'
 import type {
   AgentEvent,
   AgentSendInput,
-  BackendLoginInput,
   BackendRequestInput,
   IdInput,
   IpcResult,
   MessageAppendInput,
   SessionCreateInput,
+  SessionPinInput,
   SessionRenameInput,
   SettingsInput,
   TerminalCreateInput,
@@ -42,6 +42,7 @@ const api: VexnarApi = {
     list: () => invoke(IPC.sessionsList),
     create: (input: SessionCreateInput) => invoke(IPC.sessionsCreate, input),
     rename: (input: SessionRenameInput) => invoke(IPC.sessionsRename, input),
+    pin: (input: SessionPinInput) => invoke(IPC.sessionsPin, input),
     remove: (input: IdInput) => invoke(IPC.sessionsRemove, input)
   },
   messages: {
@@ -72,8 +73,6 @@ const api: VexnarApi = {
   },
   backend: {
     status: () => invoke(IPC.backendStatus),
-    login: (input: BackendLoginInput) => invoke(IPC.backendLogin, input),
-    logout: () => invoke(IPC.backendLogout),
     request: <T = unknown>(input: BackendRequestInput) => invoke<T>(IPC.backendRequest, input)
   }
 }

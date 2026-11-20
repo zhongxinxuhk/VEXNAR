@@ -10,7 +10,8 @@ export function formatTime(value: number): string {
 }
 
 export function basename(filePath: string): string {
-  return filePath.split('/').pop() || filePath
+  const parts = filePath.split(/[\\/]/).filter(Boolean)
+  return parts.pop() || filePath
 }
 
 export function dirname(filePath: string): string {
