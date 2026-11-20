@@ -202,6 +202,8 @@ app.whenReady().then(async () => {
     await wait(`(()=>{const [a,b,c,d]=[...(${timeline}).children].map(e=>e.textContent);return a.includes('调用Bash') && b.includes('调用read_filereader') && c.includes('结果 · 成功read_filereader') && c.includes('对应调用 #4') && d.includes('结果 · 成功Bash') && d.includes('对应调用 #3')})()`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='下一页').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 26–50 项，共 239 项')`)
+    await run(`[...(${timeline}).querySelectorAll('button')].find(e=>e.textContent==='对应调用 #8').click()`)
+    await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 239 项') && document.activeElement.matches('ol > li') && document.activeElement.firstElementChild.textContent==='#8'`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 120 项')`)
     await openMenu('选择推理强度与模型')
@@ -285,7 +287,7 @@ app.whenReady().then(async () => {
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('welcome.md')`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, timeline and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, timeline navigation and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

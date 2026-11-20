@@ -62,16 +62,19 @@ const conversationActivities = {
       const tool_use_id = `read-${index}`
       const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool: 'read_file', tool_use_id }
       const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: 'read_file', detail: JSON.stringify({ path: `notes-${index}.md` }) }
-      return index === 1
-        ? [call]
-        : [call, {
-            ...activity,
-            seq: ++activitySeq,
-            kind: 'tool_result',
-            is_error: index === 63,
-            summary: index === 63 ? 'file not found' : 'done',
-            detail: index === 63 ? 'file not found' : `output ${index}`
-          }]
+      if (index === 1 || index === 2) return [call]
+      const result = {
+        ...activity,
+        seq: ++activitySeq,
+        kind: 'tool_result',
+        is_error: index === 63,
+        summary: index === 63 ? 'file not found' : 'done',
+        detail: index === 63 ? 'file not found' : `output ${index}`
+      }
+      if (index !== 15) return [call, result]
+      return [call, result, {
+        ...result, seq: ++activitySeq, tool_use_id: 'read-2', detail: 'output 2'
+      }]
     }).flat(),
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:09Z', kind: 'text', summary: '已经搭好官网骨架', detail: '已经搭好官网骨架，并补上交互式架构图和部署脚本。' },
     { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:00:10Z', kind: 'result', summary: '完成', detail: '完成', input_tokens: 3200 }

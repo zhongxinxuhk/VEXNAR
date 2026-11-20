@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '@/lib/i18n'
 import type { ToolCall, ToolTraceEvent } from '@/store/app'
 import { cn } from '@/lib/utils'
@@ -62,6 +62,8 @@ export function ToolActivity({
   const [page, setPage] = useState(0)
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [showTimeline, setShowTimeline] = useState(false)
+  const [targetSequence, setTargetSequence] = useState<number | null>(null)
+  const targetRow = useRef<HTMLLIElement>(null)
   const timeline = showTimeline || calls.length === 0
   const counts: Record<ToolCallStatus, number> = { running: 0, done: 0, error: 0, unreported: 0 }
   const visible: { call: ToolCall; status: ToolCallStatus }[] = []
@@ -75,6 +77,30 @@ export function ToolActivity({
   const currentPage = Math.min(page, lastPage)
   const start = currentPage * PAGE_SIZE
   const end = Math.min(start + PAGE_SIZE, total)
+
+  useLayoutEffect(() => {
+    const row = targetRow.current
+    if (row) {
+      row.focus({ preventScroll: true })
+      row.scrollIntoView({ block: 'nearest' })
+    }
+  }, [targetSequence, currentPage])
+
+  const goToPage = (nextPage: number): void => {
+    setTargetSequence(null)
+    setPage(nextPage)
+  }
+
+  const jumpToCall = (sequence: number): void => {
+    const index = events.findIndex((event) => event.sequence === sequence)
+    if (index < 0) return
+    setPage(Math.floor(index / PAGE_SIZE))
+    if (targetSequence === sequence && targetRow.current) {
+      targetRow.current.focus({ preventScroll: true })
+      targetRow.current.scrollIntoView({ block: 'nearest' })
+    }
+    setTargetSequence(sequence)
+  }
 
   return (
     <details
@@ -100,7 +126,7 @@ export function ToolActivity({
                   aria-pressed={timeline === isTimeline}
                   onClick={() => {
                     setShowTimeline(isTimeline)
-                    setPage(0)
+                    goToPage(0)
                   }}
                   className="rounded-md px-2 py-1 text-[11px] text-muted hover:bg-panel-2 aria-pressed:bg-panel-2 aria-pressed:text-ink"
                 >
@@ -116,7 +142,7 @@ export function ToolActivity({
                 value={filter}
                 onChange={(event) => {
                   setFilter(event.currentTarget.value as StatusFilter)
-                  setPage(0)
+                  goToPage(0)
                 }}
                 className="rounded-md border border-line-soft bg-bg px-2 py-1 text-ink-soft"
               >
@@ -135,27 +161,39 @@ export function ToolActivity({
               aria-label={t('chat.toolTimeline')}
               className="ml-2 max-h-80 overflow-y-auto overscroll-contain border-l border-line-soft"
             >
-              {events.slice(start, end).map((event) => (
-                <li
-                  key={event.sequence}
-                  className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line-soft px-2 py-1.5 text-[11px] last:border-b-0"
-                >
-                  <span className="shrink-0 font-mono text-muted">#{event.sequence}</span>
-                  <span className={cn('font-medium', event.outcome === 'error' ? 'text-danger' : 'text-ink-soft')}>
-                    {t(traceEventLabels[event.outcome])}
-                  </span>
-                  <span className="min-w-0 break-all font-mono text-ink">{event.tool}</span>
-                  {event.worker ? <span className="min-w-0 break-all text-muted">{event.worker}</span> : null}
-                  {event.relatedCallSequence != null ? (
-                    <span className="text-muted">
-                      {t('chat.toolRelatedCall', { sequence: event.relatedCallSequence })}
+              {events.slice(start, end).map((event) => {
+                const relatedCall = event.relatedCallSequence
+                return (
+                  <li
+                    key={event.sequence}
+                    ref={event.sequence === targetSequence ? targetRow : undefined}
+                    tabIndex={-1}
+                    className={cn(
+                      'flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-line-soft px-2 py-1.5 text-[11px] last:border-b-0 focus-visible:outline focus-visible:outline-inset',
+                      event.sequence === targetSequence && 'bg-panel-2'
+                    )}
+                  >
+                    <span className="shrink-0 font-mono text-muted">#{event.sequence}</span>
+                    <span className={cn('font-medium', event.outcome === 'error' ? 'text-danger' : 'text-ink-soft')}>
+                      {t(traceEventLabels[event.outcome])}
                     </span>
-                  ) : null}
-                  <span className="ml-auto text-muted">
-                    <ToolEventTime timestamp={event.timestamp} />
-                  </span>
-                </li>
-              ))}
+                    <span className="min-w-0 break-all font-mono text-ink">{event.tool}</span>
+                    {event.worker ? <span className="min-w-0 break-all text-muted">{event.worker}</span> : null}
+                    {relatedCall != null ? (
+                      <button
+                        type="button"
+                        onClick={() => jumpToCall(relatedCall)}
+                        className="rounded px-1 text-accent underline-offset-2 hover:underline focus-visible:underline"
+                      >
+                        {t('chat.toolRelatedCall', { sequence: relatedCall })}
+                      </button>
+                    ) : null}
+                    <span className="ml-auto text-muted">
+                      <ToolEventTime timestamp={event.timestamp} />
+                    </span>
+                  </li>
+                )
+              })}
             </ol>
           ) : visible.length === 0 ? (
             <p role="status" className="px-2 py-2 text-[11px] text-muted">
@@ -185,7 +223,7 @@ export function ToolActivity({
                 <button
                   type="button"
                   disabled={currentPage === 0}
-                  onClick={() => setPage(currentPage - 1)}
+                  onClick={() => goToPage(currentPage - 1)}
                   className="rounded-md px-2 py-1 hover:bg-panel-2 disabled:opacity-40"
                 >
                   {t('chat.toolPrevious')}
@@ -193,7 +231,7 @@ export function ToolActivity({
                 <button
                   type="button"
                   disabled={currentPage === lastPage}
-                  onClick={() => setPage(currentPage + 1)}
+                  onClick={() => goToPage(currentPage + 1)}
                   className="rounded-md px-2 py-1 hover:bg-panel-2 disabled:opacity-40"
                 >
                   {t('chat.toolNext')}
