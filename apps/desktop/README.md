@@ -87,6 +87,23 @@ VEXNAR_PG_DSN='postgres://user:pass@127.0.0.1:5432/vexnar?sslmode=disable' npm r
 VEXNAR_PG_BIN="$PWD/../../.pg-build/pg-16.16/bin" npm run dev
 ```
 
+### 让 Go 后端连到 config.json 的库
+
+默认 Electron 会话库（`vexnar`）与 Go 后端库（`vexnar_backend`）都跑在内置 PG 上，两边**不会**混用同一张
+`sessions` 表。如果要把桌面端接到自托管实例（web 控制台）的同一份数据，只把 **Go 后端** 指过去：
+
+```bash
+# 显式指定，优先级最高
+VEXNAR_BACKEND_PG_DSN='postgres://root:pass@127.0.0.1:7432/artex?sslmode=disable' npm run dev
+```
+
+未设置该变量时，主进程按顺序查找 `VEXNAR_CONFIG_PATH` → `userData/config.json` → 仓库根
+`config.json`（开发态）→ `.app` 旁边两级的 `config.json`（打包态），读取其中的 `database` 块
+（`host/port/user/password/dbname/sslmode` 或 `dsn`）。探测失败（库没起、端口不对）会打印原因并
+回落到内置 PG，不会阻断启动。`VEXNAR_IGNORE_CONFIG_JSON=1` 可强制忽略。
+
+Electron 会话库始终留在内置 PG，避免与 Go 的 `sessions` 表（任务/探索维度）互撞。
+
 `npm run dev` 会依次检查 `node_modules`、`VEXNAR_PG_DSN`、`VEXNAR_PG_BIN`、`resources/pg` 和仓库的 `.pg-build`；缺 PG 时会直接给出可操作的提示，不会先弹出 Electron 错误框。
 
 GoLand 的运行配置：
