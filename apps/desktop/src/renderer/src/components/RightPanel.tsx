@@ -9,18 +9,20 @@ import '@xterm/xterm/css/xterm.css'
 import { DiffEditor } from '@monaco-editor/react'
 import {
   ChevronRight,
+  Ellipsis,
   FileCode2,
   FileText,
   Folder,
   FolderOpen,
   GitBranch,
   Loader2,
-  Ellipsis,
+  PanelRight,
   PanelRightClose,
   Plus,
   RefreshCw,
   Search,
-  SquareTerminal
+  SquareTerminal,
+  X
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { useAppStore } from '@/store/app'
@@ -360,8 +362,29 @@ export function RightPanel(): React.JSX.Element {
 
   if (panelLauncher) {
     return (
-      <aside className="flex h-full w-full shrink-0 flex-col border-l border-line-soft bg-bg">
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-5">
+      <aside className="flex h-full w-full shrink-0 flex-col bg-bg">
+        <div className="flex h-11 shrink-0 items-center gap-2 px-3">
+          <div className="flex h-8 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
+            <span className="text-[12.5px] text-ink">新标签页</span>
+            <button
+              type="button"
+              aria-label="关闭右侧面板"
+              onClick={toggleRight}
+              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={toggleRight}
+            aria-label="切换右侧面板"
+            className="no-drag ml-auto grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-panel-3 text-ink transition-colors hover:bg-line"
+          >
+            <PanelRight className="size-4" />
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 pb-6 pt-3">
           <input
             value={launcherQuery}
             onChange={(event) => setLauncherQuery(event.target.value)}

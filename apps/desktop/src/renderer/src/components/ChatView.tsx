@@ -905,31 +905,17 @@ export function ChatView(): React.JSX.Element {
           )}
         </div>
         <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
-        {rightOpen ? (
-          <div className="no-drag flex h-8 shrink-0 items-center gap-1 rounded-xl bg-panel-2 pl-2.5 pr-1">
-            <span className="text-[12.5px] text-ink">{rightTabLabel}</span>
-            <button
-              type="button"
-              aria-label="关闭右侧面板"
-              onClick={toggleRight}
-              className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ) : null}
-        <button
-          type="button"
-          onClick={toggleRight}
-          aria-label="切换右侧面板"
-          aria-pressed={rightOpen}
-          className={cn(
-            'no-drag grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full transition-colors',
-            rightOpen ? 'bg-panel-3 text-ink' : 'text-ink-soft hover:bg-panel-2'
-          )}
-        >
-          <PanelRight className="size-4" />
-        </button>
+        {rightOpen ? null : (
+          <button
+            type="button"
+            onClick={toggleRight}
+            aria-label="切换右侧面板"
+            aria-pressed={false}
+            className="no-drag grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-panel-2"
+          >
+            <PanelRight className="size-4" />
+          </button>
+        )}
       </header>
       {messages.length === 0 ? (
         <EmptyState />
