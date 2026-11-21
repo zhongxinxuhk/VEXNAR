@@ -98,6 +98,12 @@ for (const query of ['status=pending&limit=5&page=1', 'severity=high&limit=5&pag
   check(`findings ${query}`, goPage.total === tsPage.total && same(goPage.items.map((row) => row.id), tsPage.items.map((row) => row.id)), `${goPage.total}/${tsPage.total}`)
 }
 
+for (const dsl of ['test', 'method==GET', 'port>8000']) {
+  const goSearch = await get(GO, `/api/assets?dsl=${encodeURIComponent(dsl)}&limit=5`)
+  const tsSearch = await get(TS, `/api/assets?dsl=${encodeURIComponent(dsl)}&limit=5`)
+  check(`assets dsl ${dsl}`, goSearch.total === tsSearch.total && same(goSearch.assets.map((row) => row.id), tsSearch.assets.map((row) => row.id)), `${goSearch.total}/${tsSearch.total}`)
+}
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)

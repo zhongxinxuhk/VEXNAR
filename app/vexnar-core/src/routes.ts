@@ -12,6 +12,7 @@ function parseJson(value: unknown): unknown {
   }
 }
 import { metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { queryDSL } from './dsl.ts'
 
 const store = await openStore()
 const meta = metaStore(storeRoot())
@@ -413,6 +414,17 @@ api.get('/api/assets', async (c) => {
   const offset = Math.max(Number(c.req.query('offset') ?? 0) || 0, 0)
   const type = c.req.query('type') || undefined
   const taskId = c.req.query('task_id') || undefined
+  const dsl = c.req.query('dsl') ?? ''
+  if (dsl.trim()) {
+    try {
+      const all = (await store.assets.list({ type, taskId, limit: 100000, offset: 0 })).rows
+      const matched = queryDSL(all, dsl)
+      const rows = matched.slice(offset, offset + limit)
+      return c.json({ assets: rows.map(assetDto), count: rows.length, total: matched.length })
+    } catch (error: any) {
+      return c.json({ error: String(error?.message ?? error) }, 400)
+    }
+  }
   const { rows, total } = await store.assets.list({ type, taskId, limit, offset })
   return c.json({ assets: rows.map(assetDto), count: rows.length, total })
 })
