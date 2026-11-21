@@ -37,10 +37,9 @@ store/
 ## 从 PostgreSQL 导入
 
 ```sh
-cd app/vexnar-store
-npm install
-npm run seed        # 只读 PG，写 JSON store
-npm run compare     # JSON store vs PG 适配器逐项对比
+cd app && pnpm install                          # workspace 统一安装，只需一次
+pnpm --filter @vexnar/store run seed            # 只读 PG，写 JSON store
+pnpm --filter @vexnar/store run compare         # JSON store vs PG 适配器逐项对比
 ```
 
 最近一次（per-record 布局）：
@@ -79,8 +78,9 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - `updateTask` / `controlTask` / `deleteTask`：改名/置顶、pause/resume、软删除；
 - 分类与模板：增改删、任务归类（删除分类自动解绑）；
 - 资产挂载/卸载与任务范围：`task_asset_links`、`task_scope` 独立记录；
+- 通知渠道、agent 名称/描述、tool 配置：写 `meta.json` 后刷新缓存；
 - journal 恢复只重放 `prepared`，`failed` 不重放；
-- 测试：`npm run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
+- 测试：`pnpm --filter @vexnar/store run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
 
 ## 与 dsh 的关系
 

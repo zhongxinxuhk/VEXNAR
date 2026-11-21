@@ -117,7 +117,7 @@ export function storeWriter(root: string) {
           stale = error?.code === 'ESRCH'
         }
         if (!stale) throw new Error(`store is already open for writing: ${path}`)
-        await writeFile(path, '')
+        await rm(path, { force: true })
         handle = await open(path, 'wx', 0o600)
       }
       await handle.writeFile(`${process.pid}\n`)
