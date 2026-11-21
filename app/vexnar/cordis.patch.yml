@@ -9,6 +9,8 @@
       name: '@vexnar/dsh-ui'
     - id: vexnar-account
       name: '@vexnar/dsh-account'
+    - id: vexnar-craft
+      name: '@vexnar/dsh-craft'
 
 # ── Model access: TypeScript → NewAPI directly ─────────────────────────────
 # The provider route is written at login by @vexnar/dsh-account into the
@@ -27,14 +29,6 @@
         headers:
           Authorization: !!js "'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '')"
         timeoutMs: 60000
-      # Craft Anything: bundled CLI (essentials toolset by default, not all 320
-      # tools). app/scripts/craft-update.mjs keeps the binary current.
-      craft:
-        transport: stdio
-        command: !!js "process.env.CRAFT_ANYTHING_CLI || (process.env.HOME + '/.dsh/plugins-data/craft-anything/craft-anything-cli')"
-        args:
-          - mcp
-        timeoutMs: 120000
 
 # ── Brand: VEXNAR replaces the official artwork ─────────────────────────────
 # @vexnar/dsh-ui occupies sidebar.brand.mark / sidebar.brand.name, so the

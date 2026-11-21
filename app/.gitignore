@@ -16,3 +16,6 @@ node_modules/
 # UI package build inputs/outputs that are reproducible.
 vexnar/ui/lib/client.cjs
 vexnar/account/lib/client.cjs
+
+# dsh client build intermediates
+vexnar/*/lib/client.cjs

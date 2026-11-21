@@ -10,27 +10,29 @@
 
 ## Craft Anything（MCP）
 
-Craft Anything 是 Rust 引擎 + CLI + MCP server，按 MCP server 内置进 profile：
+Craft Anything 是 Rust 引擎 + CLI + MCP server，以 **dsh 插件**
+`@vexnar/dsh-craft` 内置：
 
-```yaml
-# app/vexnar/cordis.patch.yml → mcp-manager.servers.craft
-craft:
-  transport: stdio
-  command: ${CRAFT_ANYTHING_CLI:-~/.dsh/plugins-data/craft-anything/craft-anything-cli}
-  args: [mcp]
-```
-
-- 默认只暴露 **Essentials + 已启用 toolset**，不是全部 320 个工具；
-- 启动器（`dsh-web.mjs` / `dsh-desktop.mjs`）注入 `CRAFT_ANYTHING_CLI`；
-- 侧栏 **Craft** 页展示版本、路径与 MCP 工具清单（`GET /api/craft/status`）；
-- 二进制在 `~/.dsh/plugins-data/craft-anything/`，不进仓库。
+- 宿主半：`app/vexnar/craft/lib/index.js` 在插件生命周期内
+  `ctx.mcpManager.register('craft', { transport: 'stdio', command, args: ['mcp'] })`，
+  禁用/卸载插件会一并卸载 MCP server 与工具；
+- 客户端半：侧栏 **Craft** 页展示版本、路径与工具清单（读 core 的
+  `GET /api/craft/status`）；
+- 默认只暴露 Essentials + 已启用 toolset，不是全部 320 个工具；
+- profile patch 只插入 `vexnar-craft` 一行，不再在 mcp-manager 里静态配置；
+- 二进制在 `~/.dsh/plugins-data/craft-anything/`，不进仓库；启动器注入
+  `CRAFT_ANYTHING_CLI`。
 
 更新：
 
 ```sh
 pnpm run craft:check     # 当前/最新版本
 pnpm run craft:update    # 下载最新 release，校验 SHA256 后原子替换
+pnpm run setup           # 重新安装本仓库插件（含 @vexnar/dsh-craft）
 ```
+
+更新二进制后重启 dsh（或禁用/启用一次 Craft 插件）让 MCP server 用新版本重连；
+插件自身的更新走 `pnpm run setup` + 重启。
 
 ## dsh-plugin-shop（插件商店）
 
