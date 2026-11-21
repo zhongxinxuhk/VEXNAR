@@ -17,3 +17,6 @@ spike/**/node_modules/
 # Spike node_modules links
 app/spike/*/node_modules
 spike/*/node_modules
+
+# Workspace dependencies
+app/*/node_modules

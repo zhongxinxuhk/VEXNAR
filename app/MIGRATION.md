@@ -272,6 +272,13 @@ mitmproxy sidecar：11/11 通过——状态码、响应体 sha256 三方一致�
 派生字段待引擎迁移。同时确认了 int8、时间格式、settings 白名单、scope 对象、
 tools.calls、stats.tasks 等契约细节。
 
+### 存储决策修正（2026-11-21）
+
+按产品方向，**数据存储跟随 dsh**：默认用 `$DSH_HOME/vexnar/store` 下的 JSON 域
+（可读、原子写、zod 校验），PostgreSQL 降级为可选适配器。`app/vexnar-store` 已实现
+两种后端，并从现有 PG 导入后逐项对比：tasks/findings/assets/nodes/stats **6/6 一致**。
+`vexnar-core` 的领域读端点将在下一步切到该 store；PG 模式保留给存量部署。
+
 ---
 
 ## 10. 验收标准（功能对等）
