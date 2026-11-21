@@ -602,11 +602,11 @@ function ConsoleIcon({ size }) {
   );
 }
 async function callApi(path, method = "GET", body2) {
-  const base = (localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790").replace(/\/$/, "");
+  const base = (localStorage.getItem("vexnar.coreUrl") || "/vexnar-api").replace(/\/$/, "");
   const token = localStorage.getItem("vexnar.coreToken") || "";
   const response = await fetch(base + path, {
     method,
-    headers: { "content-type": "application/json", "x-vexnar-token": token },
+    headers: { "content-type": "application/json", ...token ? { "x-vexnar-token": token } : {} },
     body: body2 === void 0 ? void 0 : JSON.stringify(body2)
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`);
@@ -616,13 +616,9 @@ function useApi(path, deps = []) {
   const [state, setState] = (0, import_react.useState)({ data: null, error: "", loading: true });
   (0, import_react.useEffect)(() => {
     let alive = true;
-    const base = (localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790").replace(/\/$/, "");
+    const base = (localStorage.getItem("vexnar.coreUrl") || "/vexnar-api").replace(/\/$/, "");
     const token = localStorage.getItem("vexnar.coreToken") || "";
-    if (!token) {
-      setState({ data: null, error: "\u672A\u914D\u7F6E vexnar.coreToken", loading: false });
-      return;
-    }
-    fetch(base + path, { headers: { "x-vexnar-token": token } }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
+    fetch(base + path, { headers: token ? { "x-vexnar-token": token } : {} }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
       if (alive) setState({ data, error: "", loading: false });
     }).catch((error) => {
       if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false });
@@ -1173,9 +1169,9 @@ function LogsPanel() {
 }
 function PanelShell({ title, desc, children }) {
   const connect = () => {
-    const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
+    const url = window.prompt("vexnar-core \u5730\u5740\uFF08\u9ED8\u8BA4\u540C\u6E90 /vexnar-api\uFF09", localStorage.getItem("vexnar.coreUrl") || "/vexnar-api");
     if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
-    const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
+    const token = window.prompt("core token\uFF08\u540C\u6E90\u4EE3\u7406\u53EF\u7559\u7A7A\uFF09", localStorage.getItem("vexnar.coreToken") || "");
     if (token) localStorage.setItem("vexnar.coreToken", token);
     window.location.reload();
   };

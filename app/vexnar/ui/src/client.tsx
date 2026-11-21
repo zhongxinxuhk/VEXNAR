@@ -390,11 +390,11 @@ function ConsoleIcon({ size }: { size?: number }): ReactNode {
 }
 
 async function callApi(path: string, method = 'GET', body?: unknown) {
-  const base = (localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790').replace(/\/$/, '')
+  const base = (localStorage.getItem('vexnar.coreUrl') || '/vexnar-api').replace(/\/$/, '')
   const token = localStorage.getItem('vexnar.coreToken') || ''
   const response = await fetch(base + path, {
     method,
-    headers: { 'content-type': 'application/json', 'x-vexnar-token': token },
+    headers: { 'content-type': 'application/json', ...(token ? { 'x-vexnar-token': token } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body)
   })
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`)
@@ -405,10 +405,9 @@ function useApi(path: string, deps: unknown[] = []): { data: any; error: string;
   const [state, setState] = useState<{ data: any; error: string; loading: boolean }>({ data: null, error: '', loading: true })
   useEffect(() => {
     let alive = true
-    const base = (localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790').replace(/\/$/, '')
+    const base = (localStorage.getItem('vexnar.coreUrl') || '/vexnar-api').replace(/\/$/, '')
     const token = localStorage.getItem('vexnar.coreToken') || ''
-    if (!token) { setState({ data: null, error: '未配置 vexnar.coreToken', loading: false }); return }
-    fetch(base + path, { headers: { 'x-vexnar-token': token } })
+    fetch(base + path, { headers: token ? { 'x-vexnar-token': token } : {} })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
       .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
       .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
@@ -765,9 +764,9 @@ function LogsPanel() {
 
 function PanelShell({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
   const connect = () => {
-    const url = window.prompt('vexnar-core 地址', localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790')
+    const url = window.prompt('vexnar-core 地址（默认同源 /vexnar-api）', localStorage.getItem('vexnar.coreUrl') || '/vexnar-api')
     if (url) localStorage.setItem('vexnar.coreUrl', url.replace(/\/$/, ''))
-    const token = window.prompt('core 访问 token（VEXNAR_API_TOKEN）', localStorage.getItem('vexnar.coreToken') || '')
+    const token = window.prompt('core token（同源代理可留空）', localStorage.getItem('vexnar.coreToken') || '')
     if (token) localStorage.setItem('vexnar.coreToken', token)
     window.location.reload()
   }

@@ -69,8 +69,9 @@ dsh 设置页
 - 审批记录：Go 无独立接口，占位说明。
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。
 
-连接方式：面板右上「连接 core」写入 `vexnar.coreUrl` 与 `vexnar.coreToken`；
-core 需设置 `VEXNAR_API_TOKEN`，并已开放 CORS 与 `x-vexnar-token` 头。
+连接方式：**无需手动配置**。`scripts/dsh-web.mjs` 启动时自动拉起 vexnar-core
+sidecar（随机 token），account 宿主插件在 dsh webserver 上挂载 `/vexnar-api`
+反向代理；面板默认请求同源 `/vexnar-api`。仅独立调试时才需要 localStorage 覆盖。
 
 ## 已实现的骨架
 
