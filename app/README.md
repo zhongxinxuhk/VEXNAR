@@ -6,13 +6,15 @@
 
 # VEXNAR 客户端工作区
 
-VEXNAR Web 和桌面客户端共用隔离的运行时和本机 Go 服务。
+VEXNAR Web 和桌面客户端共用隔离的运行时；运行时底座是 TypeScript（`vexnar-core`），
+Go 服务只是回退路径。
 
 | 方向 | 走哪条链路 | 说明 |
 |---|---|---|
 | 账户登录 | HXSEC AI Platform | 客户端启动时验证。密码和两步验证码可在 App 输入，第三方认证使用独立平台窗口 |
-| 模型目录与推理 | Go 回环网关 | 自动签发凭据、读取模型。平台推理使用 Responses |
-| 领域工具 | Go `POST /mcp`（过渡） | 任务/漏洞/流量工具尚未迁移到 TS |
+| 模型目录与推理 | core 桌面网关（进程内） | 契约与 Go 的回环网关相同，引擎直接 `api.fetch` 调用，不开端口、不依赖 Go |
+| 领域工具 | core 原生路由 | 任务/漏洞/流量/资产/拦截/用量全部读本地 SQLite store |
+| 回退 | Go 服务 | `VEXNAR_RUNTIME_MODE=go` 时数据面整段转发回 Go（含模型走 8787 网关） |
 
 ## 目录
 
@@ -119,7 +121,11 @@ pnpm run web                 # 或 pnpm run desktop
 ```
 
 **默认不需要 Go。** 领域接口由内置的 TypeScript core（`vexnar-core`）回答，
-数据面走 `vexnar-store` 的 PostgreSQL 适配器，读的是 Go 服务与控制台用的同一个库：
+数据面走 `vexnar-store` 的 PostgreSQL 适配器，读的是 Go 服务与控制台用的同一个库。
+底座当前跑的是哪一套，看它的自述接口 `GET /vexnar-api/api/_runtime`
+（`{"mode":"ts","store":"sqlite","started":true,"triggers":10,...}`）。
+
+`VEXNAR_RUNTIME_MODE=go` 回到旧路径：由 `app/` 自己编译和托管 Go 后端（不用另开终端）。
 
 1. `startWeb` 从仓库根 `config.json` 的 `database` 段落折出 `VEXNAR_PG_DSN` 传给客户端
    （环境里已给了 DSN 就尊重环境）。只要给了 DSN，`openStore()` 默认走 PostgreSQL；
@@ -134,7 +140,9 @@ pnpm run web                 # 或 pnpm run desktop
 |---|---|
 | `VEXNAR_PG_DSN` / `VEXNAR_PG_URL` | PostgreSQL 连接串；没给就读 `config.json` |
 | `VEXNAR_STORE=sqlite` | 不用 PG，退回 `app/.vexnar-home/vexnar/store` 下的单机库 |
+| `VEXNAR_RUNTIME_MODE=go` | 数据面回到 Go：拉起内置后端，请求整段转发 |
 | `VEXNAR_GO=on` | 编译并启动 Go 后端（对照验证用；默认不启动） |
+| `VEXNAR_GO=off` | 不启动内置后端，改用 `VEXNAR_GO_URL` 指定的外部服务 |
 | `VEXNAR_GO_DATA=on` | 领域接口转给 Go（默认由 TS core 回答） |
 | `VEXNAR_GO_BIN` / `VEXNAR_GO_PORT` / `VEXNAR_GO_URL` | 指定二进制 / 端口 / 外部地址 |
 

@@ -106,6 +106,21 @@ another token to leak, and another port a user has to reason about.
 - Startup output is the audit: `dsh web` prints exactly one URL. Anything that prints a second one
   is a defect to fix, not a line to document.
 
+## Runtime base is TypeScript; Go is the fallback
+
+`app/vexnar-core` is the runtime base: routes, SQLite/PG store, engine, task queue, scheduler,
+triggers, auth and the model channel live in one process.
+
+- Data-plane prefixes (`/api/tasks`, `/api/traffic`, `/api/intercept`, `/api/exploration`,
+  `/api/assets`, `/api/report`, `/api/stats`, `/api/llm/records`, `/api/commands`) are answered
+  natively. `go-data.ts` only forwards when `VEXNAR_RUNTIME_MODE=go` restores the legacy path.
+- `context.ts` only creates objects. Lifecycle — triggers, scheduled tasks, store recovery and the
+  exclusive store lock — runs in `startRuntime()` (`runtime.ts`). Do not move side effects back to
+  module top level: tests and reconciliation scripts import these modules directly.
+- A new data-plane route lands in core with a self-check: `app/vexnar-core/*.test.ts`, run with
+  `./node_modules/.bin/tsx --test <file>.test.ts` (plain `node` cannot resolve the store's `.ts`
+  imports).
+
 ## Clients are external agents; the Go service is their tool backend
 
 This repository no longer ships a first-party desktop client. The Electron client under

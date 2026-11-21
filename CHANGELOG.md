@@ -14,6 +14,17 @@
 
 #### 变更
 
+- **运行时底座换成 TypeScript，Go 退成回退路径**：客户端启动不再编译、不再拉起 Go。数据面
+  （任务 / 发现 / 资产 / 流量 / 拦截 / 用量）由 `vexnar-core` 原生路由直读 SQLite store；引擎的
+  模型调用改为**进程内**打 core 自己的 `/api/desktop/openai/v1/*`（不开端口，上游 key 仍只住在
+  网关里）。`VEXNAR_RUNTIME_MODE=go` 是唯一回滚开关，行为与切换前一致。
+- **底座生命周期显式化**：触发器、定时任务、store 恢复与独占锁从 `context.ts` 的模块顶层搬进
+  `startRuntime()`；独立进程（`server.ts`）启动时调用并接管信号，dsh 宿主（`embedded.ts`）在
+  第一次请求时惰性启动。副作用不再随 `import` 发生，单测与对账脚本不会再顺带锁库。
+- **未覆盖路径回 JSON**：`/api/*` 下没有实现的路径统一返回
+  `{"error":"route not migrated","path","method"}`，客户端不必再从纯文本 404 里猜。
+- **新增 `GET /api/_runtime`**：返回 `mode` / `store` / `started` / `triggers` / `store_locked` 与
+  引擎是否接了网关，排查时先看这一条。
 - **侧边栏改成「任务」一个入口**（`main: vexnar-tasks`）：面板是「任务 / 发现」两个页签，任务是对象
   （清单 + 详情），发现是它的产出，两者共用任务范围。任务清单支持状态筛选、关键字搜索与分页；
   发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，分页走 `page`+`limit`。

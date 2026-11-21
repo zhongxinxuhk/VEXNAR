@@ -53,7 +53,13 @@ export async function startWeb(
 ): Promise<WebHost> {
   ensureProfile()
   const go = await startGoService()
-  const env: Record<string, string> = { ...runtimeEnv(), ...databaseEnv(), ...(go.url ? { VEXNAR_GO_URL: go.url } : {}) }
+  // 数据面由谁回答：默认 `ts`（core 原生读库，Go 不用启动）；`VEXNAR_RUNTIME_MODE=go`
+  // 回到旧路径（拉起/复用 Go，整段转发）。这个开关要传给子进程，core 的 mode.ts 读它。
+  const mode = String(process.env.VEXNAR_RUNTIME_MODE || 'ts').trim().toLowerCase() === 'go' ? 'go' : 'ts'
+  const env: Record<string, string> = {
+    ...runtimeEnv(), ...databaseEnv(), VEXNAR_RUNTIME_MODE: mode, ...(go.url ? { VEXNAR_GO_URL: go.url } : {})
+  }
+  if (mode === 'ts') console.log('[vexnar] 运行时底座：TS core（不启动 Go）')
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {
