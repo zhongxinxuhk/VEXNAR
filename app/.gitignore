@@ -13,3 +13,6 @@ vexnar/account/lib/client.cjs
 
 # Spike dependencies
 spike/**/node_modules/
+
+# Spike node_modules links
+app/spike/*/node_modules
