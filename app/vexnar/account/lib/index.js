@@ -224,8 +224,31 @@ async function runBrowserLogin(ctx) {
   }
 }
 
+
+// Injected into the served index so the full-access warning applies even when a
+// browser still holds an older client bundle.
+const PERMISSION_WARNING_SCRIPT = `
+(() => {
+  const labels = new Set(['完全权限','Full access','フルアクセス','Acceso completo','Accès complet','Voller Zugriff','Полный доступ','Acesso total']);
+  const sweep = () => {
+    document.querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const full = labels.has((node.textContent || '').trim());
+      if (full) { node.style.color = '#dc2626'; node.style.fontWeight = '600'; }
+      else { node.style.removeProperty('color'); node.style.removeProperty('font-weight'); }
+    });
+  };
+  sweep();
+  new MutationObserver(sweep).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+})();
+`
+
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
+  ctx.effect(() => ctx.on('webserver/index-inject', (table) => {
+    table.push({ kind: 'script', placement: 'body', text: PERMISSION_WARNING_SCRIPT })
+  }))
+
   // Restore runs in the background: settings settles after every entry mounts,
   // so awaiting it inside apply would deadlock startup.
   void restore(ctx).catch((error) => console.warn('[vexnar-account] restore failed:', String(error?.message || error)))
