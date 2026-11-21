@@ -74,6 +74,10 @@ workspace 的 `allowBuilds`，esbuild 的 postinstall 会被拦下。要装子�
 
 Web 控制台的导航如何映射到 dsh 面板、哪些复用 dsh 原生能力，见 [SIDEBAR-INTEGRATION.md](./SIDEBAR-INTEGRATION.md)。
 
+## 内置插件
+
+Craft Anything（MCP）与 dsh-plugin-shop（插件商店）的安装、更新见 [PLUGINS.md](./PLUGINS.md)。
+
 ## 存储架构
 
 域划分、读写路径、性能预算、冲突规则与迁移阶段见 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。

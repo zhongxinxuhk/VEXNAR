@@ -19,6 +19,10 @@
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
     "upstream:check": "node scripts/check-upstream.mjs",
-    "upstream:upgrade": "node scripts/upgrade-dsh.mjs"
+    "upstream:upgrade": "node scripts/upgrade-dsh.mjs",
+    "craft:check": "node scripts/craft-update.mjs --check",
+    "craft:update": "node scripts/craft-update.mjs",
+    "shop:check": "node scripts/shop-update.mjs --check",
+    "shop:update": "node scripts/shop-update.mjs"
   }
 }
