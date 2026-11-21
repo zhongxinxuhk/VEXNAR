@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useEffect, useState } from 'react'
+import { createElement as h, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
@@ -636,143 +636,6 @@ function ToolRunPage({ taskID = '' }: { taskID?: string }) {
     h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
-function YakitImport({ onImported }: { onImported: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [result, setResult] = useState<{ imported: number; duplicates: number; errors: { entry: number; error: string }[] } | null>(null)
-
-  async function upload(file: File) {
-    setError('')
-    setResult(null)
-    if (file.size > 16 * 1024 * 1024) {
-      setError('HAR 不可超过 16 MiB，请分批导出')
-      return
-    }
-    setBusy(true)
-    try {
-      const response = await fetch(CORE_BASE + '/api/traffic/import/yakit', {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: file
-      })
-      if (!response.ok) throw await responseError(response)
-      const data = await response.json()
-      setResult(data)
-      if (data.imported || data.duplicates) onImported()
-    } catch (error) {
-      setError(String((error as Error).message))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return h('div', { style: { marginBottom: 12 } },
-    h('label', null, '导入 Yakit HAR ',
-      h('input', {
-        type: 'file', accept: '.har,application/json', disabled: busy,
-        onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-          const file = event.currentTarget.files?.[0]
-          event.currentTarget.value = ''
-          if (file) void upload(file)
-        }
-      })),
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginTop: 4 } }, '在 Yakit History 选中记录并导出 HAR。每份最多 16 MiB、2000 条。'),
-    busy && h('div', { role: 'status' }, '正在导入…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    result && h('div', { role: 'status' },
-      `已导入 ${result.imported} 条，重复 ${result.duplicates} 条，失败 ${result.errors.length} 条`,
-      result.errors.length > 0 && h('details', null,
-        h('summary', null, '查看失败记录'),
-        h('ul', null, result.errors.map(({ entry, error }) => h('li', { key: entry }, `第 ${entry} 条 · ${error}`))))))
-}
-
-function TrafficExchange({ row, onBack }: { row: any; onBack: () => void }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id])
-  const [result, setResult] = useState('')
-  const [promoting, setPromoting] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  async function promote() {
-    setPromoting(true)
-    setResult('')
-    try {
-      const assets = await callApi('/api/traffic/promote', 'POST', { id: row.id })
-      setSaved(true)
-      setResult(`已登记服务 #${assets.service_id}、端点 #${assets.endpoint_id}，可在资产页查看。`)
-    } catch (error) {
-      setResult(String((error as Error).message))
-    } finally {
-      setPromoting(false)
-    }
-  }
-
-  const packetStyle = { fontSize: 12, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const, background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 360, overflow: 'auto' }
-  return h('div', null,
-    h('div', { style: { display: 'flex', gap: 8 } },
-      h('button', { type: 'button', onClick: onBack }, '← 返回流量列表'),
-      h('button', { type: 'button', onClick: promote, disabled: promoting || saved || !data }, promoting ? '登记中…' : '登记为资产')),
-    result && h('p', { role: 'status' }, result),
-    h('p', { style: { overflowWrap: 'anywhere' } }, `${row.method} ${row.url}`),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data && h('div', null,
-      h('strong', null, '请求'), h('pre', { style: packetStyle }, data.req?.trim() ? data.req : '暂无请求内容'),
-      h('strong', null, '响应'), h('pre', { style: packetStyle }, data.resp?.trim() ? data.resp : '暂无响应内容')))
-}
-
-function TrafficPage() {
-  const [host, setHost] = useState('')
-  const [method, setMethod] = useState('')
-  const [q, setQ] = useState('')
-  const [source, setSource] = useState('')
-  const [page, setPage] = useState(0)
-  const [revision, setRevision] = useState(0)
-  const [exchange, setExchange] = useState<any>(null)
-  const params = new URLSearchParams({ page: String(page), size: '50' })
-  if (host) params.set('host', host.trim())
-  if (method) params.set('method', method)
-  if (q) params.set('q', q.trim())
-  if (source) params.set('source', source)
-  const url = `/api/traffic?${params.toString()}`
-  const { data, error, loading } = useApi(url, [url, revision])
-  const rows = data?.exchanges ?? []
-  const total = data?.total ?? rows.length
-  if (exchange) return h(TrafficExchange, { row: exchange, onBack: () => setExchange(null) })
-  return h('div', { style: { fontSize: 13 } },
-    data?.storage_available !== false && h(YakitImport, { onImported: () => {
-      setHost('')
-      setMethod('')
-      setQ('')
-      setSource('yakit')
-      setPage(0)
-      setRevision((value) => value + 1)
-    } }),
-    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
-      h('input', { placeholder: '主机', 'aria-label': '主机', value: host, onChange: (event: any) => { setHost(event.target.value); setPage(0) } }),
-      h('select', { 'aria-label': 'HTTP 方法', value: method, onChange: (event: any) => { setMethod(event.target.value); setPage(0) } },
-        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
-      h('input', { placeholder: 'URL 或报文关键字', 'aria-label': 'URL 或报文关键字', value: q, onChange: (event: any) => { setQ(event.target.value); setPage(0) } }),
-      h('select', { 'aria-label': '流量来源', value: source, onChange: (event: any) => { setSource(event.target.value); setPage(0) } },
-        h('option', { value: '' }, '全部来源'), h('option', { value: 'yakit' }, 'Yakit'), h('option', { value: 'vexnar' }, 'VEXNAR')),
-      h('button', { type: 'button', onClick: () => setRevision((value) => value + 1) }, '刷新')),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data?.storage_available === false && h('div', { role: 'status' }, 'Go 流量存储未启用'),
-    data && data.storage_available !== false && h('div', null,
-      h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `匹配 ${total} 条流量`),
-      rows.length === 0 ? h('p', null, '暂无匹配流量') : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-        h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-          h('td', { style: { padding: '6px 8px' } }, row.ts),
-          h('td', { style: { padding: '6px 8px' } }, row.method),
-          h('td', { style: { padding: '6px 8px', maxWidth: 420, overflowWrap: 'anywhere' } },
-            h('button', { type: 'button', onClick: () => setExchange(row), style: { whiteSpace: 'normal', textAlign: 'left' } }, row.url || row.host)),
-          h('td', { style: { padding: '6px 8px' } }, row.status || '—'),
-          h('td', { style: { padding: '6px 8px' } }, row.source === 'yakit' ? 'Yakit' : 'VEXNAR'))))),
-      (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
-        h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
-        h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-        h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页'))))
-}
-
 function InterceptPage() {
   const { data, error, loading } = useApi('/api/intercept/rules')
   const [version, setVersion] = useState(0)
@@ -815,68 +678,6 @@ function InterceptPage() {
           h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
 }
 
-function ApprovalsPage() {
-  const { data, error, loading } = useApi('/api/intercept/pending')
-  const [version, setVersion] = useState(0)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `审批队列暂时读不到：${error}`)
-  const rows = data?.pending ?? []
-  const decide = async (row: any, decision: 'allowed' | 'denied') => {
-    try { await callApi(`/api/intercept/pending/${row.id}/decide`, 'POST', { decision }); setVersion(version + 1) }
-    catch (e: any) { window.alert(String(e?.message ?? e)) }
-  }
-  return h('div', { key: version, fontSize: 13 },
-    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `待处理 ${rows.length} 条`),
-    rows.length === 0 ? h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, color: 'var(--vx-muted, #6b7280)' } }, '当前没有待审批的工具调用。')
-      : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-          h('thead', null, h('tr', null, ['ID', '任务', 'Agent', '工具', '状态', '原因', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-          h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-            h('td', { style: { padding: '6px 8px' } }, row.id),
-            h('td', { style: { padding: '6px 8px' } }, row.task_id ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.agent_name ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.tool_name ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.status),
-            h('td', { style: { padding: '6px 8px', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.reason ?? ''),
-            h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
-              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'allowed'), style: { cursor: 'pointer' } }, '允许') : null,
-              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'denied'), style: { cursor: 'pointer' } }, '拒绝') : null))))))
-}
-
-/**
- * 资产 JSON 导入。它原本是设置里独立的「资产同步」一节，但它只做一件事——往资产
- * 库里灌数据——所以并进资产面板，导入完直接在下个页签看到结果。
- */
-function AssetImport({ onImported }: { onImported: () => void }) {
-  const [text, setText] = useState('{"assets":[{"type":"root_domain","domain":"example.com"}]}')
-  const [result, setResult] = useState('')
-  const submit = async () => {
-    setResult('导入中…')
-    try {
-      const parsed = JSON.parse(text)
-      const assets = Array.isArray(parsed) ? parsed : parsed.assets
-      if (!Array.isArray(assets) || assets.length === 0) throw new Error('请填写资产列表')
-      const data = await callApi('/api/assets', 'POST', { assets })
-      const failures = (data.errors ?? []).map((item: any) => `第 ${item.index + 1} 条 · ${item.error}`)
-      setResult([`已登记 ${data.results?.length ?? 0} 条，失败 ${failures.length} 条`, ...failures].join('；'))
-      if ((data.results?.length ?? 0) > 0) onImported()
-    } catch (error: any) { setResult(String(error?.message ?? error)) }
-  }
-  return h('div', null,
-    h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginTop: 0 } },
-      '从 JSON 导入资产（域名 / IP / URL），按类型与标识去重。'),
-    h('textarea', { value: text, onChange: (event: any) => setText(event.target.value), rows: 10, style: { width: '100%', fontFamily: 'monospace', fontSize: 12 } }),
-    h('div', { style: { display: 'flex', gap: 8, marginTop: 8 } },
-      h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, '导入'),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, result)))
-}
-
-/**
- * 该任务的执行流。
- *
- * 这正是原先「日志」面板展示的那批 activity 行：planner / main / intent 的每一步，
- * 其中 kind=tool_use / tool_result 的行就是一次工具执行。它过去有独立入口，但看的
- * 是同一批数据，所以并进工具执行页签——任务范围由执行台给，不用再选一次任务。
- */
 function ExecStream({ taskID }: { taskID: string }) {
   const [session, setSession] = useState('plan')
   const [rows, setRows] = useState<any[]>([])
@@ -1049,50 +850,47 @@ function WorkbenchPanel() {
     body)
 }
 
-function AssetsTable({ revision, onRefresh }: { revision: number; onRefresh: () => void }) {
-  const [type, setType] = useState('root_domain')
-  const [page, setPage] = useState(0)
-  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`
-  const { data, error, loading } = useApi(url, [url, revision])
-  const rows = data?.assets ?? []
-  const total = data?.total ?? rows.length
-  return h('div', null,
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('select', { 'aria-label': '资产类型', value: type, onChange: (event: any) => { setType(event.target.value); setPage(0) } },
-        [['root_domain', '主域名'], ['subdomain', '子域名'], ['ip', 'IP'], ['service', '服务'], ['endpoint', '端点'], ['app', '应用']].map(([value, label]) => h('option', { key: value, value }, label))),
-      h('button', { type: 'button', onClick: onRefresh }, '刷新')),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data && (rows.length === 0 ? h('p', null, '暂无此类资产') : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-      h('thead', null, h('tr', null, ['ID', '资产', '方法', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-        h('td', { style: { padding: '6px 8px' } }, row.id),
-        h('td', { style: { padding: '6px 8px', overflowWrap: 'anywhere' } }, row.url || row.domain || row.ip || row.app_name || ''),
-        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? '')))))),
-    data && (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
-      h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
-      h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-      h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页')))
-}
+function useYakitLaunch(sessionId?: string) {
+  const [state, setState] = useState<{ sessionId?: string | undefined; busy?: boolean; text?: string }>({})
+  const result = state.sessionId === sessionId ? state : {}
 
-/** 资产面板：列表与导入共用一处，导入完成后列表自动刷新。 */
-function AssetsPanel() {
-  const [tab, setTab] = useState<'list' | 'import'>('list')
-  const [revision, setRevision] = useState(0)
-  const refresh = (): void => setRevision((value) => value + 1)
-  return h(PanelShell, { title: '资产', desc: '域名、IP、服务与端点；支持 JSON 导入' },
-    h('div', { className: 'vx-seg', role: 'group', 'aria-label': '资产视图', style: { marginBottom: 12 } },
-      h('button', { type: 'button', 'aria-pressed': tab === 'list', onClick: () => setTab('list') }, '资产列表'),
-      h('button', { type: 'button', 'aria-pressed': tab === 'import', onClick: () => setTab('import') }, '导入')),
-    tab === 'list'
-      ? h(AssetsTable, { revision, onRefresh: refresh })
-      : h(AssetImport, { onImported: () => { refresh(); setTab('list') } }))
+  async function launch() {
+    setState({ sessionId, busy: true })
+    try {
+      const data = await callApi('/api/yakit/open', 'POST', { session_id: sessionId })
+      let text = '已打开 Yakit'
+      if (data.project_status === 'linked') text = `已打开 Yakit。项目：${data.project.name}`
+      if (data.project_status === 'unpaired') text = '已打开 Yakit。项目自动创建需要配置本地内核连接。'
+      if (data.project_status === 'unavailable') text = '已打开 Yakit。项目关联失败，请检查内核连接后重试。'
+      setState({ sessionId, text })
+    } catch (error) {
+      setState({ sessionId, text: String((error as Error).message) })
+    }
+  }
+
+  return { ...result, launch }
 }
 
 function TrafficPanel() {
-  return h(PanelShell, { title: '流量' }, h(TrafficPage))
+  const { busy, text, launch } = useYakitLaunch()
+  const attempted = useRef(false)
+  useEffect(() => {
+    if (!attempted.current) {
+      attempted.current = true
+      void launch()
+    }
+  }, [])
+  return h(PanelShell, { title: 'Yakit' },
+    h('p', { role: 'status' }, busy ? '正在打开 Yakit…' : text),
+    h('button', { type: 'button', disabled: busy, onClick: launch }, '打开 Yakit'))
+}
+
+function SessionYakitAction({ sessionId }: { sessionId?: string }) {
+  const { busy, text, launch } = useYakitLaunch(sessionId)
+  if (!sessionId) return null
+  return h('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+    h('button', { type: 'button', disabled: busy, onClick: launch, title: '在 Yakit 中关联此会话的本地工作区' }, busy ? '打开中…' : 'Yakit'),
+    text && h('span', { role: 'status', title: text }, text))
 }
 
 function AgentSettings() {
@@ -1122,25 +920,19 @@ function InterceptSettings() {
   return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
 }
 
-function ApprovalsSettings() {
-  return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
-}
-
 // 侧边栏入口：执行台把任务/发现/工具执行收在一起，日志不再是独立页面。
 const PANELS = [
   { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: 'vexnar-workbench', label: '执行台', order: 100, component: WorkbenchPanel },
-  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
-  { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel }
+  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel }
 ]
 
-// 设置：MCP 与 工具 合并成「工具与 MCP」；资产同步并入资产面板。
+// 工具与 MCP 共用设置面板。
 const SETTINGS = [
   { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
   { id: 'vexnar-tools-mcp', label: '工具与 MCP', order: 41, component: ToolsMcpSettings },
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
-  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings },
-  { id: 'vexnar-approvals', label: '审批记录', order: 46, component: ApprovalsSettings }
+  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings }
 ]
 
 export function apply(ctx: {
@@ -1167,6 +959,10 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
+  slots.inject('conversation.session.header.actions', () =>
+    slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-yakit' }, SessionYakitAction))
+  slots.inject('conversation.hero.options', () =>
+    slots.register({ name: 'conversation.hero.options', id: 'vexnar-yakit' }, SessionYakitAction))
   for (const panel of PANELS) {
     slots.inject('main', () => slots.register({ name: 'main', key: panel.id }, panel.component))
     slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon))

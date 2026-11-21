@@ -25,8 +25,7 @@ dsh 侧边栏
 │                 ├─ 任务      （仪表盘计数 + 列表 + 详情）
 │                 ├─ 发现      （按任务范围过滤的漏洞列表 + 详情）
 │                 └─ 工具执行  （运行器 + 该任务的执行记录流）
-├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
-└─ 资产        → main: vexnar-assets  （资产列表 / JSON 导入）
+└─ 流量        → main: vexnar-traffic（打开官方 Yakit）
 
 dsh 设置页
 ├─ Agent 管理  → settings.section: vexnar-agents
@@ -44,7 +43,6 @@ dsh 设置页
 - **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
   工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
 - **MCP / 工具** 是同一件事的两半（工具从哪来），拆成两个设置节只会让人来回切。
-- **资产同步** 只做一件事——往资产库里灌数据——所以并进资产面板，导入完直接看列表。
 
 ## 哪些入口复用 dsh，哪些新建
 
@@ -55,15 +53,12 @@ dsh 设置页
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
 | 任务 / 发现 / 工具执行 | 执行台（三页签共享任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=`、`/api/exploration/activity/history` | 已接 |
-| 资产同步 | 资产面板的「导入」页签 | `/api/assets` | 已接 |
-| 流量 | 面板内证据查看 | `/api/exploration/findings/:id/traffic` | 骨架 |
+| 流量 | 原生 Yakit 窗口与会话项目关联 | `POST /api/yakit/open` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
-| 资产 / 资产同步 | 面板内列表 | `/api/assets`、DSL | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
 | MCP / 工具 / Skill | 「工具与 MCP」设置节 | `/api/mcp`、`/api/tools` | 骨架 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
-| 审批记录 | 面板内列表 | 待迁 | 规划 |
 
 ## 已实现的数据视图
 
@@ -80,9 +75,8 @@ dsh 设置页
 - 执行台：任务 / 发现 / 工具执行 共用顶部任务范围；工具执行页签在选择工具与 target 后按
   该任务落库，下方直接列出该任务的执行记录（planner / main 逐步，含工具与结果）；
 - 任务详情：暂停/恢复/归档按钮；
-- 流量页：通过内嵌 core 读取 Go 流量，支持导入 Yakit HAR 和登记资产。详见 [Yakit 对接设计](docs/YAKIT-TRAFFIC-ASSETS.md)；
+- 流量：直接打开官方 Yakit。dsh 会话标题栏的 Yakit 动作会关联当前本地项目。详见 [官方 Yakit 联动](docs/YAKIT-NATIVE-INTEGRATION.md)。
 - 拦截规则：规则列表与删除（同样代理 Go）；
-- 审批记录：Go 无独立接口，占位说明。
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。
 
 连接方式：**没有独立端口、没有 sidecar**。`vexnar-core` 通过 esbuild 打成

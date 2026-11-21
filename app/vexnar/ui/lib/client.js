@@ -3169,205 +3169,6 @@ function ToolRunPage({ taskID = "" }) {
     (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
   );
 }
-function YakitImport({ onImported }) {
-  const [busy, setBusy] = (0, import_react2.useState)(false);
-  const [error, setError] = (0, import_react2.useState)("");
-  const [result, setResult] = (0, import_react2.useState)(null);
-  async function upload(file) {
-    setError("");
-    setResult(null);
-    if (file.size > 16 * 1024 * 1024) {
-      setError("HAR \u4E0D\u53EF\u8D85\u8FC7 16 MiB\uFF0C\u8BF7\u5206\u6279\u5BFC\u51FA");
-      return;
-    }
-    setBusy(true);
-    try {
-      const response = await fetch(CORE_BASE + "/api/traffic/import/yakit", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: file
-      });
-      if (!response.ok) throw await responseError(response);
-      const data = await response.json();
-      setResult(data);
-      if (data.imported || data.duplicates) onImported();
-    } catch (error2) {
-      setError(String(error2.message));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (0, import_react2.createElement)(
-    "div",
-    { style: { marginBottom: 12 } },
-    (0, import_react2.createElement)(
-      "label",
-      null,
-      "\u5BFC\u5165 Yakit HAR ",
-      (0, import_react2.createElement)("input", {
-        type: "file",
-        accept: ".har,application/json",
-        disabled: busy,
-        onChange: (event) => {
-          const file = event.currentTarget.files?.[0];
-          event.currentTarget.value = "";
-          if (file) void upload(file);
-        }
-      })
-    ),
-    (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginTop: 4 } }, "\u5728 Yakit History \u9009\u4E2D\u8BB0\u5F55\u5E76\u5BFC\u51FA HAR\u3002\u6BCF\u4EFD\u6700\u591A 16 MiB\u30012000 \u6761\u3002"),
-    busy && (0, import_react2.createElement)("div", { role: "status" }, "\u6B63\u5728\u5BFC\u5165\u2026"),
-    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
-    result && (0, import_react2.createElement)(
-      "div",
-      { role: "status" },
-      `\u5DF2\u5BFC\u5165 ${result.imported} \u6761\uFF0C\u91CD\u590D ${result.duplicates} \u6761\uFF0C\u5931\u8D25 ${result.errors.length} \u6761`,
-      result.errors.length > 0 && (0, import_react2.createElement)(
-        "details",
-        null,
-        (0, import_react2.createElement)("summary", null, "\u67E5\u770B\u5931\u8D25\u8BB0\u5F55"),
-        (0, import_react2.createElement)("ul", null, result.errors.map(({ entry, error: error2 }) => (0, import_react2.createElement)("li", { key: entry }, `\u7B2C ${entry} \u6761 \xB7 ${error2}`)))
-      )
-    )
-  );
-}
-function TrafficExchange({ row, onBack }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id]);
-  const [result, setResult] = (0, import_react2.useState)("");
-  const [promoting, setPromoting] = (0, import_react2.useState)(false);
-  const [saved, setSaved] = (0, import_react2.useState)(false);
-  async function promote() {
-    setPromoting(true);
-    setResult("");
-    try {
-      const assets = await callApi("/api/traffic/promote", "POST", { id: row.id });
-      setSaved(true);
-      setResult(`\u5DF2\u767B\u8BB0\u670D\u52A1 #${assets.service_id}\u3001\u7AEF\u70B9 #${assets.endpoint_id}\uFF0C\u53EF\u5728\u8D44\u4EA7\u9875\u67E5\u770B\u3002`);
-    } catch (error2) {
-      setResult(String(error2.message));
-    } finally {
-      setPromoting(false);
-    }
-  }
-  const packetStyle = { fontSize: 12, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 360, overflow: "auto" };
-  return (0, import_react2.createElement)(
-    "div",
-    null,
-    (0, import_react2.createElement)(
-      "div",
-      { style: { display: "flex", gap: 8 } },
-      (0, import_react2.createElement)("button", { type: "button", onClick: onBack }, "\u2190 \u8FD4\u56DE\u6D41\u91CF\u5217\u8868"),
-      (0, import_react2.createElement)("button", { type: "button", onClick: promote, disabled: promoting || saved || !data }, promoting ? "\u767B\u8BB0\u4E2D\u2026" : "\u767B\u8BB0\u4E3A\u8D44\u4EA7")
-    ),
-    result && (0, import_react2.createElement)("p", { role: "status" }, result),
-    (0, import_react2.createElement)("p", { style: { overflowWrap: "anywhere" } }, `${row.method} ${row.url}`),
-    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
-    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
-    data && (0, import_react2.createElement)(
-      "div",
-      null,
-      (0, import_react2.createElement)("strong", null, "\u8BF7\u6C42"),
-      (0, import_react2.createElement)("pre", { style: packetStyle }, data.req?.trim() ? data.req : "\u6682\u65E0\u8BF7\u6C42\u5185\u5BB9"),
-      (0, import_react2.createElement)("strong", null, "\u54CD\u5E94"),
-      (0, import_react2.createElement)("pre", { style: packetStyle }, data.resp?.trim() ? data.resp : "\u6682\u65E0\u54CD\u5E94\u5185\u5BB9")
-    )
-  );
-}
-function TrafficPage() {
-  const [host, setHost] = (0, import_react2.useState)("");
-  const [method, setMethod] = (0, import_react2.useState)("");
-  const [q, setQ] = (0, import_react2.useState)("");
-  const [source, setSource] = (0, import_react2.useState)("");
-  const [page, setPage] = (0, import_react2.useState)(0);
-  const [revision, setRevision] = (0, import_react2.useState)(0);
-  const [exchange, setExchange] = (0, import_react2.useState)(null);
-  const params = new URLSearchParams({ page: String(page), size: "50" });
-  if (host) params.set("host", host.trim());
-  if (method) params.set("method", method);
-  if (q) params.set("q", q.trim());
-  if (source) params.set("source", source);
-  const url = `/api/traffic?${params.toString()}`;
-  const { data, error, loading } = useApi(url, [url, revision]);
-  const rows = data?.exchanges ?? [];
-  const total = data?.total ?? rows.length;
-  if (exchange) return (0, import_react2.createElement)(TrafficExchange, { row: exchange, onBack: () => setExchange(null) });
-  return (0, import_react2.createElement)(
-    "div",
-    { style: { fontSize: 13 } },
-    data?.storage_available !== false && (0, import_react2.createElement)(YakitImport, { onImported: () => {
-      setHost("");
-      setMethod("");
-      setQ("");
-      setSource("yakit");
-      setPage(0);
-      setRevision((value) => value + 1);
-    } }),
-    (0, import_react2.createElement)(
-      "div",
-      { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 } },
-      (0, import_react2.createElement)("input", { placeholder: "\u4E3B\u673A", "aria-label": "\u4E3B\u673A", value: host, onChange: (event) => {
-        setHost(event.target.value);
-        setPage(0);
-      } }),
-      (0, import_react2.createElement)(
-        "select",
-        { "aria-label": "HTTP \u65B9\u6CD5", value: method, onChange: (event) => {
-          setMethod(event.target.value);
-          setPage(0);
-        } },
-        ["", "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"].map((item) => (0, import_react2.createElement)("option", { key: item || "all", value: item }, item || "\u5168\u90E8\u65B9\u6CD5"))
-      ),
-      (0, import_react2.createElement)("input", { placeholder: "URL \u6216\u62A5\u6587\u5173\u952E\u5B57", "aria-label": "URL \u6216\u62A5\u6587\u5173\u952E\u5B57", value: q, onChange: (event) => {
-        setQ(event.target.value);
-        setPage(0);
-      } }),
-      (0, import_react2.createElement)(
-        "select",
-        { "aria-label": "\u6D41\u91CF\u6765\u6E90", value: source, onChange: (event) => {
-          setSource(event.target.value);
-          setPage(0);
-        } },
-        (0, import_react2.createElement)("option", { value: "" }, "\u5168\u90E8\u6765\u6E90"),
-        (0, import_react2.createElement)("option", { value: "yakit" }, "Yakit"),
-        (0, import_react2.createElement)("option", { value: "vexnar" }, "VEXNAR")
-      ),
-      (0, import_react2.createElement)("button", { type: "button", onClick: () => setRevision((value) => value + 1) }, "\u5237\u65B0")
-    ),
-    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
-    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
-    data?.storage_available === false && (0, import_react2.createElement)("div", { role: "status" }, "Go \u6D41\u91CF\u5B58\u50A8\u672A\u542F\u7528"),
-    data && data.storage_available !== false && (0, import_react2.createElement)(
-      "div",
-      null,
-      (0, import_react2.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5339\u914D ${total} \u6761\u6D41\u91CF`),
-      rows.length === 0 ? (0, import_react2.createElement)("p", null, "\u6682\u65E0\u5339\u914D\u6D41\u91CF") : (0, import_react2.createElement)(
-        "table",
-        { style: { width: "100%", borderCollapse: "collapse" } },
-        (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["\u65F6\u95F4", "\u65B9\u6CD5", "URL", "\u72B6\u6001", "\u6765\u6E90"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-        (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
-          "tr",
-          { key: row.id },
-          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.ts),
-          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.method),
-          (0, import_react2.createElement)(
-            "td",
-            { style: { padding: "6px 8px", maxWidth: 420, overflowWrap: "anywhere" } },
-            (0, import_react2.createElement)("button", { type: "button", onClick: () => setExchange(row), style: { whiteSpace: "normal", textAlign: "left" } }, row.url || row.host)
-          ),
-          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.status || "\u2014"),
-          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.source === "yakit" ? "Yakit" : "VEXNAR")
-        )))
-      ),
-      (page > 0 || total > 50) && (0, import_react2.createElement)(
-        "div",
-        { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 8 } },
-        (0, import_react2.createElement)("button", { type: "button", disabled: page === 0, onClick: () => setPage(page - 1) }, "\u4E0A\u4E00\u9875"),
-        (0, import_react2.createElement)("span", null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-        (0, import_react2.createElement)("button", { type: "button", disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, "\u4E0B\u4E00\u9875")
-      )
-    )
-  );
-}
 function InterceptPage() {
   const { data, error, loading } = useApi("/api/intercept/rules");
   const [version, setVersion] = (0, import_react2.useState)(0);
@@ -3430,81 +3231,6 @@ function InterceptPage() {
           (0, import_react2.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664")
         )
       )))
-    )
-  );
-}
-function ApprovalsPage() {
-  const { data, error, loading } = useApi("/api/intercept/pending");
-  const [version, setVersion] = (0, import_react2.useState)(0);
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `\u5BA1\u6279\u961F\u5217\u6682\u65F6\u8BFB\u4E0D\u5230\uFF1A${error}`);
-  const rows = data?.pending ?? [];
-  const decide = async (row, decision) => {
-    try {
-      await callApi(`/api/intercept/pending/${row.id}/decide`, "POST", { decision });
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  return (0, import_react2.createElement)(
-    "div",
-    { key: version, fontSize: 13 },
-    (0, import_react2.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5F85\u5904\u7406 ${rows.length} \u6761`),
-    rows.length === 0 ? (0, import_react2.createElement)("div", { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, color: "var(--vx-muted, #6b7280)" } }, "\u5F53\u524D\u6CA1\u6709\u5F85\u5BA1\u6279\u7684\u5DE5\u5177\u8C03\u7528\u3002") : (0, import_react2.createElement)(
-      "table",
-      { style: { width: "100%", borderCollapse: "collapse" } },
-      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u4EFB\u52A1", "Agent", "\u5DE5\u5177", "\u72B6\u6001", "\u539F\u56E0", ""].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
-        "tr",
-        { key: row.id },
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.task_id ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.agent_name ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.tool_name ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.reason ?? ""),
-        (0, import_react2.createElement)(
-          "td",
-          { style: { padding: "6px 8px", display: "flex", gap: 8 } },
-          row.status === "pending" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => decide(row, "allowed"), style: { cursor: "pointer" } }, "\u5141\u8BB8") : null,
-          row.status === "pending" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => decide(row, "denied"), style: { cursor: "pointer" } }, "\u62D2\u7EDD") : null
-        )
-      )))
-    )
-  );
-}
-function AssetImport({ onImported }) {
-  const [text, setText] = (0, import_react2.useState)('{"assets":[{"type":"root_domain","domain":"example.com"}]}');
-  const [result, setResult] = (0, import_react2.useState)("");
-  const submit = async () => {
-    setResult("\u5BFC\u5165\u4E2D\u2026");
-    try {
-      const parsed = JSON.parse(text);
-      const assets = Array.isArray(parsed) ? parsed : parsed.assets;
-      if (!Array.isArray(assets) || assets.length === 0) throw new Error("\u8BF7\u586B\u5199\u8D44\u4EA7\u5217\u8868");
-      const data = await callApi("/api/assets", "POST", { assets });
-      const failures = (data.errors ?? []).map((item) => `\u7B2C ${item.index + 1} \u6761 \xB7 ${item.error}`);
-      setResult([`\u5DF2\u767B\u8BB0 ${data.results?.length ?? 0} \u6761\uFF0C\u5931\u8D25 ${failures.length} \u6761`, ...failures].join("\uFF1B"));
-      if ((data.results?.length ?? 0) > 0) onImported();
-    } catch (error) {
-      setResult(String(error?.message ?? error));
-    }
-  };
-  return (0, import_react2.createElement)(
-    "div",
-    null,
-    (0, import_react2.createElement)(
-      "p",
-      { style: { fontSize: 12, color: "var(--vx-text-dim)", marginTop: 0 } },
-      "\u4ECE JSON \u5BFC\u5165\u8D44\u4EA7\uFF08\u57DF\u540D / IP / URL\uFF09\uFF0C\u6309\u7C7B\u578B\u4E0E\u6807\u8BC6\u53BB\u91CD\u3002"
-    ),
-    (0, import_react2.createElement)("textarea", { value: text, onChange: (event) => setText(event.target.value), rows: 10, style: { width: "100%", fontFamily: "monospace", fontSize: 12 } }),
-    (0, import_react2.createElement)(
-      "div",
-      { style: { display: "flex", gap: 8, marginTop: 8 } },
-      (0, import_react2.createElement)("button", { type: "button", onClick: submit, style: { cursor: "pointer" } }, "\u5BFC\u5165"),
-      (0, import_react2.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, result)
     )
   );
 }
@@ -3750,75 +3476,49 @@ function WorkbenchPanel() {
     body
   );
 }
-function AssetsTable({ revision, onRefresh }) {
-  const [type, setType] = (0, import_react2.useState)("root_domain");
-  const [page, setPage] = (0, import_react2.useState)(0);
-  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`;
-  const { data, error, loading } = useApi(url, [url, revision]);
-  const rows = data?.assets ?? [];
-  const total = data?.total ?? rows.length;
-  return (0, import_react2.createElement)(
-    "div",
-    null,
-    (0, import_react2.createElement)(
-      "div",
-      { style: { display: "flex", gap: 8, marginBottom: 10 } },
-      (0, import_react2.createElement)(
-        "select",
-        { "aria-label": "\u8D44\u4EA7\u7C7B\u578B", value: type, onChange: (event) => {
-          setType(event.target.value);
-          setPage(0);
-        } },
-        [["root_domain", "\u4E3B\u57DF\u540D"], ["subdomain", "\u5B50\u57DF\u540D"], ["ip", "IP"], ["service", "\u670D\u52A1"], ["endpoint", "\u7AEF\u70B9"], ["app", "\u5E94\u7528"]].map(([value, label]) => (0, import_react2.createElement)("option", { key: value, value }, label))
-      ),
-      (0, import_react2.createElement)("button", { type: "button", onClick: onRefresh }, "\u5237\u65B0")
-    ),
-    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
-    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
-    data && (rows.length === 0 ? (0, import_react2.createElement)("p", null, "\u6682\u65E0\u6B64\u7C7B\u8D44\u4EA7") : (0, import_react2.createElement)(
-      "table",
-      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u8D44\u4EA7", "\u65B9\u6CD5", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
-        "tr",
-        { key: row.id },
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", overflowWrap: "anywhere" } }, row.url || row.domain || row.ip || row.app_name || ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.method ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.port ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.last_seen ?? "")
-      )))
-    )),
-    data && (page > 0 || total > 50) && (0, import_react2.createElement)(
-      "div",
-      { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 8 } },
-      (0, import_react2.createElement)("button", { type: "button", disabled: page === 0, onClick: () => setPage(page - 1) }, "\u4E0A\u4E00\u9875"),
-      (0, import_react2.createElement)("span", null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-      (0, import_react2.createElement)("button", { type: "button", disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, "\u4E0B\u4E00\u9875")
-    )
-  );
-}
-function AssetsPanel() {
-  const [tab, setTab] = (0, import_react2.useState)("list");
-  const [revision, setRevision] = (0, import_react2.useState)(0);
-  const refresh = () => setRevision((value) => value + 1);
-  return (0, import_react2.createElement)(
-    PanelShell,
-    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D\u3001IP\u3001\u670D\u52A1\u4E0E\u7AEF\u70B9\uFF1B\u652F\u6301 JSON \u5BFC\u5165" },
-    (0, import_react2.createElement)(
-      "div",
-      { className: "vx-seg", role: "group", "aria-label": "\u8D44\u4EA7\u89C6\u56FE", style: { marginBottom: 12 } },
-      (0, import_react2.createElement)("button", { type: "button", "aria-pressed": tab === "list", onClick: () => setTab("list") }, "\u8D44\u4EA7\u5217\u8868"),
-      (0, import_react2.createElement)("button", { type: "button", "aria-pressed": tab === "import", onClick: () => setTab("import") }, "\u5BFC\u5165")
-    ),
-    tab === "list" ? (0, import_react2.createElement)(AssetsTable, { revision, onRefresh: refresh }) : (0, import_react2.createElement)(AssetImport, { onImported: () => {
-      refresh();
-      setTab("list");
-    } })
-  );
+function useYakitLaunch(sessionId) {
+  const [state, setState] = (0, import_react2.useState)({});
+  const result = state.sessionId === sessionId ? state : {};
+  async function launch() {
+    setState({ sessionId, busy: true });
+    try {
+      const data = await callApi("/api/yakit/open", "POST", { session_id: sessionId });
+      let text = "\u5DF2\u6253\u5F00 Yakit";
+      if (data.project_status === "linked") text = `\u5DF2\u6253\u5F00 Yakit\u3002\u9879\u76EE\uFF1A${data.project.name}`;
+      if (data.project_status === "unpaired") text = "\u5DF2\u6253\u5F00 Yakit\u3002\u9879\u76EE\u81EA\u52A8\u521B\u5EFA\u9700\u8981\u914D\u7F6E\u672C\u5730\u5185\u6838\u8FDE\u63A5\u3002";
+      if (data.project_status === "unavailable") text = "\u5DF2\u6253\u5F00 Yakit\u3002\u9879\u76EE\u5173\u8054\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u5185\u6838\u8FDE\u63A5\u540E\u91CD\u8BD5\u3002";
+      setState({ sessionId, text });
+    } catch (error) {
+      setState({ sessionId, text: String(error.message) });
+    }
+  }
+  return { ...result, launch };
 }
 function TrafficPanel() {
-  return (0, import_react2.createElement)(PanelShell, { title: "\u6D41\u91CF" }, (0, import_react2.createElement)(TrafficPage));
+  const { busy, text, launch } = useYakitLaunch();
+  const attempted = (0, import_react2.useRef)(false);
+  (0, import_react2.useEffect)(() => {
+    if (!attempted.current) {
+      attempted.current = true;
+      void launch();
+    }
+  }, []);
+  return (0, import_react2.createElement)(
+    PanelShell,
+    { title: "Yakit" },
+    (0, import_react2.createElement)("p", { role: "status" }, busy ? "\u6B63\u5728\u6253\u5F00 Yakit\u2026" : text),
+    (0, import_react2.createElement)("button", { type: "button", disabled: busy, onClick: launch }, "\u6253\u5F00 Yakit")
+  );
+}
+function SessionYakitAction({ sessionId }) {
+  const { busy, text, launch } = useYakitLaunch(sessionId);
+  if (!sessionId) return null;
+  return (0, import_react2.createElement)(
+    "div",
+    { style: { display: "flex", gap: 6, alignItems: "center" } },
+    (0, import_react2.createElement)("button", { type: "button", disabled: busy, onClick: launch, title: "\u5728 Yakit \u4E2D\u5173\u8054\u6B64\u4F1A\u8BDD\u7684\u672C\u5730\u5DE5\u4F5C\u533A" }, busy ? "\u6253\u5F00\u4E2D\u2026" : "Yakit"),
+    text && (0, import_react2.createElement)("span", { role: "status", title: text }, text)
+  );
 }
 function AgentSettings() {
   return (0, import_react2.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react2.createElement)(AgentsPage));
@@ -3844,21 +3544,16 @@ function NotifySettings() {
 function InterceptSettings() {
   return (0, import_react2.createElement)(PanelShell, { title: "\u62E6\u622A\u89C4\u5219", desc: "\u5DE5\u5177\u8F93\u5165/\u8F93\u51FA\u62E6\u622A\uFF08\u7ECF core \u4EE3\u7406 Go\uFF09" }, (0, import_react2.createElement)(InterceptPage));
 }
-function ApprovalsSettings() {
-  return (0, import_react2.createElement)(PanelShell, { title: "\u5BA1\u6279\u8BB0\u5F55", desc: "\u4EBA\u5DE5\u5BA1\u6279\u4E0E\u64CD\u4F5C\u7559\u75D5" }, (0, import_react2.createElement)(ApprovalsPage));
-}
 var PANELS = [
   { id: "vexnar-overview", label: "\u6982\u89C8", order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: "vexnar-workbench", label: "\u6267\u884C\u53F0", order: 100, component: WorkbenchPanel },
-  { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel },
-  { id: "vexnar-assets", label: "\u8D44\u4EA7", order: 103, component: AssetsPanel }
+  { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel }
 ];
 var SETTINGS = [
   { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
   { id: "vexnar-tools-mcp", label: "\u5DE5\u5177\u4E0E MCP", order: 41, component: ToolsMcpSettings },
   { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings },
-  { id: "vexnar-intercept", label: "\u62E6\u622A\u89C4\u5219", order: 44, component: InterceptSettings },
-  { id: "vexnar-approvals", label: "\u5BA1\u6279\u8BB0\u5F55", order: 46, component: ApprovalsSettings }
+  { id: "vexnar-intercept", label: "\u62E6\u622A\u89C4\u5219", order: 44, component: InterceptSettings }
 ];
 function apply(ctx) {
   const { slots } = ctx;
@@ -3869,6 +3564,8 @@ function apply(ctx) {
   installStyles();
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
+  slots.inject("conversation.session.header.actions", () => slots.register({ name: "conversation.session.header.actions", id: "vexnar-yakit" }, SessionYakitAction));
+  slots.inject("conversation.hero.options", () => slots.register({ name: "conversation.hero.options", id: "vexnar-yakit" }, SessionYakitAction));
   for (const panel of PANELS) {
     slots.inject("main", () => slots.register({ name: "main", key: panel.id }, panel.component));
     slots.inject("sidebar.panellist", () => slots.register({ name: "sidebar.panellist", id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon));

@@ -9,7 +9,8 @@ const routes = new Set([
   'POST /api/traffic/promote',
   'GET /api/assets',
   'GET /api/assets/counts',
-  'POST /api/assets'
+  'POST /api/assets',
+  'POST /api/yakit/open'
 ])
 
 export function isGoDataRequest(method: string, path: string) {
