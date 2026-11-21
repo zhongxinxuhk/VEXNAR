@@ -8,7 +8,7 @@ import fs from 'node:fs/promises';
 import { pages, pageFromPath, platformAssets, filterCredits, safeGithub } from '../src/content.js';
 import { architectures } from '../src/architecture.js';
 import { contracts as layerContracts, layers, lifecycle } from '../src/architecture/layers.js';
-import { approvals as demoApprovals, conversations, graph, toolCatalog, transcripts } from '../src/console/data.js';
+import { approvals as demoApprovals, conversations, graph, graphLegend, toolCatalog, transcripts } from '../src/console/data.js';
 import { consoleNav } from '../src/console/nav.js';
 const read = path => fs.readFile(new URL(path, import.meta.url), 'utf8');
 
@@ -133,4 +133,18 @@ test('console and architecture pages ship pre-rendered interactive markup', asyn
   assert.ok(architecturePage.includes('layer-evidence'));
   const home = await read('../dist/index.html');
   assert.ok(home.includes('data-theme="light"') && home.includes('3D 架构剖析'));
+});
+
+test('exploration graph demo keeps typed nodes, legend tones and bounded coordinates', () => {
+  const types = new Set(graphLegend.map(row => row.type));
+  for (const type of ['起点', '目标', '意图', '事实', '漏洞', '提示']) assert.ok(types.has(type), type);
+  assert.equal(graphLegend.length, graph.nodes.reduce((set, node) => set.add(node.type), new Set()).size);
+  for (const node of graph.nodes) {
+    assert.ok(types.has(node.type), node.id);
+    assert.ok(node.x >= 0 && node.x + 160 <= 1000, `${node.id} x`);
+    assert.ok(node.y >= 0 && node.y + 54 <= 560, `${node.id} y`);
+    assert.ok(node.detail.length > 10 && node.sub.length > 0, node.id);
+  }
+  assert.equal(graph.edges.length, 13);
+  assert.equal(new Set(graph.nodes.map(node => node.id)).size, graph.nodes.length);
 });
