@@ -244,9 +244,31 @@ const PERMISSION_WARNING_SCRIPT = `
 })();
 `
 
+
+const PERMISSION_WARNING_CSS = `
+button[aria-label*="完全权限"] [class*="triggerLabel"],
+button[aria-label*="Full access"] [class*="triggerLabel"],
+button[aria-label*="フルアクセス"] [class*="triggerLabel"],
+button[aria-label*="Acceso completo"] [class*="triggerLabel"],
+button[aria-label*="Accès complet"] [class*="triggerLabel"],
+button[aria-label*="Voller Zugriff"] [class*="triggerLabel"],
+button[aria-label*="Полный доступ"] [class*="triggerLabel"],
+button[aria-label*="Acesso total"] [class*="triggerLabel"],
+button[aria-label*="完全权限"] { color: #dc2626 !important; }
+[role="menuitem"][aria-label*="完全权限"],
+[role="menuitem"][aria-label*="Full access"],
+[role="menuitem"][aria-label*="フルアクセス"],
+[role="menuitem"][aria-label*="Acceso completo"],
+[role="menuitem"][aria-label*="Accès complet"],
+[role="menuitem"][aria-label*="Voller Zugriff"],
+[role="menuitem"][aria-label*="Полный доступ"],
+[role="menuitem"][aria-label*="Acesso total"] { color: #dc2626 !important; font-weight: 600 !important; }
+`
+
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
   ctx.effect(() => ctx.on('webserver/index-inject', (table) => {
+    table.push({ kind: 'style', text: PERMISSION_WARNING_CSS })
     table.push({ kind: 'script', placement: 'body', text: PERMISSION_WARNING_SCRIPT })
   }))
 
