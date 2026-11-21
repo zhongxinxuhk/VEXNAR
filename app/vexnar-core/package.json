@@ -11,7 +11,8 @@
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
     "compare": "node compare.mjs",
-    "compare:domain": "node compare-domain.mjs"
+    "compare:domain": "node compare-domain.mjs",
+    "verify": "node verify.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
