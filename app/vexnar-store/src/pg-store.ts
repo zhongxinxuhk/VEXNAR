@@ -21,7 +21,7 @@ export function pgStore(connection: {
   const pool = new pg.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 })
   const q = async (text: string, values: unknown[] = []) => (await pool.query(text, values)).rows
   const rfc = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`
-  const ts = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF')`
+  const ts = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`
 
   return {
     backend: 'postgres',
@@ -68,7 +68,7 @@ export function pgStore(connection: {
           count(*) FILTER (WHERE severity = 'medium')::int AS medium,
           count(*) FILTER (WHERE severity = 'low')::int AS low FROM findings`)
         const classes = await q(`SELECT DISTINCT vulnclass FROM findings WHERE vulnclass <> '' ORDER BY vulnclass`)
-        const tasks = await q(`SELECT f.task_id::text AS id, coalesce(t.name,'') AS name, coalesce(t.description,'') AS description,
+        const tasks = await q(`SELECT f.task_id AS id, coalesce(t.name,'') AS name, coalesce(t.description,'') AS description,
           count(*)::int AS count FROM findings f LEFT JOIN tasks t ON t.id = f.task_id
           WHERE f.task_id IS NOT NULL GROUP BY f.task_id, t.name, t.description ORDER BY max(f.created_at) DESC`)
         return { ...row, vulnclasses: classes.map((c) => c.vulnclass), tasks }
@@ -106,12 +106,12 @@ export function pgStore(connection: {
         const [count] = await q(`SELECT count(*)::int AS n FROM exploration_nodes WHERE ${where}`, values)
         const rows = await q(`SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin,
           ${ts('created_at')} AS created_at FROM exploration_nodes WHERE ${where}
-          ORDER BY priority DESC, id ${order.toUpperCase()} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+          ORDER BY id ${order.toUpperCase()} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
           [...values, size, (page - 1) * size])
         const items = rows.map((row) => nodeRow.parse(row))
         const ids = items.map((row) => row.id)
         const edges = ids.length
-          ? await q('SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[])', [ids])
+          ? await q('SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $2 AND (src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[]))', [ids, task.exploration_id])
           : []
         return { items, total: Number(count.n), edges }
       }
