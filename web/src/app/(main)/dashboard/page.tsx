@@ -36,6 +36,7 @@ import type {
   Task,
   TokenTotal,
   Tool,
+  TrafficCaptureSummary,
   TrafficExchange,
   UsageStats,
 } from "@/lib/types";
@@ -142,6 +143,9 @@ export default function DashboardPage() {
   const [usageStats, setUsageStats] = React.useState<UsageStats | null>(null);
   const [assetCounts, setAssetCounts] = React.useState<Record<string, number>>({});
   const [traffic, setTraffic] = React.useState<TrafficExchange[]>([]);
+  // Capture is armed per chat conversation; null means the backend has no
+  // capture aggregate (older Go service), so the settings flag stays the fallback.
+  const [capture, setCapture] = React.useState<TrafficCaptureSummary | null>(null);
   const [agents, setAgents] = React.useState<Agent[]>([]);
   const [mcpServers, setMcpServers] = React.useState<MCPServer[]>([]);
   const [skills, setSkills] = React.useState<SkillItem[]>([]);
@@ -235,6 +239,11 @@ export default function DashboardPage() {
         ]);
         if (!alive) return;
         setTraffic(traf.exchanges ?? []);
+        try {
+          setCapture(await api.trafficCapture());
+        } catch {
+          setCapture(null);
+        }
         setAssetCounts(counts ?? {});
         setAgents(agentList);
         setMcpServers(mcpList);
@@ -261,6 +270,15 @@ export default function DashboardPage() {
     for (const t of tasks) m[t.status] = (m[t.status] ?? 0) + 1;
     return m;
   }, [tasks]);
+
+  // Capture truth comes from the armed-conversation aggregate only. The
+  // station-wide `settings.traffic_capture` describes the collector itself and
+  // must not be read as "someone is capturing"; when the aggregate is unreachable
+  // the card says so instead of guessing.
+  const captureActive = capture?.active === true;
+  const captureKnown = capture !== null;
+  const captureSessions = capture?.sessions?.length ?? 0;
+  const trafficTotal = capture?.total ?? traffic.length;
 
   const findingsBySev = React.useMemo(() => {
     const m = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -555,16 +573,18 @@ export default function DashboardPage() {
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <ActivityIcon className="size-3" /> 流量交互
             </div>
-            <div className="text-2xl font-semibold tabular-nums">{traffic.length}</div>
+            <div className="text-2xl font-semibold tabular-nums">{trafficTotal}</div>
           </CardHeader>
           <CardContent className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            {settings?.traffic_capture ? (
+            {!captureKnown ? (
+              <span>抓包状态不可用</span>
+            ) : captureActive ? (
               <>
                 <LiveDot />
-                <span>录制中</span>
+                <span>{captureSessions > 0 ? `抓包中 ${captureSessions} 个会话` : "录制中"}</span>
               </>
             ) : (
-              <span>捕获未开启</span>
+              <span>未发起抓包（在 chat 中开启）</span>
             )}
           </CardContent>
         </Card>
@@ -1146,17 +1166,23 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2">
-              <div className="text-[10px] text-muted-foreground">流量捕获</div>
+              <div className="text-[10px] text-muted-foreground">会话抓包</div>
               <Badge
                 variant="outline"
                 className={cn(
                   "text-[10px]",
-                  settings?.traffic_capture
+                  captureActive
                     ? "border-violet-500/30 bg-violet-500/10 text-violet-400"
                     : "text-muted-foreground",
                 )}
               >
-                {settings?.traffic_capture ? "开启" : "关闭"}
+                {!captureKnown
+                  ? "不可用"
+                  : captureActive
+                    ? captureSessions > 0
+                      ? `${captureSessions} 个会话`
+                      : "开启"
+                    : "未发起"}
               </Badge>
             </div>
 

@@ -193,6 +193,23 @@ export function createStore(backend: Store['backend'], readTable: (table: string
         const page = filtered.slice(0, Math.min(limit, 500)).reverse()
         return { items: page, snapshot, hasMore: filtered.length > limit }
       },
+      // Whole-station feed: one page of the newest activity across every task,
+      // oldest-first inside the page so a renderer can append without sorting.
+      // `snapshot` is the newest id at query time, which is also the live-tail
+      // cursor. A taskId narrows the feed without changing the ordering rules.
+      recent: async ({ taskId = '', before = 0, limit = 200 } = {}) => {
+        const all = await load('activity', { parse: (value) => value })
+        let scoped = all
+        if (taskId !== '') {
+          const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
+          if (!task) return { items: [], snapshot: 0, hasMore: false }
+          scoped = all.filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
+        }
+        const snapshot = scoped.reduce((max, row) => Math.max(max, Number(row.id)), 0)
+        const filtered = scoped.filter((row) => !before || Number(row.id) < before).sort((a, b) => Number(b.id) - Number(a.id))
+        const page = filtered.slice(0, Math.min(limit, 500)).reverse()
+        return { items: page, snapshot, hasMore: filtered.length > limit }
+      },
       dailyTokens: async (days) => {
         const rows = (await load('activity', { parse: (value) => value })).filter((row) => row.kind === 'result')
         const cutoff = Date.now() / 1000 - Math.max(days, 1) * 86400

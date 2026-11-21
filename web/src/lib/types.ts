@@ -909,6 +909,82 @@ export interface TrafficHost {
   count: number;
 }
 
+// ---- Session traffic (dsh-embedded TS core) ----
+// One exchange attributed to a chat conversation. phase=request is published
+// before the target answers (live "已发送" row); phase=response/error replaces
+// it once the exchange is stored.
+export interface ConversationTrafficFlow {
+  id: string;
+  seq: number;
+  ts: number; // unix seconds
+  source: string;
+  scope: string;
+  conv_id: number;
+  turn_seq: number;
+  confidence: string;
+  method: string;
+  url: string;
+  url_template: string;
+  host: string;
+  status: number;
+  req_len: number;
+  resp_len: number;
+  duration_ms: number;
+  content_type: string;
+  phase?: "request" | "response" | "error";
+  tags?: string;
+}
+
+export interface ConversationTrafficResp {
+  enabled: boolean;
+  scope: string;
+  items?: ConversationTrafficFlow[];
+  next_seq?: number;
+  has_more?: boolean;
+}
+
+// Capture is armed from the chat conversation, not from a station-wide toggle:
+// the endpoint probes that state and hands back the hook script that mirrors
+// traffic into this conversation's scope.
+export interface ConversationTrafficCapture {
+  active: boolean;
+  source: string;
+  started_at: number;
+  stopped_at: number;
+  items: number;
+  last_ts: number;
+}
+
+export interface ConversationTrafficEndpoint {
+  enabled: boolean;
+  scope: string;
+  proxy: string;
+  capture?: ConversationTrafficCapture;
+  ingest_url?: string;
+  hook?: string;
+}
+
+// Station-wide view: which conversations are capturing right now, plus the
+// newest exchanges as a sample (the overview reads this instead of /traffic).
+export interface TrafficCaptureSession {
+  scope: string;
+  conv_id: number;
+  session_id: string;
+  source: string;
+  started_at: number;
+  items: number;
+  last_ts: number;
+}
+
+export interface TrafficCaptureSummary {
+  active: boolean;
+  sessions: TrafficCaptureSession[];
+  total: number;
+  last_ts: number;
+  ingest_url?: string;
+  recent?: ConversationTrafficFlow[];
+}
+
 // ---- App settings (runtime toggles) ----
 export interface Settings {
   traffic_capture: boolean;

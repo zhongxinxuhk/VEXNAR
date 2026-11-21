@@ -15,6 +15,11 @@
  *
  * 数据只读：走 vexnar-core 同源代理（与其它面板同一 base/token）；轮询在页面
  * 隐藏时暂停，卸载 abort，单接口失败只降级对应区块。
+ *
+ * 两张卡的口径与后端一致，不要退回旧语义：
+ *   - 流量：读 `/api/traffic/capture`。抓包由 chat 会话发起（conv- / session-
+ *     scope），`active` 表示“有会话正在抓”，不是站点级 settings 开关；
+ *   - 活动流：读 `/api/exploration/activity`（不带 task = 全站最近活动）。
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -83,6 +88,15 @@ interface Exchange {
   status?: number
 }
 
+/** `/api/traffic/capture`：会话发起的抓包态 + 最近流量样本。 */
+interface CaptureSummary {
+  active?: boolean
+  sessions?: Array<{ conv_id?: number; scope?: string; source?: string; started_at?: number; items?: number; last_ts?: number }>
+  total?: number
+  last_ts?: number
+  recent?: Exchange[]
+}
+
 interface ActivityRow {
   seq?: number
   ts?: string
@@ -124,9 +138,13 @@ interface OverviewData {
   assets: Record<string, number>
   daily: DayBucket[]
   traffic: Exchange[]
+  trafficTotal: number
   activity: ActivityRow[]
   sys: SysCounts
+  /** A chat conversation has capture armed right now. */
   capture: boolean
+  captureSessions: number
+  captureLastTs: number
   updated: number
 }
 
@@ -137,9 +155,12 @@ const EMPTY_DATA: OverviewData = {
   assets: {},
   daily: [],
   traffic: [],
+  trafficTotal: 0,
   activity: [],
   sys: { agents: 0, agentsOn: 0, mcp: 0, mcpOn: 0, tools: 0, toolsOn: 0 },
   capture: false,
+  captureSessions: 0,
+  captureLastTs: 0,
   updated: 0
 }
 
@@ -155,9 +176,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
     getJson<{ items?: FindingRow[] }>('/api/exploration/findings?page=1&limit=60', signal),
     getJson<Record<string, number>>('/api/assets/counts', signal),
     getJson<DayBucket[]>('/api/tokens/daily?days=365', signal),
-    getJson<{ exchanges?: Exchange[] }>('/api/traffic?page=0&size=120', signal),
+    getJson<CaptureSummary>('/api/traffic/capture', signal),
     getJson<{ items?: ActivityRow[] }>('/api/exploration/activity?limit=14', signal),
-    getJson<{ traffic_capture?: boolean }>('/api/settings', signal),
     getJson<{ agents?: Array<{ enabled?: boolean }> }>('/api/agents', signal),
     getJson<{ servers?: Array<{ enabled?: boolean }> }>('/api/mcp', signal),
     getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal)
@@ -174,15 +194,19 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
   const findings = pick(settled[2] as PromiseSettledResult<{ items?: FindingRow[] }>, {})
   const assets = pick(settled[3] as PromiseSettledResult<Record<string, number>>, {})
   const daily = pick(settled[4] as PromiseSettledResult<DayBucket[]>, [])
-  const traffic = pick(settled[5] as PromiseSettledResult<{ exchanges?: Exchange[] }>, {})
+  const capture = pick(settled[5] as PromiseSettledResult<CaptureSummary>, {})
   const activity = pick(settled[6] as PromiseSettledResult<{ items?: ActivityRow[] }>, {})
-  const settings = pick(settled[7] as PromiseSettledResult<{ traffic_capture?: boolean }>, {})
-  const agents = pick(settled[8] as PromiseSettledResult<{ agents?: Array<{ enabled?: boolean }> }>, {})
-  const mcp = pick(settled[9] as PromiseSettledResult<{ servers?: Array<{ enabled?: boolean }> }>, {})
-  const tools = pick(settled[10] as PromiseSettledResult<{ tools?: Array<{ enabled?: boolean }> }>, {})
+  const agents = pick(settled[7] as PromiseSettledResult<{ agents?: Array<{ enabled?: boolean }> }>, {})
+  const mcp = pick(settled[8] as PromiseSettledResult<{ servers?: Array<{ enabled?: boolean }> }>, {})
+  const tools = pick(settled[9] as PromiseSettledResult<{ tools?: Array<{ enabled?: boolean }> }>, {})
 
   const countOn = (rows: Array<{ enabled?: boolean }> | undefined): number =>
     (rows ?? []).filter((row) => row.enabled !== false).length
+
+  // Capture is armed per chat conversation, so the overview reports the armed
+  // sessions instead of the station-wide `settings.traffic_capture` flag.
+  const sessions = Array.isArray(capture.sessions) ? capture.sessions : []
+  const recent = Array.isArray(capture.recent) ? capture.recent : []
 
   return {
     error,
@@ -199,7 +223,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
       findings: Array.isArray(findings.items) ? findings.items : [],
       assets: assets !== null && typeof assets === 'object' ? assets : {},
       daily: Array.isArray(daily) ? daily : [],
-      traffic: Array.isArray(traffic.exchanges) ? traffic.exchanges : [],
+      traffic: recent,
+      trafficTotal: Number(capture.total ?? 0),
       activity: Array.isArray(activity.items) ? activity.items : [],
       sys: {
         agents: agents.agents?.length ?? 0,
@@ -209,7 +234,11 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
         tools: tools.tools?.length ?? 0,
         toolsOn: countOn(tools.tools)
       },
-      capture: settings.traffic_capture === true,
+      // Only the capture aggregate decides: `settings.traffic_capture` is the
+      // collector's own switch and says nothing about an armed conversation.
+      capture: capture.active === true || sessions.length > 0,
+      captureSessions: sessions.length,
+      captureLastTs: Number(capture.last_ts ?? 0),
       updated: Date.now()
     }
   }
@@ -907,6 +936,8 @@ interface View {
   tokens: { input: number; output: number; cache: number; total: number; prev: number; cacheRate: number; dailyAvg: number; peak: { day: string; value: number } }
   heat: Array<{ day: string; value: number }>
   codes: Array<{ label: string; value: number; tone: string }>
+  /** All recorded exchanges, not just the recent sample. */
+  trafficTotal: number
   methods: Array<{ label: string; value: number; tone?: string }>
   hosts: Array<{ label: string; value: number; tone?: string }>
   errorRate: number
@@ -1053,6 +1084,7 @@ function derive(data: OverviewData, days: number): View {
     tokens: { ...tokens, cacheRate, dailyAvg: days > 0 ? tokens.total / days : 0, peak },
     heat,
     codes,
+    trafficTotal: data.trafficTotal,
     methods: [...methodCounts.entries()].sort((l, r) => r[1] - l[1]).slice(0, 4)
       .map(([label, value]) => ({ label, value, tone: 'var(--vx-chart-1)' })),
     hosts: [...hostCounts.entries()].sort((l, r) => r[1] - l[1]).slice(0, 4)
@@ -1184,11 +1216,15 @@ export function OverviewPanel(): ReactNode {
           tone="green"
           icon="activity"
           label="流量交互"
-          value={fmtInt(data.traffic.length)}
+          value={fmtInt(view.trafficTotal)}
           band={<CodeBar codes={view.codes} total={data.traffic.length} />}
           footer={(
             <span className="vx-ov-chips">
-              <span className="vx-ov-chip">{view.capture ? '录制中' : '捕获未开启'}</span>
+              <span className="vx-ov-chip">
+                {view.capture
+                  ? `抓包中 ${data.captureSessions} 个会话`
+                  : '未发起抓包'}
+              </span>
               <span className="vx-ov-chip">错误 {fmtPct(view.errorRate, 0)}</span>
               <span className="vx-ov-chip">资产 {fmtInt(view.assets.total)}</span>
             </span>
@@ -1397,7 +1433,7 @@ export function OverviewPanel(): ReactNode {
           <HBars rows={view.assets.rows} />
         </Section>
 
-        <Section span={4} icon="activity" title="流量健康度" caption={`样本 ${fmtInt(data.traffic.length)} 次`}>
+        <Section span={4} icon="activity" title="流量健康度" caption={`样本 ${fmtInt(data.traffic.length)} / 共 ${fmtInt(view.trafficTotal)} 次`}>
           {data.traffic.length === 0 ? <Empty label="暂无流量数据" /> : (
             <div className="vx-ov-traffic">
               <Donut
@@ -1429,9 +1465,14 @@ export function OverviewPanel(): ReactNode {
           )}
         </Section>
 
-        <Section span={4} icon="shield" title="系统状态" caption={view.capture ? '捕获开启' : '捕获关闭'}>
+        <Section span={4} icon="shield" title="系统状态" caption={view.capture ? '有会话在抓包' : '无会话抓包'}>
           <ul className="vx-ov-sys">
-            <li><span>流量捕获</span><b data-on={view.capture ? '1' : '0'}>{view.capture ? '开启' : '关闭'}</b></li>
+            <li>
+              <span>会话抓包</span>
+              <b data-on={view.capture ? '1' : '0'}>
+                {view.capture ? `${data.captureSessions} 个会话` : '未发起'}
+              </b>
+            </li>
             <li><span>MCP 服务</span><b>{data.sys.mcpOn}/{data.sys.mcp}</b></li>
             <li><span>工具</span><b>{data.sys.toolsOn}/{data.sys.tools}</b></li>
             <li><span>Agent</span><b>{data.sys.agentsOn}/{data.sys.agents}</b></li>

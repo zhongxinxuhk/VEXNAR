@@ -145,7 +145,7 @@ function compareEdges(a: any, b: any) {
   )
 }
 
-function activityDto(row: any) {
+export function activityDto(row: any) {
   const out: Record<string, unknown> = {
     seq: Number(row.id),
     ...(row.node_id == null ? {} : { node_id: Number(row.node_id) }),

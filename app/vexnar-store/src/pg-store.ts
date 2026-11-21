@@ -203,6 +203,27 @@ export function pgStore(connection: {
           FROM activity WHERE ${filters.join(' AND ')} ORDER BY id DESC LIMIT $2`, values)
         return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit }
       },
+      // Cross-task feed for whole-station surfaces. Same column list as
+      // `history`, so one DTO serves both routes; a taskId narrows it.
+      recent: async ({ taskId = '', before = 0, limit = 200 } = {}) => {
+        const capped = Math.min(Math.max(Number(limit) || 200, 1), 500)
+        const filters: string[] = []
+        const values: unknown[] = [capped + 1]
+        if (taskId !== '') {
+          const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
+          if (!task) return { items: [], snapshot: 0, hasMore: false }
+          values.push(task.exploration_id)
+          filters.push(`exploration_id = $${values.length}`)
+        }
+        if (before) { values.push(before); filters.push(`id < $${values.length}`) }
+        const where = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
+        const rows = await q(`SELECT id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata,
+          input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg,
+          to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at
+          FROM activity ${where} ORDER BY id DESC LIMIT $1`, values)
+        const [max] = await q(`SELECT coalesce(max(id),0)::bigint AS n FROM activity ${where}`, values.slice(1))
+        return { items: rows.slice(0, capped).reverse(), snapshot: Number(max?.n ?? 0), hasMore: rows.length > capped }
+      },
       dailyTokens: async (days) => {
         const rows = await q(`SELECT TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
           COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
