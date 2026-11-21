@@ -708,19 +708,71 @@ function NotifySettings() {
   return h(PanelShell, { title: '通知推送', desc: '渠道与投递' }, h(NotifyPage))
 }
 
+function LogsPanel() {
+  const tasks = useApi('/api/tasks')
+  const [taskId, setTaskId] = useState('')
+  const [session, setSession] = useState('plan')
+  const [rows, setRows] = useState<any[]>([])
+  const [error, setError] = useState('')
+  const load = async (id: string, sess: string) => {
+    setError('')
+    try {
+      const data = await callApi(`/api/exploration/activity/history?task=${id}&session=${sess}&limit=100`)
+      setRows(data.items ?? [])
+    } catch (e: any) { setError(String(e?.message ?? e)); setRows([]) }
+  }
+  useEffect(() => {
+    if (!taskId && tasks.data?.tasks?.[0]) { const id = String(tasks.data.tasks[0].id); setTaskId(id); void load(id, session) }
+  }, [tasks.data])
+  return h(PanelShell, { title: '日志', desc: '任务活动流（planner / main / intent）' },
+    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
+      h('select', { value: taskId, onChange: (event: any) => { setTaskId(event.target.value); void load(event.target.value, session) } },
+        (tasks.data?.tasks ?? []).slice(0, 50).map((task: any) => h('option', { key: task.id, value: task.id }, `${task.id} · ${task.name || '未命名'}`))),
+      h('select', { value: session, onChange: (event: any) => { setSession(event.target.value); if (taskId) void load(taskId, event.target.value) } },
+        ['plan', 'main'].map((item) => h('option', { key: item, value: item }, item))),
+      h('button', { type: 'button', onClick: () => taskId && load(taskId, session), style: { cursor: 'pointer' } }, '刷新')),
+    error ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, error) : null,
+    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
+      h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
+      h('tbody', null, rows.slice().reverse().map((row: any) => h('tr', { key: row.seq },
+        h('td', { style: { padding: '4px 6px' } }, row.seq),
+        h('td', { style: { padding: '4px 6px' } }, row.ts),
+        h('td', { style: { padding: '4px 6px' } }, row.worker ?? ''),
+        h('td', { style: { padding: '4px 6px' } }, row.kind ?? ''),
+        h('td', { style: { padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary ?? ''))))))
+}
+
+function InterceptSettings() {
+  return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
+}
+
+function ApprovalsSettings() {
+  return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
+}
+
+function AssetSyncSettings() {
+  return h(PanelShell, { title: '资产同步', desc: '外部资产源同步' },
+    h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
+      '资产同步后端尚未迁移（Go 侧无独立 REST 契约）。接入时复用资产的 journal 写路径，并在此提供同步源配置与最近一次结果。'))
+}
+
 const PANELS = [
   { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
   { id: 'vexnar-findings', label: '发现', order: 101, component: FindingsPanel },
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
   { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel },
-  { id: 'vexnar-tool-run', label: '工具执行', order: 104, component: ToolRunPanel }
+  { id: 'vexnar-tool-run', label: '工具执行', order: 104, component: ToolRunPanel },
+  { id: 'vexnar-logs', label: '日志', order: 105, component: LogsPanel }
 ]
 
 const SETTINGS = [
   { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
   { id: 'vexnar-mcp', label: 'MCP', order: 41, component: McpSettings },
   { id: 'vexnar-tools', label: '工具', order: 42, component: ToolSettings },
-  { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings }
+  { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
+  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings },
+  { id: 'vexnar-asset-sync', label: '资产同步', order: 45, component: AssetSyncSettings },
+  { id: 'vexnar-approvals', label: '审批记录', order: 46, component: ApprovalsSettings }
 ]
 
 export function apply(ctx: {

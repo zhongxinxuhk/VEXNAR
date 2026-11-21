@@ -20,13 +20,17 @@ dsh 侧边栏
 ├─ 发现        → main: vexnar-findings
 ├─ 流量        → main: vexnar-traffic
 ├─ 资产        → main: vexnar-assets
-└─ 工具执行    → main: vexnar-tool-run
+├─ 工具执行    → main: vexnar-tool-run
+└─ 日志        → main: vexnar-logs
 
 dsh 设置页
 ├─ Agent 管理  → settings.section: vexnar-agents
 ├─ MCP         → settings.section: vexnar-mcp
 ├─ 工具        → settings.section: vexnar-tools
-└─ 通知推送    → settings.section: vexnar-notify
+├─ 通知推送    → settings.section: vexnar-notify
+├─ 拦截规则    → settings.section: vexnar-intercept
+├─ 资产同步    → settings.section: vexnar-asset-sync
+└─ 审批记录    → settings.section: vexnar-approvals
 ```
 
 ## 哪些入口复用 dsh，哪些新建

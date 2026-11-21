@@ -944,6 +944,47 @@ function TrafficPage() {
     )
   );
 }
+function InterceptPage() {
+  const { data, error, loading } = useApi("/api/intercept/rules");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u89C4\u5219\uFF09`);
+  const rows = data?.rules ?? [];
+  const remove = async (row) => {
+    if (!window.confirm(`\u5220\u9664\u89C4\u5219 #${row.id}?`)) return;
+    try {
+      await callApi(`/api/intercept/rules/${row.id}`, "DELETE");
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  return (0, import_react.createElement)(
+    "div",
+    { key: version, fontSize: 13 },
+    (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? rows.length} \u6761\u89C4\u5219`),
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse" } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u5339\u914D", "\u52A8\u4F5C", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.id },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name ?? row.match ?? row.match_target ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.action ?? row.enabled === false ? "\u505C\u7528" : "\u542F\u7528"),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664"))
+      )))
+    )
+  );
+}
+function ApprovalsPage() {
+  return (0, import_react.createElement)(
+    "div",
+    { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
+    "\u5BA1\u6279\u8BB0\u5F55\uFF1AGo \u4FA7\u6682\u65E0\u72EC\u7ACB REST \u63A5\u53E3\uFF08web \u63A7\u5236\u53F0\u4E5F\u6CA1\u6709\u8BE5\u9875\uFF09\uFF0C\u8FC1\u79FB\u65F6\u968F\u62E6\u622A\u89C4\u5219\u4E00\u8D77\u843D\u5730\u3002"
+  );
+}
 function PanelShell({ title, desc, children }) {
   const connect = () => {
     const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
@@ -1020,18 +1061,103 @@ function ToolSettings() {
 function NotifySettings() {
   return (0, import_react.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react.createElement)(NotifyPage));
 }
+function LogsPanel() {
+  const tasks = useApi("/api/tasks");
+  const [taskId, setTaskId] = (0, import_react.useState)("");
+  const [session, setSession] = (0, import_react.useState)("plan");
+  const [rows, setRows] = (0, import_react.useState)([]);
+  const [error, setError] = (0, import_react.useState)("");
+  const load = async (id, sess) => {
+    setError("");
+    try {
+      const data = await callApi(`/api/exploration/activity/history?task=${id}&session=${sess}&limit=100`);
+      setRows(data.items ?? []);
+    } catch (e) {
+      setError(String(e?.message ?? e));
+      setRows([]);
+    }
+  };
+  (0, import_react.useEffect)(() => {
+    if (!taskId && tasks.data?.tasks?.[0]) {
+      const id = String(tasks.data.tasks[0].id);
+      setTaskId(id);
+      void load(id, session);
+    }
+  }, [tasks.data]);
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u65E5\u5FD7", desc: "\u4EFB\u52A1\u6D3B\u52A8\u6D41\uFF08planner / main / intent\uFF09" },
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, marginBottom: 10 } },
+      (0, import_react.createElement)(
+        "select",
+        { value: taskId, onChange: (event) => {
+          setTaskId(event.target.value);
+          void load(event.target.value, session);
+        } },
+        (tasks.data?.tasks ?? []).slice(0, 50).map((task) => (0, import_react.createElement)("option", { key: task.id, value: task.id }, `${task.id} \xB7 ${task.name || "\u672A\u547D\u540D"}`))
+      ),
+      (0, import_react.createElement)(
+        "select",
+        { value: session, onChange: (event) => {
+          setSession(event.target.value);
+          if (taskId) void load(taskId, event.target.value);
+        } },
+        ["plan", "main"].map((item) => (0, import_react.createElement)("option", { key: item, value: item }, item))
+      ),
+      (0, import_react.createElement)("button", { type: "button", onClick: () => taskId && load(taskId, session), style: { cursor: "pointer" } }, "\u5237\u65B0")
+    ),
+    error ? (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, error) : null,
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 12 } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["seq", "ts", "worker", "kind", "summary"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "4px 6px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, rows.slice().reverse().map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.seq },
+        (0, import_react.createElement)("td", { style: { padding: "4px 6px" } }, row.seq),
+        (0, import_react.createElement)("td", { style: { padding: "4px 6px" } }, row.ts),
+        (0, import_react.createElement)("td", { style: { padding: "4px 6px" } }, row.worker ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "4px 6px" } }, row.kind ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "4px 6px", maxWidth: 460, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.summary ?? "")
+      )))
+    )
+  );
+}
+function InterceptSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u62E6\u622A\u89C4\u5219", desc: "\u5DE5\u5177\u8F93\u5165/\u8F93\u51FA\u62E6\u622A\uFF08\u7ECF core \u4EE3\u7406 Go\uFF09" }, (0, import_react.createElement)(InterceptPage));
+}
+function ApprovalsSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u5BA1\u6279\u8BB0\u5F55", desc: "\u4EBA\u5DE5\u5BA1\u6279\u4E0E\u64CD\u4F5C\u7559\u75D5" }, (0, import_react.createElement)(ApprovalsPage));
+}
+function AssetSyncSettings() {
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
+    (0, import_react.createElement)(
+      "div",
+      { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
+      "\u8D44\u4EA7\u540C\u6B65\u540E\u7AEF\u5C1A\u672A\u8FC1\u79FB\uFF08Go \u4FA7\u65E0\u72EC\u7ACB REST \u5951\u7EA6\uFF09\u3002\u63A5\u5165\u65F6\u590D\u7528\u8D44\u4EA7\u7684 journal \u5199\u8DEF\u5F84\uFF0C\u5E76\u5728\u6B64\u63D0\u4F9B\u540C\u6B65\u6E90\u914D\u7F6E\u4E0E\u6700\u8FD1\u4E00\u6B21\u7ED3\u679C\u3002"
+    )
+  );
+}
 var PANELS = [
   { id: "vexnar-tasks", label: "\u4EFB\u52A1", order: 100, component: TasksPanel },
   { id: "vexnar-findings", label: "\u53D1\u73B0", order: 101, component: FindingsPanel },
   { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel },
   { id: "vexnar-assets", label: "\u8D44\u4EA7", order: 103, component: AssetsPanel },
-  { id: "vexnar-tool-run", label: "\u5DE5\u5177\u6267\u884C", order: 104, component: ToolRunPanel }
+  { id: "vexnar-tool-run", label: "\u5DE5\u5177\u6267\u884C", order: 104, component: ToolRunPanel },
+  { id: "vexnar-logs", label: "\u65E5\u5FD7", order: 105, component: LogsPanel }
 ];
 var SETTINGS = [
   { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
   { id: "vexnar-mcp", label: "MCP", order: 41, component: McpSettings },
   { id: "vexnar-tools", label: "\u5DE5\u5177", order: 42, component: ToolSettings },
-  { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings }
+  { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings },
+  { id: "vexnar-intercept", label: "\u62E6\u622A\u89C4\u5219", order: 44, component: InterceptSettings },
+  { id: "vexnar-asset-sync", label: "\u8D44\u4EA7\u540C\u6B65", order: 45, component: AssetSyncSettings },
+  { id: "vexnar-approvals", label: "\u5BA1\u6279\u8BB0\u5F55", order: 46, component: ApprovalsSettings }
 ];
 function apply(ctx) {
   const { slots } = ctx;
