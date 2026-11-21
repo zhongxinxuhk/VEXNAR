@@ -908,7 +908,10 @@ const routeModules: Array<{ file: string; scope: string }> = [
   { file: './routes/conversations.ts', scope: 'conversations/chat' },
   { file: './routes/desktop.ts', scope: 'desktop gateway' },
   { file: './routes/llm.ts', scope: 'llm pool/records' },
-  { file: './routes/intercept.ts', scope: 'intercept approvals' }
+  { file: './routes/intercept.ts', scope: 'intercept approvals' },
+  { file: './routes/traffic.ts', scope: 'traffic evidence' },
+  { file: './routes/skills.ts', scope: 'skills' },
+  { file: './routes/market.ts', scope: 'market' }
 ]
 for (const { file, scope } of routeModules) {
   try {
