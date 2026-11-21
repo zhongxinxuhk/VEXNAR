@@ -124,6 +124,15 @@ const archived2 = await ops.archiveTask(second.id)
 const removedArchive = await ops.deleteArchive(String(archived2.id))
 check('archive lifecycle', archived.state === 'done' && archives.length === 1 && hiddenByArchive && restored.id === archived.id && visibleAgain && removedArchive.id === archived2.id, JSON.stringify({ archived: archived.id, hiddenByArchive, visibleAgain }))
 
+const goalTask = await ops.createTask({ description: 'goal host', goal: 'host goals' })
+await ops.writer.put({ table: 'nodes', key: '1000', record: { id: '1000', exploration_id: Number(goalTask.exploration_id), kind: 'fact', state: 'origin', payload: {}, priority: 0, origin: 'system', created_at: 'x' } })
+const goal = await ops.addGoal(goalTask.id, { text: 'prove goals', vulnclass: 'XSS' })
+const goalEdge = await ops.writer.readRecord('edges', `1000-spawns-${goal.id}`)
+const goalEdit = await ops.editGoal(goalTask.id, goal.id, { text: 'renamed goal', vulnclass: 'SQLi' })
+const goalDelete = await ops.deleteGoal(goalTask.id, goal.id)
+const goalGone = !(await ops.writer.readRecord('nodes', goal.id))
+check('goal lifecycle', goal.state === 'open' && goal.payload.text === 'prove goals' && goalEdge?.rel === 'spawns' && goalEdit.payload.text === 'renamed goal' && goalDelete.deleted === Number(goal.id) && goalGone, JSON.stringify({ id: goal.id, edge: goalEdge?.rel, edit: goalEdit.payload, gone: goalGone }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
