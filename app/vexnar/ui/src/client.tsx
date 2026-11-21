@@ -389,6 +389,18 @@ function ConsoleIcon({ size }: { size?: number }): ReactNode {
     h('path', { d: 'm3 17 9 4 9-4' }))
 }
 
+async function callApi(path: string, method = 'GET', body?: unknown) {
+  const base = (localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790').replace(/\/$/, '')
+  const token = localStorage.getItem('vexnar.coreToken') || ''
+  const response = await fetch(base + path, {
+    method,
+    headers: { 'content-type': 'application/json', 'x-vexnar-token': token },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`)
+  return response.json()
+}
+
 function useApi(path: string, deps: unknown[] = []): { data: any; error: string; loading: boolean } {
   const [state, setState] = useState<{ data: any; error: string; loading: boolean }>({ data: null, error: '', loading: true })
   useEffect(() => {
@@ -449,41 +461,145 @@ function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
     h('div', { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title), children)
   if (task.loading) return h('div', null, '加载中…')
   if (task.error) return h('div', { style: { color: '#dc2626' } }, task.error)
+  const bindings = traffic.data?.bindings ?? []
+  const bodyBlock = body.title
+    ? h('div', null,
+        h('div', { style: { fontSize: 12, margin: '8px 0 4px', color: 'var(--vx-muted, #6b7280)' } }, body.title),
+        body.error
+          ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, body.error)
+          : h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 280, overflow: 'auto' } }, body.text))
+    : null
   return h('div', null,
     h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 } },
       h('button', { type: 'button', onClick: onBack, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' } }, '← 返回'),
-      h('span', { style: { fontSize: 18, fontWeight: 600 } }, `${row.id} · ${row.name || '未命名任务'}`),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, row.status)),
-    h('div', { style: { fontSize: 13, marginBottom: 14 } }, row.goal),
-    section(`目标（${goals.data?.goals?.length ?? 0}）`, (goals.data?.goals ?? []).map((goal: any) => h('div', { key: goal.id, style: { fontSize: 13, padding: '3px 0' } }, `#${goal.id} [${goal.state}] ${goal.text || '—'}`))),
-    section(`意图（${Array.isArray(intents.data) ? intents.data.length : 0}）`, (Array.isArray(intents.data) ? intents.data : []).map((intent: any) => h('div', { key: intent.id, style: { fontSize: 13, padding: '3px 0' } }, `#${intent.id} [${intent.state}] ${(() => { try { return JSON.parse(intent.payload).text ?? '' } catch { return '' } })()}`))),
-    section('覆盖度', h('div', { style: { fontSize: 13 } }, coverage.data?.enabled === false ? '未启用' : `${coverage.data?.tested ?? 0}/${coverage.data?.denominator ?? 0} · ${coverage.data?.pct == null ? '—' : `${(coverage.data.pct * 100).toFixed(1)}%`}`)),
-    section(`最近节点（${nodes.data?.items?.length ?? 0}）`, (nodes.data?.items ?? []).map((node: any) => h('div', { key: node.id, style: { fontSize: 12, padding: '2px 0', color: 'var(--vx-muted, #6b7280)' } }, `#${node.id} ${node.type} [${node.state}]`))))
+      h('span', { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} · ${row.vulnclass ?? ''}`),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, `${row.severity} / ${row.status}`)),
+    h('div', { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
+    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 220, overflow: 'auto' } }, row.evidence || ''),
+    h('div', { style: { fontSize: 13, fontWeight: 600, margin: '14px 0 6px' } }, `流量绑定（${bindings.length}）`),
+    ...bindings.map((binding: any) => h('div', { key: binding.id, style: { border: '1px solid var(--vx-border, #e5e7eb)', borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
+      h('div', null, `#${binding.id} · ${binding.snapshot?.method ?? ''} ${binding.snapshot?.url ?? ''} · ${binding.role}`),
+      h('div', { style: { marginTop: 6, display: 'flex', gap: 8 } },
+        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'response'), style: { cursor: 'pointer' } }, '响应正文'),
+        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'request'), style: { cursor: 'pointer' } }, '请求正文')))),
+    bodyBlock)
 }
 
-function FindingList() {
-  const { data, error, loading } = useApi('/api/exploration/findings?page=1&limit=30')
+function AgentsPage() {
+  const { data, error, loading } = useApi('/api/agents')
+  const [version, setVersion] = useState(0)
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = data?.items ?? []
-  return h('div', null,
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.total ?? 0} 条`),
+  const rows = data?.agents ?? []
+  const edit = async (agent: any) => {
+    const name = window.prompt('Agent 名称', agent.name)
+    if (name == null) return
+    const description = window.prompt('描述', agent.description ?? '')
+    if (description == null) return
+    try { await callApi(`/api/agents/${agent.key}`, 'PATCH', { name, description }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) }
+  }
+  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+    h('thead', null, h('tr', null, ['Key', '名称', '角色', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+    h('tbody', null, rows.map((agent: any) => h('tr', { key: agent.key },
+      h('td', { style: { padding: '6px 8px' } }, agent.key),
+      h('td', { style: { padding: '6px 8px' } }, agent.name),
+      h('td', { style: { padding: '6px 8px' } }, agent.role),
+      h('td', { style: { padding: '6px 8px' } }, agent.enabled ? '是' : '否'),
+      h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => edit(agent), style: { cursor: 'pointer' } }, '编辑')))))))
+}
+
+function McpPage() {
+  const { data, error, loading } = useApi('/api/mcp')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.servers ?? []
+  const toggle = async (row: any) => { try { await callApi(`/api/mcp/${row.id}/enabled`, 'PUT', { enabled: !row.enabled }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  const remove = async (row: any) => { if (!window.confirm(`删除 ${row.name}?`)) return; try { await callApi(`/api/mcp/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+    h('thead', null, h('tr', null, ['ID', '名称', '传输', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+    h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+      h('td', { style: { padding: '6px 8px' } }, row.id),
+      h('td', { style: { padding: '6px 8px' } }, row.name),
+      h('td', { style: { padding: '6px 8px' } }, row.transport),
+      h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
+      h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
+        h('button', { type: 'button', onClick: () => toggle(row), style: { cursor: 'pointer' } }, row.enabled ? '停用' : '启用'),
+        h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
+}
+
+function ToolsPage() {
+  const { data, error, loading } = useApi('/api/tools')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.tools ?? []
+  const toggle = async (row: any) => { try { await callApi(`/api/tools/${row.key}`, 'PUT', { enabled: !row.enabled }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+    h('thead', null, h('tr', null, ['Key', '类型', '启用', '调用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+    h('tbody', null, rows.map((row: any) => h('tr', { key: row.key },
+      h('td', { style: { padding: '6px 8px' } }, row.key),
+      h('td', { style: { padding: '6px 8px' } }, row.kind),
+      h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
+      h('td', { style: { padding: '6px 8px' } }, row.calls ?? 0),
+      h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => toggle(row), style: { cursor: 'pointer' } }, row.enabled ? '停用' : '启用')))))))
+}
+
+function NotifyPage() {
+  const { data, error, loading } = useApi('/api/notify/channels')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.channels ?? []
+  const add = async () => {
+    const name = window.prompt('渠道名称', 'webhook')
+    if (!name) return
+    const url = window.prompt('Webhook URL', '')
+    if (url == null) return
+    try { await callApi('/api/notify/channels', 'POST', { name, kind: 'webhook', config: { url } }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) }
+  }
+  const remove = async (row: any) => { if (!window.confirm(`删除 ${row.name}?`)) return; try { await callApi(`/api/notify/channels/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  return h('div', { key: version },
+    h('button', { type: 'button', onClick: add, style: { marginBottom: 10, cursor: 'pointer' } }, '+ 新增渠道'),
     h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-      h('thead', null, h('tr', null, ['ID', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
-      h('tbody', null, rows.map((row: any) => h('tr', { key: row.finding_id },
-        h('td', { style: { padding: '6px 8px' } }, row.finding_id),
-        h('td', { style: { padding: '6px 8px' } }, row.vulnclass),
-        h('td', { style: { padding: '6px 8px' } }, row.severity),
-        h('td', { style: { padding: '6px 8px' } }, row.status),
-        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary))))))
+      h('thead', null, h('tr', null, ['ID', '名称', '类型', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+        h('td', { style: { padding: '6px 8px' } }, row.id),
+        h('td', { style: { padding: '6px 8px' } }, row.name),
+        h('td', { style: { padding: '6px 8px' } }, row.kind),
+        h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
+        h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
+}
+
+function ToolRunPage() {
+  const [name, setName] = useState<'nmap' | 'httpx' | 'ffuf' | 'sqlmap'>('nmap')
+  const [target, setTarget] = useState('')
+  const [taskId, setTaskId] = useState('')
+  const [findingId, setFindingId] = useState('')
+  const [output, setOutput] = useState('')
+  const run = async () => {
+    setOutput('执行中…')
+    try {
+      const data = await callApi('/api/engine/tools/run', 'POST', { name, target, task_id: taskId || undefined })
+      setOutput([`code=${data.code} truncated=${data.truncated}`, data.parsed ? JSON.stringify(data.parsed, null, 2) : '', data.stdout, data.stderr].filter(Boolean).join('\n'))
+    } catch (error: any) { setOutput(String(error?.message ?? error)) }
+  }
+  return h('div', { style: { fontSize: 13 } },
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+      h('select', { value: name, onChange: (event: any) => setName(event.target.value) }, ['nmap', 'httpx', 'ffuf', 'sqlmap'].map((item) => h('option', { key: item, value: item }, item))),
+      h('input', { placeholder: 'target（域名 / URL / IP）', value: target, onChange: (event: any) => setTarget(event.target.value), style: { minWidth: 260 } }),
+      h('input', { placeholder: 'task_id（可选，用于落库）', value: taskId, onChange: (event: any) => setTaskId(event.target.value) }),
+      h('button', { type: 'button', onClick: run, style: { cursor: 'pointer' } }, '执行')),
+    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
 function VexnarConsole(): ReactNode {
   const [active, setActive] = useState('dashboard')
   const [taskId, setTaskId] = useState('')
+  const [findingId, setFindingId] = useState('')
   const items = NAV_GROUPS.flatMap((group) => group.items)
   const current = items.find((item) => item.id === active) ?? items[0]
-  const selectPanel = (id: string) => { setActive(id); if (id !== 'tasks') setTaskId('') }
+  const selectPanel = (id: string) => { setActive(id); if (id !== 'tasks') setTaskId(''); if (id !== 'findings') setFindingId('') }
   return h('div', { style: { display: 'flex', height: '100%', minHeight: 0, background: 'var(--vx-bg, #fff)' } },
     h('aside', { style: { width: 240, flex: '0 0 240px', borderRight: '1px solid var(--vx-border, #e5e7eb)', overflowY: 'auto', padding: '12px 8px' } },
       NAV_GROUPS.map((group) => h('div', { key: group.title, style: { marginBottom: 14 } },
@@ -517,7 +633,12 @@ function VexnarConsole(): ReactNode {
       h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 20px' } }, current.desc),
       current.id === 'dashboard' ? h(Dashboard)
         : current.id === 'tasks' ? (taskId ? h(TaskDetail, { id: taskId, onBack: () => setTaskId('') }) : h(TaskList, { onSelect: setTaskId }))
-        : current.id === 'findings' ? h(FindingList)
+        : current.id === 'findings' ? (findingId ? h(FindingDetail, { id: findingId, onBack: () => setFindingId('') }) : h(FindingList, { onSelect: setFindingId }))
+        : current.id === 'agents' ? h(AgentsPage)
+        : current.id === 'mcp' ? h(McpPage)
+        : current.id === 'tools' ? h(ToolsPage)
+        : current.id === 'notify' ? h(NotifyPage)
+        : current.id === 'tools-run' ? h(ToolRunPage)
         : h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
             '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
 }

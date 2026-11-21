@@ -629,6 +629,17 @@ function ConsoleIcon({ size }) {
     (0, import_react.createElement)("path", { d: "m3 17 9 4 9-4" })
   );
 }
+async function callApi(path, method = "GET", body2) {
+  const base = (localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790").replace(/\/$/, "");
+  const token = localStorage.getItem("vexnar.coreToken") || "";
+  const response = await fetch(base + path, {
+    method,
+    headers: { "content-type": "application/json", "x-vexnar-token": token },
+    body: body2 === void 0 ? void 0 : JSON.stringify(body2)
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`);
+  return response.json();
+}
 function useApi(path, deps = []) {
   const [state, setState] = (0, import_react.useState)({ data: null, error: "", loading: true });
   (0, import_react.useEffect)(() => {
@@ -711,6 +722,13 @@ function TaskDetail({ id, onBack }) {
   );
   if (task.loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (task.error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, task.error);
+  const bindings = traffic.data?.bindings ?? [];
+  const bodyBlock = body.title ? (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)("div", { style: { fontSize: 12, margin: "8px 0 4px", color: "var(--vx-muted, #6b7280)" } }, body.title),
+    body.error ? (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, body.error) : (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 280, overflow: "auto" } }, body.text)
+  ) : null;
   return (0, import_react.createElement)(
     "div",
     null,
@@ -718,55 +736,217 @@ function TaskDetail({ id, onBack }) {
       "div",
       { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 } },
       (0, import_react.createElement)("button", { type: "button", onClick: onBack, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "3px 10px", cursor: "pointer" } }, "\u2190 \u8FD4\u56DE"),
-      (0, import_react.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, `${row.id} \xB7 ${row.name || "\u672A\u547D\u540D\u4EFB\u52A1"}`),
-      (0, import_react.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, row.status)
+      (0, import_react.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} \xB7 ${row.vulnclass ?? ""}`),
+      (0, import_react.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, `${row.severity} / ${row.status}`)
     ),
-    (0, import_react.createElement)("div", { style: { fontSize: 13, marginBottom: 14 } }, row.goal),
-    section(`\u76EE\u6807\uFF08${goals.data?.goals?.length ?? 0}\uFF09`, (goals.data?.goals ?? []).map((goal) => (0, import_react.createElement)("div", { key: goal.id, style: { fontSize: 13, padding: "3px 0" } }, `#${goal.id} [${goal.state}] ${goal.text || "\u2014"}`))),
-    section(`\u610F\u56FE\uFF08${Array.isArray(intents.data) ? intents.data.length : 0}\uFF09`, (Array.isArray(intents.data) ? intents.data : []).map((intent) => (0, import_react.createElement)("div", { key: intent.id, style: { fontSize: 13, padding: "3px 0" } }, `#${intent.id} [${intent.state}] ${(() => {
-      try {
-        return JSON.parse(intent.payload).text ?? "";
-      } catch {
-        return "";
-      }
-    })()}`))),
-    section("\u8986\u76D6\u5EA6", (0, import_react.createElement)("div", { style: { fontSize: 13 } }, coverage.data?.enabled === false ? "\u672A\u542F\u7528" : `${coverage.data?.tested ?? 0}/${coverage.data?.denominator ?? 0} \xB7 ${coverage.data?.pct == null ? "\u2014" : `${(coverage.data.pct * 100).toFixed(1)}%`}`)),
-    section(`\u6700\u8FD1\u8282\u70B9\uFF08${nodes.data?.items?.length ?? 0}\uFF09`, (nodes.data?.items ?? []).map((node) => (0, import_react.createElement)("div", { key: node.id, style: { fontSize: 12, padding: "2px 0", color: "var(--vx-muted, #6b7280)" } }, `#${node.id} ${node.type} [${node.state}]`)))
+    (0, import_react.createElement)("div", { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
+    (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 220, overflow: "auto" } }, row.evidence || ""),
+    (0, import_react.createElement)("div", { style: { fontSize: 13, fontWeight: 600, margin: "14px 0 6px" } }, `\u6D41\u91CF\u7ED1\u5B9A\uFF08${bindings.length}\uFF09`),
+    ...bindings.map((binding) => (0, import_react.createElement)(
+      "div",
+      { key: binding.id, style: { border: "1px solid var(--vx-border, #e5e7eb)", borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
+      (0, import_react.createElement)("div", null, `#${binding.id} \xB7 ${binding.snapshot?.method ?? ""} ${binding.snapshot?.url ?? ""} \xB7 ${binding.role}`),
+      (0, import_react.createElement)(
+        "div",
+        { style: { marginTop: 6, display: "flex", gap: 8 } },
+        (0, import_react.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "response"), style: { cursor: "pointer" } }, "\u54CD\u5E94\u6B63\u6587"),
+        (0, import_react.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "request"), style: { cursor: "pointer" } }, "\u8BF7\u6C42\u6B63\u6587")
+      )
+    )),
+    bodyBlock
   );
 }
-function FindingList() {
-  const { data, error, loading } = useApi("/api/exploration/findings?page=1&limit=30");
+function AgentsPage() {
+  const { data, error, loading } = useApi("/api/agents");
+  const [version, setVersion] = (0, import_react.useState)(0);
   if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
-  const rows = data?.items ?? [];
+  const rows = data?.agents ?? [];
+  const edit = async (agent) => {
+    const name = window.prompt("Agent \u540D\u79F0", agent.name);
+    if (name == null) return;
+    const description = window.prompt("\u63CF\u8FF0", agent.description ?? "");
+    if (description == null) return;
+    try {
+      await callApi(`/api/agents/${agent.key}`, "PATCH", { name, description });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  return (0, import_react.createElement)("div", { key: version }, (0, import_react.createElement)(
+    "table",
+    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+    (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["Key", "\u540D\u79F0", "\u89D2\u8272", "\u542F\u7528", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+    (0, import_react.createElement)("tbody", null, rows.map((agent) => (0, import_react.createElement)(
+      "tr",
+      { key: agent.key },
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, agent.key),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, agent.name),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, agent.role),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, agent.enabled ? "\u662F" : "\u5426"),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => edit(agent), style: { cursor: "pointer" } }, "\u7F16\u8F91"))
+    )))
+  ));
+}
+function McpPage() {
+  const { data, error, loading } = useApi("/api/mcp");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = data?.servers ?? [];
+  const toggle = async (row) => {
+    try {
+      await callApi(`/api/mcp/${row.id}/enabled`, "PUT", { enabled: !row.enabled });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  const remove = async (row) => {
+    if (!window.confirm(`\u5220\u9664 ${row.name}?`)) return;
+    try {
+      await callApi(`/api/mcp/${row.id}`, "DELETE");
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  return (0, import_react.createElement)("div", { key: version }, (0, import_react.createElement)(
+    "table",
+    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+    (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u4F20\u8F93", "\u542F\u7528", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+    (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+      "tr",
+      { key: row.id },
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.transport),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
+      (0, import_react.createElement)(
+        "td",
+        { style: { padding: "6px 8px", display: "flex", gap: 8 } },
+        (0, import_react.createElement)("button", { type: "button", onClick: () => toggle(row), style: { cursor: "pointer" } }, row.enabled ? "\u505C\u7528" : "\u542F\u7528"),
+        (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664")
+      )
+    )))
+  ));
+}
+function ToolsPage() {
+  const { data, error, loading } = useApi("/api/tools");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = data?.tools ?? [];
+  const toggle = async (row) => {
+    try {
+      await callApi(`/api/tools/${row.key}`, "PUT", { enabled: !row.enabled });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  return (0, import_react.createElement)("div", { key: version }, (0, import_react.createElement)(
+    "table",
+    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+    (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["Key", "\u7C7B\u578B", "\u542F\u7528", "\u8C03\u7528", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+    (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+      "tr",
+      { key: row.key },
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.key),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.kind),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.calls ?? 0),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => toggle(row), style: { cursor: "pointer" } }, row.enabled ? "\u505C\u7528" : "\u542F\u7528"))
+    )))
+  ));
+}
+function NotifyPage() {
+  const { data, error, loading } = useApi("/api/notify/channels");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = data?.channels ?? [];
+  const add = async () => {
+    const name = window.prompt("\u6E20\u9053\u540D\u79F0", "webhook");
+    if (!name) return;
+    const url = window.prompt("Webhook URL", "");
+    if (url == null) return;
+    try {
+      await callApi("/api/notify/channels", "POST", { name, kind: "webhook", config: { url } });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  const remove = async (row) => {
+    if (!window.confirm(`\u5220\u9664 ${row.name}?`)) return;
+    try {
+      await callApi(`/api/notify/channels/${row.id}`, "DELETE");
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
   return (0, import_react.createElement)(
     "div",
-    null,
-    (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.total ?? 0} \u6761`),
+    { key: version },
+    (0, import_react.createElement)("button", { type: "button", onClick: add, style: { marginBottom: 10, cursor: "pointer" } }, "+ \u65B0\u589E\u6E20\u9053"),
     (0, import_react.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u6F0F\u6D1E\u7C7B", "\u4E25\u91CD\u5EA6", "\u72B6\u6001", "\u6458\u8981"].map((title) => (0, import_react.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u7C7B\u578B", "\u542F\u7528", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
       (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
         "tr",
-        { key: row.finding_id },
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.finding_id),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.vulnclass),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.severity),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.summary)
+        { key: row.id },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.kind),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664"))
       )))
     )
+  );
+}
+function ToolRunPage() {
+  const [name, setName] = (0, import_react.useState)("nmap");
+  const [target, setTarget] = (0, import_react.useState)("");
+  const [taskId, setTaskId] = (0, import_react.useState)("");
+  const [findingId, setFindingId] = (0, import_react.useState)("");
+  const [output, setOutput] = (0, import_react.useState)("");
+  const run = async () => {
+    setOutput("\u6267\u884C\u4E2D\u2026");
+    try {
+      const data = await callApi("/api/engine/tools/run", "POST", { name, target, task_id: taskId || void 0 });
+      setOutput([`code=${data.code} truncated=${data.truncated}`, data.parsed ? JSON.stringify(data.parsed, null, 2) : "", data.stdout, data.stderr].filter(Boolean).join("\n"));
+    } catch (error) {
+      setOutput(String(error?.message ?? error));
+    }
+  };
+  return (0, import_react.createElement)(
+    "div",
+    { style: { fontSize: 13 } },
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 } },
+      (0, import_react.createElement)("select", { value: name, onChange: (event) => setName(event.target.value) }, ["nmap", "httpx", "ffuf", "sqlmap"].map((item) => (0, import_react.createElement)("option", { key: item, value: item }, item))),
+      (0, import_react.createElement)("input", { placeholder: "target\uFF08\u57DF\u540D / URL / IP\uFF09", value: target, onChange: (event) => setTarget(event.target.value), style: { minWidth: 260 } }),
+      (0, import_react.createElement)("input", { placeholder: "task_id\uFF08\u53EF\u9009\uFF0C\u7528\u4E8E\u843D\u5E93\uFF09", value: taskId, onChange: (event) => setTaskId(event.target.value) }),
+      (0, import_react.createElement)("button", { type: "button", onClick: run, style: { cursor: "pointer" } }, "\u6267\u884C")
+    ),
+    (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
   );
 }
 function VexnarConsole() {
   const [active, setActive] = (0, import_react.useState)("dashboard");
   const [taskId, setTaskId] = (0, import_react.useState)("");
+  const [findingId, setFindingId] = (0, import_react.useState)("");
   const items = NAV_GROUPS.flatMap((group) => group.items);
   const current = items.find((item) => item.id === active) ?? items[0];
   const selectPanel = (id) => {
     setActive(id);
     if (id !== "tasks") setTaskId("");
+    if (id !== "findings") setFindingId("");
   };
   return (0, import_react.createElement)(
     "div",
@@ -820,7 +1000,7 @@ function VexnarConsole() {
         }, "\u8FDE\u63A5 core")
       ),
       (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
-      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? (0, import_react.createElement)(FindingList) : (0, import_react.createElement)(
+      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId }) : current.id === "agents" ? (0, import_react.createElement)(AgentsPage) : current.id === "mcp" ? (0, import_react.createElement)(McpPage) : current.id === "tools" ? (0, import_react.createElement)(ToolsPage) : current.id === "notify" ? (0, import_react.createElement)(NotifyPage) : current.id === "tools-run" ? (0, import_react.createElement)(ToolRunPage) : (0, import_react.createElement)(
         "div",
         { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
         "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"
