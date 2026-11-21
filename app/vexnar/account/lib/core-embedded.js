@@ -31157,10 +31157,12 @@ var init_report = __esm({
 
 // ../vexnar-store/src/index.ts
 async function openStore2(root) {
-  const mode = (process.env.VEXNAR_STORE || "sqlite").toLowerCase();
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
+  const dsn = process.env.VEXNAR_PG_DSN?.trim() || process.env.VEXNAR_PG_URL?.trim();
+  const mode = explicit || (dsn ? "postgres" : "sqlite");
   if (mode === "postgres") {
-    const connection = fromUrl(process.env.VEXNAR_PG_URL);
-    if (!connection) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_URL or a pg connection");
+    const connection = fromUrl(dsn);
+    if (!connection) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
     const store2 = pgStore(connection);
     await store2.init();
     return store2;
@@ -48775,6 +48777,12 @@ for (const { load, scope } of routeModules) {
     console.error(`[vexnar] failed to load route module ${scope}:`, error62);
   }
 }
+api.notFound((c) => c.json({
+  error: "\u8BE5\u63A5\u53E3\u5C1A\u672A\u5728 TypeScript \u4FA7\u5B9E\u73B0",
+  path: c.req.path,
+  method: c.req.method,
+  hint: "\u9700\u8981\u65E7 Go \u540E\u7AEF\u5BF9\u7167\u65F6\uFF1AVEXNAR_GO=on \u542F\u52A8\u5B83\uFF0C\u5E76\u8BBE VEXNAR_GO_DATA=on \u6253\u5F00\u8F6C\u53D1"
+}, 501));
 
 // src/go-data.ts
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
@@ -48790,11 +48798,13 @@ var prefixes = [
   "/api/intercept",
   "/api/yak/history"
 ];
+var forwarding = () => /^(1|on|true|yes)$/i.test(process.env.VEXNAR_GO_DATA ?? "");
 var coreTraffic = ["/api/traffic/capture", "/api/traffic/ingest"];
 function isCoreTraffic(path) {
   return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 function isGoDataRequest(method, path) {
+  if (!forwarding()) return false;
   if (isCoreTraffic(path)) return false;
   if (routes.has(`${method} ${path}`)) return true;
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));

@@ -1066,7 +1066,7 @@ func (s *Server) Handler() http.Handler {
 	// /api/* goes through CORS + JWT; everything else is served by the embedded
 	// frontend (public — auth is enforced client-side and on the API). With the
 	// no-embed build the webui handler just 404s (run `next dev` separately).
-	api := cors(s.requireAuth(mux))
+	api := cors(s.requireAuth(egressContractHeader(mux)))
 	root := http.NewServeMux()
 	root.Handle("/api/", api)
 	// OAST 带回连：无鉴权，靠未猜中的随机 token 保护；只写不读（读取走 /api 工具）。

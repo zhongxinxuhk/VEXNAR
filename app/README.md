@@ -99,29 +99,33 @@ pnpm install && pnpm run build && pnpm run setup
 pnpm run web                 # 或 pnpm run desktop
 ```
 
-Go 后端由 `app/` 自己编译和托管，不用另开终端：
+**默认不需要 Go。** 领域接口由内置的 TypeScript core（`vexnar-core`）回答，
+数据面走 `vexnar-store` 的 PostgreSQL 适配器，读的是 Go 服务与控制台用的同一个库：
 
-1. `scripts/vexnar-go.mjs` 用 Go 源码算一个指纹（git HEAD + 未提交的 `.go` 改动），
-   编到 `app/.vexnar-bin/vexnar-<指纹>`，并 `-X main.version=<指纹>` 注入版本；
-   源码没变就跳过编译。
-2. 启动前先探 `127.0.0.1:8787`：同版本就复用（避免两个进程写同一份 SQLite），
-   是别的构建就报错并给出 `lsof` 命令，绝不静默连上一个对不上的后端。
-3. 自己起的进程随客户端退出一起回收；`-data`/`-keydir` 仍指回仓库根的 `data/` 与
-   `jwt.key`，不搬家、不产生第二份数据库。
-
-```sh
-pnpm run go:build            # 只编译，不启动
-pnpm run go:stamp            # 打印当前源码指纹
-```
-
-逃生口：
+1. `startWeb` 从仓库根 `config.json` 的 `database` 段落折出 `VEXNAR_PG_DSN` 传给客户端
+   （环境里已给了 DSN 就尊重环境）。只要给了 DSN，`openStore()` 默认走 PostgreSQL；
+   显式 `VEXNAR_STORE=sqlite` 可以退回单机 SQLite。
+2. 模型调用由账号插件在进程内起一个只监听 127.0.0.1 的 OpenAI 兼容网关
+   （`account/lib/model-gateway.js`），用登录拿到的密钥转发 `/chat/completions`
+   与 `/responses`，`VEXNAR_GATEWAY_URL`/`VEXNAR_GATEWAY_TOKEN` 由插件自己注入。
+3. Go 只在对照验证时启用：`VEXNAR_GO=on` 会按源码指纹编译
+   （`app/.vexnar-bin/vexnar-<指纹>`）并拉起它；`VEXNAR_GO_DATA=on` 才把领域接口转发回 Go。
 
 | 变量 | 作用 |
 |---|---|
-| `VEXNAR_GO=off` | 不启动内置后端，改用 `VEXNAR_GO_URL` 指定的外部服务 |
-| `VEXNAR_GO_URL` | 外部 Go 地址；设置后客户端不再自己起 |
-| `VEXNAR_GO_BIN` | 指定现成二进制（打包环境没有 Go 工具链时用，版本不做强校验） |
-| `VEXNAR_GO_PORT` | 内置后端端口，默认 8787 |
+| `VEXNAR_PG_DSN` / `VEXNAR_PG_URL` | PostgreSQL 连接串；没给就读 `config.json` |
+| `VEXNAR_STORE=sqlite` | 不用 PG，退回 `app/.vexnar-home/vexnar/store` 下的单机库 |
+| `VEXNAR_GO=on` | 编译并启动 Go 后端（对照验证用；默认不启动） |
+| `VEXNAR_GO_DATA=on` | 领域接口转给 Go（默认由 TS core 回答） |
+| `VEXNAR_GO_BIN` / `VEXNAR_GO_PORT` / `VEXNAR_GO_URL` | 指定二进制 / 端口 / 外部地址 |
+
+当前 TS core 覆盖 248/301 条 Go 路由；未覆盖的会返回 501 加路径提示，不再回 HTML 404。
+已知 DTO 差异：`GET /api/tasks` 少了顶层 `active`（活跃探索 id），客户端 UI 不消费它。
+
+```sh
+pnpm run go:build            # 需要 Go 时：只编译，不启动
+pnpm run go:stamp            # 打印当前 Go 源码指纹
+```
 
 `node scripts/vexnar.mjs --help` 查看 VEXNAR CLI 命令。Web 默认绑定
 `127.0.0.1:3099`，桌面通过独立 Electron 进程启动本机页面。

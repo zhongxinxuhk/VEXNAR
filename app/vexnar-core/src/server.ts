@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { auth, serviceToken } from './auth.js'
+import { proxyBridge } from './proxy-bridge.ts'
 import { api } from './routes.js'
 
 const app = new Hono()
@@ -26,10 +27,14 @@ app.route('/', api)
 const NATIVE = [
   '/api/health', '/api/agents', '/api/llm/profiles', '/api/task-categories', '/api/task-templates',
   '/api/companies', '/api/tools', '/api/mcp', '/api/notify/channels', '/api/settings',
-  '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes'
+  '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes',
+  '/api/proxy'
 ]
 
 app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null, methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all' }))
+
+// 代理池控制面：由 TS 层做端点校验/SSE/错误语义，再受控转发给 app 自己编译启动的 Go 引擎。
+app.all('/api/proxy/*', (c) => proxyBridge(c.req.raw, true))
 
 // M3 transition: unported routes fall through to the Go service, so the web
 // console can point at the TS core before every write is migrated.
