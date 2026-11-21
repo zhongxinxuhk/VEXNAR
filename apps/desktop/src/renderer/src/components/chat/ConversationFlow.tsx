@@ -26,6 +26,10 @@ function InlineCallGroup({ calls, running, conversationId }: {
   const terminal = calls.every((call) => executionGroup(call.name).category === 'terminal')
   const Icon = terminal ? SquareTerminal : Wrench
   const count = calls.length
+  if (calls.length === 1) {
+    const [call] = calls
+    return <ToolCallRow call={call} status={!running && call.status === 'running' ? 'unreported' : call.status} conversationId={conversationId} />
+  }
   return (
     <details className="group/inline-trace" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 rounded-md px-1.5 text-xs text-ink-soft hover:bg-panel-2">

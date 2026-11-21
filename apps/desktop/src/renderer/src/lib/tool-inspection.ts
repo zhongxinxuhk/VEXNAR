@@ -6,6 +6,8 @@ import { executionGroup } from './execution-groups'
 
 const fields = {
   skill: 'chat.inspectSkill',
+  delegatedTool: 'chat.inspectDelegatedTool',
+  path: 'chat.inspectPath',
   source: 'chat.inspectSource',
   version: 'chat.inspectVersion',
   command: 'chat.inspectCommand',
@@ -47,14 +49,19 @@ function structured(text: string): RecordValue {
 
 /** Present only explicit fields from already-redacted historical tool payloads. */
 export function describeToolPayload(tool: string, rawInput: string, rawOutput: string): {
+  category: ReturnType<typeof executionGroup>['category']
   fields: Field[]
   todos: Todo[]
   additionalTodos: number
   stdout?: string
   stderr?: string
 } {
-  const { category, source } = executionGroup(tool)
-  const input = structured(rawInput)
+  const recordedInput = structured(rawInput)
+  const delegatedTool = tool === 'ExecuteExtraTool' && typeof recordedInput.tool_name === 'string'
+    ? recordedInput.tool_name.trim()
+    : ''
+  const { category, source } = executionGroup(delegatedTool || tool)
+  const input = delegatedTool ? object(recordedInput.params) : recordedInput
   const output = structured(rawOutput)
   const values: Field[] = []
   const add = (key: keyof typeof fields, ...candidates: unknown[]): void => {
@@ -65,6 +72,7 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
     if (typeof value === 'string' || typeof value === 'number') values.push({ key, label: fields[key], value })
   }
 
+  if (delegatedTool) add('delegatedTool', delegatedTool)
   if (source) add('source', source)
 
   switch (category) {
@@ -76,7 +84,12 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
     case 'terminal':
       add('command', input.command)
       add('directory', output.cwd, input.cwd)
-      add('exitCode', output.exit_code)
+      {
+        // Norma Bash appends this suffix to its combined output on a nonzero exit.
+        const exit = /^\[exit code (-?\d+)\]$/.exec(rawOutput.trimEnd().split('\n').at(-1) ?? '')
+        add('exitCode', output.exit_code, exit ? Number(exit[1]) : undefined)
+      }
+      add('session', output.shell_session_id, input.shell_session_id)
       break
     case 'browser':
       add('action', output.action, input.action)
@@ -93,6 +106,10 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
       add('method', input.method)
       add('url', input.url)
       break
+    case 'other':
+    case 'mcp':
+      add('path', input.file_path, input.path)
+      break
   }
 
   const todos: Todo[] = []
@@ -107,6 +124,7 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
   }
 
   return {
+    category,
     fields: values,
     todos,
     additionalTodos: Math.max(0, list.length - MAX_OVERVIEW_TODOS),

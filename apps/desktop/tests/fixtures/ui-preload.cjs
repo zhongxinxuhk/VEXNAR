@@ -137,10 +137,12 @@ const sessionList = [
 let resumeDraft = false
 let copiedTrace = ''
 let traceReads = 0
+let failNextOrderedResult = false
 let historicalCall = null
 contextBridge.exposeInMainWorld('__uiFixture', {
   snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads }),
   seedOrdered: () => {
+    failNextOrderedResult = true
     const rows = [
       { kind: 'user', detail: '核对目录' },
       { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
@@ -148,8 +150,8 @@ contextBridge.exposeInMainWorld('__uiFixture', {
       { kind: 'tool_result', tool: 'Bash', tool_use_id: 'flow-a', detail: 'README.md' },
       { kind: 'text', detail: '已核对目录。' },
       { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
-      { kind: 'tool_use', tool: 'read_file', tool_use_id: 'flow-b', detail: '{"path":"README.md"}' },
-      { kind: 'tool_result', tool: 'read_file', tool_use_id: 'flow-b', detail: '文档内容' },
+      { kind: 'tool_use', tool: 'ExecuteExtraTool', tool_use_id: 'flow-b', detail: '{"tool_name":"mcp__files__read_file","params":{"path":"README.md"}}' },
+      { kind: 'tool_result', tool: 'ExecuteExtraTool', tool_use_id: 'flow-b', detail: '文档内容' },
       { kind: 'result', detail: '目录和文档已核对。\n\n' + [
         { kind: 'artifact', title: '核对说明', versions: [{ title: '初稿', body: '初版内容' }, { title: '修订稿', body: '**修订内容**', note: '补充结论' }] },
         { kind: 'diff', title: '说明变更', before: '旧说明', after: '新说明' },
@@ -478,6 +480,10 @@ contextBridge.exposeInMainWorld('vexnar', {
             return ok({ call: related, relation: related ? 'linked' : 'unmatched' })
           }
           if (path.endsWith('?trace=1')) traceReads++
+          if (row?.tool_use_id === 'flow-b' && row.kind === 'tool_result' && failNextOrderedResult) {
+            failNextOrderedResult = false
+            return { ok: false, error: 'fixture detail unavailable' }
+          }
           return ok({ detail: row?.detail || '' })
         }
         const query = new URLSearchParams(path.split('?')[1] || '')

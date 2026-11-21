@@ -31,6 +31,12 @@ export function executionGroup(tool: string): { category: ExecutionCategory; sou
     case 'bash':
     case 'shell':
     case 'powershell':
+    case 'shell_open':
+    case 'shell_send':
+    case 'shell_read':
+    case 'shell_close':
+    case 'shell_list':
+    case 'taskoutput':
       return { category: 'terminal' }
     case 'webfetch':
     case 'web_search':

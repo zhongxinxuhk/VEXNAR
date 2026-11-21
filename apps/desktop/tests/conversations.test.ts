@@ -405,6 +405,18 @@ describe('describeToolPayload', () => {
       .toEqual([{ text: 'check', status: 'chat.inspectTodoDone' }])
   })
 
+  it('unwraps deferred calls and reads the legacy Bash exit marker without inventing a code', () => {
+    const deferred = describeToolPayload('ExecuteExtraTool',
+      '{"tool_name":"mcp__files__read_file","params":{"path":"README.md"}}', 'hello')
+    expect(deferred.category).toBe('mcp')
+    expect(deferred.fields).toContainEqual(expect.objectContaining({ key: 'delegatedTool', value: 'mcp__files__read_file' }))
+    expect(deferred.fields).toContainEqual(expect.objectContaining({ key: 'path', value: 'README.md' }))
+    const failed = describeToolPayload('Bash', '{"command":"ls"}', 'not found\n\n[exit code 2]')
+    expect(failed.fields).toContainEqual(expect.objectContaining({ key: 'exitCode', value: 2 }))
+    const ordinary = describeToolPayload('Bash', '{"command":"ls"}', 'ordinary output')
+    expect(ordinary.fields.some((field) => field.key === 'exitCode')).toBe(false)
+  })
+
   it('keeps terminal streams distinct and displays only explicit session IDs', () => {
     const terminal = describeToolPayload('Bash', '{"command":"ls"}', '{"exit_code":0,"stdout":"files","stderr":"notice"}')
     expect(terminal).toMatchObject({ stdout: 'files', stderr: 'notice' })

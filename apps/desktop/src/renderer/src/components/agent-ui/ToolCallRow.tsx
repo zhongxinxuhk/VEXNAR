@@ -23,6 +23,31 @@ const statusDisplay = {
   unreported: { tone: 'text-muted', icon: CircleHelp, label: 'chat.toolUnreported' }
 } as const
 
+function useTracePayload(open: boolean, conversationId: string, sequence?: number): {
+  value?: string
+  failed: boolean
+  retry: () => void
+} {
+  const key = sequence === undefined ? '' : `${conversationId}:${sequence}`
+  const [loaded, setLoaded] = useState<{ key: string; value: string } | null>(null)
+  const [failure, setFailure] = useState('')
+  const value = loaded?.key === key ? loaded.value : undefined
+  const failed = key !== '' && failure === key
+
+  useEffect(() => {
+    if (!open || sequence === undefined || value !== undefined || failed) return
+    let active = true
+    void conversations.traceDetail(conversationId, sequence).then((detail) => {
+      if (active) setLoaded({ key, value: detail })
+    }, () => {
+      if (active) setFailure(key)
+    })
+    return () => { active = false }
+  }, [open, conversationId, sequence, key, value, failed])
+
+  return { value, failed, retry: () => setFailure('') }
+}
+
 /**
  * One call, one row: what the tool is, the gist of what it was given, where it
  * stands, and the arguments and result behind a disclosure. The row carries no
@@ -42,28 +67,15 @@ export function ToolCallRow({
   const locale = useI18n((state) => state.locale)
   const [open, setOpen] = useState(false)
   const { name, worker, started, finished } = call
-  const [payload, setPayload] = useState<{ key: string; input: string; output: string } | null>(null)
-  const [failedKey, setFailedKey] = useState<string | null>(null)
   const callSequence = started.sequence
   const resultSequence = finished?.sequence
-  const key = `${conversationId}:${callSequence}:${resultSequence ?? ''}`
-  const current = payload?.key === key ? payload : null
-  const failed = failedKey === key
-  useEffect(() => {
-    if (!open || current || failed) return
-    let cancelled = false
-    Promise.all([
-      conversations.traceDetail(conversationId, callSequence),
-      resultSequence === undefined ? Promise.resolve('') : conversations.traceDetail(conversationId, resultSequence)
-    ]).then(([input, output]) => {
-      if (!cancelled) setPayload({ key, input, output })
-    }, () => {
-      if (!cancelled) setFailedKey(key)
-    })
-    return () => { cancelled = true }
-  }, [open, current, failed, conversationId, callSequence, resultSequence, key])
-
-  const { category } = executionGroup(name)
+  const input = useTracePayload(open, conversationId, callSequence)
+  const output = useTracePayload(open, conversationId, resultSequence)
+  const inspection = useMemo(
+    () => describeToolPayload(name, input.value ?? '', output.value ?? ''),
+    [name, input.value, output.value]
+  )
+  const { category } = inspection
   const Icon = {
     planning: ClipboardList,
     skill: BookOpen,
@@ -74,6 +86,8 @@ export function ToolCallRow({
     api: Unplug,
     other: Wrench
   }[category]
+  const command = inspection.fields.find((field) => field.key === 'command')?.value
+  const recordedTarget = inspection.fields.find((field) => field.key === 'delegatedTool')?.value
   const { tone, icon: StatusIcon, label } = statusDisplay[status]
 
   const elapsedMs = finished ? Date.parse(finished.timestamp) - Date.parse(started.timestamp) : NaN
@@ -89,7 +103,7 @@ export function ToolCallRow({
     <details data-call-sequence={callSequence} data-tool-category={category} className="group" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-panel-2/60">
         <Icon className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-soft" title={name}>{name}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-soft" title={name}>{recordedTarget || name}</span>
         {worker ? <span className="max-w-24 shrink-0 truncate text-[10px] text-muted" title={worker}>{worker}</span> : null}
         <span className={cn('flex shrink-0 items-center gap-1 font-mono text-[9px]', tone)}>
           <StatusIcon className={cn('size-2.5', status === 'running' && 'motion-safe:animate-spin')} aria-hidden="true" />
@@ -121,115 +135,119 @@ export function ToolCallRow({
               </>
             )}
           </dl>
-          {current ? (
-            <ToolInspection key={key} tool={name} input={current.input} output={current.output} status={status} />
-          ) : failed ? (
-            <div role="status" className="flex items-center justify-between gap-2 px-2.5 py-2 text-[11px] text-danger">
-              {t('chat.toolPayloadFailed')}
-              <button type="button" onClick={() => setFailedKey(null)} className="rounded px-2 py-1 hover:bg-panel-2">
-                {t('chat.toolPayloadRetry')}
-              </button>
-            </div>
-          ) : (
-            <p role="status" className="px-2.5 py-2 text-[11px] text-muted">{t('chat.toolPayloadLoading')}</p>
-          )}
+          <ToolInspection
+            inspection={inspection}
+            input={input}
+            output={output}
+            status={status}
+            hasResult={resultSequence !== undefined}
+            command={typeof command === 'string' ? command : undefined}
+            label={label}
+          />
         </div>
       ) : null}
     </details>
   )
 }
 
-function ToolInspection({ tool, input, output, status }: {
-  tool: string
-  input: string
-  output: string
-  status: ToolCallStatus
+function PendingPayload({ payload, label }: {
+  payload: ReturnType<typeof useTracePayload>
+  label: string
 }): React.JSX.Element {
   const t = useT()
-  const inspection = useMemo(() => describeToolPayload(tool, input, output), [tool, input, output])
-  const category = executionGroup(tool).category
-  const hasOverview = inspection.fields.length > 0 || inspection.todos.length > 0
-  const panes = {
-    overview: hasOverview ? t('chat.inspectOverview') : null,
-    input: input ? t('chat.toolInput') : null,
-    output: output ? t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput') : null
-  }
-  type Pane = keyof typeof panes
-  const available = (Object.keys(panes) as Pane[]).filter((pane) => panes[pane] != null)
-  const [chosen, setChosen] = useState<Pane | null>(null)
-  const active = chosen ?? (hasOverview ? 'overview' : output ? 'output' : input ? 'input' : null)
+  return (
+    <div role="status" className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-2.5 py-2 text-[11px] text-muted">
+      <span>{label} · {t(payload.failed ? 'chat.toolPayloadFailed' : 'chat.toolPayloadLoading')}</span>
+      {payload.failed ? (
+        <button type="button" onClick={payload.retry} className="rounded px-2 py-1 text-accent hover:bg-panel-2">
+          {t('chat.toolPayloadRetry')}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function ToolInspection({ inspection, input, output, status, hasResult, command, label }: {
+  inspection: ReturnType<typeof describeToolPayload>
+  input: ReturnType<typeof useTracePayload>
+  output: ReturnType<typeof useTracePayload>
+  status: ToolCallStatus
+  hasResult: boolean
+  command?: string
+  label: (typeof statusDisplay)[ToolCallStatus]['label']
+}): React.JSX.Element {
+  const t = useT()
+  const { category, fields, todos, additionalTodos, stdout, stderr } = inspection
+  const overview = fields.filter((field) => field.key !== 'command')
+  const outputLabel = t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')
 
   return (
     <>
-      {available.length > 0 ? (
-        <div role="group" aria-label={t('chat.inspectViews')} className="flex flex-wrap items-center gap-1 border-b border-line-soft px-2 py-1">
-          {available.map((pane) => (
-            <button
-              key={pane}
-              type="button"
-              aria-pressed={active === pane}
-              onClick={() => setChosen(pane)}
-              className="rounded-md px-2 py-1 text-[11px] text-muted hover:bg-panel-2 aria-pressed:bg-panel-2 aria-pressed:font-medium aria-pressed:text-ink"
-            >
-              {panes[pane]}
-            </button>
-          ))}
-        </div>
+      {command ? (
+        <section aria-label={t('chat.inspectShell')} className="border-b border-line-soft bg-bg/70">
+          <ToolPayload label={t('chat.inspectCommand')} value={command} command />
+        </section>
       ) : null}
-      {active === 'overview' ? (
-        <section aria-label={t(executionCategories[category])} className="space-y-2 px-3 py-2">
-          {inspection.fields.length > 0 ? (
+      {overview.length || todos.length ? (
+        <section aria-label={t(executionCategories[category])} className="space-y-2 border-b border-line-soft px-3 py-2">
+          {overview.length > 0 ? (
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[11px] leading-5">
-              {inspection.fields.map(({ key, label, value }) => (
+              {overview.map(({ key, label, value }) => (
                 <div key={key} className="contents">
                   <dt className="text-muted">{t(label)}</dt>
-                  <dd className={cn('min-w-0 whitespace-pre-wrap break-words text-ink-soft', key === 'command' && 'font-mono')}>
+                  <dd className="min-w-0 whitespace-pre-wrap break-words text-ink-soft">
                     {String(value).length > 4096 ? String(value).slice(0, 4096) + '…' : value}
                   </dd>
                 </div>
               ))}
             </dl>
           ) : null}
-          {inspection.todos.length > 0 ? (
+          {todos.length > 0 ? (
             <ul className="divide-y divide-line-soft">
-              {inspection.todos.map((todo, index) => (
+              {todos.map((todo, index) => (
                 <li key={index} className="flex items-baseline justify-between gap-2 py-1 text-[11px]">
                   <span className="min-w-0 break-words text-ink-soft">{todo.text}</span>
-                  <span className={cn('shrink-0', todo.status === 'chat.inspectTodoDone' ? 'text-accent-2' : 'text-muted')}>{t(todo.status)}</span>
+                  <span className="shrink-0 text-muted">{t(todo.status)}</span>
                 </li>
               ))}
             </ul>
           ) : null}
-          {inspection.additionalTodos > 0 ? (
-            <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setChosen('input')}>
-              {t('chat.inspectMoreTodos', { count: inspection.additionalTodos })}
-            </button>
-          ) : null}
+          {additionalTodos > 0 ? <p className="text-xs text-muted">{t('chat.planAdditional', { count: additionalTodos })}</p> : null}
         </section>
       ) : null}
-      {active === 'input' ? <ToolPayload label={t('chat.toolInput')} value={input} /> : null}
-      {active === 'output' ? (
-        inspection.stdout !== undefined || inspection.stderr !== undefined ? (
-          <>
-            {inspection.stdout ? <ToolPayload label={t('chat.inspectStdout')} value={inspection.stdout} /> : null}
-            {inspection.stderr ? <ToolPayload label={t('chat.inspectStderr')} value={inspection.stderr} error /> : null}
-            <details className="px-2.5 py-1 text-[11px] text-muted">
-              <summary className="cursor-pointer">{t('chat.inspectRawOutput')}</summary>
-              <ToolPayload label={t('chat.inspectRawOutput')} value={output} error={status === 'error'} />
-            </details>
-          </>
-        ) : <ToolPayload label={t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')} value={output} error={status === 'error'} />
-      ) : null}
-      {active === null || (!output && status === 'running') ? (
-        <p className="px-2.5 py-2 text-[11px] text-muted">{t(status === 'running' ? 'chat.toolWaiting' : 'chat.toolEmpty')}</p>
-      ) : null}
+      {input.value === undefined ? <PendingPayload payload={input} label={t('chat.toolInput')} /> :
+        input.value ? command ? (
+          <details className="px-2.5 py-1 text-xs text-muted">
+            <summary className="cursor-pointer">{t('chat.toolInput')}</summary>
+            <ToolPayload label={t('chat.toolInput')} value={input.value} />
+          </details>
+        ) : <ToolPayload label={t('chat.toolInput')} value={input.value} /> :
+          <p className="px-2.5 py-2 text-xs text-muted">{t('chat.toolInputEmpty')}</p>}
+      {hasResult && output.value === undefined ? <PendingPayload payload={output} label={outputLabel} /> :
+        output.value ? (
+          stdout !== undefined || stderr !== undefined ? (
+            <>
+              {stdout ? <ToolPayload label={t('chat.inspectStdout')} value={stdout} /> : null}
+              {stderr ? <ToolPayload label={t('chat.inspectStderr')} value={stderr} error /> : null}
+              <details className="px-2.5 py-1 text-xs text-muted">
+                <summary className="cursor-pointer">{t('chat.inspectRawOutput')}</summary>
+                <ToolPayload label={t('chat.inspectRawOutput')} value={output.value} error={status === 'error'} />
+              </details>
+            </>
+          ) : <ToolPayload label={outputLabel} value={output.value} error={status === 'error'} />
+        ) : (
+          <p className="px-2.5 py-2 text-xs text-muted">
+            {t(status === 'running' ? 'chat.toolWaiting' : hasResult ? 'chat.toolEmpty' : 'chat.toolUnreported')}
+          </p>
+        )}
+      <footer className={cn('flex justify-end border-t border-line-soft px-3 py-1.5 text-xs', statusDisplay[status].tone)}>{t(label)}</footer>
     </>
   )
 }
 
 const PAYLOAD_PAGE = 8192
 
-function ToolPayload({ label, value, error }: { label: string; value: string; error?: boolean }): React.JSX.Element {
+function ToolPayload({ label, value, error, command }: { label: string; value: string; error?: boolean; command?: boolean }): React.JSX.Element {
   const t = useT()
   const [page, setPage] = useState(0)
   const [copied, setCopied] = useState<'done' | 'failed' | null>(null)
@@ -259,7 +277,7 @@ function ToolPayload({ label, value, error }: { label: string; value: string; er
       <pre className={cn(
         'max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[10.5px] leading-5',
         error ? 'text-danger' : 'text-ink-soft'
-      )}>{text.slice(start, end)}</pre>
+      )}>{command && page === 0 ? <span aria-hidden="true" className="text-muted">$ </span> : null}{text.slice(start, end)}</pre>
       {text.length > PAYLOAD_PAGE ? (
         <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted">
           <span aria-live="polite">{t('chat.toolPage', { start: start + 1, end, total: text.length })}</span>

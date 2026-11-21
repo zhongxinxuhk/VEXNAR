@@ -233,8 +233,7 @@ app.whenReady().then(async () => {
     if (readsAfterInspection !== initialTraceReads + 8) throw Error('Tool rows eagerly fetched payloads')
     await run(`Array.from(document.querySelectorAll('summary')).find(e=>e.textContent.includes('Bash') && e.textContent.includes('成功')).click()`)
     const terminalCall = `document.querySelector('details[data-call-sequence="3"]')`
-    await wait(`(${terminalCall})?.querySelector('section[aria-label="终端"]')?.textContent.includes('ls')`)
-    await run(`[...(${terminalCall}).querySelectorAll('button')].find(e=>e.textContent==='输出').click()`)
+    await wait(`(${terminalCall})?.querySelector('section[aria-label="终端命令"]')?.textContent.includes('ls')`)
     await wait(`Array.from(document.querySelectorAll('pre')).some(e=>e.textContent.includes('README.md') && e.checkVisibility())`)
     await wait(`window.__uiFixture.snapshot().traceReads===${readsAfterInspection + 2}`)
     const outputPanel = `[...document.querySelectorAll('article[aria-label="助手消息"] section')].find(e=>e.querySelector('h4')?.textContent==='输出')`
@@ -360,6 +359,17 @@ app.whenReady().then(async () => {
     if (await run(`document.body.textContent.includes('PRIVATE_FLOW_FIXTURE')`)) throw Error('Ordered transcript rendered raw reasoning')
     await run(`document.querySelector('[data-flow="calls"] summary').click()`)
     await wait(`document.querySelector('[data-flow="calls"] details[data-call-sequence] summary')?.textContent.includes('Bash')`)
+    const inlineTerminal = `document.querySelector('[data-flow="calls"] details[data-call-sequence]')`
+    await wait(`(${inlineTerminal}).querySelector('section[aria-label="终端命令"] pre')?.textContent.includes('$ ls') && (${inlineTerminal}).textContent.includes('README.md') && (${inlineTerminal}).querySelector('footer')?.textContent==='成功'`)
+    await run(`(${inlineTerminal}).scrollIntoView({block:'center'})`)
+    fs.writeFileSync(path.join(output, 'chat-terminal-details.png'), (await w.webContents.capturePage()).toPNG())
+    const delegatedCall = `[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].find(row=>row.querySelector('summary').textContent.includes('ExecuteExtraTool'))`
+    await run(`(${delegatedCall}).querySelector('summary').click()`)
+    await wait(`[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].some(row=>row.textContent.includes('mcp__files__read_file') && row.textContent.includes('README.md') && row.textContent.includes('无法读取调用详情'))`)
+    const openDelegated = `[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].find(row=>row.textContent.includes('mcp__files__read_file'))`
+    await run(`[...(${openDelegated}).querySelectorAll('button')].find(e=>e.textContent==='重新读取').click()`)
+    await wait(`(${openDelegated}).textContent.includes('文档内容') && (${openDelegated}).textContent.includes('README.md')`)
+
     for (const label of ['制品', '差异视图', '差异表', '结构化数据', '洞察卡', '比较']) {
       await wait(`!!document.querySelector('section[aria-label="${label}"]')`)
     }
@@ -380,7 +390,6 @@ app.whenReady().then(async () => {
     await wait(`(${historicalPanel})?.textContent.includes('archivist')`)
     await run(`(${historicalPanel}).querySelector('summary').click()`)
     await wait(`(${historicalPanel})?.textContent.includes('archived result')`)
-    await run(`[...(${historicalPanel}).querySelectorAll('button')].find(e=>e.textContent==='输入').click()`)
     await wait(`(${historicalPanel})?.textContent.includes('archive.md')`)
     await run(`window.__uiFixture.seedThinking()`)
     await run(openHistoryFixture)
@@ -413,7 +422,7 @@ app.whenReady().then(async () => {
     await wait(`JSON.parse(localStorage.getItem('vexnar-chat-notice-read-v1')).length===2`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, chat actions and phases, structured tool details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, chat actions and phases, expanded terminal and tool details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)
