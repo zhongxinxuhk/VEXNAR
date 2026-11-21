@@ -21,6 +21,19 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 鉴权与 Go 相同：`Authorization: Bearer <HS256 JWT>`（用仓库根 `jwt.key` 签发）或
 `vexnar_token` cookie；`/api/health` 免鉴权。
 
+## M3 过渡：未迁移路由回退 Go
+
+```sh
+VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
+```
+
+- 已迁移的 14 组路由由 TS 处理；
+- 其余 `/api/*` 原样转发给 Go（方法、body、Authorization/cookie、状态码）；
+- 未配置 fallback 时返回 `501 {"error":"route not migrated"}`；
+- `GET /api/_migration` 返回原生路由清单与当前 fallback 地址。
+
+这样 web 可以先指向 TS core，未迁移的写接口仍由 Go 服务，逐条切换。
+
 ## 存储
 
 - **领域数据**（tasks/findings/assets/nodes）：JSON store 的 per-record 文件；
