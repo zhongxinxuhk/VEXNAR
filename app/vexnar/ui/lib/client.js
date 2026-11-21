@@ -348,6 +348,30 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
+/* \u2500\u2500 \u9886\u57DF\u9762\u677F\u5916\u58F3\uFF08\u4EFB\u52A1/\u53D1\u73B0/\u8BBE\u7F6E\u5404\u9875\u5171\u7528\uFF09 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px 24px 40px;
+  color: var(--vx-text);
+  font-size: 13px;
+}
+
+.vx-panel-head { margin-bottom: 18px; }
+
+.vx-panel-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+}
+
+.vx-panel-desc {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--vx-text-dim);
+}
+
 /* \u2500\u2500 \u6982\u89C8\u6574\u9875 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
    \u53EA\u4FDD\u7559\u53F3\u4E0A\u89D2\u7684\u65E5\u671F\u7B5B\u9009\uFF1B\u5176\u4F59\u5168\u90E8\u662F\u6570\u636E\u533A\u5757\u3002\u5361\u7247 14px \u5706\u89D2 + \u9876\u90E8\u5185\u9AD8\u5149\uFF0C
    \u7F51\u683C 12 \u5217\uFF0C\u7A84\u7A97\u53E3\u964D\u4E3A\u4E24\u5217 / \u5355\u5217\u3002 */
@@ -1270,15 +1294,8 @@ function storeSet(key, value) {
   } catch {
   }
 }
-function coreBase() {
-  return (storeGet("vexnar.coreUrl") || CORE_PATH).replace(/\/$/, "");
-}
 async function getJson(path, signal) {
-  const token = storeGet("vexnar.coreToken");
-  const response = await fetch(coreBase() + path, {
-    headers: token === "" ? {} : { "x-vexnar-token": token },
-    signal
-  });
+  const response = await fetch(CORE_PATH + path, { signal });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return await response.json();
 }
@@ -1319,7 +1336,7 @@ async function loadOverview(signal) {
   const findings = pick(settled[2], {});
   const assets = pick(settled[3], {});
   const daily = pick(settled[4], []);
-  const traffic2 = pick(settled[5], {});
+  const traffic = pick(settled[5], {});
   const activity = pick(settled[6], {});
   const settings = pick(settled[7], {});
   const agents = pick(settled[8], {});
@@ -1341,7 +1358,7 @@ async function loadOverview(signal) {
       findings: Array.isArray(findings.items) ? findings.items : [],
       assets: assets !== null && typeof assets === "object" ? assets : {},
       daily: Array.isArray(daily) ? daily : [],
-      traffic: Array.isArray(traffic2.exchanges) ? traffic2.exchanges : [],
+      traffic: Array.isArray(traffic.exchanges) ? traffic.exchanges : [],
       activity: Array.isArray(activity.items) ? activity.items : [],
       sys: {
         agents: agents.agents?.length ?? 0,
@@ -2771,14 +2788,11 @@ function OverviewIcon({ size }) {
     (0, import_react2.createElement)("circle", { cx: 12, cy: 14, r: 1.4 })
   );
 }
-async function callApi(path, method = "GET", body2) {
-  const base = (localStorage.getItem("vexnar.coreUrl") || "/vexnar-api").replace(/\/$/, "");
-  const token = localStorage.getItem("vexnar.coreToken") || "";
-  const response = await fetch(base + path, {
-    method,
-    headers: { "content-type": "application/json", ...token ? { "x-vexnar-token": token } : {} },
-    body: body2 === void 0 ? void 0 : JSON.stringify(body2)
-  });
+var CORE_BASE = "/vexnar-api";
+async function callApi(path, method = "GET", body) {
+  const init = { method, headers: { "content-type": "application/json" } };
+  if (body !== void 0) init.body = JSON.stringify(body);
+  const response = await fetch(CORE_BASE + path, init);
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`);
   return response.json();
 }
@@ -2786,9 +2800,7 @@ function useApi(path, deps = []) {
   const [state, setState] = (0, import_react2.useState)({ data: null, error: "", loading: true });
   (0, import_react2.useEffect)(() => {
     let alive = true;
-    const base = (localStorage.getItem("vexnar.coreUrl") || "/vexnar-api").replace(/\/$/, "");
-    const token = localStorage.getItem("vexnar.coreToken") || "";
-    fetch(base + path, { headers: token ? { "x-vexnar-token": token } : {} }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
+    fetch(CORE_BASE + path).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
       if (alive) setState({ data, error: "", loading: false });
     }).catch((error) => {
       if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false });
@@ -2823,7 +2835,7 @@ function Dashboard() {
         (0, import_react2.createElement)("div", { style: { fontSize: 24, fontWeight: 600 } }, String(value))
       ))
     ),
-    (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, tasks.error || findings.error || assets.error || tokens.error || "\u6570\u636E\u6765\u81EA vexnar-core")
+    (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, tasks.error || findings.error || assets.error || tokens.error || "\u6570\u636E\u6765\u81EA\u672C\u5730\u6838\u5FC3")
   );
 }
 function TaskList({ onSelect }) {
@@ -2846,63 +2858,125 @@ function TaskList({ onSelect }) {
   );
 }
 function TaskDetail({ id, onBack }) {
-  const task = useApi(`/api/tasks/${id}`);
-  const goals = useApi(`/api/tasks/${id}/goals`);
-  const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`);
-  const coverage = useApi(`/api/tasks/${id}/coverage`);
-  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`);
   const [tick, setTick] = (0, import_react2.useState)(0);
+  const task = useApi(`/api/tasks/${id}`, [tick]);
+  const goals = useApi(`/api/tasks/${id}/goals`, [tick]);
+  const intents = useApi(`/api/exploration/intents?task=${id}&limit=40`, [tick]);
+  const coverage = useApi(`/api/tasks/${id}/coverage`, [tick]);
+  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`, [tick]);
   const act = async (action) => {
+    if (action === "archive" && !window.confirm("\u5F52\u6863\u540E\u8BE5\u4EFB\u52A1\u5C06\u4ECE\u5217\u8868\u79FB\u51FA\uFF0C\u7EE7\u7EED\uFF1F")) return;
     try {
       if (action === "archive") await callApi(`/api/tasks/${id}/archive`, "POST");
       else await callApi(`/api/tasks/${id}/control`, "POST", { action });
-      setTick(tick + 1);
+      setTick((value) => value + 1);
     } catch (error) {
       window.alert(String(error?.message ?? error));
     }
   };
-  const row = task.data ?? {};
-  const section = (title, children) => (0, import_react2.createElement)(
-    "div",
-    { style: { marginBottom: 18 } },
-    (0, import_react2.createElement)("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title),
-    children
-  );
   if (task.loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (task.error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, task.error);
-  const bindings = traffic.data?.bindings ?? [];
-  const bodyBlock = body.title ? (0, import_react2.createElement)(
+  const row = task.data ?? {};
+  const meta = (title, children) => (0, import_react2.createElement)(
     "div",
-    null,
-    (0, import_react2.createElement)("div", { style: { fontSize: 12, margin: "8px 0 4px", color: "var(--vx-muted, #6b7280)" } }, body.title),
-    body.error ? (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, body.error) : (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 280, overflow: "auto" } }, body.text)
-  ) : null;
+    { style: { marginBottom: 16 } },
+    (0, import_react2.createElement)("div", { style: { fontSize: 12, fontWeight: 600, color: "var(--vx-text-dim)", marginBottom: 6 } }, title),
+    children
+  );
+  const list = (value) => Array.isArray(value) ? value : value?.items ?? value?.goals ?? [];
+  const goalRows = list(goals.data);
+  const intentRows = list(intents.data);
+  const nodeRows = list(nodes.data);
+  const cover = coverage.data ?? {};
+  const tokens = row.tokens ?? {};
+  const status = String(row.status ?? "");
+  const pills = [
+    ["\u76EE\u6807", `${row.goals_met ?? 0}/${row.goals_total ?? 0}`],
+    ["\u5728\u9014\u610F\u56FE", String(row.in_flight ?? 0)],
+    ["\u8F93\u5165 Token", fmtCount(tokens.input_tokens)],
+    ["\u8F93\u51FA Token", fmtCount(tokens.output_tokens)],
+    ["\u7F13\u5B58\u8BFB", fmtCount(tokens.cache_read_tokens)],
+    ["\u8986\u76D6\u5EA6", cover.pct === null || cover.pct === void 0 ? "\u2014" : `${Math.round(Number(cover.pct))}%`]
+  ];
   return (0, import_react2.createElement)(
     "div",
     null,
     (0, import_react2.createElement)(
       "div",
-      { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 } },
+      { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" } },
       (0, import_react2.createElement)("button", { type: "button", onClick: onBack, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "3px 10px", cursor: "pointer" } }, "\u2190 \u8FD4\u56DE"),
-      (0, import_react2.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} \xB7 ${row.vulnclass ?? ""}`),
-      (0, import_react2.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, `${row.severity} / ${row.status}`)
+      (0, import_react2.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, String(row.description ?? row.name ?? id)),
+      (0, import_react2.createElement)("span", { className: "vx-ov-pill" }, status === "" ? "\u672A\u77E5" : status),
+      (0, import_react2.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, `${id} \xB7 \u521B\u5EFA ${fmtAgo(row.created_unix)} \xB7 \u6700\u8FD1\u6D3B\u52A8 ${fmtAgo(row.last_activity_unix)}`)
     ),
-    (0, import_react2.createElement)("div", { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
-    (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 220, overflow: "auto" } }, row.evidence || ""),
-    (0, import_react2.createElement)("div", { style: { fontSize: 13, fontWeight: 600, margin: "14px 0 6px" } }, `\u6D41\u91CF\u7ED1\u5B9A\uFF08${bindings.length}\uFF09`),
-    ...bindings.map((binding) => (0, import_react2.createElement)(
+    (0, import_react2.createElement)(
       "div",
-      { key: binding.id, style: { border: "1px solid var(--vx-border, #e5e7eb)", borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
-      (0, import_react2.createElement)("div", null, `#${binding.id} \xB7 ${binding.snapshot?.method ?? ""} ${binding.snapshot?.url ?? ""} \xB7 ${binding.role}`),
-      (0, import_react2.createElement)(
-        "div",
-        { style: { marginTop: 6, display: "flex", gap: 8 } },
-        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "response"), style: { cursor: "pointer" } }, "\u54CD\u5E94\u6B63\u6587"),
-        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "request"), style: { cursor: "pointer" } }, "\u8BF7\u6C42\u6B63\u6587")
-      )
+      { style: { display: "flex", gap: 8, margin: "10px 0 16px" } },
+      status === "running" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => act("pause"), style: { cursor: "pointer" } }, "\u6682\u505C") : null,
+      status === "paused" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => act("resume"), style: { cursor: "pointer" } }, "\u6062\u590D") : null,
+      (0, import_react2.createElement)("button", { type: "button", onClick: () => act("archive"), style: { cursor: "pointer" } }, "\u5F52\u6863")
+    ),
+    meta("\u76EE\u6807", (0, import_react2.createElement)("div", { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? "\u2014"))),
+    meta("\u7EDF\u8BA1", (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12 } },
+      pills.map(([label, value]) => (0, import_react2.createElement)(
+        "span",
+        { key: label, style: { color: "var(--vx-text-dim)" } },
+        `${label} `,
+        (0, import_react2.createElement)("b", { style: { color: "var(--vx-text)", fontWeight: 600 } }, value)
+      ))
     )),
-    bodyBlock
+    goalRows.length > 0 ? meta(`\u76EE\u6807\u6E05\u5355\uFF08${goalRows.length}\uFF09`, (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 } },
+      goalRows.slice(0, 12).map((goal) => (0, import_react2.createElement)(
+        "div",
+        { key: String(goal.id), style: { display: "flex", gap: 8, alignItems: "baseline" } },
+        (0, import_react2.createElement)("span", { className: "vx-ov-pill" }, String(goal.state ?? "open")),
+        (0, import_react2.createElement)("span", null, String(goal.text ?? goal.summary ?? "")),
+        goal.vulnclass ? (0, import_react2.createElement)("span", { style: { color: "var(--vx-text-faint)", fontSize: 11 } }, String(goal.vulnclass)) : null
+      ))
+    )) : null,
+    intentRows.length > 0 ? meta(`\u610F\u56FE\uFF08\u6700\u8FD1 ${Math.min(intentRows.length, 8)}\uFF09`, (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 } },
+      intentRows.slice(0, 8).map((intent) => (0, import_react2.createElement)(
+        "div",
+        { key: String(intent.id), style: { display: "flex", gap: 8, alignItems: "baseline" } },
+        (0, import_react2.createElement)("span", { className: "vx-ov-pill" }, String(intent.state ?? intent.type ?? "")),
+        (0, import_react2.createElement)("span", { style: { color: "var(--vx-text-dim)" } }, String(intent.worker ?? "")),
+        (0, import_react2.createElement)("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, String(intent.summary ?? intent.label ?? ""))
+      ))
+    )) : null,
+    nodeRows.length > 0 ? meta(`\u56FE\u8C31\u8282\u70B9\uFF08\u6700\u8FD1 ${Math.min(nodeRows.length, 8)}\uFF09`, (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 } },
+      nodeRows.slice(0, 8).map((node) => (0, import_react2.createElement)(
+        "div",
+        { key: String(node.id), style: { display: "flex", gap: 8, alignItems: "baseline" } },
+        (0, import_react2.createElement)("span", { className: "vx-ov-pill" }, String(node.type ?? node.kind ?? "")),
+        (0, import_react2.createElement)("span", { style: { color: "var(--vx-text-dim)" } }, String(node.state ?? "")),
+        (0, import_react2.createElement)("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, String(node.label ?? node.summary ?? ""))
+      ))
+    )) : null
   );
+}
+function fmtCount(value) {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "\u2014";
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+function fmtAgo(unix) {
+  const n = Number(unix ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return "\u2014";
+  const seconds = Math.floor(Date.now() / 1e3 - n);
+  if (seconds < 60) return `${seconds}s \u524D`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m \u524D`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h \u524D`;
+  return `${Math.floor(seconds / 86400)}d \u524D`;
 }
 function AgentsPage() {
   const { data, error, loading } = useApi("/api/agents");
@@ -3060,7 +3134,6 @@ function ToolRunPage() {
   const [name, setName] = (0, import_react2.useState)("nmap");
   const [target, setTarget] = (0, import_react2.useState)("");
   const [taskId, setTaskId] = (0, import_react2.useState)("");
-  const [findingId, setFindingId] = (0, import_react2.useState)("");
   const [output, setOutput] = (0, import_react2.useState)("");
   const run = async () => {
     setOutput("\u6267\u884C\u4E2D\u2026");
@@ -3150,9 +3223,9 @@ function InterceptPage() {
   const rows = data?.rules ?? [];
   const submit = async () => {
     try {
-      const body2 = { ...form, id: void 0 };
-      if (form.id) await callApi(`/api/intercept/rules/${form.id}`, "PUT", body2);
-      else await callApi("/api/intercept/rules", "POST", body2);
+      const body = { ...form, id: void 0 };
+      if (form.id) await callApi(`/api/intercept/rules/${form.id}`, "PUT", body);
+      else await callApi("/api/intercept/rules", "POST", body);
       setForm({ id: 0, name: "", enabled: true, priority: 100, match_target: "tool_input", match_type: "string", pattern: "", action: "deny" });
       setVersion(version + 1);
     } catch (e) {
@@ -3210,7 +3283,7 @@ function ApprovalsPage() {
   const { data, error, loading } = useApi("/api/intercept/pending");
   const [version, setVersion] = (0, import_react2.useState)(0);
   if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u63A5\u53E3\uFF09`);
+  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `\u5BA1\u6279\u961F\u5217\u6682\u65F6\u8BFB\u4E0D\u5230\uFF1A${error}`);
   const rows = data?.pending ?? [];
   const decide = async (row, decision) => {
     try {
@@ -3338,24 +3411,16 @@ function LogsPanel() {
   );
 }
 function PanelShell({ title, desc, children }) {
-  const connect = () => {
-    const url = window.prompt("vexnar-core \u5730\u5740\uFF08\u9ED8\u8BA4\u540C\u6E90 /vexnar-api\uFF09", localStorage.getItem("vexnar.coreUrl") || "/vexnar-api");
-    if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
-    const token = window.prompt("core token\uFF08\u540C\u6E90\u4EE3\u7406\u53EF\u7559\u7A7A\uFF09", localStorage.getItem("vexnar.coreToken") || "");
-    if (token) localStorage.setItem("vexnar.coreToken", token);
-    window.location.reload();
-  };
   return (0, import_react2.createElement)(
     "div",
-    { style: { height: "100%", overflowY: "auto", padding: 24 } },
+    { className: "vx-panel" },
     (0, import_react2.createElement)(
       "div",
-      { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
-      (0, import_react2.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, title),
-      (0, import_react2.createElement)("button", { type: "button", onClick: connect, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 } }, "\u8FDE\u63A5 core")
+      { className: "vx-panel-head" },
+      (0, import_react2.createElement)("h1", { className: "vx-panel-title" }, title),
+      desc ? (0, import_react2.createElement)("p", { className: "vx-panel-desc" }, desc) : null
     ),
-    desc ? (0, import_react2.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 18px" } }, desc) : (0, import_react2.createElement)("div", { style: { height: 12 } }),
-    children
+    children ?? null
   );
 }
 function FindingList({ onSelect }) {
@@ -3385,9 +3450,9 @@ function FindingList({ onSelect }) {
 }
 function FindingDetail({ id, onBack }) {
   const finding = useApi(`/api/exploration/findings/${id}`);
-  const traffic2 = useApi(`/api/exploration/findings/${id}/traffic`);
-  const [body2, setBody] = (0, import_react2.useState)({ title: "", text: "", error: "" });
-  const loadBody2 = async (bindingId, side) => {
+  const traffic = useApi(`/api/exploration/findings/${id}/traffic`);
+  const [body, setBody] = (0, import_react2.useState)({ title: "", text: "", error: "" });
+  const loadBody = async (bindingId, side) => {
     try {
       const data = await callApi(`/api/exploration/findings/${id}/traffic/${bindingId}/body?side=${side}&length=8192`);
       setBody({ title: `${bindingId} \xB7 ${side} \xB7 ${data.offset}-${data.next_offset}/${data.total}`, text: data.content, error: "" });
@@ -3398,7 +3463,7 @@ function FindingDetail({ id, onBack }) {
   if (finding.loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (finding.error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, finding.error);
   const row = finding.data ?? {};
-  const bindings = traffic2.data?.bindings ?? [];
+  const bindings = traffic.data?.bindings ?? [];
   return (0, import_react2.createElement)(
     "div",
     null,
@@ -3419,15 +3484,15 @@ function FindingDetail({ id, onBack }) {
       (0, import_react2.createElement)(
         "div",
         { style: { marginTop: 6, display: "flex", gap: 8 } },
-        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody2(String(binding.id), "response"), style: { cursor: "pointer" } }, "\u54CD\u5E94\u6B63\u6587"),
-        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody2(String(binding.id), "request"), style: { cursor: "pointer" } }, "\u8BF7\u6C42\u6B63\u6587")
+        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "response"), style: { cursor: "pointer" } }, "\u54CD\u5E94\u6B63\u6587"),
+        (0, import_react2.createElement)("button", { type: "button", onClick: () => loadBody(String(binding.id), "request"), style: { cursor: "pointer" } }, "\u8BF7\u6C42\u6B63\u6587")
       )
     )),
-    body2.title ? (0, import_react2.createElement)(
+    body.title ? (0, import_react2.createElement)(
       "div",
       null,
-      (0, import_react2.createElement)("div", { style: { fontSize: 12, margin: "8px 0 4px", color: "var(--vx-muted, #6b7280)" } }, body2.title),
-      body2.error ? (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, body2.error) : (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 280, overflow: "auto" } }, body2.text)
+      (0, import_react2.createElement)("div", { style: { fontSize: 12, margin: "8px 0 4px", color: "var(--vx-muted, #6b7280)" } }, body.title),
+      body.error ? (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, body.error) : (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 280, overflow: "auto" } }, body.text)
     ) : null
   );
 }
@@ -3524,7 +3589,7 @@ function apply(ctx) {
     slots.inject("sidebar.panellist", () => slots.register({ name: "sidebar.panellist", id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon));
   }
   for (const section of SETTINGS) {
-    slots.inject("settings.section", () => slots.register({ name: "settings.section", id: section.id, label: section.label, order: section.order }, section.component));
+    slots.inject("settings.section", () => slots.register({ name: "settings.section", id: section.id, label: () => section.label, order: section.order }, section.component));
   }
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));

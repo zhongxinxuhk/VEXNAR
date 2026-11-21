@@ -353,36 +353,6 @@ function installPermissionWarning(): () => void {
   return () => observer.disconnect()
 }
 
-const PANEL_ID = 'vexnar-console'
-
-const NAV_GROUPS: Array<{ title: string; items: Array<{ id: string; label: string; desc: string; badge?: number }> }> = [
-  { title: '功能', items: [
-    { id: 'dashboard', label: '仪表盘', desc: '任务、发现、资产与 Token 总览' },
-    { id: 'chat', label: '对话', desc: '主 Agent 会话与上下文' },
-    { id: 'tasks', label: '任务', desc: '任务列表、意图与目标' },
-    { id: 'findings', label: '发现', desc: '漏洞列表、分组与详情' },
-    { id: 'traffic', label: '流量', desc: '抓包、证据绑定与正文' },
-    { id: 'tools-run', label: '工具执行', desc: 'nmap / httpx / ffuf / sqlmap' },
-    { id: 'llm-record', label: 'LLM 录制', desc: '请求与响应记录' },
-    { id: 'assets', label: '资产', desc: '域名 / IP / 服务 / 端点' },
-    { id: 'assets-sync', label: '资产同步', desc: '外部资产源同步' },
-    { id: 'workspace', label: '工作空间', desc: '文件与产物' }
-  ] },
-  { title: '系统', items: [
-    { id: 'llm', label: 'LLM', desc: '模型配置与网关' },
-    { id: 'agents', label: 'Agent', desc: '规划者 / 执行者 / 触发' },
-    { id: 'mcp', label: 'MCP', desc: 'MCP server 与工具目录' },
-    { id: 'skill', label: 'Skill', desc: '技能包与可见性' },
-    { id: 'tools', label: '工具', desc: '内置与自定义工具' },
-    { id: 'notify', label: '通知推送', desc: '渠道与投递记录' },
-    { id: 'intercept', label: '拦截规则', desc: '请求拦截与改写' },
-    { id: 'asset-intercept', label: '资产拦截', desc: '资产范围与自动认领' },
-    { id: 'approvals', label: '审批记录', desc: '人工审批与操作日志', badge: 2 },
-    { id: 'logs', label: '日志', desc: '引擎与工具日志' },
-    { id: 'settings', label: '系统配置', desc: '运行参数与偏好' }
-  ] }
-]
-
 function ConsoleIcon({ size }: { size?: number }): ReactNode {
   return h('svg', { width: size ?? 16, height: size ?? 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' },
     h('path', { d: 'M12 3 3 7l9 4 9-4-9-4Z' }),
@@ -398,14 +368,16 @@ function OverviewIcon({ size }: { size?: number }): ReactNode {
     h('circle', { cx: 12, cy: 14, r: 1.4 }))
 }
 
+/**
+ * 领域接口只走同源 /vexnar-api：core 由账户插件嵌在 dsh webserver 上，代理时
+ * 自己换服务 JWT，所以面板不需要地址、token 或“连接”这一步。
+ */
+const CORE_BASE = '/vexnar-api'
+
 async function callApi(path: string, method = 'GET', body?: unknown) {
-  const base = (localStorage.getItem('vexnar.coreUrl') || '/vexnar-api').replace(/\/$/, '')
-  const token = localStorage.getItem('vexnar.coreToken') || ''
-  const response = await fetch(base + path, {
-    method,
-    headers: { 'content-type': 'application/json', ...(token ? { 'x-vexnar-token': token } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  })
+  const init: RequestInit = { method, headers: { 'content-type': 'application/json' } }
+  if (body !== undefined) init.body = JSON.stringify(body)
+  const response = await fetch(CORE_BASE + path, init)
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`)
   return response.json()
 }
@@ -414,9 +386,7 @@ function useApi(path: string, deps: unknown[] = []): { data: any; error: string;
   const [state, setState] = useState<{ data: any; error: string; loading: boolean }>({ data: null, error: '', loading: true })
   useEffect(() => {
     let alive = true
-    const base = (localStorage.getItem('vexnar.coreUrl') || '/vexnar-api').replace(/\/$/, '')
-    const token = localStorage.getItem('vexnar.coreToken') || ''
-    fetch(base + path, { headers: token ? { 'x-vexnar-token': token } : {} })
+    fetch(CORE_BASE + path)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
       .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
       .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
@@ -441,7 +411,7 @@ function Dashboard() {
       cards.map(([label, value]) => h('div', { key: String(label), style: { border: '1px solid var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 16 } },
         h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, String(label)),
         h('div', { style: { fontSize: 24, fontWeight: 600 } }, String(value))))),
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自 vexnar-core'))
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自本地核心'))
 }
 
 function TaskList({ onSelect }: { onSelect?: (id: string) => void }) {
@@ -459,46 +429,92 @@ function TaskList({ onSelect }: { onSelect?: (id: string) => void }) {
 }
 
 function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const task = useApi(`/api/tasks/${id}`)
-  const goals = useApi(`/api/tasks/${id}/goals`)
-  const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`)
-  const coverage = useApi(`/api/tasks/${id}/coverage`)
-  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`)
   const [tick, setTick] = useState(0)
+  const task = useApi(`/api/tasks/${id}`, [tick])
+  const goals = useApi(`/api/tasks/${id}/goals`, [tick])
+  const intents = useApi(`/api/exploration/intents?task=${id}&limit=40`, [tick])
+  const coverage = useApi(`/api/tasks/${id}/coverage`, [tick])
+  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`, [tick])
+
   const act = async (action: 'pause' | 'resume' | 'archive') => {
+    if (action === 'archive' && !window.confirm('归档后该任务将从列表移出，继续？')) return
     try {
       if (action === 'archive') await callApi(`/api/tasks/${id}/archive`, 'POST')
       else await callApi(`/api/tasks/${id}/control`, 'POST', { action })
-      setTick(tick + 1)
+      setTick((value) => value + 1)
     } catch (error: any) { window.alert(String(error?.message ?? error)) }
   }
-  const row = task.data ?? {}
-  const section = (title: string, children: ReactNode) => h('div', { style: { marginBottom: 18 } },
-    h('div', { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title), children)
+
   if (task.loading) return h('div', null, '加载中…')
   if (task.error) return h('div', { style: { color: '#dc2626' } }, task.error)
-  const bindings = traffic.data?.bindings ?? []
-  const bodyBlock = body.title
-    ? h('div', null,
-        h('div', { style: { fontSize: 12, margin: '8px 0 4px', color: 'var(--vx-muted, #6b7280)' } }, body.title),
-        body.error
-          ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, body.error)
-          : h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 280, overflow: 'auto' } }, body.text))
-    : null
+
+  const row = task.data ?? {}
+  const meta = (title: string, children: ReactNode) => h('div', { style: { marginBottom: 16 } },
+    h('div', { style: { fontSize: 12, fontWeight: 600, color: 'var(--vx-text-dim)', marginBottom: 6 } }, title), children)
+  const list = (value: any): any[] => (Array.isArray(value) ? value : (value?.items ?? value?.goals ?? []))
+  const goalRows = list(goals.data)
+  const intentRows = list(intents.data)
+  const nodeRows = list(nodes.data)
+  const cover = coverage.data ?? {}
+  const tokens = row.tokens ?? {}
+  const status = String(row.status ?? '')
+  const pills = [
+    ['目标', `${row.goals_met ?? 0}/${row.goals_total ?? 0}`],
+    ['在途意图', String(row.in_flight ?? 0)],
+    ['输入 Token', fmtCount(tokens.input_tokens)],
+    ['输出 Token', fmtCount(tokens.output_tokens)],
+    ['缓存读', fmtCount(tokens.cache_read_tokens)],
+    ['覆盖度', cover.pct === null || cover.pct === undefined ? '—' : `${Math.round(Number(cover.pct))}%`]
+  ]
+
   return h('div', null,
-    h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 } },
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' } },
       h('button', { type: 'button', onClick: onBack, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' } }, '← 返回'),
-      h('span', { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} · ${row.vulnclass ?? ''}`),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, `${row.severity} / ${row.status}`)),
-    h('div', { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
-    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 220, overflow: 'auto' } }, row.evidence || ''),
-    h('div', { style: { fontSize: 13, fontWeight: 600, margin: '14px 0 6px' } }, `流量绑定（${bindings.length}）`),
-    ...bindings.map((binding: any) => h('div', { key: binding.id, style: { border: '1px solid var(--vx-border, #e5e7eb)', borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
-      h('div', null, `#${binding.id} · ${binding.snapshot?.method ?? ''} ${binding.snapshot?.url ?? ''} · ${binding.role}`),
-      h('div', { style: { marginTop: 6, display: 'flex', gap: 8 } },
-        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'response'), style: { cursor: 'pointer' } }, '响应正文'),
-        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'request'), style: { cursor: 'pointer' } }, '请求正文')))),
-    bodyBlock)
+      h('span', { style: { fontSize: 18, fontWeight: 600 } }, String(row.description ?? row.name ?? id)),
+      h('span', { className: 'vx-ov-pill' }, status === '' ? '未知' : status),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, `${id} · 创建 ${fmtAgo(row.created_unix)} · 最近活动 ${fmtAgo(row.last_activity_unix)}`)),
+    h('div', { style: { display: 'flex', gap: 8, margin: '10px 0 16px' } },
+      status === 'running' ? h('button', { type: 'button', onClick: () => act('pause'), style: { cursor: 'pointer' } }, '暂停') : null,
+      status === 'paused' ? h('button', { type: 'button', onClick: () => act('resume'), style: { cursor: 'pointer' } }, '恢复') : null,
+      h('button', { type: 'button', onClick: () => act('archive'), style: { cursor: 'pointer' } }, '归档')),
+    meta('目标', h('div', { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? '—'))),
+    meta('统计', h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: 12 } },
+      pills.map(([label, value]) => h('span', { key: label, style: { color: 'var(--vx-text-dim)' } },
+        `${label} `, h('b', { style: { color: 'var(--vx-text)', fontWeight: 600 } }, value))))),
+    goalRows.length > 0 ? meta(`目标清单（${goalRows.length}）`, h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
+      goalRows.slice(0, 12).map((goal: any) => h('div', { key: String(goal.id), style: { display: 'flex', gap: 8, alignItems: 'baseline' } },
+        h('span', { className: 'vx-ov-pill' }, String(goal.state ?? 'open')),
+        h('span', null, String(goal.text ?? goal.summary ?? '')),
+        goal.vulnclass ? h('span', { style: { color: 'var(--vx-text-faint)', fontSize: 11 } }, String(goal.vulnclass)) : null)))) : null,
+    intentRows.length > 0 ? meta(`意图（最近 ${Math.min(intentRows.length, 8)}）`, h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
+      intentRows.slice(0, 8).map((intent: any) => h('div', { key: String(intent.id), style: { display: 'flex', gap: 8, alignItems: 'baseline' } },
+        h('span', { className: 'vx-ov-pill' }, String(intent.state ?? intent.type ?? '')),
+        h('span', { style: { color: 'var(--vx-text-dim)' } }, String(intent.worker ?? '')),
+        h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, String(intent.summary ?? intent.label ?? '')))))) : null,
+    nodeRows.length > 0 ? meta(`图谱节点（最近 ${Math.min(nodeRows.length, 8)}）`, h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
+      nodeRows.slice(0, 8).map((node: any) => h('div', { key: String(node.id), style: { display: 'flex', gap: 8, alignItems: 'baseline' } },
+        h('span', { className: 'vx-ov-pill' }, String(node.type ?? node.kind ?? '')),
+        h('span', { style: { color: 'var(--vx-text-dim)' } }, String(node.state ?? '')),
+        h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, String(node.label ?? node.summary ?? '')))))) : null)
+}
+
+/** 任务详情里的小工具：紧凑数字与相对时间。 */
+function fmtCount(value: unknown): string {
+  const n = Number(value ?? 0)
+  if (!Number.isFinite(n)) return '—'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(Math.round(n))
+}
+
+function fmtAgo(unix: unknown): string {
+  const n = Number(unix ?? 0)
+  if (!Number.isFinite(n) || n <= 0) return '—'
+  const seconds = Math.floor(Date.now() / 1000 - n)
+  if (seconds < 60) return `${seconds}s 前`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m 前`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h 前`
+  return `${Math.floor(seconds / 86400)}d 前`
 }
 
 function AgentsPage() {
@@ -591,7 +607,6 @@ function ToolRunPage() {
   const [name, setName] = useState<'nmap' | 'httpx' | 'ffuf' | 'sqlmap'>('nmap')
   const [target, setTarget] = useState('')
   const [taskId, setTaskId] = useState('')
-  const [findingId, setFindingId] = useState('')
   const [output, setOutput] = useState('')
   const run = async () => {
     setOutput('执行中…')
@@ -695,7 +710,7 @@ function ApprovalsPage() {
   const { data, error, loading } = useApi('/api/intercept/pending')
   const [version, setVersion] = useState(0)
   if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要 VEXNAR_GO_FALLBACK 代理 Go 拦截接口）`)
+  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `审批队列暂时读不到：${error}`)
   const rows = data?.pending ?? []
   const decide = async (row: any, decision: 'allowed' | 'denied') => {
     try { await callApi(`/api/intercept/pending/${row.id}/decide`, 'POST', { decision }); setVersion(version + 1) }
@@ -771,20 +786,12 @@ function LogsPanel() {
         h('td', { style: { padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary ?? ''))))))
 }
 
-function PanelShell({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
-  const connect = () => {
-    const url = window.prompt('vexnar-core 地址（默认同源 /vexnar-api）', localStorage.getItem('vexnar.coreUrl') || '/vexnar-api')
-    if (url) localStorage.setItem('vexnar.coreUrl', url.replace(/\/$/, ''))
-    const token = window.prompt('core token（同源代理可留空）', localStorage.getItem('vexnar.coreToken') || '')
-    if (token) localStorage.setItem('vexnar.coreToken', token)
-    window.location.reload()
-  }
-  return h('div', { style: { height: '100%', overflowY: 'auto', padding: 24 } },
-    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4 } },
-      h('h1', { style: { fontSize: 22, margin: 0 } }, title),
-      h('button', { type: 'button', onClick: connect, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 } }, '连接 core')),
-    desc ? h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 18px' } }, desc) : h('div', { style: { height: 12 } }),
-    children)
+function PanelShell({ title, desc, children }: { title: string; desc?: string; children?: ReactNode }) {
+  return h('div', { className: 'vx-panel' },
+    h('div', { className: 'vx-panel-head' },
+      h('h1', { className: 'vx-panel-title' }, title),
+      desc ? h('p', { className: 'vx-panel-desc' }, desc) : null),
+    children ?? null)
 }
 
 function FindingList({ onSelect }: { onSelect?: (id: string) => void }) {
@@ -946,7 +953,7 @@ export function apply(ctx: {
     slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon))
   }
   for (const section of SETTINGS) {
-    slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: section.id, label: section.label, order: section.order }, section.component))
+    slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: section.id, label: () => section.label, order: section.order }, section.component))
   }
   // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
   // profile patch disables. Occupying the slot is the supported override route.

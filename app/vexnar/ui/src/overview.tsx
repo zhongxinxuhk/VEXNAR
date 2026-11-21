@@ -42,16 +42,8 @@ function storeSet(key: string, value: string): void {
   }
 }
 
-function coreBase(): string {
-  return (storeGet('vexnar.coreUrl') || CORE_PATH).replace(/\/$/, '')
-}
-
 async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const token = storeGet('vexnar.coreToken')
-  const response = await fetch(coreBase() + path, {
-    headers: token === '' ? {} : { 'x-vexnar-token': token },
-    signal
-  })
+  const response = await fetch(CORE_PATH + path, { signal })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return (await response.json()) as T
 }

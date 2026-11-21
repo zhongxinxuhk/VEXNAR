@@ -339,6 +339,30 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
+/* ── 领域面板外壳（任务/发现/设置各页共用） ───────────────────────────── */
+.vx-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px 24px 40px;
+  color: var(--vx-text);
+  font-size: 13px;
+}
+
+.vx-panel-head { margin-bottom: 18px; }
+
+.vx-panel-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+}
+
+.vx-panel-desc {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--vx-text-dim);
+}
+
 /* ── 概览整页 ─────────────────────────────────────────────────────────────
    只保留右上角的日期筛选；其余全部是数据区块。卡片 14px 圆角 + 顶部内高光，
    网格 12 列，窄窗口降为两列 / 单列。 */
