@@ -81,6 +81,7 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - 通知渠道、agent 名称/描述、tool 配置、自定义工具、MCP server：写 `meta.json` 后刷新缓存；
 - 归档：`archives/<id>.json` + 任务的 `archived_at`，恢复/删除成对处理；
 - 目标：`nodes` 中 `kind=goal`，新增时写 `edges` 的 `spawns`；
+- 意图控制：pause/resume 改状态，cancel soft 置 deleted，hard 删节点与边；
 - journal 恢复只重放 `prepared`，`failed` 不重放；
 - 测试：`pnpm --filter @vexnar/store run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
 
