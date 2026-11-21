@@ -10,7 +10,7 @@
  *   2. app/dsh                          source checkout (when built)
  *   3. /Applications/DeepSeek Harness.app packaged runtime
  */
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,6 +26,14 @@ export function resolveRuntime() {
     if (existsSync(join(dir, binRel))) return dir
   }
   throw new Error(`dsh runtime not found; set DSH_RUNTIME (tried: ${candidates.join(', ')})`)
+}
+
+export function readToken(name, fallback = '') {
+  try {
+    return readFileSync(join(repo, 'data', name), 'utf8').trim() || fallback
+  } catch {
+    return fallback
+  }
 }
 
 export function dshHome() {

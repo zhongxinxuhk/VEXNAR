@@ -1,0 +1,15 @@
+{
+  "name": "vexnar-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VEXNAR app workspace: dsh web/desktop launchers and client UI",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "setup": "node scripts/setup-app-profile.mjs",
+    "web": "node scripts/dsh-web.mjs --no-open --port 3099",
+    "desktop": "node scripts/dsh-desktop.mjs",
+    "ui:build": "npm --prefix vexnar/ui run build"
+  }
+}

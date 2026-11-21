@@ -11,7 +11,7 @@
  */
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
-import { dshHome, resolveRuntime } from './dsh-runtime.mjs'
+import { dshHome, readToken, resolveRuntime } from './dsh-runtime.mjs'
 
 const runtime = resolveRuntime()
 const bin = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
@@ -22,7 +22,12 @@ console.log(`[dsh] home=${dshHome()}`)
 
 const child = spawn(process.execPath, [bin, ...args], {
   stdio: 'inherit',
-  env: { ...process.env, DSH_HOME: dshHome() }
+  env: {
+    ...process.env,
+    DSH_HOME: dshHome(),
+    VEXNAR_MCP_TOKEN: process.env.VEXNAR_MCP_TOKEN || readToken('mcp.token'),
+    VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken')
+  }
 })
 child.on('exit', (code, signal) => {
   if (signal) process.kill(process.pid, signal)
