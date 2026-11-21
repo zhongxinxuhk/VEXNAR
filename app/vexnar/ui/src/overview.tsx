@@ -1434,6 +1434,7 @@ export function OverviewPanel(): ReactNode {
             <li><span>流量捕获</span><b data-on={view.capture ? '1' : '0'}>{view.capture ? '开启' : '关闭'}</b></li>
             <li><span>MCP 服务</span><b>{data.sys.mcpOn}/{data.sys.mcp}</b></li>
             <li><span>工具</span><b>{data.sys.toolsOn}/{data.sys.tools}</b></li>
+            <li><span>Agent</span><b>{data.sys.agentsOn}/{data.sys.agents}</b></li>
             <li><span>资产节点</span><b>{fmtInt(view.assets.total)}</b></li>
             <li><span>Top 主机</span><b className="vx-ov-ellipsis">{view.hosts[0]?.label ?? '—'}</b></li>
           </ul>

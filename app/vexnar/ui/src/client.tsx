@@ -2,10 +2,11 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useEffect, useState } from 'react'
+import { createElement as h, useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
+import { YakHistory, SessionTrafficAction } from './yak-history.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -452,6 +453,12 @@ const FINDING_STATUS_LABELS: ReadonlyArray<readonly [string, string]> = [
   ['risk_accepted', '风险接受']
 ]
 
+/** errText 把 fetch/响应错误统一成一句可读文案。 */
+function errText(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error ?? '未知错误')
+}
+
 function labelOf(table: ReadonlyArray<readonly [string, string]>, value: unknown): string {
   const key = String(value ?? '')
   return table.find(([id]) => id === key)?.[1] ?? (key || '—')
@@ -487,49 +494,93 @@ function Pager({ page, pageCount, total, unit, onPage }: {
  * 任务清单：core 的 /api/tasks 一次返回全部任务（与 Go 的 listTasks 一致），
  * 所以筛选与分页在客户端做，不额外造后端参数。
  */
-function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, error, loading } = useApi('/api/tasks')
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('all')
-  const [page, setPage] = useState(0)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { role: 'alert', style: { color: '#dc2626' } }, error)
+/**
+ * 任务范围选择器。
+ *
+ * 用 datalist 而不是 select：任务可能有上千条，select 只能渲染前 N 个（旧版就是 200），
+ * 而 datalist 由浏览器做过滤，同时允许直接键入任意任务 id（范围以外也认）。
+ * 留空 = 全部任务。
+ */
+function TaskScopePicker({ scope, onScope, options }: {
+  scope: string
+  onScope: (taskID: string) => void
+  options: any[]
+}) {
+  const current = options.find((task) => String(task.id) === scope)
+  const label = current ? current.name || current.description || '未命名' : ''
+  return h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
+    h('input', {
+      list: 'vx-task-scope-options',
+      'aria-label': '任务范围',
+      placeholder: '任务范围：留空=全部，可输入 ID 或搜索名称',
+      value: scope,
+      onChange: (event: any) => onScope(event.target.value.replace(/[^\w-]/g, '')),
+      style: { minWidth: 220 }
+    }),
+    h('datalist', { id: 'vx-task-scope-options' },
+      options.map((task: any) => h('option', { key: task.id, value: String(task.id) },
+        `${task.id} · ${task.name || task.description || '未命名'}`))),
+    scope
+      ? h('button', {
+          type: 'button', onClick: () => onScope(''), title: '清除任务范围'
+        }, '×')
+      : null,
+    scope && label ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, label) : null)
+}
 
-  const needle = query.trim().toLowerCase()
-  const rows = (data?.tasks ?? [])
-    .filter((task: any) => status === 'all' || String(task.status) === status)
-    .filter((task: any) => !needle || [task.id, task.name, task.description, task.goal]
-      .some((value) => String(value ?? '').toLowerCase().includes(needle)))
-    .sort((a: any, b: any) => Number(b.id) - Number(a.id))
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
-  const current = Math.min(page, pageCount - 1)
-  const visible = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE)
+/**
+ * 任务清单：筛选与窗口都交给后端（`/api/tasks?status=&q=&page=&size=`），所以任务再多
+ * 也只取一页；total 是筛选后的全集，分页器据此算页数。排序沿用后端的置顶优先 + id 倒序。
+ */
+function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
+  const [query, setQuery] = useState('')
+  const [needle, setNeedle] = useState('')
+  const [status, setStatus] = useState('all')
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setNeedle(query.trim()); setPage(1) }, 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
+
+  const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) })
+  if (status !== 'all') params.set('status', status)
+  if (needle) params.set('q', needle)
+  const url = `/api/tasks?${params.toString()}`
+  const { data, error, loading } = useApi(url, [url])
+
+  const rows: any[] = data?.tasks ?? []
+  const total = Number(data?.total ?? rows.length)
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return h('div', null,
     h(Toolbar, null,
       h('input', {
         placeholder: '搜索 ID / 名称 / 描述 / 目标',
         value: query,
-        onChange: (event: any) => { setQuery(event.target.value); setPage(0) },
+        onChange: (event: any) => setQuery(event.target.value),
         style: { minWidth: 260 }
       }),
       h('select', {
         'aria-label': '任务状态',
         value: status,
-        onChange: (event: any) => { setStatus(event.target.value); setPage(0) }
+        onChange: (event: any) => { setStatus(event.target.value); setPage(1) }
       },
         h('option', { key: 'all', value: 'all' }, '全部状态'),
         TASK_STATUS_LABELS.map(([value, label]) => h('option', { key: value, value }, label))),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginLeft: 'auto' } },
-        `${rows.length} / ${(data?.tasks ?? []).length} 个任务`)),
+      error
+        ? h('span', { role: 'alert', style: { fontSize: 12, color: '#dc2626' } }, error)
+        : h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginLeft: 'auto' } },
+            loading ? '加载中…' : `共 ${total} 个任务`)),
     rows.length === 0
-      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '没有符合条件的任务。')
+      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } },
+          loading ? '加载中…' : '没有符合条件的任务。')
       : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
           h('thead', null, h('tr', null,
             ['ID', '名称', '状态', '目标', '发现', '在途', '最近活动'].map((title) => h('th', {
               key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' }
             }, title)))),
-          h('tbody', null, visible.map((task: any) => h('tr', {
+          h('tbody', null, rows.map((task: any) => h('tr', {
             key: task.id, onClick: () => onOpen(String(task.id)), style: { cursor: 'pointer' }
           },
             h('td', { style: { padding: '6px 8px', fontFamily: 'var(--vx-mono)' } }, task.id),
@@ -539,14 +590,14 @@ function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
             h('td', { style: { padding: '6px 8px', fontSize: 12, color: 'var(--vx-text-dim)' } },
               `${task.goals_met ?? 0}/${task.goals_total ?? 0}`),
             h('td', { style: { padding: '6px 8px' } },
-              findingCount(task) === 0 ? '0' : `${findingCount(task)}`,
-              findingCount(task) > 0 && h('span', {
+              `${findingCount(task)}`,
+              findingCount(task) > 0 ? h('span', {
                 style: { marginLeft: 6, fontSize: 11, color: 'var(--vx-negative)' }
-              }, `严重 ${task.findings?.critical ?? 0} · 高 ${task.findings?.high ?? 0}`)),
+              }, `严重 ${task.findings?.critical ?? 0} · 高 ${task.findings?.high ?? 0}`) : null),
             h('td', { style: { padding: '6px 8px', fontSize: 12 } }, task.in_flight ? `${task.in_flight}` : '—'),
             h('td', { style: { padding: '6px 8px', fontSize: 12, color: 'var(--vx-text-dim)' } },
               task.last_activity_unix ? fmtAgo(task.last_activity_unix) : '—'))))),
-    h(Pager, { page: current, pageCount, total: rows.length, unit: '个任务', onPage: setPage }))
+    h(Pager, { page: Math.min(page, pageCount) - 1, pageCount, total, unit: '个任务', onPage: (next) => setPage(next + 1) }))
 }
 
 /**
@@ -594,6 +645,7 @@ function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }: {
   const pills = [
     ['目标', `${row.goals_met ?? 0}/${row.goals_total ?? 0}`],
     ['在途意图', String(row.in_flight ?? 0)],
+    ['发现合计', String(findingCount(row))],
     ['输入 Token', fmtCount(tokens.input_tokens)],
     ['输出 Token', fmtCount(tokens.output_tokens)],
     ['缓存读', fmtCount(tokens.cache_read_tokens)],
@@ -616,7 +668,11 @@ function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }: {
       }, `在发现里查看（${findingRows.length}）`) : null),
     meta('目标', h('div', { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? '—'))),
     meta(`发现（${findingRows.length}${findingTotal > findingRows.length ? ` / 共 ${findingTotal}` : ''}）`,
-      findingRows.length === 0
+      findings.error
+        ? h('div', { role: 'alert', style: { fontSize: 12, color: '#dc2626' } }, `发现读取失败：${findings.error}`)
+        : findings.loading && findingRows.length === 0
+        ? h('div', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '加载中…')
+        : findingRows.length === 0
         ? h('div', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '该任务还没有登记发现。')
         : h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
             findingRows.map((finding: any) => h('div', {
@@ -758,165 +814,89 @@ function NotifyPage() {
 }
 
 /**
- * 直接执行内置侦察工具。taskID 来自任务详情：执行结果按该任务落库，所以这里
- * 不再单独填 task_id，避免"在任务里跑、记到别的任务上"。
+ * 直接执行内置侦察工具。taskID 来自执行台的任务范围：执行结果按任务落库，
+ * 所以这里不再单独填 task_id，避免"跑在执行台、记在别的任务"。
+ */
+/**
+ * 直接执行内置侦察工具。
+ *
+ * 工具清单来自 runner 自己的目录（`GET /api/engine/tools` → vexnar-store 的 templates），
+ * 客户端不再硬编码名字表：runner 加工具，这里自动出现。额外参数按 runner 的约定以 JSON
+ * 传入（nmap: {"ports":"1-1000","scripts":"..."}、ffuf: {"wordlist":"..."} …）。
+ * 结果按当前任务落库，并把落库产出物数量回报出来。
  */
 function ToolRunPage({ taskID = '' }: { taskID?: string }) {
-  const [name, setName] = useState<'nmap' | 'httpx' | 'ffuf' | 'sqlmap'>('nmap')
+  const catalog = useApi('/api/engine/tools')
+  const tools: any[] = catalog.data?.tools ?? []
+  const [name, setName] = useState('')
   const [target, setTarget] = useState('')
-  const [output, setOutput] = useState('')
-  const run = async () => {
-    setOutput('执行中…')
-    try {
-      const data = await callApi('/api/engine/tools/run', 'POST', { name, target, task_id: taskID || undefined })
-      setOutput([`code=${data.code} truncated=${data.truncated}`, data.parsed ? JSON.stringify(data.parsed, null, 2) : '', data.stdout, data.stderr].filter(Boolean).join('\n'))
-    } catch (error: any) { setOutput(String(error?.message ?? error)) }
-  }
-  return h('div', { style: { fontSize: 13 } },
-    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 } },
-      h('select', { value: name, onChange: (event: any) => setName(event.target.value) }, ['nmap', 'httpx', 'ffuf', 'sqlmap'].map((item) => h('option', { key: item, value: item }, item))),
-      h('input', { placeholder: 'target（域名 / URL / IP）', value: target, onChange: (event: any) => setTarget(event.target.value), style: { minWidth: 260 } }),
-      h('button', { type: 'button', onClick: run, style: { cursor: 'pointer' } }, '执行'),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } },
-        taskID ? `结果记入任务 #${taskID}` : '未选任务：结果不落库')),
-    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
-}
-
-function YakitImport({ onImported }: { onImported: () => void }) {
+  const [extra, setExtra] = useState('')
   const [busy, setBusy] = useState(false)
+  const [output, setOutput] = useState('')
   const [error, setError] = useState('')
-  const [result, setResult] = useState<{ imported: number; duplicates: number; errors: { entry: number; error: string }[] } | null>(null)
 
-  async function upload(file: File) {
+  const selected = name || tools[0]?.name || 'nmap'
+  const spec = tools.find((tool) => tool.name === selected)
+
+  const run = async () => {
     setError('')
-    setResult(null)
-    if (file.size > 16 * 1024 * 1024) {
-      setError('HAR 不可超过 16 MiB，请分批导出')
-      return
+    let args: Record<string, unknown> = {}
+    if (extra.trim()) {
+      try {
+        const parsed = JSON.parse(extra)
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('参数需为 JSON 对象')
+        args = parsed as Record<string, unknown>
+      } catch (e: any) {
+        setError(`参数不是合法 JSON 对象：${String(e?.message ?? e)}`)
+        return
+      }
     }
     setBusy(true)
+    setOutput('执行中…')
     try {
-      const response = await fetch(CORE_BASE + '/api/traffic/import/yakit', {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: file
-      })
-      if (!response.ok) throw await responseError(response)
-      const data = await response.json()
-      setResult(data)
-      if (data.imported || data.duplicates) onImported()
-    } catch (error) {
-      setError(String((error as Error).message))
-    } finally {
-      setBusy(false)
-    }
+      const data = await callApi('/api/engine/tools/run', 'POST', { name: selected, target, args, task_id: taskID || undefined })
+      const created = Array.isArray(data.created) ? data.created : []
+      setOutput([
+        `code=${data.code} truncated=${data.truncated}${data.timed_out ? ' timed_out' : ''}`,
+        created.length > 0
+          ? `落库 ${created.length} 项：${created.slice(0, 12).map((row: any) => `${row.kind}#${row.id}`).join('、')}${created.length > 12 ? ' …' : ''}`
+          : '',
+        data.parsed ? JSON.stringify(data.parsed, null, 2) : '',
+        data.stdout,
+        data.stderr
+      ].filter(Boolean).join('\n'))
+    } catch (e: any) { setOutput(String(e?.message ?? e)) } finally { setBusy(false) }
   }
 
-  return h('div', { style: { marginBottom: 12 } },
-    h('label', null, '导入 Yakit HAR ',
-      h('input', {
-        type: 'file', accept: '.har,application/json', disabled: busy,
-        onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-          const file = event.currentTarget.files?.[0]
-          event.currentTarget.value = ''
-          if (file) void upload(file)
-        }
-      })),
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginTop: 4 } }, '在 Yakit History 选中记录并导出 HAR。每份最多 16 MiB、2000 条。'),
-    busy && h('div', { role: 'status' }, '正在导入…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    result && h('div', { role: 'status' },
-      `已导入 ${result.imported} 条，重复 ${result.duplicates} 条，失败 ${result.errors.length} 条`,
-      result.errors.length > 0 && h('details', null,
-        h('summary', null, '查看失败记录'),
-        h('ul', null, result.errors.map(({ entry, error }) => h('li', { key: entry }, `第 ${entry} 条 · ${error}`))))))
-}
-
-function TrafficExchange({ row, onBack }: { row: any; onBack: () => void }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id])
-  const [result, setResult] = useState('')
-  const [promoting, setPromoting] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  async function promote() {
-    setPromoting(true)
-    setResult('')
-    try {
-      const assets = await callApi('/api/traffic/promote', 'POST', { id: row.id })
-      setSaved(true)
-      setResult(`已登记服务 #${assets.service_id}、端点 #${assets.endpoint_id}，可在资产页查看。`)
-    } catch (error) {
-      setResult(String((error as Error).message))
-    } finally {
-      setPromoting(false)
-    }
-  }
-
-  const packetStyle = { fontSize: 12, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const, background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 360, overflow: 'auto' }
-  return h('div', null,
-    h('div', { style: { display: 'flex', gap: 8 } },
-      h('button', { type: 'button', onClick: onBack }, '← 返回流量列表'),
-      h('button', { type: 'button', onClick: promote, disabled: promoting || saved || !data }, promoting ? '登记中…' : '登记为资产')),
-    result && h('p', { role: 'status' }, result),
-    h('p', { style: { overflowWrap: 'anywhere' } }, `${row.method} ${row.url}`),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data && h('div', null,
-      h('strong', null, '请求'), h('pre', { style: packetStyle }, data.req?.trim() ? data.req : '暂无请求内容'),
-      h('strong', null, '响应'), h('pre', { style: packetStyle }, data.resp?.trim() ? data.resp : '暂无响应内容')))
-}
-
-function TrafficPage() {
-  const [host, setHost] = useState('')
-  const [method, setMethod] = useState('')
-  const [q, setQ] = useState('')
-  const [source, setSource] = useState('')
-  const [page, setPage] = useState(0)
-  const [revision, setRevision] = useState(0)
-  const [exchange, setExchange] = useState<any>(null)
-  const params = new URLSearchParams({ page: String(page), size: '50' })
-  if (host) params.set('host', host.trim())
-  if (method) params.set('method', method)
-  if (q) params.set('q', q.trim())
-  if (source) params.set('source', source)
-  const url = `/api/traffic?${params.toString()}`
-  const { data, error, loading } = useApi(url, [url, revision])
-  const rows = data?.exchanges ?? []
-  const total = data?.total ?? rows.length
-  if (exchange) return h(TrafficExchange, { row: exchange, onBack: () => setExchange(null) })
   return h('div', { style: { fontSize: 13 } },
-    data?.storage_available !== false && h(YakitImport, { onImported: () => {
-      setHost('')
-      setMethod('')
-      setQ('')
-      setSource('yakit')
-      setPage(0)
-      setRevision((value) => value + 1)
-    } }),
-    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
-      h('input', { placeholder: '主机', 'aria-label': '主机', value: host, onChange: (event: any) => { setHost(event.target.value); setPage(0) } }),
-      h('select', { 'aria-label': 'HTTP 方法', value: method, onChange: (event: any) => { setMethod(event.target.value); setPage(0) } },
-        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
-      h('input', { placeholder: 'URL 或报文关键字', 'aria-label': 'URL 或报文关键字', value: q, onChange: (event: any) => { setQ(event.target.value); setPage(0) } }),
-      h('select', { 'aria-label': '流量来源', value: source, onChange: (event: any) => { setSource(event.target.value); setPage(0) } },
-        h('option', { value: '' }, '全部来源'), h('option', { value: 'yakit' }, 'Yakit'), h('option', { value: 'vexnar' }, 'VEXNAR')),
-      h('button', { type: 'button', onClick: () => setRevision((value) => value + 1) }, '刷新')),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data?.storage_available === false && h('div', { role: 'status' }, 'Go 流量存储未启用'),
-    data && data.storage_available !== false && h('div', null,
-      h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `匹配 ${total} 条流量`),
-      rows.length === 0 ? h('p', null, '暂无匹配流量') : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-        h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-          h('td', { style: { padding: '6px 8px' } }, row.ts),
-          h('td', { style: { padding: '6px 8px' } }, row.method),
-          h('td', { style: { padding: '6px 8px', maxWidth: 420, overflowWrap: 'anywhere' } },
-            h('button', { type: 'button', onClick: () => setExchange(row), style: { whiteSpace: 'normal', textAlign: 'left' } }, row.url || row.host)),
-          h('td', { style: { padding: '6px 8px' } }, row.status || '—'),
-          h('td', { style: { padding: '6px 8px' } }, row.source === 'yakit' ? 'Yakit' : 'VEXNAR'))))),
-      (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
-        h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
-        h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-        h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页'))))
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 } },
+      h('select', {
+        'aria-label': '工具',
+        value: selected,
+        onChange: (event: any) => setName(event.target.value)
+      },
+        (tools.length === 0 ? [selected] : tools.map((tool) => tool.name)).map((item: string) =>
+          h('option', { key: item, value: item }, item))),
+      h('input', {
+        placeholder: 'target（域名 / URL / IP）',
+        value: target,
+        onChange: (event: any) => setTarget(event.target.value),
+        style: { minWidth: 260 }
+      }),
+      h('input', {
+        placeholder: '额外参数（JSON，可选）',
+        value: extra,
+        onChange: (event: any) => setExtra(event.target.value),
+        style: { minWidth: 200, fontFamily: 'var(--vx-mono)' }
+      }),
+      h('button', { type: 'button', onClick: run, disabled: busy || !target.trim(), style: { cursor: 'pointer' } },
+        busy ? '执行中…' : '执行'),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } },
+        taskID ? `结果记入任务 #${taskID}` : '未选任务：结果不落库')),
+    spec ? h('div', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginBottom: 8 } }, spec.description) : null,
+    catalog.error ? h('div', { role: 'alert', style: { fontSize: 12, color: '#dc2626', marginBottom: 6 } }, `工具目录读取失败：${catalog.error}`) : null,
+    error ? h('div', { role: 'alert', style: { fontSize: 12, color: '#dc2626', marginBottom: 6 } }, error) : null,
+    output ? h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output) : null)
 }
 
 function InterceptPage() {
@@ -961,94 +941,73 @@ function InterceptPage() {
           h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
 }
 
-function ApprovalsPage() {
-  const { data, error, loading } = useApi('/api/intercept/pending')
-  const [version, setVersion] = useState(0)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `审批队列暂时读不到：${error}`)
-  const rows = data?.pending ?? []
-  const decide = async (row: any, decision: 'allowed' | 'denied') => {
-    try { await callApi(`/api/intercept/pending/${row.id}/decide`, 'POST', { decision }); setVersion(version + 1) }
-    catch (e: any) { window.alert(String(e?.message ?? e)) }
-  }
-  return h('div', { key: version, fontSize: 13 },
-    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `待处理 ${rows.length} 条`),
-    rows.length === 0 ? h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, color: 'var(--vx-muted, #6b7280)' } }, '当前没有待审批的工具调用。')
-      : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-          h('thead', null, h('tr', null, ['ID', '任务', 'Agent', '工具', '状态', '原因', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-          h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-            h('td', { style: { padding: '6px 8px' } }, row.id),
-            h('td', { style: { padding: '6px 8px' } }, row.task_id ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.agent_name ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.tool_name ?? ''),
-            h('td', { style: { padding: '6px 8px' } }, row.status),
-            h('td', { style: { padding: '6px 8px', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.reason ?? ''),
-            h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
-              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'allowed'), style: { cursor: 'pointer' } }, '允许') : null,
-              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'denied'), style: { cursor: 'pointer' } }, '拒绝') : null))))))
-}
-
-/**
- * 资产 JSON 导入。它原本是设置里独立的「资产同步」一节，但它只做一件事——往资产
- * 库里灌数据——所以并进资产面板，导入完直接在下个页签看到结果。
- */
-function AssetImport({ onImported }: { onImported: () => void }) {
-  const [text, setText] = useState('{"assets":[{"type":"root_domain","domain":"example.com"}]}')
-  const [result, setResult] = useState('')
-  const submit = async () => {
-    setResult('导入中…')
-    try {
-      const parsed = JSON.parse(text)
-      const assets = Array.isArray(parsed) ? parsed : parsed.assets
-      if (!Array.isArray(assets) || assets.length === 0) throw new Error('请填写资产列表')
-      const data = await callApi('/api/assets', 'POST', { assets })
-      const failures = (data.errors ?? []).map((item: any) => `第 ${item.index + 1} 条 · ${item.error}`)
-      setResult([`已登记 ${data.results?.length ?? 0} 条，失败 ${failures.length} 条`, ...failures].join('；'))
-      if ((data.results?.length ?? 0) > 0) onImported()
-    } catch (error: any) { setResult(String(error?.message ?? error)) }
-  }
-  return h('div', null,
-    h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginTop: 0 } },
-      '从 JSON 导入资产（域名 / IP / URL），按类型与标识去重。'),
-    h('textarea', { value: text, onChange: (event: any) => setText(event.target.value), rows: 10, style: { width: '100%', fontFamily: 'monospace', fontSize: 12 } }),
-    h('div', { style: { display: 'flex', gap: 8, marginTop: 8 } },
-      h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, '导入'),
-      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, result)))
-}
-
 /**
  * 该任务的执行流。
  *
  * 这正是原先「日志」面板展示的那批 activity 行：planner / main / intent 的每一步，
  * 其中 kind=tool_use / tool_result 的行就是一次工具执行。它过去有独立入口，但看的
  * 是同一批数据，所以并进任务详情——任务就是它的范围，不用再选一次任务。
+ *
+ * 分页沿用后端反向游标：首屏是最新一页，「加载更早」用 before=<当前最早 seq> 往前翻，
+ * has_more 说明还有更早的记录，长任务不会只剩最后 100 行。
  */
 function ExecStream({ taskID }: { taskID: string }) {
   const [session, setSession] = useState('plan')
   const [rows, setRows] = useState<any[]>([])
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [tick, setTick] = useState(0)
+
+  const load = useCallback(async (before: number) => {
+    const query = new URLSearchParams({ task: taskID, session, limit: '100' })
+    if (before > 0) query.set('before', String(before))
+    const response = await fetch(CORE_BASE + `/api/exploration/activity/history?${query.toString()}`)
+    if (!response.ok) throw await responseError(response)
+    return await response.json() as { items?: any[]; has_more?: boolean }
+  }, [taskID, session])
+
   useEffect(() => {
-    if (!taskID) { setRows([]); setError(''); return }
+    if (!taskID) { setRows([]); setHasMore(false); setError(''); return }
     let alive = true
     setError('')
-    fetch(CORE_BASE + `/api/exploration/activity/history?task=${encodeURIComponent(taskID)}&session=${session}&limit=100`)
-      .then(async (response) => {
-        if (!response.ok) throw await responseError(response)
-        return response.json()
+    setLoading(true)
+    load(0)
+      .then((data: { items?: any[]; has_more?: boolean }) => {
+        if (!alive) return
+        setRows(data.items ?? [])
+        setHasMore(Boolean(data.has_more))
       })
-      .then((data) => { if (alive) setRows(data.items ?? []) })
-      .catch((e) => { if (alive) { setError(String(e?.message ?? e)); setRows([]) } })
+      .catch((e: unknown) => { if (alive) { setError(errText(e)); setRows([]); setHasMore(false) } })
+      .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [taskID, session, tick])
+  }, [taskID, session, tick, load])
+
+  const loadEarlier = async () => {
+    const earliest = rows.length > 0 ? Number(rows[0].seq) : 0
+    if (!earliest) return
+    setLoading(true)
+    setError('')
+    try {
+      const data = await load(earliest)
+      setRows((current) => [...(data.items ?? []), ...current])
+      setHasMore(Boolean(data.has_more))
+    } catch (e) { setError(errText(e)) } finally { setLoading(false) }
+  }
+
   return h('div', null,
-    h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 } },
+    h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' } },
       h('span', { style: { fontSize: 12, fontWeight: 600, color: 'var(--vx-text-dim)' } }, `执行记录 · 任务 #${taskID}`),
       h('select', { 'aria-label': '会话', value: session, onChange: (event: any) => setSession(event.target.value) },
         [['plan', 'planner'], ['main', 'main']].map(([value, label]) => h('option', { key: value, value }, label))),
-      h('button', { type: 'button', onClick: () => setTick((value) => value + 1), style: { cursor: 'pointer' } }, '刷新')),
+      h('button', { type: 'button', onClick: () => setTick((value) => value + 1), disabled: loading, style: { cursor: 'pointer' } },
+        loading ? '加载中…' : '刷新'),
+      hasMore
+        ? h('button', { type: 'button', onClick: loadEarlier, disabled: loading, style: { cursor: 'pointer' } }, '加载更早')
+        : rows.length > 0 ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '已到最早') : null,
+      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginLeft: 'auto' } }, `${rows.length} 行`)),
     error ? h('div', { role: 'alert', style: { color: '#dc2626', fontSize: 12 } }, error) : null,
-    rows.length === 0 && !error ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '该会话还没有执行记录。') : null,
+    rows.length === 0 && !error && !loading ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '该会话还没有执行记录。') : null,
     rows.length > 0 ? h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
       h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'tool', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
       h('tbody', null, rows.slice().reverse().map((row: any) => h('tr', { key: row.seq },
@@ -1079,7 +1038,8 @@ function FindingsTab({ scope, onScope, onOpen }: {
   onScope: (taskID: string) => void
   onOpen: (findingID: string) => void
 }) {
-  const tasks = useApi('/api/tasks')
+  // 选项只取前 200 个任务名做补全提示；超出范围仍可直接键入任务 id（见 TaskScopePicker）。
+  const tasks = useApi('/api/tasks?page=1&size=200')
   const [severity, setSeverity] = useState('all')
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
@@ -1126,14 +1086,7 @@ function FindingsTab({ scope, onScope, onOpen }: {
       },
         h('option', { key: 'all', value: 'all' }, '全部状态'),
         FINDING_STATUS_LABELS.map(([value, label]) => h('option', { key: value, value }, label))),
-      h('select', {
-        'aria-label': '任务范围',
-        value: scope,
-        onChange: (event: any) => { onScope(event.target.value); setPage(1) }
-      },
-        h('option', { key: 'all', value: '' }, '全部任务'),
-        options.slice(0, 200).map((task: any) => h('option', { key: task.id, value: String(task.id) },
-          `${task.id} · ${task.name || task.description || '未命名'}`)))),
+      h(TaskScopePicker, { scope, onScope: (taskID: string) => { onScope(taskID); setPage(1) }, options })),
     loading && rows.length === 0 ? h('div', null, '加载中…') : null,
     error ? h('div', { role: 'alert', style: { color: '#dc2626' } }, error) : null,
     !loading && !error && rows.length === 0
@@ -1241,50 +1194,8 @@ function TasksPanel() {
     body)
 }
 
-function AssetsTable({ revision, onRefresh }: { revision: number; onRefresh: () => void }) {
-  const [type, setType] = useState('root_domain')
-  const [page, setPage] = useState(0)
-  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`
-  const { data, error, loading } = useApi(url, [url, revision])
-  const rows = data?.assets ?? []
-  const total = data?.total ?? rows.length
-  return h('div', null,
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('select', { 'aria-label': '资产类型', value: type, onChange: (event: any) => { setType(event.target.value); setPage(0) } },
-        [['root_domain', '主域名'], ['subdomain', '子域名'], ['ip', 'IP'], ['service', '服务'], ['endpoint', '端点'], ['app', '应用']].map(([value, label]) => h('option', { key: value, value }, label))),
-      h('button', { type: 'button', onClick: onRefresh }, '刷新')),
-    loading && h('div', null, '加载中…'),
-    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
-    data && (rows.length === 0 ? h('p', null, '暂无此类资产') : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-      h('thead', null, h('tr', null, ['ID', '资产', '方法', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-        h('td', { style: { padding: '6px 8px' } }, row.id),
-        h('td', { style: { padding: '6px 8px', overflowWrap: 'anywhere' } }, row.url || row.domain || row.ip || row.app_name || ''),
-        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? '')))))),
-    data && (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
-      h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
-      h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
-      h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页')))
-}
-
-/** 资产面板：列表与导入共用一处，导入完成后列表自动刷新。 */
-function AssetsPanel() {
-  const [tab, setTab] = useState<'list' | 'import'>('list')
-  const [revision, setRevision] = useState(0)
-  const refresh = (): void => setRevision((value) => value + 1)
-  return h(PanelShell, { title: '资产', desc: '域名、IP、服务与端点；支持 JSON 导入' },
-    h('div', { className: 'vx-seg', role: 'group', 'aria-label': '资产视图', style: { marginBottom: 12 } },
-      h('button', { type: 'button', 'aria-pressed': tab === 'list', onClick: () => setTab('list') }, '资产列表'),
-      h('button', { type: 'button', 'aria-pressed': tab === 'import', onClick: () => setTab('import') }, '导入')),
-    tab === 'list'
-      ? h(AssetsTable, { revision, onRefresh: refresh })
-      : h(AssetImport, { onImported: () => { refresh(); setTab('list') } }))
-}
-
 function TrafficPanel() {
-  return h(PanelShell, { title: '流量' }, h(TrafficPage))
+  return h(PanelShell, { title: '流量 History' }, h(YakHistory))
 }
 
 function AgentSettings() {
@@ -1314,25 +1225,19 @@ function InterceptSettings() {
   return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
 }
 
-function ApprovalsSettings() {
-  return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
-}
-
 // 侧边栏入口：任务是对象视图（清单 + 发现），工具执行与执行记录在任务详情里。
 const PANELS = [
   { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
-  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
-  { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel }
+  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel }
 ]
 
-// 设置：MCP 与 工具 合并成「工具与 MCP」；资产同步并入资产面板。
+// 工具与 MCP 共用设置面板。
 const SETTINGS = [
   { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
   { id: 'vexnar-tools-mcp', label: '工具与 MCP', order: 41, component: ToolsMcpSettings },
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
-  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings },
-  { id: 'vexnar-approvals', label: '审批记录', order: 46, component: ApprovalsSettings }
+  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings }
 ]
 
 export function apply(ctx: {
@@ -1359,6 +1264,10 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
+  slots.inject('conversation.session.header.actions', () =>
+    slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-yak-history' }, SessionTrafficAction))
+  slots.inject('conversation.hero.options', () =>
+    slots.register({ name: 'conversation.hero.options', id: 'vexnar-yak-history' }, SessionTrafficAction))
   for (const panel of PANELS) {
     slots.inject('main', () => slots.register({ name: 'main', key: panel.id }, panel.component))
     slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon))

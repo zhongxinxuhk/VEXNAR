@@ -41,6 +41,7 @@ const react = {
   createElement: (type, props, ...kids) => ({ type, props, kids }),
   useState: (v) => [v, () => {}],
   useEffect: () => {},
+  useRef: (v) => ({ current: v }),
   Fragment: Symbol('fragment')
 }
 const requireShim = (name) => {
@@ -76,14 +77,15 @@ test('apply registers every surface it owns', () => {
     },
     effect: (fn) => fn()
   })
-  // 侧边栏：概览 + 任务（清单/发现，工具执行在任务详情里）+ 流量 + 资产。
+  // 项目流量由会话动作和全局流量入口打开。
   const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
-    ...['overview', 'tasks', 'traffic', 'assets']
+    'conversation.session.header.actions:vexnar-yak-history',
+    'conversation.hero.options:vexnar-yak-history',
+    ...['overview', 'tasks', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
-    // 设置：MCP 与工具合并成「工具与 MCP」，资产同步并进资产面板。
-    ...['agents', 'tools-mcp', 'notify', 'intercept', 'approvals']
+    ...['agents', 'tools-mcp', 'notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
@@ -93,7 +95,7 @@ test('apply registers every surface it owns', () => {
   assert.deepEqual(registered, expected)
 })
 
-test('the fused surfaces replace their 独立 entries', () => {
+test('obsolete sidebar and settings entries are absent', () => {
   const plugin = loadPlugin()
   const ids = []
   plugin.apply({
@@ -104,9 +106,9 @@ test('the fused surfaces replace their 独立 entries', () => {
     effect: (fn) => fn()
   })
   for (const gone of ['vexnar-findings', 'vexnar-tool-run', 'vexnar-logs', 'vexnar-workbench',
-    'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync']) {
+    'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync', 'vexnar-assets', 'vexnar-approvals']) {
     assert.equal(ids.some((id) => id.endsWith(`:${gone}`)), false,
-      `${gone} must be gone: 发现 is a tab of 任务, 工具执行 lives in the task detail, 日志 is gone`)
+      `${gone} must no longer register a panel or settings section: 发现 is a tab of 任务, 工具执行 lives in the task detail`)
   }
   assert.ok(ids.includes('sidebar.panellist:vexnar-tasks'), 'the task panel owns the sidebar entry')
   assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')

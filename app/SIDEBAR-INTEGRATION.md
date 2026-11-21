@@ -26,15 +26,13 @@ dsh 侧边栏
 │                 └─ 发现      （严重度/状态/任务/关键字筛选 + 分页 + 详情）
 │                 任务详情内：目标 / 意图 / 节点 / 覆盖度 / 该任务的发现 /
 │                 工具运行器 / 该任务的执行记录流（activity/history）
-├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
-└─ 资产        → main: vexnar-assets  （资产列表 / JSON 导入）
+└─ 流量        → main: vexnar-traffic（Yak 内核 History）
 
 dsh 设置页
 ├─ Agent 管理  → settings.section: vexnar-agents
 ├─ 工具与 MCP  → settings.section: vexnar-tools-mcp（工具 / MCP server 两个页签）
 ├─ 通知推送    → settings.section: vexnar-notify
 ├─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
-└─ 审批记录    → settings.section: vexnar-approvals
 ```
 
 ### 为什么合并
@@ -45,7 +43,6 @@ dsh 设置页
 - **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
   工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
 - **MCP / 工具** 是同一件事的两半（工具从哪来），拆成两个设置节只会让人来回切。
-- **资产同步** 只做一件事——往资产库里灌数据——所以并进资产面板，导入完直接看列表。
 
 ## 哪些入口复用 dsh，哪些新建
 
@@ -57,15 +54,12 @@ dsh 设置页
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
 | 任务 / 发现 | 任务面板（清单 + 发现页签，共用任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=&severity=&status=&q=&page=&limit=` | 已接 |
 | 工具执行 / 执行记录 | 任务详情内（按任务落库） | `POST /api/engine/tools/run`、`/api/exploration/activity/history` | 已接 |
-| 资产同步 | 资产面板的「导入」页签 | `/api/assets` | 已接 |
-| 流量 | 面板内证据查看 | `/api/exploration/findings/:id/traffic` | 骨架 |
+| 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
-| 资产 / 资产同步 | 面板内列表 | `/api/assets`、DSL | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
 | MCP / 工具 / Skill | 「工具与 MCP」设置节 | `/api/mcp`、`/api/tools` | 骨架 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
-| 审批记录 | 面板内列表 | 待迁 | 规划 |
 
 ## 已实现的数据视图
 
@@ -74,17 +68,19 @@ dsh 设置页
   图形全部手绘 SVG（无 recharts 依赖），色板走 `--vx-chart-*` 令牌，浅色/深色随皮肤；
   新会话首屏的卡片在窗口高度 < 780px 时只保留标题栏与 KPI 条，把高度让给输入框；
 - 仪表盘：任务数、发现数、资产数、今日 Token；
+- 任务：最近 30 条任务（id/名称/状态/目标）；
+- 发现：最近 30 条发现（id/漏洞类/严重度/状态/摘要）；
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
-- 任务面板：清单支持状态筛选、关键字搜索与分页（数据源 `/api/tasks` 一次返回全部任务，
-  筛选分页在客户端做）；发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，分页走
-  core 与 Go 的 `page`+`limit`；任务详情里给出该任务的发现、工具运行器（结果按任务落库）
-  与该任务的执行记录（planner / main 逐步，含工具与结果）；
-- 任务详情：暂停/恢复/归档 / 刷新，并可跳到「发现」查看该任务的全部发现；
-- 流量页：通过内嵌 core 读取 Go 流量，支持导入 Yakit HAR 和登记资产。详见 [Yakit 对接设计](docs/YAKIT-TRAFFIC-ASSETS.md)；
+- 任务面板：清单的状态筛选 / 关键字搜索 / 分页全部下推后端（`/api/tasks?status=&q=&page=&size=`，
+  与 Go 同一套语义，`total` 是筛选后的全集）；发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，
+  分页走 `page`+`limit`，任务范围用可搜索输入（datalist + 直接键入 id，不限前 200）；任务详情里给出
+  该任务的发现、工具运行器（目录来自 `/api/engine/tools`，支持额外 JSON 参数，结果按任务落库）与
+  该任务的执行记录（`activity/history` 反向游标，可「加载更早」，planner / main 逐步含工具与结果）；
+- 任务详情：暂停/恢复/归档按钮；
+- 流量：在 dsh 内读取 Yak 内核 History。会话流量按钮和 Agent 工具使用会话绑定的本地项目。详见 [Yak 内核流量 History](docs/YAK-HISTORY.md)。
 - 拦截规则：规则列表与删除（同样代理 Go）；
-- 审批记录：Go 无独立接口，占位说明。
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。
 
 连接方式：**没有独立端口、没有 sidecar**。`vexnar-core` 通过 esbuild 打成
