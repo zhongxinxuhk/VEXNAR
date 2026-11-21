@@ -23,10 +23,12 @@ function ensureProfileDeps(profile) {
   const missing = required.some((name) => !existsSync(join(profile, 'node_modules', name, 'package.json')))
   const stale = !missing && [['vexnar/ui', '@vexnar/dsh-ui'], ['vexnar/account', '@vexnar/dsh-account']]
     .some(([dir, name]) => {
-      const source = join(repoRoot, 'app', dir, 'lib', 'client.js')
-      const copy = join(profile, 'node_modules', name, 'lib', 'client.js')
-      if (!existsSync(source) || !existsSync(copy)) return false
-      return !readFileSync(source).equals(readFileSync(copy))
+      return ['lib/client.js', 'lib/index.js'].some((file) => {
+        const source = join(repoRoot, 'app', dir, file)
+        const copy = join(profile, 'node_modules', name, file)
+        if (!existsSync(source) || !existsSync(copy)) return false
+        return !readFileSync(source).equals(readFileSync(copy))
+      })
     })
   if (!missing && !stale) return true
   console.log(`[dsh] ${missing ? 'profile plugins missing' : 'plugin bundles changed'}; syncing profile`)
