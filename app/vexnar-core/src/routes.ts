@@ -5,8 +5,14 @@ import { Hono } from 'hono'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { blobStore, buildReport, buildReportHtml, createNotifier, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue } from './context.ts'
+import { register as registerExploration } from './routes/exploration.ts'
 
 export const api = new Hono()
+
+// Exploration static routes (/findings/groups|export|asset-tree) must register
+// before the inline /api/exploration/findings/:id below, or Hono's first-match
+// order would shadow them.
+registerExploration(api)
 
 api.get('/api/health', (c) => c.json({ ok: true, service: 'vexnar', version: process.env.VEXNAR_VERSION ?? 'dev' }))
 
