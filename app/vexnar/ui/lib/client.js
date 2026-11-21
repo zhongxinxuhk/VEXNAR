@@ -19,7 +19,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/client.tsx
+// app/vexnar/ui/src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
@@ -30,7 +30,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react3 = require("react");
 
-// src/styles.ts
+// app/vexnar/ui/src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1270,38 +1270,126 @@ body[data-ds-dark-theme] {
 .vx-yak-history {
   font-size: 13px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.vx-yak-filters, .vx-yak-pages, .vx-yak-packet header, .vx-yak-detail > header, .vx-yak-dialog > header {
+/* \u2500\u2500 \u7B5B\u9009\u6761 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-yak-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-filters input:not([type="checkbox"]),
+.vx-yak-filters select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+  font-size: 12px;
 }
 
 .vx-yak-filters input:not([type="checkbox"]) {
-  width: 115px;
+  width: 112px;
 }
 
 .vx-yak-filters input[aria-label="URL"] {
-  width: min(245px, 100%);
+  width: min(230px, 100%);
 }
 
+.vx-yak-filters input:focus-visible,
+.vx-yak-filters select:focus-visible {
+  outline: 2px solid var(--vx-accent);
+  outline-offset: 1px;
+}
+
+.vx-yak-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vx-yak-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.vx-yak-actions button,
+.vx-yak-pages button,
+.vx-yak-copy,
+.vx-yak-close,
+.vx-yak-segmented button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vx-yak-actions button:hover,
+.vx-yak-pages button:hover,
+.vx-yak-copy:hover,
+.vx-yak-close:hover {
+  background: var(--vx-surface-sunken);
+}
+
+.vx-yak-actions button:disabled,
+.vx-yak-pages button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vx-yak-actions .vx-yak-primary {
+  border-color: transparent;
+  background: var(--vx-text);
+  color: var(--vx-surface);
+  font-weight: 600;
+}
+
+/* \u2500\u2500 \u5217\u8868 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-yak-grid {
   display: grid;
-  grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+  grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
   border: 1px solid var(--vx-border);
-  border-radius: 8px;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .vx-yak-grid aside {
   padding: 10px;
   min-width: 0;
+  background: var(--vx-surface-sunken);
   border-inline-end: 1px solid var(--vx-border);
 }
 
-.vx-yak-grid aside button, .vx-yak-url {
+.vx-yak-grid aside strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vx-muted);
+  letter-spacing: 0.02em;
+}
+
+.vx-yak-grid aside button,
+.vx-yak-url {
   display: block;
   max-width: 100%;
   overflow: hidden;
@@ -1311,11 +1399,29 @@ body[data-ds-dark-theme] {
 }
 
 .vx-yak-grid aside button {
-  margin-top: 6px;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vx-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vx-yak-grid aside button:hover {
+  background: var(--vx-surface);
+}
+
+.vx-yak-grid aside button small {
+  margin-inline-start: 4px;
+  color: var(--vx-muted);
 }
 
 .vx-yak-list {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .vx-yak-table {
@@ -1327,30 +1433,164 @@ body[data-ds-dark-theme] {
   width: 100%;
   border-collapse: collapse;
   white-space: nowrap;
+  font-size: 12px;
 }
 
-.vx-yak-table th, .vx-yak-table td {
+.vx-yak-table th,
+.vx-yak-table td {
   text-align: start;
   padding: 6px 9px;
-  border-bottom: 1px solid var(--vx-border);
+  border-bottom: 1px solid color-mix(in oklab, var(--vx-border) 60%, transparent);
 }
 
 .vx-yak-table th {
   position: sticky;
   top: 0;
-  background: var(--vx-surface);
+  z-index: 1;
+  background: var(--vx-surface-sunken);
+  color: var(--vx-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vx-yak-table th button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.vx-yak-table tbody tr:hover {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
 }
 
 .vx-yak-table tr[data-selected="true"] {
   background: var(--vx-surface-sunken);
 }
 
-.vx-yak-url {
-  max-width: 340px;
+.vx-yak-table tr[data-selected="true"] td:first-child {
+  box-shadow: inset 2px 0 0 0 var(--vx-text);
 }
 
-.vx-yak-pages, .vx-yak-table > p {
+.vx-yak-id,
+.vx-yak-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--vx-muted);
+}
+
+.vx-yak-dim {
+  color: var(--vx-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vx-yak-type {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--vx-muted);
+}
+
+.vx-yak-url {
+  max-width: 420px;
+  border: 0;
+  background: none;
+  color: var(--vx-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.vx-yak-url:hover {
+  text-decoration: underline;
+}
+
+.vx-yak-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   padding: 8px 10px;
+  border-top: 1px solid var(--vx-border);
+  color: var(--vx-muted);
+  font-size: 12px;
+}
+
+.vx-yak-pages > span {
+  margin-inline-end: auto;
+}
+
+/* \u2500\u2500 \u65B9\u6CD5\u4E0E\u72B6\u6001\u80F6\u56CA \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-method,
+.vx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vx-method--get { background: rgba(14, 116, 144, 0.10); color: #0e7490; border-color: rgba(14, 116, 144, 0.22); }
+.vx-method--post { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
+.vx-method--put { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
+.vx-method--patch { background: rgba(109, 40, 217, 0.10); color: #6d28d9; border-color: rgba(109, 40, 217, 0.22); }
+.vx-method--delete { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
+.vx-method--options { background: rgba(15, 118, 110, 0.10); color: #0f766e; border-color: rgba(15, 118, 110, 0.22); }
+.vx-method--other { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+
+.vx-status {
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vx-status--success { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
+.vx-status--redirect { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
+.vx-status--warn { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
+.vx-status--error { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
+.vx-status--info { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+
+/* \u2500\u2500 \u62A5\u6587\u8BE6\u60C5 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-yak-detail {
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-detail > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
+}
+
+.vx-yak-detail-url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vx-muted);
+  font-size: 11.5px;
+}
+
+.vx-yak-close {
+  margin-inline-start: auto;
 }
 
 .vx-yak-split {
@@ -1361,32 +1601,175 @@ body[data-ds-dark-theme] {
 
 .vx-yak-packet {
   min-width: 0;
-  padding: 0 10px;
   border: 1px solid var(--vx-border);
-  border-radius: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--vx-surface);
 }
 
-.vx-yak-packet pre {
-  overflow: auto;
-  min-height: 80px;
-  max-height: 300px;
-  padding: 10px;
+.vx-yak-packet > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--vx-border);
   background: var(--vx-surface-sunken);
 }
 
+.vx-yak-packet > header strong {
+  font-size: 12px;
+}
+
+.vx-yak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vx-yak-chip--request { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
+.vx-yak-chip--response { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
+
+.vx-yak-size {
+  color: var(--vx-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-segmented {
+  display: inline-flex;
+  margin-inline-start: auto;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--vx-surface);
+  border: 1px solid var(--vx-border);
+  gap: 2px;
+}
+
+.vx-yak-segmented button {
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vx-muted);
+  font-size: 11px;
+}
+
+.vx-yak-segmented button[aria-pressed="true"] {
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+  font-weight: 600;
+}
+
+.vx-yak-code {
+  overflow: auto;
+  max-height: 340px;
+  padding: 8px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.65;
+  background: var(--vx-surface);
+}
+
+.vx-yak-line {
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.65em;
+}
+
+.vx-yak-line:hover {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 65%, transparent);
+}
+
+.vx-yak-line--start {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
+}
+
+.vx-yak-line code {
+  font: inherit;
+}
+
+.vx-yak-separator {
+  margin: 4px 10px;
+  border-top: 1px dashed var(--vx-border);
+}
+
+.vx-yak-note {
+  padding: 2px 10px;
+  color: var(--vx-muted);
+  font-size: 11px;
+}
+
+/* \u62A5\u6587\u7740\u8272\uFF1A\u8BF7\u6C42\u884C\u3001\u5934\u90E8\u3001\u6B63\u6587\u5404\u4E00\u5957 */
+.vx-tone--method { font-weight: 600; }
+.vx-tone--url { color: #0e7490; }
+.vx-tone--query-key { color: #0f766e; }
+.vx-tone--query-value { color: #047857; }
+.vx-tone--proto,
+.vx-tone--reason { color: var(--vx-muted); }
+.vx-tone--status { font-weight: 600; }
+.vx-tone--header { color: #4338ca; font-weight: 500; }
+.vx-tone--value { color: #475569; }
+.vx-tone--cookie-key { color: #4338ca; }
+.vx-tone--cookie-value { color: #475569; }
+.vx-tone--key { color: #0369a1; }
+.vx-tone--string { color: #047857; }
+.vx-tone--number { color: #b45309; }
+.vx-tone--literal { color: #a21caf; }
+.vx-tone--tag { color: #be123c; }
+.vx-tone--attr { color: #6d28d9; }
+.vx-tone--comment { color: var(--vx-muted); font-style: italic; }
+.vx-tone--punct { color: #94a3b8; }
+.vx-tone--muted { color: var(--vx-muted); }
+
+.vx-yak-hint,
+.vx-yak-alert {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.vx-yak-hint { color: var(--vx-muted); }
+.vx-yak-alert { color: #be123c; }
+
 .vx-yak-dialog {
-  width: min(1100px, 91vw);
+  width: min(1180px, 93vw);
   max-height: 88vh;
   overflow: auto;
   padding: 14px;
   border: 1px solid var(--vx-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--vx-surface);
   color: var(--vx-text);
 }
 
-@media (max-width: 720px) {
-  .vx-yak-grid, .vx-yak-split {
+.vx-yak-dialog > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.vx-yak-dialog > header button {
+  margin-inline-start: auto;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .vx-yak-grid,
+  .vx-yak-split {
     grid-template-columns: minmax(0, 1fr);
   }
   .vx-yak-grid aside button {
@@ -1406,7 +1789,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// src/overview.tsx
+// app/vexnar/ui/src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -2651,8 +3034,402 @@ function OverviewPanel() {
   ] });
 }
 
-// src/yak-history.tsx
+// app/vexnar/ui/src/yak-history.tsx
 var import_react2 = require("react");
+
+// app/vexnar/ui/src/http-packet.ts
+var BINARY_PREFIXES = [
+  "image/",
+  "audio/",
+  "video/",
+  "font/",
+  "application/pdf",
+  "application/zip",
+  "application/gzip",
+  "application/x-gzip",
+  "application/octet-stream",
+  "application/x-tar",
+  "application/wasm",
+  "application/x-protobuf"
+];
+function normalizeNewlines(raw) {
+  return (raw ?? "").replace(/\r\n?/g, "\n");
+}
+function detectSide(startLine) {
+  if (/^HTTP(?:\/[\d.]+)?\s+\d{3}\b/i.test(startLine)) return "response";
+  if (/^[A-Z][A-Z0-9-]*\s+\S+/.test(startLine)) return "request";
+  return "unknown";
+}
+function parseHttpPacket(rawInput) {
+  const raw = normalizeNewlines(rawInput);
+  const boundary = raw.indexOf("\n\n");
+  const head = boundary < 0 ? raw : raw.slice(0, boundary);
+  const body = boundary < 0 ? "" : raw.slice(boundary + 2);
+  const lines = head.split("\n");
+  const startLine = (lines[0] ?? "").trim();
+  const headers = [];
+  for (const line of lines.slice(1)) {
+    if (!line.trim()) continue;
+    const previous = headers[headers.length - 1];
+    if (/^[ \t]/.test(line) && previous) {
+      previous.value = `${previous.value} ${line.trim()}`;
+      continue;
+    }
+    const colon = line.indexOf(":");
+    if (colon <= 0) {
+      headers.push({ name: "", value: line });
+      continue;
+    }
+    headers.push({ name: line.slice(0, colon), value: line.slice(colon + 1).replace(/^[ \t]+/, "") });
+  }
+  return { side: detectSide(startLine), startLine, headers, body, raw };
+}
+function packetHeader(packet, name) {
+  const lower = name.toLowerCase();
+  return packet.headers.find((entry) => entry.name.toLowerCase() === lower)?.value ?? "";
+}
+function looksLikeJson(body) {
+  const trimmed = body.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function detectBodyKind(contentType, body) {
+  const ct = (contentType || "").toLowerCase();
+  if (!body.trim()) return "text";
+  if (ct.includes("json") || ct.includes("+json")) return "json";
+  if (ct.includes("html")) return "html";
+  if (ct.includes("xml") || ct.includes("+xml")) return "xml";
+  if (ct.includes("x-www-form-urlencoded")) return "form";
+  if (ct.includes("multipart/")) return "multipart";
+  if (ct.includes("css")) return "css";
+  if (ct.includes("javascript") || ct.includes("ecmascript")) return "js";
+  if (BINARY_PREFIXES.some((prefix) => ct.startsWith(prefix))) return "binary";
+  const trimmed = body.trimStart();
+  if (trimmed.startsWith("<")) {
+    const head = trimmed.slice(0, 64).toLowerCase();
+    return head.startsWith("<!doctype html") || head.startsWith("<html") ? "html" : "xml";
+  }
+  if (looksLikeJson(body)) return "json";
+  return "text";
+}
+function prettyJsonBody(body) {
+  const trimmed = body.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return null;
+  }
+}
+function tokenizeQuery(query) {
+  const tokens = [{ text: "?", tone: "punct" }];
+  query.slice(1).split("&").forEach((part, index) => {
+    if (index > 0) tokens.push({ text: "&", tone: "punct" });
+    if (!part) return;
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      tokens.push({ text: part, tone: "query-key" });
+      return;
+    }
+    tokens.push({ text: part.slice(0, eq), tone: "query-key" });
+    tokens.push({ text: "=", tone: "punct" });
+    tokens.push({ text: part.slice(eq + 1), tone: "query-value" });
+  });
+  return tokens;
+}
+function tokenizeUrl(url) {
+  const tokens = [];
+  const match = /^([a-zA-Z][\w+.-]*:\/\/)?([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/.exec(url);
+  if (!match) return [{ text: url, tone: "url" }];
+  const [, scheme = "", authority = "", path = "", query = "", hash = ""] = match;
+  if (scheme) tokens.push({ text: scheme, tone: "muted" });
+  if (authority) tokens.push({ text: authority, tone: "url" });
+  if (path) tokens.push({ text: path, tone: "value" });
+  if (query) tokens.push(...tokenizeQuery(query));
+  if (hash) tokens.push({ text: hash, tone: "muted" });
+  return tokens;
+}
+function tokenizeStartLine(packet, side = packet.side) {
+  const line = packet.startLine;
+  if (!line) return [];
+  if (side === "response") {
+    const match2 = /^(HTTP(?:\/[\d.]+)?)(\s+)(\d{3})(.*)$/i.exec(line);
+    if (!match2) return [{ text: line }];
+    const [, proto = "", gap2 = "", code = "", reason = ""] = match2;
+    return [
+      { text: proto, tone: "proto" },
+      { text: gap2 },
+      { text: code, tone: "status" },
+      { text: reason, tone: "reason" }
+    ];
+  }
+  const match = /^([A-Z][A-Z0-9-]*)(\s+)(\S+)(?:\s+(HTTP\/[\d.]+))?$/.exec(line);
+  if (!match) return [{ text: line }];
+  const [, method = "", gap = "", target = "", version] = match;
+  const tokens = [
+    { text: method, tone: "method" },
+    { text: gap }
+  ];
+  tokens.push(...tokenizeUrl(target));
+  if (version) tokens.push({ text: " ", tone: "punct" }, { text: version, tone: "proto" });
+  return tokens;
+}
+var COOKIE_LIKE = /* @__PURE__ */ new Set(["cookie", "set-cookie"]);
+function tokenizeCookieValue(value) {
+  const tokens = [];
+  value.split(/;\s*(?=[^;]+?=)/).forEach((part, index) => {
+    if (index > 0) tokens.push({ text: "; ", tone: "punct" });
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      tokens.push({ text: part, tone: "cookie-value" });
+      return;
+    }
+    tokens.push({ text: part.slice(0, eq), tone: "cookie-key" });
+    tokens.push({ text: "=", tone: "punct" });
+    tokens.push({ text: part.slice(eq + 1), tone: "cookie-value" });
+  });
+  return tokens;
+}
+function tokenizeHeader(header) {
+  if (!header.name) return [{ text: header.value, tone: "value" }];
+  const tokens = [
+    { text: header.name, tone: "header" },
+    { text: ":", tone: "punct" },
+    { text: " ", tone: "punct" }
+  ];
+  const name = header.name.toLowerCase();
+  if (COOKIE_LIKE.has(name)) {
+    tokens.push(...tokenizeCookieValue(header.value));
+  } else if (/^[<]?[a-zA-Z][\w+.-]*:\/\//.test(header.value)) {
+    const bracketed = /^<([^>]+)>(.*)$/.exec(header.value);
+    if (bracketed) {
+      const [, href = "", rest = ""] = bracketed;
+      tokens.push({ text: "<", tone: "punct" });
+      tokens.push(...tokenizeUrl(href));
+      tokens.push({ text: ">", tone: "punct" });
+      if (rest) tokens.push({ text: rest, tone: "muted" });
+    } else {
+      tokens.push(...tokenizeUrl(header.value));
+    }
+  } else if (name === "content-type") {
+    const semi = header.value.indexOf(";");
+    if (semi > 0) {
+      tokens.push({ text: header.value.slice(0, semi), tone: "string" });
+      tokens.push({ text: header.value.slice(semi), tone: "muted" });
+    } else {
+      tokens.push({ text: header.value, tone: "string" });
+    }
+  } else {
+    tokens.push({ text: header.value, tone: "value" });
+  }
+  return tokens;
+}
+var JSON_TOKEN = /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],])/g;
+function tokenizeJsonLine(line) {
+  const tokens = [];
+  let cursor = 0;
+  for (const match of line.matchAll(JSON_TOKEN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) tokens.push({ text: line.slice(cursor, index), tone: "punct" });
+    if (match[1]) {
+      tokens.push({ text: match[1], tone: match[2] ? "key" : "string" });
+      if (match[2]) tokens.push({ text: match[2], tone: "punct" });
+    } else if (match[3]) {
+      tokens.push({ text: match[3], tone: "number" });
+    } else if (match[4]) {
+      tokens.push({ text: match[4], tone: "literal" });
+    } else {
+      tokens.push({ text: match[0], tone: "punct" });
+    }
+    cursor = index + match[0].length;
+  }
+  if (cursor < line.length) tokens.push({ text: line.slice(cursor), tone: "punct" });
+  return tokens;
+}
+var TAG_PATTERN = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<!DOCTYPE[^>]*>|<\?[\s\S]*?\?>|<\/?([A-Za-z][\w:.-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+var ATTR_PATTERN = /([^\s=/>]+)(\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)?/g;
+function tokenizeTag(text, name, attributes) {
+  const tokens = [];
+  const open = text.startsWith("</") ? "</" : "<";
+  tokens.push({ text: open, tone: "punct" });
+  if (!name) {
+    tokens.push({ text: text.slice(open.length), tone: "comment" });
+    return tokens;
+  }
+  tokens.push({ text: name, tone: "tag" });
+  for (const match of attributes.replace(/\/\s*$/, "").matchAll(ATTR_PATTERN)) {
+    if (!match[1]) continue;
+    tokens.push({ text: " ", tone: "punct" });
+    tokens.push({ text: match[1], tone: "attr" });
+    if (match[2]) tokens.push({ text: match[2].trim() === "=" ? "=" : match[2].trim(), tone: "punct" });
+    if (match[3]) tokens.push({ text: match[3], tone: "string" });
+  }
+  tokens.push({ text: text.endsWith("/>") ? "/>" : ">", tone: "punct" });
+  return tokens;
+}
+function tokenizeMarkupLine(line) {
+  const tokens = [];
+  let cursor = 0;
+  for (const match of line.matchAll(TAG_PATTERN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) tokens.push({ text: line.slice(cursor, index), tone: "value" });
+    const full = match[0];
+    if (full.startsWith("<!") || full.startsWith("<?")) tokens.push({ text: full, tone: "comment" });
+    else tokens.push(...tokenizeTag(full, match[1], match[2] ?? ""));
+    cursor = index + full.length;
+  }
+  if (cursor < line.length) tokens.push({ text: line.slice(cursor), tone: "value" });
+  return tokens;
+}
+var JS_KEYWORDS = /* @__PURE__ */ new Set([
+  "async",
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "let",
+  "new",
+  "null",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "undefined",
+  "var",
+  "void",
+  "while",
+  "yield"
+]);
+var CODE_TOKEN = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b[A-Za-z_$][\w$]*\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+function tokenizeCodeLine(line) {
+  const tokens = [];
+  let cursor = 0;
+  for (const match of line.matchAll(CODE_TOKEN)) {
+    const index = match.index ?? 0;
+    if (index > cursor) tokens.push({ text: line.slice(cursor, index) });
+    if (match[1]) tokens.push({ text: match[1], tone: "comment" });
+    else if (match[2]) tokens.push({ text: match[2], tone: "string" });
+    else if (match[3]) {
+      const word = match[3];
+      tokens.push(JS_KEYWORDS.has(word) ? { text: word, tone: "literal" } : { text: word });
+    } else tokens.push({ text: match[0], tone: "number" });
+    cursor = index + match[0].length;
+  }
+  if (cursor < line.length) tokens.push({ text: line.slice(cursor) });
+  return tokens;
+}
+function tokenizeFormLine(line) {
+  const tokens = [];
+  line.split("&").forEach((part, index) => {
+    if (index > 0) tokens.push({ text: "&", tone: "punct" });
+    if (!part) return;
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      tokens.push({ text: part, tone: "key" });
+      return;
+    }
+    tokens.push({ text: part.slice(0, eq), tone: "key" });
+    tokens.push({ text: "=", tone: "punct" });
+    tokens.push({ text: part.slice(eq + 1), tone: "string" });
+  });
+  return tokens;
+}
+function tokenizeMultipartLine(line) {
+  if (/^--/.test(line)) return [{ text: line, tone: "comment" }];
+  const colon = line.indexOf(":");
+  if (colon > 0 && !/\s/.test(line.slice(0, colon))) {
+    return [
+      { text: line.slice(0, colon), tone: "header" },
+      { text: ":", tone: "punct" },
+      { text: line.slice(colon + 1), tone: "value" }
+    ];
+  }
+  return [{ text: line, tone: "value" }];
+}
+function tokenizeBodyLine(kind, line) {
+  switch (kind) {
+    case "json":
+      return tokenizeJsonLine(line);
+    case "html":
+    case "xml":
+      return tokenizeMarkupLine(line);
+    case "js":
+    case "css":
+      return tokenizeCodeLine(line);
+    case "form":
+      return tokenizeFormLine(line);
+    case "multipart":
+      return tokenizeMultipartLine(line);
+    default:
+      return [{ text: line }];
+  }
+}
+function hexDump(body, limit = 512) {
+  const all = new TextEncoder().encode(body);
+  const bytes = all.slice(0, limit);
+  const rows = [];
+  for (let offset = 0; offset < bytes.length; offset += 16) {
+    const chunk = Array.from(bytes.slice(offset, offset + 16));
+    const hex = chunk.map((byte) => byte.toString(16).padStart(2, "0")).join(" ");
+    const ascii = chunk.map((byte) => byte >= 32 && byte < 127 ? String.fromCharCode(byte) : ".").join("");
+    rows.push({ offset: offset.toString(16).padStart(8, "0"), hex: hex.padEnd(47, " "), ascii });
+  }
+  return { rows, truncated: all.length > limit };
+}
+function statusClass(status) {
+  if (status >= 500) return "error";
+  if (status >= 400) return "warn";
+  if (status >= 300) return "redirect";
+  if (status >= 200) return "success";
+  return "info";
+}
+function methodClass(method) {
+  switch (method.toUpperCase()) {
+    case "GET":
+    case "HEAD":
+      return "get";
+    case "POST":
+      return "post";
+    case "PUT":
+      return "put";
+    case "PATCH":
+      return "patch";
+    case "DELETE":
+      return "delete";
+    case "OPTIONS":
+      return "options";
+    default:
+      return "other";
+  }
+}
+
+// app/vexnar/ui/src/yak-history.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function useHistory(body, revision = 0) {
   const [result, setResult] = (0, import_react2.useState)();
@@ -2678,62 +3455,132 @@ function useHistory(body, revision = 0) {
     void read();
     return () => controller.abort();
   }, [body, key]);
-  return { data: result?.key === key ? result.data : void 0, error: result?.key === key ? result.error : void 0, loading: body !== null && result?.key !== key };
+  return {
+    data: result?.key === key ? result.data : void 0,
+    error: result?.key === key ? result.error : void 0,
+    loading: body !== null && result?.key !== key
+  };
 }
-function packetView(packet, format) {
+function Tokens({ tokens }) {
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_jsx_runtime2.Fragment, { children: tokens.map(
+    (token, index) => token.tone ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-tone vx-tone--${token.tone}`, children: token.text }, index) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: token.text }, index)
+  ) });
+}
+function PacketBody({ packet, side, format }) {
   if (format === "hex") {
-    const bytes = atob(packet.base64 ?? "").slice(0, 4096);
-    return bytes.match(/[\s\S]{1,16}/g)?.map((line, index) => {
-      const hex = Array.from(line, (ch) => ch.charCodeAt(0).toString(16).padStart(2, "0")).join(" ");
-      return `${(index * 16).toString(16).padStart(6, "0")}  ${hex.padEnd(47)}  ${line.replace(/[^\x20-\x7e]/g, ".")}`;
-    }).join("\n") ?? "";
+    const dump = hexDump(atob(packet.base64 ?? ""), 4096);
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-code", children: dump.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("code", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--muted", children: row.offset }),
+      "  ",
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--value", children: row.hex }),
+      "  \u2502",
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--comment", children: row.ascii }),
+      "\u2502"
+    ] }) }, row.offset)) });
   }
-  const separator = /\r?\n\r?\n/.exec(packet.text);
-  const head = separator ? packet.text.slice(0, separator.index) : packet.text;
-  if (format === "headers") return head;
-  if (format !== "pretty" || !separator) return packet.text;
-  const body = packet.text.slice(separator.index + separator[0].length);
-  try {
-    return head + "\n\n" + JSON.stringify(JSON.parse(body), null, 2);
-  } catch {
-    return packet.text;
+  const parsed = parseHttpPacket(packet.text);
+  const contentType = packetHeader(parsed, "content-type");
+  const kind = detectBodyKind(contentType, parsed.body);
+  const pretty = format === "pretty" ? prettyJsonBody(parsed.body) : null;
+  const bodyText = pretty ?? parsed.body;
+  const bodyKind = pretty ? "json" : kind;
+  const rows = [];
+  if (parsed.startLine) {
+    rows.push(
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line vx-yak-line--start", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeStartLine(parsed, side) }) }) }, "start")
+    );
   }
+  for (const [index, header] of parsed.headers.entries()) {
+    rows.push(
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeHeader(header) }) }) }, `h${index}`)
+    );
+  }
+  if (parsed.body) {
+    rows.push(/* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-separator" }, "sep"));
+    if (bodyKind === "binary") {
+      const dump = hexDump(parsed.body);
+      rows.push(
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-note", children: [
+          "\u4E8C\u8FDB\u5236\u6B63\u6587 \xB7 ",
+          parsed.body.length,
+          " B",
+          dump.truncated ? "\uFF08\u4EC5\u663E\u793A\u524D 512 \u5B57\u8282\uFF09" : ""
+        ] }, "note")
+      );
+      for (const row of dump.rows) {
+        rows.push(
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("code", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--muted", children: row.offset }),
+            "  ",
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--value", children: row.hex }),
+            "  \u2502",
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: "vx-tone vx-tone--comment", children: row.ascii }),
+            "\u2502"
+          ] }) }, `d${row.offset}`)
+        );
+      }
+    } else {
+      for (const [index, line] of bodyText.split("\n").entries()) {
+        rows.push(
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeBodyLine(bodyKind, line) }) }) }, `b${index}`)
+        );
+      }
+    }
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-code", children: rows });
 }
-function PacketPane({ label, packet }) {
-  const [format, setFormat] = (0, import_react2.useState)("raw");
+function PacketPane({ label, packet, side }) {
+  const [format, setFormat] = (0, import_react2.useState)("pretty");
   const [copied, setCopied] = (0, import_react2.useState)("");
-  const text = packetView(packet, format);
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { className: "vx-yak-packet", "aria-label": label, children: [
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(packet.text);
+      setCopied("\u5DF2\u590D\u5236");
+    } catch {
+      setCopied("\u526A\u8D34\u677F\u4E0D\u53EF\u7528");
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { className: "vx-yak-packet", "data-side": side, "aria-label": label, children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-yak-chip vx-yak-chip--${side}`, children: side === "response" ? "\u54CD\u5E94" : "\u8BF7\u6C42" }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: label }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "vx-yak-size", children: [
         packet.bytes.toLocaleString(),
         " B"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { "aria-label": `${label}\u663E\u793A\u683C\u5F0F`, value: format, onChange: (event) => {
-        setFormat(event.target.value);
-        setCopied("");
-      }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "raw", children: "\u539F\u6587" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "headers", children: "\u62A5\u6587\u5934" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "pretty", children: "\u683C\u5F0F\u5316 JSON" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "hex", children: "HEX\uFF08\u524D 4 KiB\uFF09" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied("\u5DF2\u590D\u5236");
-        } catch {
-          setCopied("\u526A\u8D34\u677F\u4E0D\u53EF\u7528");
-        }
-      }, children: "\u590D\u5236" })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-segmented", role: "group", "aria-label": `${label}\u663E\u793A\u683C\u5F0F`, children: [
+        ["pretty", "\u7F8E\u5316"],
+        ["raw", "\u539F\u6587"],
+        ["hex", "HEX"]
+      ].map(([value, text]) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "button",
+        {
+          type: "button",
+          "aria-pressed": format === value,
+          onClick: () => {
+            setFormat(value);
+            setCopied("");
+          },
+          children: text
+        },
+        value
+      )) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "vx-yak-copy", onClick: () => void copy(), children: copied || "\u590D\u5236" })
     ] }),
-    copied && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { role: "status", children: copied }),
-    packet.truncated && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { children: "\u663E\u793A\u524D 128 KiB" }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("pre", { children: text || "\u65E0\u62A5\u6587\u6570\u636E" })
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketBody, { packet, side, format }),
+    packet.truncated && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { className: "vx-yak-hint", children: "\u663E\u793A\u524D 128 KiB" })
   ] });
 }
-var emptyFilters = { url: "", method: "", status: "", capture_source: "", content_type: "", keyword: "", tag: "", websocket: false };
+var emptyFilters = {
+  url: "",
+  method: "",
+  status: "",
+  capture_source: "",
+  content_type: "",
+  keyword: "",
+  tag: "",
+  websocket: false
+};
 function siteName(raw) {
   try {
     return new URL(raw).host;
@@ -2749,7 +3596,9 @@ function exportRows(rows) {
   };
   const lines = [
     "ID,Method,Status,URL,ResponseBytes,ContentType,Source,IP,Title,Tags,Time",
-    ...rows.map((row) => [row.id, row.method, row.status, row.url, row.bytes, row.content_type, row.source, row.ip, row.title, row.tags, row.time].map(cell).join(","))
+    ...rows.map(
+      (row) => [row.id, row.method, row.status, row.url, row.bytes, row.content_type, row.source, row.ip, row.title, row.tags, row.time].map(cell).join(",")
+    )
   ];
   const href = URL.createObjectURL(new Blob(["\uFEFF", lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
@@ -2785,42 +3634,66 @@ function YakHistory({ sessionId }) {
     setSelected("");
   }
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-history", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("form", { className: "vx-yak-filters", onSubmit: (event) => {
-      event.preventDefault();
-      apply2(filters);
-    }, children: [
-      !sessionId && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { "aria-label": "Yak \u9879\u76EE", value: source, onChange: (event) => {
-        setSource(event.target.value);
-        apply2(emptyFilters);
-      }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9 Yak \u9879\u76EE" }),
-        sources.data?.sources.map((name) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { children: name }, name))
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "URL", placeholder: "URL", value: filters.url, onChange: (event) => setFilters({ ...filters, url: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { "aria-label": "\u65B9\u6CD5", value: filters.method, onChange: (event) => setFilters({ ...filters, method: event.target.value }), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", children: "\u5168\u90E8\u65B9\u6CD5" }),
-        ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"].map((method) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { children: method }, method))
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u72B6\u6001\u7801", placeholder: "\u72B6\u6001\u7801", inputMode: "numeric", value: filters.status, onChange: (event) => setFilters({ ...filters, status: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6D41\u91CF\u6765\u6E90", placeholder: "\u6765\u6E90", value: filters.capture_source, onChange: (event) => setFilters({ ...filters, capture_source: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u5185\u5BB9\u7C7B\u578B", placeholder: "Content-Type", value: filters.content_type, onChange: (event) => setFilters({ ...filters, content_type: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u5173\u952E\u8BCD", placeholder: "\u62A5\u6587\u5173\u952E\u8BCD", value: filters.keyword, onChange: (event) => setFilters({ ...filters, keyword: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6807\u7B7E", placeholder: "\u6807\u7B7E", value: filters.tag, onChange: (event) => setFilters({ ...filters, tag: event.target.value }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", checked: filters.websocket, onChange: (event) => setFilters({ ...filters, websocket: event.target.checked }) }),
-        " \u4EC5 WebSocket"
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "submit", disabled: !available, children: "\u7B5B\u9009" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => apply2(emptyFilters), children: "\u6E05\u9664" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => {
-        setSelected("");
-        setRevision((value) => value + 1);
-      }, children: "\u5237\u65B0" })
-    ] }),
-    sources.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: sources.error }),
-    !sessionId && sources.data?.sources.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "\u5C1A\u672A\u914D\u7F6E Yak \u6D41\u91CF\u6765\u6E90\u3002" }),
-    list.loading && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", children: "\u8BFB\u53D6\u6D41\u91CF\u2026" }),
-    list.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: list.error }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+      "form",
+      {
+        className: "vx-yak-filters",
+        onSubmit: (event) => {
+          event.preventDefault();
+          apply2(filters);
+        },
+        children: [
+          !sessionId && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+            "select",
+            {
+              "aria-label": "Yak \u9879\u76EE",
+              value: source,
+              onChange: (event) => {
+                setSource(event.target.value);
+                apply2(emptyFilters);
+              },
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9 Yak \u9879\u76EE" }),
+                sources.data?.sources.map((name) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { children: name }, name))
+              ]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "URL", placeholder: "URL", value: filters.url, onChange: (event) => setFilters({ ...filters, url: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { "aria-label": "\u65B9\u6CD5", value: filters.method, onChange: (event) => setFilters({ ...filters, method: event.target.value }), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", children: "\u5168\u90E8\u65B9\u6CD5" }),
+            ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"].map((method) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { children: method }, method))
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u72B6\u6001\u7801", placeholder: "\u72B6\u6001\u7801", inputMode: "numeric", value: filters.status, onChange: (event) => setFilters({ ...filters, status: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6D41\u91CF\u6765\u6E90", placeholder: "\u6765\u6E90", value: filters.capture_source, onChange: (event) => setFilters({ ...filters, capture_source: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u5185\u5BB9\u7C7B\u578B", placeholder: "Content-Type", value: filters.content_type, onChange: (event) => setFilters({ ...filters, content_type: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u5173\u952E\u8BCD", placeholder: "\u62A5\u6587\u5173\u952E\u8BCD", value: filters.keyword, onChange: (event) => setFilters({ ...filters, keyword: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { "aria-label": "\u6807\u7B7E", placeholder: "\u6807\u7B7E", value: filters.tag, onChange: (event) => setFilters({ ...filters, tag: event.target.value }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { className: "vx-yak-check", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "checkbox", checked: filters.websocket, onChange: (event) => setFilters({ ...filters, websocket: event.target.checked }) }),
+            " \u4EC5 WebSocket"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "submit", className: "vx-yak-primary", disabled: !available, children: "\u7B5B\u9009" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => apply2(emptyFilters), children: "\u6E05\u9664" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              "button",
+              {
+                type: "button",
+                onClick: () => {
+                  setSelected("");
+                  setRevision((value) => value + 1);
+                },
+                children: "\u5237\u65B0"
+              }
+            )
+          ] })
+        ]
+      }
+    ),
+    sources.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", className: "vx-yak-alert", children: sources.error }),
+    !sessionId && sources.data?.sources.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "vx-yak-hint", children: "\u5C1A\u672A\u914D\u7F6E Yak \u6D41\u91CF\u6765\u6E90\u3002" }),
+    list.loading && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", className: "vx-yak-hint", children: "\u8BFB\u53D6\u6D41\u91CF\u2026" }),
+    list.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", className: "vx-yak-alert", children: list.error }),
     list.data && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-grid", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("aside", { "aria-label": "\u672C\u9875\u7AD9\u70B9", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: "\u672C\u9875\u7AD9\u70B9" }),
@@ -2828,7 +3701,8 @@ function YakHistory({ sessionId }) {
           site,
           " ",
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { children: count })
-        ] }, site))
+        ] }, site)),
+        Object.keys(sites).length === 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { className: "vx-yak-hint", children: "\u672C\u9875\u65E0\u7AD9\u70B9" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { className: "vx-yak-list", children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-table", children: [
@@ -2845,32 +3719,39 @@ function YakHistory({ sessionId }) {
               ["\u6807\u9898"],
               ["\u6807\u7B7E"],
               ["\u65F6\u95F4", "created_at"]
-            ].map(([label, field]) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { "aria-sort": field && order.order_by === field ? order.ascending ? "ascending" : "descending" : void 0, children: field ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { type: "button", onClick: () => {
-              setOrder({ order_by: field, ascending: order.order_by === field && !order.ascending });
-              setPage(1);
-              setSelected("");
-            }, children: [
-              label,
-              order.order_by === field ? order.ascending ? " \u2191" : " \u2193" : ""
-            ] }) : label }, label)) }) }),
+            ].map(([label, field]) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { "aria-sort": field && order.order_by === field ? order.ascending ? "ascending" : "descending" : void 0, children: field ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+              "button",
+              {
+                type: "button",
+                onClick: () => {
+                  setOrder({ order_by: field, ascending: order.order_by === field && !order.ascending });
+                  setPage(1);
+                  setSelected("");
+                },
+                children: [
+                  label,
+                  order.order_by === field ? order.ascending ? " \u2191" : " \u2193" : ""
+                ]
+              }
+            ) : label }, label)) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: list.data.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("tr", { "data-selected": row.id === selected, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.id }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.method }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.status || "\u2014" }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-id", children: row.id }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-method vx-method--${methodClass(row.method)}`, children: row.method }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-status vx-status--${statusClass(row.status)}`, children: row.status || "\u2014" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "vx-yak-url", title: row.url, onClick: () => setSelected(row.id), children: row.url }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("td", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("td", { className: "vx-yak-num", children: [
                 row.bytes,
                 " B"
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.websocket ? "WebSocket" : row.content_type }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.source }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.ip }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.title }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.tags }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { children: row.time ? new Date(row.time * 1e3).toLocaleString() : "\u2014" })
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-type", children: row.websocket ? "WebSocket" : row.content_type }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-dim", children: row.source }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-dim", children: row.ip }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-dim", children: row.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-dim", children: row.tags }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { className: "vx-yak-dim", children: row.time ? new Date(row.time * 1e3).toLocaleString() : "\u2014" })
             ] }, row.id)) })
           ] }),
-          list.data.rows.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "\u6682\u65E0\u5339\u914D\u6D41\u91CF" })
+          list.data.rows.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { className: "vx-yak-hint", children: "\u6682\u65E0\u5339\u914D\u6D41\u91CF" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-pages", children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
@@ -2883,34 +3764,49 @@ function YakHistory({ sessionId }) {
             " \u9875"
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", disabled: list.data.rows.length === 0, onClick: () => exportRows(list.data?.rows ?? []), children: "\u5BFC\u51FA\u672C\u9875 CSV" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", disabled: page <= 1, onClick: () => {
-            setPage(page - 1);
-            setSelected("");
-          }, children: "\u4E0A\u4E00\u9875" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", disabled: page >= pages, onClick: () => {
-            setPage(page + 1);
-            setSelected("");
-          }, children: "\u4E0B\u4E00\u9875" })
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              type: "button",
+              disabled: page <= 1,
+              onClick: () => {
+                setPage(page - 1);
+                setSelected("");
+              },
+              children: "\u4E0A\u4E00\u9875"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+            "button",
+            {
+              type: "button",
+              disabled: page >= pages,
+              onClick: () => {
+                setPage(page + 1);
+                setSelected("");
+              },
+              children: "\u4E0B\u4E00\u9875"
+            }
+          )
         ] })
       ] })
     ] }),
-    detail.loading && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", children: "\u8BFB\u53D6\u62A5\u6587\u2026" }),
-    detail.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", children: detail.error }),
+    detail.loading && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "status", className: "vx-yak-hint", children: "\u8BFB\u53D6\u62A5\u6587\u2026" }),
+    detail.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", className: "vx-yak-alert", children: detail.error }),
     detail.data && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("section", { className: "vx-yak-detail", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-method vx-method--${methodClass(detail.data.flow.method)}`, children: detail.data.flow.method }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-status vx-status--${statusClass(detail.data.flow.status)}`, children: detail.data.flow.status || "\u2014" }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("strong", { children: [
           "#",
-          detail.data.flow.id,
-          " \xB7 ",
-          detail.data.flow.method,
-          " ",
-          detail.data.flow.status
+          detail.data.flow.id
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => setSelected(""), children: "\u5173\u95ED\u8BE6\u60C5" })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { className: "vx-yak-detail-url", children: detail.data.flow.url }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "vx-yak-close", onClick: () => setSelected(""), children: "\u5173\u95ED\u8BE6\u60C5" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "vx-yak-split", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketPane, { label: "\u8BF7\u6C42", packet: detail.data.request }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketPane, { label: "\u54CD\u5E94", packet: detail.data.response })
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketPane, { label: "\u8BF7\u6C42", packet: detail.data.request, side: "request" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketPane, { label: "\u54CD\u5E94", packet: detail.data.response, side: "response" })
       ] })
     ] }, selected)
   ] });
@@ -2924,17 +3820,25 @@ function SessionTrafficAction({ sessionId }) {
   if (!sessionId) return null;
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", title: "\u67E5\u770B\u6B64\u4F1A\u8BDD\u9879\u76EE\u7684 Yak \u6D41\u91CF", onClick: () => setOpened(true), children: "\u6D41\u91CF" }),
-    opened && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("dialog", { className: "vx-yak-dialog", ref: dialog, onClose: () => setOpened(false), children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: "\u4F1A\u8BDD\u9879\u76EE\u6D41\u91CF" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => dialog.current?.close(), children: "\u5173\u95ED" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(YakHistory, { sessionId }, sessionId)
-    ] })
+    opened && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+      "dialog",
+      {
+        className: "vx-yak-dialog",
+        ref: dialog,
+        onClose: () => setOpened(false),
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: "\u4F1A\u8BDD\u9879\u76EE\u6D41\u91CF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => dialog.current?.close(), children: "\u5173\u95ED" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(YakHistory, { sessionId }, sessionId)
+        ]
+      }
+    )
   ] });
 }
 
-// src/client.tsx
+// app/vexnar/ui/src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";

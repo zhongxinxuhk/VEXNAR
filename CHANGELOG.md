@@ -44,6 +44,19 @@
 - **移除「资产同步」设置节**（`vexnar-asset-sync`）：遗留资产导入入口已随资产面板一起退出 dsh 客户端，
   导入由 core 的 `/api/assets` 承担。
 
+#### 修复的问题
+
+- **领域路由跟随 core-embedded 一起打包**：`routes.ts` 的路由表原来写成 `import(file)`，esbuild 只能把
+  静态可分析的说明符打进包，于是运行时会去 `lib/routes/*.ts` 找源码——那里没有，dsh 宿主里 16 个领域
+  路由整片加载失败（流量、LLM、任务、市场等全部 404）。改成每个模块一个字面量 `import('./routes/x.ts')`
+  的惰性装载表，仍是按 scope 逐个 try/catch，但产物自洽。
+- **启动脚本不再把一棵树的 `core-embedded.js` 盖到另一棵树的插件上**：profile 的 `file:` 依赖已经指明
+  它跑哪棵树，跨树覆盖会让 `handle`/`isGoDataRequest` 契约错位，表现为 `isGoDataRequest is not a function`
+  加一墙 unresolved route。现在按 profile 自己解析到的目录运行，需要换树用 `VEXNAR_DSH_BUNDLES=<repo>`。
+- **流量页按 Burp 的报文结构分色**：请求行/状态行、头部（名字、值、Cookie 键值、content-type）、正文
+  （JSON / HTML / XML / JS / CSS / 表单 / multipart / 二进制 hexdump）各一套颜色，JSON 默认美化；方法与
+  状态改成彩色胶囊，筛选条、表格、详情分栏一并重排。切词逻辑在 `app/vexnar/ui/src/http-packet.ts`。
+
 ### Web 控制台（执行台）
 
 #### 新增的功能
