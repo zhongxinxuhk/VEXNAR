@@ -199,7 +199,10 @@ activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
 软删除（任务从列表消失，findings/图保留）。写入测试 **14/14**。
 journal 恢复只重放 `prepared`；`failed`（如乐观锁冲突）不重放，避免半记录覆盖。
 
-下一步：M3 全量接管写与 Go 只读回退，随后补 activity 写入与工具调用审计。
+M3 第一段：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理，未迁移路由原样转发 Go；
+`/api/_migration` 暴露原生清单。web 可先整体指向 TS core，再逐条把写接口迁过来。
+
+下一步：把剩余写路由（分类/模板/归档/资产）逐条迁到 store，再关闭 fallback。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。
 
