@@ -12,7 +12,8 @@
     "dev": "tsx watch src/server.ts",
     "compare": "node compare.mjs",
     "compare:domain": "node compare-domain.mjs",
-    "verify": "node verify.mjs"
+    "verify": "node verify.mjs",
+    "build:embedded": "node build-embedded.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
