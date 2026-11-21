@@ -12,6 +12,8 @@ const key = readFileSync(join(repo, 'jwt.key'))
 /** Same HS256 contract as the Go service: Bearer header or cookie. */
 export const auth: MiddlewareHandler = async (c, next) => {
   if (c.req.path === '/api/health') return next()
+  const shared = process.env.VEXNAR_API_TOKEN || ''
+  if (shared && c.req.header('x-vexnar-token') === shared) return next()
   const header = c.req.header('authorization') ?? ''
   const bearer = header.startsWith('Bearer ') ? header.slice(7) : ''
   const cookie = c.req.header('cookie') ?? ''

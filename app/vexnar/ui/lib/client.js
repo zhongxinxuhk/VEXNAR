@@ -629,6 +629,98 @@ function ConsoleIcon({ size }) {
     (0, import_react.createElement)("path", { d: "m3 17 9 4 9-4" })
   );
 }
+function useApi(path, deps = []) {
+  const [state, setState] = (0, import_react.useState)({ data: null, error: "", loading: true });
+  (0, import_react.useEffect)(() => {
+    let alive = true;
+    const base = (localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790").replace(/\/$/, "");
+    const token = localStorage.getItem("vexnar.coreToken") || "";
+    if (!token) {
+      setState({ data: null, error: "\u672A\u914D\u7F6E vexnar.coreToken", loading: false });
+      return;
+    }
+    fetch(base + path, { headers: { "x-vexnar-token": token } }).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
+      if (alive) setState({ data, error: "", loading: false });
+    }).catch((error) => {
+      if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false });
+    });
+    return () => {
+      alive = false;
+    };
+  }, deps);
+  return state;
+}
+function Dashboard() {
+  const tasks = useApi("/api/tasks");
+  const findings = useApi("/api/exploration/findings/stats");
+  const assets = useApi("/api/assets/counts");
+  const tokens = useApi("/api/tokens/daily?days=1");
+  const cards = [
+    ["\u4EFB\u52A1", tasks.data?.tasks?.length ?? "\u2014"],
+    ["\u53D1\u73B0", findings.data?.total ?? "\u2014"],
+    ["\u8D44\u4EA7", assets.data ? Object.values(assets.data).reduce((sum, value) => sum + Number(value), 0) : "\u2014"],
+    ["\u4ECA\u65E5 Token", Array.isArray(tokens.data) ? tokens.data.reduce((sum, row) => sum + Number(row.input_tokens ?? 0) + Number(row.output_tokens ?? 0), 0) : "\u2014"]
+  ];
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 12, marginBottom: 20 } },
+      cards.map(([label, value]) => (0, import_react.createElement)(
+        "div",
+        { key: String(label), style: { border: "1px solid var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 16 } },
+        (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, String(label)),
+        (0, import_react.createElement)("div", { style: { fontSize: 24, fontWeight: 600 } }, String(value))
+      ))
+    ),
+    (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, tasks.error || findings.error || assets.error || tokens.error || "\u6570\u636E\u6765\u81EA vexnar-core")
+  );
+}
+function TaskList() {
+  const { data, error, loading } = useApi("/api/tasks");
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = (data?.tasks ?? []).slice(0, 30);
+  return (0, import_react.createElement)(
+    "table",
+    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+    (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u72B6\u6001", "\u76EE\u6807"].map((title) => (0, import_react.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
+    (0, import_react.createElement)("tbody", null, rows.map((task) => (0, import_react.createElement)(
+      "tr",
+      { key: task.id },
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.id),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.name || "\u2014"),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.status),
+      (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, task.goal)
+    )))
+  );
+}
+function FindingList() {
+  const { data, error, loading } = useApi("/api/exploration/findings?page=1&limit=30");
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = data?.items ?? [];
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.total ?? 0} \u6761`),
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u6F0F\u6D1E\u7C7B", "\u4E25\u91CD\u5EA6", "\u72B6\u6001", "\u6458\u8981"].map((title) => (0, import_react.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
+      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.finding_id },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.finding_id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.vulnclass),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.severity),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.summary)
+      )))
+    )
+  );
+}
 function VexnarConsole() {
   const [active, setActive] = (0, import_react.useState)("dashboard");
   const items = NAV_GROUPS.flatMap((group) => group.items);
@@ -668,9 +760,24 @@ function VexnarConsole() {
     (0, import_react.createElement)(
       "section",
       { style: { flex: 1, minWidth: 0, overflowY: "auto", padding: 24 } },
-      (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: "0 0 6px" } }, current.label),
-      (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
       (0, import_react.createElement)(
+        "div",
+        { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 } },
+        (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, current.label),
+        (0, import_react.createElement)("button", {
+          type: "button",
+          onClick: () => {
+            const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
+            if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
+            const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
+            if (token) localStorage.setItem("vexnar.coreToken", token);
+            window.location.reload();
+          },
+          style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 }
+        }, "\u8FDE\u63A5 core")
+      ),
+      (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
+      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? (0, import_react.createElement)(TaskList) : current.id === "findings" ? (0, import_react.createElement)(FindingList) : (0, import_react.createElement)(
         "div",
         { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
         "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"
