@@ -526,51 +526,51 @@ var require_textParsers = __commonJS({
       result.radius = parseFloat(radius);
       return result;
     };
-    var init = function(register) {
-      register(20, parseBigInteger);
-      register(21, parseInteger);
-      register(23, parseInteger);
-      register(26, parseInteger);
-      register(700, parseFloat);
-      register(701, parseFloat);
-      register(16, parseBool);
-      register(1082, parseDate);
-      register(1114, parseDate);
-      register(1184, parseDate);
-      register(600, parsePoint);
-      register(651, parseStringArray);
-      register(718, parseCircle);
-      register(1e3, parseBoolArray);
-      register(1001, parseByteAArray);
-      register(1005, parseIntegerArray);
-      register(1007, parseIntegerArray);
-      register(1028, parseIntegerArray);
-      register(1016, parseBigIntegerArray);
-      register(1017, parsePointArray);
-      register(1021, parseFloatArray);
-      register(1022, parseFloatArray);
-      register(1231, parseFloatArray);
-      register(1014, parseStringArray);
-      register(1015, parseStringArray);
-      register(1008, parseStringArray);
-      register(1009, parseStringArray);
-      register(1040, parseStringArray);
-      register(1041, parseStringArray);
-      register(1115, parseDateArray);
-      register(1182, parseDateArray);
-      register(1185, parseDateArray);
-      register(1186, parseInterval);
-      register(1187, parseIntervalArray);
-      register(17, parseByteA);
-      register(114, JSON.parse.bind(JSON));
-      register(3802, JSON.parse.bind(JSON));
-      register(199, parseJsonArray);
-      register(3807, parseJsonArray);
-      register(3907, parseStringArray);
-      register(2951, parseStringArray);
-      register(791, parseStringArray);
-      register(1183, parseStringArray);
-      register(1270, parseStringArray);
+    var init = function(register2) {
+      register2(20, parseBigInteger);
+      register2(21, parseInteger);
+      register2(23, parseInteger);
+      register2(26, parseInteger);
+      register2(700, parseFloat);
+      register2(701, parseFloat);
+      register2(16, parseBool);
+      register2(1082, parseDate);
+      register2(1114, parseDate);
+      register2(1184, parseDate);
+      register2(600, parsePoint);
+      register2(651, parseStringArray);
+      register2(718, parseCircle);
+      register2(1e3, parseBoolArray);
+      register2(1001, parseByteAArray);
+      register2(1005, parseIntegerArray);
+      register2(1007, parseIntegerArray);
+      register2(1028, parseIntegerArray);
+      register2(1016, parseBigIntegerArray);
+      register2(1017, parsePointArray);
+      register2(1021, parseFloatArray);
+      register2(1022, parseFloatArray);
+      register2(1231, parseFloatArray);
+      register2(1014, parseStringArray);
+      register2(1015, parseStringArray);
+      register2(1008, parseStringArray);
+      register2(1009, parseStringArray);
+      register2(1040, parseStringArray);
+      register2(1041, parseStringArray);
+      register2(1115, parseDateArray);
+      register2(1182, parseDateArray);
+      register2(1185, parseDateArray);
+      register2(1186, parseInterval);
+      register2(1187, parseIntervalArray);
+      register2(17, parseByteA);
+      register2(114, JSON.parse.bind(JSON));
+      register2(3802, JSON.parse.bind(JSON));
+      register2(199, parseJsonArray);
+      register2(3807, parseJsonArray);
+      register2(3907, parseStringArray);
+      register2(2951, parseStringArray);
+      register2(791, parseStringArray);
+      register2(1183, parseStringArray);
+      register2(1270, parseStringArray);
     };
     module.exports = {
       init
@@ -834,23 +834,23 @@ var require_binaryParsers = __commonJS({
       if (value === null) return null;
       return parseBits(value, 8) > 0;
     };
-    var init = function(register) {
-      register(20, parseInt64);
-      register(21, parseInt16);
-      register(23, parseInt32);
-      register(26, parseInt32);
-      register(1700, parseNumeric);
-      register(700, parseFloat32);
-      register(701, parseFloat64);
-      register(16, parseBool);
-      register(1114, parseDate.bind(null, false));
-      register(1184, parseDate.bind(null, true));
-      register(1e3, parseArray);
-      register(1007, parseArray);
-      register(1016, parseArray);
-      register(1008, parseArray);
-      register(1009, parseArray);
-      register(25, parseText);
+    var init = function(register2) {
+      register2(20, parseInt64);
+      register2(21, parseInt16);
+      register2(23, parseInt32);
+      register2(26, parseInt32);
+      register2(1700, parseNumeric);
+      register2(700, parseFloat32);
+      register2(701, parseFloat64);
+      register2(16, parseBool);
+      register2(1114, parseDate.bind(null, false));
+      register2(1184, parseDate.bind(null, true));
+      register2(1e3, parseArray);
+      register2(1007, parseArray);
+      register2(1016, parseArray);
+      register2(1008, parseArray);
+      register2(1009, parseArray);
+      register2(25, parseText);
     };
     module.exports = {
       init
@@ -1606,9 +1606,9 @@ var require_pg_connection_string = __commonJS({
           result = new URL(str.replace("@/", "@___DUMMY___/"), "postgres://base");
           dummyHost = true;
         }
-      } catch (err) {
-        err.input && (err.input = "*****REDACTED*****");
-        throw err;
+      } catch (err2) {
+        err2.input && (err2.input = "*****REDACTED*****");
+        throw err2;
       }
       for (const entry of result.searchParams.entries()) {
         config2[entry[0]] = entry[1];
@@ -1912,8 +1912,8 @@ var require_connection_parameters = __commonJS({
         if (this.client_encoding) {
           params.push("client_encoding=" + quoteParamValue(this.client_encoding));
         }
-        dns.lookup(this.host, function(err, address) {
-          if (err) return cb(err, null);
+        dns.lookup(this.host, function(err2, address) {
+          if (err2) return cb(err2, null);
           params.push("hostaddr=" + quoteParamValue(address));
           return cb(null, params.join(" "));
         });
@@ -2084,8 +2084,8 @@ var require_query = __commonJS({
         }
         try {
           row = this._result.parseRow(msg.fields);
-        } catch (err) {
-          this._canceledDueToError = err;
+        } catch (err2) {
+          this._canceledDueToError = err2;
           return;
         }
         this.emit("row", row, this._result);
@@ -2109,15 +2109,15 @@ var require_query = __commonJS({
           connection.sync();
         }
       }
-      handleError(err, connection) {
+      handleError(err2, connection) {
         if (this._canceledDueToError) {
-          err = this._canceledDueToError;
+          err2 = this._canceledDueToError;
           this._canceledDueToError = false;
         }
         if (this.callback) {
-          return this.callback(err);
+          return this.callback(err2);
         }
-        this.emit("error", err);
+        this.emit("error", err2);
       }
       handleReadyForQuery(con) {
         if (this._canceledDueToError) {
@@ -2126,9 +2126,9 @@ var require_query = __commonJS({
         if (this.callback) {
           try {
             this.callback(null, this._results);
-          } catch (err) {
+          } catch (err2) {
             process.nextTick(() => {
-              throw err;
+              throw err2;
             });
           }
         }
@@ -2194,10 +2194,10 @@ var require_query = __commonJS({
             binary: this.binary,
             valueMapper: utils.prepareValue
           });
-        } catch (err) {
+        } catch (err2) {
           connection.close({ type: "S", name: this.name });
           connection.sync();
-          this.handleError(err, connection);
+          this.handleError(err2, connection);
           return;
         }
         connection.describe({
@@ -2593,9 +2593,9 @@ var require_serializer = __commonJS({
       writer.addInt16(len);
       try {
         writeValues(values, config2.valueMapper, formatsOffset);
-      } catch (err) {
+      } catch (err2) {
         writer.clear();
-        throw err;
+        throw err2;
       }
       writer.addInt16(1);
       writer.addInt16(
@@ -3276,8 +3276,8 @@ var require_connection = __commonJS({
         }
         try {
           self.stream = stream.getSecureStream(options);
-        } catch (err) {
-          return self.emit("error", err);
+        } catch (err2) {
+          return self.emit("error", err2);
         }
         self.attachListeners(self.stream);
         self.stream.on("error", reportStreamError);
@@ -3466,9 +3466,9 @@ var require_split2 = __commonJS({
       stream.maxLength = options.maxLength;
       stream.skipOverflow = options.skipOverflow || false;
       stream.overflow = false;
-      stream._destroy = function(err, cb) {
+      stream._destroy = function(err2, cb) {
         this._writableState.errorEmitted = false;
-        cb(err);
+        cb(err2);
       };
       return stream;
     }
@@ -3564,9 +3564,9 @@ var require_helper = __commonJS({
         stream.destroy();
         cb(pass);
       };
-      var onErr = function(err) {
+      var onErr = function(err2) {
         stream.destroy();
-        warn("WARNING: error on reading file: %s", err);
+        warn("WARNING: error on reading file: %s", err2);
         cb(void 0);
       };
       stream.on("error", onErr);
@@ -3656,8 +3656,8 @@ var require_lib = __commonJS({
     var helper = require_helper();
     module.exports = function(connInfo, cb) {
       var file2 = helper.getFileName();
-      fs.stat(file2, function(err, stat2) {
-        if (err || !helper.usePgPass(stat2, file2)) {
+      fs.stat(file2, function(err2, stat2) {
+        if (err2 || !helper.usePgPass(stat2, file2)) {
           return cb(void 0);
         }
         var st = fs.createReadStream(file2);
@@ -3781,10 +3781,10 @@ var require_client = __commonJS({
       _getActiveQuery() {
         return this._activeQuery;
       }
-      _errorAllQueries(err) {
+      _errorAllQueries(err2) {
         const enqueueError = (query) => {
           process.nextTick(() => {
-            query.handleError(err, this.connection);
+            query.handleError(err2, this.connection);
           });
         };
         const activeQuery = this._getActiveQuery();
@@ -3802,9 +3802,9 @@ var require_client = __commonJS({
         const con = this.connection;
         this._connectionCallback = callback;
         if (this._connecting || this._connected) {
-          const err = new Error("Client has already been connected. You cannot reuse a client.");
+          const err2 = new Error("Client has already been connected. You cannot reuse a client.");
           process.nextTick(() => {
-            callback(err);
+            callback(err2);
           });
           return;
         }
@@ -3907,8 +3907,8 @@ var require_client = __commonJS({
               this.connectionParameters.password = this.password = null;
             }
             cb();
-          }).catch((err) => {
-            con.emit("error", err);
+          }).catch((err2) => {
+            con.emit("error", err2);
           });
         } else if (this.password !== null) {
           cb();
@@ -3951,8 +3951,8 @@ var require_client = __commonJS({
               this.scramMaxIterations
             );
             this.connection.sendSASLInitialResponseMessage(this.saslSession.mechanism, this.saslSession.response);
-          } catch (err) {
-            this.connection.emit("error", err);
+          } catch (err2) {
+            this.connection.emit("error", err2);
           }
         });
       }
@@ -3965,16 +3965,16 @@ var require_client = __commonJS({
             this.enableChannelBinding && this.connection.stream
           );
           this.connection.sendSCRAMClientFinalMessage(this.saslSession.response);
-        } catch (err) {
-          this.connection.emit("error", err);
+        } catch (err2) {
+          this.connection.emit("error", err2);
         }
       }
       _handleAuthSASLFinal(msg) {
         try {
           sasl.finalizeSession(this.saslSession, msg.data);
           this.saslSession = null;
-        } catch (err) {
-          this.connection.emit("error", err);
+        } catch (err2) {
+          this.connection.emit("error", err2);
         }
       }
       _handleBackendKeyData(msg) {
@@ -4003,27 +4003,27 @@ var require_client = __commonJS({
       }
       // if we receive an error event or error message
       // during the connection process we handle it here
-      _handleErrorWhileConnecting(err) {
+      _handleErrorWhileConnecting(err2) {
         if (this._connectionError) {
           return;
         }
         this._connectionError = true;
         clearTimeout(this.connectionTimeoutHandle);
         if (this._connectionCallback) {
-          return this._connectionCallback(err);
+          return this._connectionCallback(err2);
         }
-        this.emit("error", err);
+        this.emit("error", err2);
       }
       // if we're connected and we receive an error event from the connection
       // this means the socket is dead - do a hard abort of all queries and emit
       // the socket error on the client as well
-      _handleErrorEvent(err) {
+      _handleErrorEvent(err2) {
         if (this._connecting) {
-          return this._handleErrorWhileConnecting(err);
+          return this._handleErrorWhileConnecting(err2);
         }
         this._queryable = false;
-        this._errorAllQueries(err);
-        this.emit("error", err);
+        this._errorAllQueries(err2);
+        this.emit("error", err2);
       }
       // handle error messages from the postgres backend
       _handleErrorMessage(msg) {
@@ -4250,10 +4250,10 @@ var require_client = __commonJS({
           query = new Query2(config2, values, callback);
           if (!query.callback) {
             result = new this._Promise((resolve, reject) => {
-              query.callback = (err, res) => err ? reject(err) : resolve(res);
-            }).catch((err) => {
-              Error.captureStackTrace(err);
-              throw err;
+              query.callback = (err2, res) => err2 ? reject(err2) : resolve(res);
+            }).catch((err2) => {
+              Error.captureStackTrace(err2);
+              throw err2;
             });
           } else if (typeof query.callback !== "function") {
             throw new TypeError("callback is not a function");
@@ -4280,9 +4280,9 @@ var require_client = __commonJS({
             }
             this._pulseQueryQueue();
           }, readTimeout);
-          query.callback = (err, res) => {
+          query.callback = (err2, res) => {
             clearTimeout(readTimeoutTimer);
-            queryCallback(err, res);
+            queryCallback(err2, res);
           };
         }
         if (this.binary && !query.binary) {
@@ -4397,27 +4397,27 @@ var require_pg_pool = __commonJS({
       }
       let rej;
       let res;
-      const cb = function(err, client) {
-        err ? rej(err) : res(client);
+      const cb = function(err2, client) {
+        err2 ? rej(err2) : res(client);
       };
       const result = new Promise2(function(resolve, reject) {
         res = resolve;
         rej = reject;
-      }).catch((err) => {
-        Error.captureStackTrace(err);
-        throw err;
+      }).catch((err2) => {
+        Error.captureStackTrace(err2);
+        throw err2;
       });
       return { callback: cb, result };
     }
     function makeIdleListener(pool, client) {
-      return function idleListener(err) {
-        err.client = client;
+      return function idleListener(err2) {
+        err2.client = client;
         client.removeListener("error", idleListener);
         client.on("error", () => {
-          pool.log("additional client error after disconnection due to error", err);
+          pool.log("additional client error after disconnection due to error", err2);
         });
         pool._remove(client);
-        pool.emit("error", err, client);
+        pool.emit("error", err2, client);
       };
     }
     var Pool2 = class extends EventEmitter {
@@ -4526,8 +4526,8 @@ var require_pg_pool = __commonJS({
       }
       connect(cb) {
         if (this.ending) {
-          const err = new Error("Cannot use a pool after calling end on the pool");
-          return cb ? cb(err) : this.Promise.reject(err);
+          const err2 = new Error("Cannot use a pool after calling end on the pool");
+          return cb ? cb(err2) : this.Promise.reject(err2);
         }
         const response = promisify(this.Promise, cb);
         const result = response.result;
@@ -4539,9 +4539,9 @@ var require_pg_pool = __commonJS({
             this._pendingQueue.push(new PendingItem(response.callback));
             return result;
           }
-          const queueCallback = (err, res, done) => {
+          const queueCallback = (err2, res, done) => {
             clearTimeout(tid);
-            response.callback(err, res, done);
+            response.callback(err2, res, done);
           };
           const pendingItem = new PendingItem(queueCallback);
           const tid = setTimeout(() => {
@@ -4579,20 +4579,20 @@ var require_pg_pool = __commonJS({
           }, this.options.connectionTimeoutMillis);
         }
         this.log("connecting new client");
-        client.connect((err) => {
+        client.connect((err2) => {
           if (tid) {
             clearTimeout(tid);
           }
           client.on("error", idleListener);
-          if (err) {
-            this.log("client failed to connect", err);
+          if (err2) {
+            this.log("client failed to connect", err2);
             this._clients = this._clients.filter((c) => c !== client);
             if (timeoutHit) {
-              err = new Error("Connection terminated due to connection timeout", { cause: err });
+              err2 = new Error("Connection terminated due to connection timeout", { cause: err2 });
             }
             this._pulseQueue();
             if (!pendingItem.timedOut) {
-              pendingItem.callback(err, void 0, NOOP);
+              pendingItem.callback(err2, void 0, NOOP);
             }
           } else {
             this.log("new client connected");
@@ -4626,7 +4626,7 @@ var require_pg_pool = __commonJS({
             if (idleIndex !== -1) {
               this._acquireClient(
                 client,
-                new PendingItem((err, client2, clientRelease) => clientRelease()),
+                new PendingItem((err2, client2, clientRelease) => clientRelease()),
                 idleListener,
                 false
               );
@@ -4647,10 +4647,10 @@ var require_pg_pool = __commonJS({
         client.removeListener("error", idleListener);
         if (!pendingItem.timedOut) {
           if (isNew && this.options.verify) {
-            this.options.verify(client, (err) => {
-              if (err) {
-                client.release(err);
-                return pendingItem.callback(err, void 0, NOOP);
+            this.options.verify(client, (err2) => {
+              if (err2) {
+                client.release(err2);
+                return pendingItem.callback(err2, void 0, NOOP);
               }
               pendingItem.callback(void 0, client, client.release);
             });
@@ -4668,21 +4668,21 @@ var require_pg_pool = __commonJS({
       // returns a function that wraps _release and throws if called more than once
       _releaseOnce(client, idleListener) {
         let released = false;
-        return (err) => {
+        return (err2) => {
           if (released) {
             throwOnDoubleRelease();
           }
           released = true;
-          this._release(client, idleListener, err);
+          this._release(client, idleListener, err2);
         };
       }
       // release a client back to the poll, include an error
       // to remove it from the pool
-      _release(client, idleListener, err) {
+      _release(client, idleListener, err2) {
         client.on("error", idleListener);
         client._poolUseCount = (client._poolUseCount || 0) + 1;
-        this.emit("release", err, client);
-        if (err || this.ending || !client._queryable || client._ending || client._poolUseCount >= this.options.maxUses) {
+        this.emit("release", err2, client);
+        if (err2 || this.ending || !client._queryable || client._ending || client._poolUseCount >= this.options.maxUses) {
           if (client._poolUseCount >= this.options.maxUses) {
             this.log("remove expended client");
           }
@@ -4726,38 +4726,38 @@ var require_pg_pool = __commonJS({
         }
         const response = promisify(this.Promise, cb);
         cb = response.callback;
-        this.connect((err, client) => {
-          if (err) {
-            return cb(err);
+        this.connect((err2, client) => {
+          if (err2) {
+            return cb(err2);
           }
           let clientReleased = false;
-          const onError = (err2) => {
+          const onError = (err3) => {
             if (clientReleased) {
               return;
             }
             clientReleased = true;
-            client.release(err2);
-            cb(err2);
+            client.release(err3);
+            cb(err3);
           };
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text, values, (err2, res) => {
+            client.query(text, values, (err3, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
                 return;
               }
               clientReleased = true;
-              client.release(err2);
-              if (err2) {
-                return cb(err2);
+              client.release(err3);
+              if (err3) {
+                return cb(err3);
               }
               return cb(void 0, res);
             });
-          } catch (err2) {
-            client.release(err2);
-            return cb(err2);
+          } catch (err3) {
+            client.release(err3);
+            return cb(err3);
           }
         });
         return response.result;
@@ -4765,8 +4765,8 @@ var require_pg_pool = __commonJS({
       end(cb) {
         this.log("ending");
         if (this.ending) {
-          const err = new Error("Called end on pool more than once");
-          return cb ? cb(err) : this.Promise.reject(err);
+          const err2 = new Error("Called end on pool more than once");
+          return cb ? cb(err2) : this.Promise.reject(err2);
         }
         this.ending = true;
         const promised = promisify(this.Promise, cb);
@@ -4833,18 +4833,18 @@ var require_query2 = __commonJS({
       sourceLine: "line",
       sourceFunction: "routine"
     };
-    NativeQuery.prototype.handleError = function(err) {
+    NativeQuery.prototype.handleError = function(err2) {
       const fields = this.native && this.native.pq.resultErrorFields();
       if (fields) {
         for (const key in fields) {
           const normalizedFieldName = errorFieldMap[key] || key;
-          err[normalizedFieldName] = fields[key];
+          err2[normalizedFieldName] = fields[key];
         }
       }
       if (this.callback) {
-        this.callback(err);
+        this.callback(err2);
       } else {
-        this.emit("error", err);
+        this.emit("error", err2);
       }
       this.state = "error";
     };
@@ -4869,13 +4869,13 @@ var require_query2 = __commonJS({
       const self = this;
       this.native = client.native;
       client.native.arrayMode = this._arrayMode;
-      let after = function(err, rows, results) {
+      let after = function(err2, rows, results) {
         client.native.arrayMode = false;
         setImmediate(function() {
           self.emit("_done");
         });
-        if (err) {
-          return self.handleError(err);
+        if (err2) {
+          return self.handleError(err2);
         }
         if (self._emitRowEvents) {
           if (results.length > 1) {
@@ -4908,20 +4908,20 @@ var require_query2 = __commonJS({
         const values = (this.values || []).map(utils.prepareValue);
         if (client.namedQueries[this.name] !== void 0) {
           if (this.text && client.namedQueries[this.name] !== this.text) {
-            const err = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
-            return after(err);
+            const err2 = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
+            return after(err2);
           }
           return client.native.execute(this.name, values, after);
         }
-        return client.native.prepare(this.name, this.text, values.length, function(err) {
-          if (err) return after(err);
+        return client.native.prepare(this.name, this.text, values.length, function(err2) {
+          if (err2) return after(err2);
           client.namedQueries[self.name] = self.text;
           return self.native.execute(self.name, values, after);
         });
       } else if (this.values) {
         if (!Array.isArray(this.values)) {
-          const err = new Error("Query values must be an array");
-          return after(err);
+          const err2 = new Error("Query values must be an array");
+          return after(err2);
         }
         const vals = this.values.map(utils.prepareValue);
         client.native.query(this.text, vals, after);
@@ -4985,11 +4985,11 @@ var require_client2 = __commonJS({
     };
     Client2.Query = NativeQuery;
     util.inherits(Client2, EventEmitter);
-    Client2.prototype._errorAllQueries = function(err) {
+    Client2.prototype._errorAllQueries = function(err2) {
       const enqueueError = (query) => {
         process.nextTick(() => {
           query.native = this.native;
-          query.handleError(err);
+          query.handleError(err2);
         });
       };
       if (this._hasActiveQuery()) {
@@ -5006,19 +5006,19 @@ var require_client2 = __commonJS({
         return;
       }
       this._connecting = true;
-      this.connectionParameters.getLibpqConnectionString(function(err, conString) {
+      this.connectionParameters.getLibpqConnectionString(function(err2, conString) {
         if (self.connectionParameters.nativeConnectionString) conString = self.connectionParameters.nativeConnectionString;
-        if (err) return cb(err);
-        self.native.connect(conString, function(err2) {
-          if (err2) {
+        if (err2) return cb(err2);
+        self.native.connect(conString, function(err3) {
+          if (err3) {
             self.native.end();
-            return cb(err2);
+            return cb(err3);
           }
           self._connected = true;
-          self.native.on("error", function(err3) {
+          self.native.on("error", function(err4) {
             self._queryable = false;
-            self._errorAllQueries(err3);
-            self.emit("error", err3);
+            self._errorAllQueries(err4);
+            self.emit("error", err4);
           });
           self.native.on("notification", function(msg) {
             self.emit("notification", {
@@ -5069,11 +5069,11 @@ var require_client2 = __commonJS({
           result = new this._Promise((resolve, reject) => {
             resolveOut = resolve;
             rejectOut = reject;
-          }).catch((err) => {
-            Error.captureStackTrace(err);
-            throw err;
+          }).catch((err2) => {
+            Error.captureStackTrace(err2);
+            throw err2;
           });
-          query.callback = (err, res) => err ? rejectOut(err) : resolveOut(res);
+          query.callback = (err2, res) => err2 ? rejectOut(err2) : resolveOut(res);
         }
       }
       if (readTimeout) {
@@ -5093,9 +5093,9 @@ var require_client2 = __commonJS({
           }
           this._pulseQueryQueue();
         }, readTimeout);
-        query.callback = (err, res) => {
+        query.callback = (err2, res) => {
           clearTimeout(readTimeoutTimer);
-          queryCallback(err, res);
+          queryCallback(err2, res);
         };
       }
       if (!this._queryable) {
@@ -5131,7 +5131,7 @@ var require_client2 = __commonJS({
       let result;
       if (!cb) {
         result = new this._Promise(function(resolve, reject) {
-          cb = (err) => err ? reject(err) : resolve();
+          cb = (err2) => err2 ? reject(err2) : resolve();
         });
       }
       const doEnd = function() {
@@ -5207,18 +5207,18 @@ var require_client2 = __commonJS({
         }
         queries.push(pipelineEntry);
       }
-      this.native.pipeline(queries, function(err, results) {
+      this.native.pipeline(queries, function(err2, results) {
         self._pipelineInFlight = false;
-        if (err) {
+        if (err2) {
           self._connected = false;
           self._queryable = false;
           for (let i = 0; i < nativeQueries.length; i++) {
             const q = nativeQueries[i];
             q.native = self.native;
-            q.handleError(err);
+            q.handleError(err2);
           }
-          self._errorAllQueries(err);
-          self.emit("error", err);
+          self._errorAllQueries(err2);
+          self.emit("error", err2);
           self.emit("end");
           return;
         }
@@ -5332,9 +5332,9 @@ var require_lib2 = __commonJS({
         let native = null;
         try {
           native = new PG(require_native());
-        } catch (err) {
-          if (err.code !== "MODULE_NOT_FOUND") {
-            throw err;
+        } catch (err2) {
+          if (err2.code !== "MODULE_NOT_FOUND") {
+            throw err2;
           }
         }
         Object.defineProperty(module.exports, "native", {
@@ -6323,12 +6323,12 @@ var compose = (middleware, onError, onNotFound) => {
       } else handler = i === middleware.length && next || void 0;
       if (handler) try {
         res = await handler(context, () => dispatch(i + 1));
-      } catch (err) {
-        if (err instanceof Error && onError) {
-          context.error = err;
-          res = await onError(err, context);
+      } catch (err2) {
+        if (err2 instanceof Error && onError) {
+          context.error = err2;
+          res = await onError(err2, context);
           isError = true;
-        } else throw err;
+        } else throw err2;
       }
       else if (context.finalized === false && onNotFound) res = await onNotFound(context);
       if (res && (context.finalized === false || isError)) context.res = res;
@@ -6409,12 +6409,12 @@ var createMountedRequest = (c, pathPrefix, routePath2) => {
 var notFoundHandler = (c) => {
   return c.text("404 Not Found", 404);
 };
-var errorHandler = (err, c) => {
-  if ("getResponse" in err) {
-    const res = err.getResponse();
+var errorHandler = (err2, c) => {
+  if ("getResponse" in err2) {
+    const res = err2.getResponse();
     return c.newResponse(res.body, res);
   }
-  console.error(err);
+  console.error(err2);
   return c.text("Internal Server Error", 500);
 };
 var Hono = class Hono2 {
@@ -6651,9 +6651,9 @@ var Hono = class Hono2 {
     this.router.add(method, path, [handler, r]);
     this.routes.push(r);
   }
-  #handleError(err, c) {
-    if (err instanceof Error) return this.errorHandler(err, c);
-    throw err;
+  #handleError(err2, c) {
+    if (err2 instanceof Error) return this.errorHandler(err2, c);
+    throw err2;
   }
   #dispatch(request, executionCtx, env, method) {
     if (method === "HEAD") return (async () => new Response(null, await this.#dispatch(request, executionCtx, env, "GET")))();
@@ -6672,10 +6672,10 @@ var Hono = class Hono2 {
         res = matchResult[0][0][0][0](c, async () => {
           c.res = await this.#notFoundHandler(c);
         });
-      } catch (err) {
-        return this.#handleError(err, c);
+      } catch (err2) {
+        return this.#handleError(err2, c);
       }
-      return res instanceof Promise ? res.then((resolved) => resolved || (c.finalized ? c.res : this.#notFoundHandler(c))).catch((err) => this.#handleError(err, c)) : res ?? this.#notFoundHandler(c);
+      return res instanceof Promise ? res.then((resolved) => resolved || (c.finalized ? c.res : this.#notFoundHandler(c))).catch((err2) => this.#handleError(err2, c)) : res ?? this.#notFoundHandler(c);
     }
     const composed = compose(matchResult[0], this.errorHandler, this.#notFoundHandler);
     return (async () => {
@@ -6683,8 +6683,8 @@ var Hono = class Hono2 {
         const context = await composed(c);
         if (!context.finalized) throw new Error("Context is not finalized. Did you forget to return a Response object or `await next()`?");
         return context.res;
-      } catch (err) {
-        return this.#handleError(err, c);
+      } catch (err2) {
+        return this.#handleError(err2, c);
       }
     })();
   }
@@ -8625,10 +8625,10 @@ function defineLazyInternal(inst, key, compute) {
           Object.defineProperty(this, key, { configurable: true, writable: true, value });
         broke = broke || outer;
         return value;
-      } catch (err) {
+      } catch (err2) {
         delete this[key];
         broke = broke || outer;
-        throw err;
+        throw err2;
       }
     },
     set(value) {
@@ -20196,9 +20196,9 @@ function compile(schema, options) {
     const clone2 = withParser(schema, parser);
     clone2._zod.bag.validator = compileValidator(schema, parser);
     return clone2;
-  } catch (err) {
+  } catch (err2) {
     if (options?.strict)
-      throw err;
+      throw err2;
     return schema;
   }
 }
@@ -20288,8 +20288,8 @@ ${code}
   try {
     const factory = new F(...constantNames, factoryCode);
     fn = factory(...constantValues);
-  } catch (err) {
-    throw new ZodCompileUnsupportedError(`this schema (generated code failed to evaluate: ${err.message})`);
+  } catch (err2) {
+    throw new ZodCompileUnsupportedError(`this schema (generated code failed to evaluate: ${err2.message})`);
   }
   if (options?.debug) {
     fn.code = fullCode;
@@ -20327,9 +20327,9 @@ function compileChild(doc, ctx, schema, accessor, needsValue = true) {
   const varCounter = ctx.varCounter;
   try {
     return generateCheck(doc, ctx, schema, accessor, needsValue);
-  } catch (err) {
-    if (!(err instanceof ZodCompileUnsupportedError) || !err.islandable)
-      throw err;
+  } catch (err2) {
+    if (!(err2 instanceof ZodCompileUnsupportedError) || !err2.islandable)
+      throw err2;
     doc.content.length = contentLen;
     if (ctx.constants.size > constantCount) {
       const trailing = Array.from(ctx.constants.keys()).slice(constantCount);
@@ -30431,8 +30431,1175 @@ process.once("SIGTERM", () => {
   process.exit(0);
 });
 
+// src/routes/exploration.ts
+import { crc32, deflateRawSync } from "node:zlib";
+var MAX_FOLLOW_UP_RUNES = 4e3;
+var MAX_RETEST_NOTES_RUNES = 4e3;
+var FINDING_RETEST_AGENT_KEY = "retester";
+var FINDING_RETEST_TOOLS = ["get_finding_retest_context", "record_finding_retest_result"];
+var RETEST_ACTIVE_STATUSES = ["pending", "running"];
+var GRAPH_NODE_LIMIT = 2e3;
+var GRAPH_EDGE_LIMIT = 5e3;
+var ASSET_TREE_MAX_NODES = 3e3;
+var UNASSIGNED_ASSET = "__none__";
+var STREAM_POLL_MS = 800;
+var STREAM_PING_MS = 15e3;
+var EXPORT_SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+var FINDINGS = "findings";
+var NODES = "nodes";
+var EDGES = "edges";
+var ACTIVITY = "activity";
+var TASKS = "tasks";
+var ASSETS = "assets";
+var ANCHORS = "anchors";
+var MAIN_SESSIONS = "main_sessions";
+var FINDING_RETESTS = "finding_retests";
+var CONVERSATIONS = "conversations";
+var CONVERSATION_ACTIVITIES = "conversation_activities";
+function err(c, e) {
+  return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+}
+function httpError(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+function rfc33392(date5) {
+  const offset = -date5.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const pad = (value) => String(Math.floor(Math.abs(value))).padStart(2, "0");
+  return `${date5.toISOString().slice(0, 23)}${sign}${pad(offset / 60)}:${pad(offset % 60)}`.replace("Z", "");
+}
+function stamp(date5) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date5.getFullYear()}${pad(date5.getMonth() + 1)}${pad(date5.getDate())}-${pad(date5.getHours())}${pad(date5.getMinutes())}${pad(date5.getSeconds())}`;
+}
+function runeCount(value) {
+  return [...value].length;
+}
+function paginationParam(raw2, fallback, upperBound) {
+  let value = Math.floor(Number(raw2 ?? fallback));
+  if (!Number.isFinite(value) || value <= 0) value = fallback;
+  if (upperBound > 0 && value > upperBound) value = upperBound;
+  return value;
+}
+function normFilter(value) {
+  const text = String(value ?? "").trim();
+  return text === "all" ? "" : text;
+}
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+function sliceRunes(text, max) {
+  const chars = [...text];
+  return chars.length > max ? chars.slice(0, max).join("") : text;
+}
+async function resolveTask(raw2) {
+  const key = String(raw2 ?? "").trim();
+  if (!key) return null;
+  const tasks = await operations.writer.list(TASKS);
+  const live = tasks.filter((row) => !row.deleted_at_text && !row.archived_at_text);
+  const byId = live.find((row) => String(row.id) === key);
+  if (byId) return byId;
+  return live.find((row) => String(row.name ?? "") === key) ?? null;
+}
+function nodeDto(row) {
+  return {
+    id: String(row.id),
+    type: String(row.kind),
+    payload: JSON.stringify(parseJson2(row.payload) ?? {}),
+    priority: Number(row.priority ?? 0),
+    state: String(row.state ?? ""),
+    origin: String(row.origin ?? ""),
+    ts: String(row.created_at ?? "")
+  };
+}
+function edgeDto(row) {
+  return { src: String(row.src), dst: String(row.dst), rel: String(row.rel) };
+}
+function compareEdges(a, b) {
+  const numeric = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+  };
+  return numeric(a.src) - numeric(b.src) || numeric(a.dst) - numeric(b.dst) || String(a.rel ?? "").localeCompare(String(b.rel ?? ""));
+}
+function activityDto(row) {
+  const out = {
+    seq: Number(row.id),
+    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
+    ...row.worker ? { worker: row.worker } : {},
+    ts: String(row.created_at ?? "").replace(/\.\d+/, ""),
+    ...row.kind ? { kind: row.kind } : {},
+    ...row.tool ? { tool: row.tool } : {},
+    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
+    is_error: Boolean(row.is_error),
+    summary: row.summary ?? "",
+    metadata: row.metadata ?? {},
+    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
+    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
+    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
+    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
+    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
+  };
+  return out;
+}
+function findingDto(row) {
+  return {
+    traffic_count: 0,
+    evidence_version: Number(row.evidence_version ?? 0),
+    report_evidence_version: Number(row.report_evidence_version ?? 0),
+    report_stale: Boolean(row.report) && Number(row.evidence_version ?? 0) !== Number(row.report_evidence_version ?? 0),
+    id: String(row.id),
+    finding_id: String(row.id),
+    vulnclass: row.vulnclass,
+    ...row.name ? { name: row.name } : {},
+    severity: row.severity,
+    status: row.status,
+    summary: row.summary,
+    evidence: row.evidence,
+    ...row.task_id == null ? {} : { task_id: String(row.task_id) },
+    ts: row.created_at_text
+  };
+}
+function filterFromQuery(q) {
+  return {
+    severity: normFilter(q("severity")).toLowerCase(),
+    status: normFilter(q("status")).toLowerCase(),
+    vulnclass: normFilter(q("vulnclass")),
+    taskId: normFilter(q("task_id")),
+    query: String(q("q") ?? "").trim(),
+    sort: String(q("sort") ?? "").trim(),
+    assetScope: String(q("asset_scope") ?? "").trim()
+  };
+}
+async function loadFindings() {
+  const rows = await operations.writer.list(FINDINGS);
+  return [...rows].sort((a, b) => String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? "")) || Number(b.id) - Number(a.id));
+}
+function matchesFilter(row, f) {
+  if (f.severity && String(row.severity ?? "").toLowerCase() !== f.severity) return false;
+  if (f.status && String(row.status ?? "").toLowerCase() !== f.status) return false;
+  if (f.vulnclass && String(row.vulnclass ?? "") !== f.vulnclass) return false;
+  if (f.taskId && String(row.task_id ?? "") !== f.taskId) return false;
+  if (f.query) {
+    const needle = f.query.toLowerCase();
+    const haystack = [row.name, row.vulnclass, row.summary, row.evidence, row.report];
+    if (!haystack.some((value) => String(value ?? "").toLowerCase().includes(needle))) return false;
+  }
+  return true;
+}
+function scopeFiltered(rows, f, tree) {
+  if (!f.assetScope) return rows;
+  const known = /* @__PURE__ */ new Set();
+  for (const node2 of tree.nodes) if (node2.asset_id) known.add(Number(node2.asset_id));
+  const assetIDsOf = (row) => asArray(row.asset_ids).map(Number).filter((id) => id > 0);
+  if (f.assetScope === UNASSIGNED_ASSET) {
+    return rows.filter((row) => !assetIDsOf(row).some((id) => known.has(id)));
+  }
+  if (!tree.byKey.has(f.assetScope)) return [];
+  const children = /* @__PURE__ */ new Map();
+  for (const node2 of tree.nodes) {
+    const list = children.get(node2.parent ?? "") ?? [];
+    list.push(node2);
+    children.set(node2.parent ?? "", list);
+  }
+  const seen = /* @__PURE__ */ new Set([f.assetScope]);
+  const ids = /* @__PURE__ */ new Set();
+  const queue = [f.assetScope];
+  while (queue.length) {
+    const key = queue.shift();
+    const node2 = tree.byKey.get(key);
+    if (node2?.asset_id) ids.add(Number(node2.asset_id));
+    for (const child of children.get(key) ?? []) {
+      if (seen.has(child.key)) continue;
+      seen.add(child.key);
+      queue.push(child.key);
+    }
+  }
+  if (!ids.size) return [];
+  return rows.filter((row) => assetIDsOf(row).some((id) => ids.has(id)));
+}
+var assetKey = (id) => `a:${id}`;
+var companyKey = (id) => `c:${id}`;
+function urlHostPort(raw2) {
+  if (!raw2) return { host: "", port: 0 };
+  try {
+    const url2 = new URL(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw2) ? raw2 : `http://${raw2}`);
+    return { host: url2.hostname, port: Number(url2.port || 0) };
+  } catch {
+    return { host: "", port: 0 };
+  }
+}
+function hostPortOf(row) {
+  let host = String(row.domain ?? "");
+  let port = Number(row.port ?? 0);
+  if (!host && row.url) {
+    const parsed = urlHostPort(String(row.url));
+    host = parsed.host;
+    if (!port) port = parsed.port;
+  }
+  if (!host) host = String(row.ip ?? "");
+  return { host, port };
+}
+function assetLabel(row) {
+  const kind = String(row.type ?? "");
+  const url2 = String(row.url ?? "");
+  const domain2 = String(row.domain ?? "");
+  const ip = String(row.ip ?? "");
+  const appName = String(row.app_name ?? "");
+  const rootDomain = String(row.root_domain ?? "");
+  if (kind === "service" && !url2) {
+    const { host, port } = hostPortOf(row);
+    if (host && port > 0) return `${host}:${port}`;
+  }
+  if ((kind === "endpoint" || kind === "service") && url2) return url2;
+  if (kind === "app" && appName) return appName;
+  for (const value of [url2, domain2, ip, appName, rootDomain]) if (value) return value;
+  return assetKey(Number(row.id));
+}
+function countFinding(node2, hit) {
+  if (!node2) return;
+  node2.total += 1;
+  if (hit.severity === "critical") node2.critical += 1;
+  else if (hit.severity === "high") node2.high += 1;
+  else if (hit.severity === "medium") node2.medium += 1;
+  else if (hit.severity === "low") node2.low += 1;
+  if (!node2.last_found_at || hit.ts > node2.last_found_at) node2.last_found_at = hit.ts;
+}
+async function buildFindingAssetTree(rows, maxNodes = ASSET_TREE_MAX_NODES) {
+  const hits = rows.map((row) => ({
+    severity: String(row.severity ?? ""),
+    ts: String(row.created_at_text ?? ""),
+    assetIDs: asArray(row.asset_ids).map(Number).filter((id) => id > 0)
+  }));
+  const wanted = /* @__PURE__ */ new Set();
+  for (const hit of hits) for (const id of hit.assetIDs) wanted.add(id);
+  const assets = await operations.writer.list(ASSETS);
+  const all = new Map(assets.map((row) => [Number(row.id), row]));
+  const byID = /* @__PURE__ */ new Map();
+  for (const id of wanted) {
+    const row = all.get(id);
+    if (row) byID.set(id, row);
+  }
+  const rootByDomain = /* @__PURE__ */ new Map();
+  const subByDomain = /* @__PURE__ */ new Map();
+  const ipByAddr = /* @__PURE__ */ new Map();
+  const svcByHost = /* @__PURE__ */ new Map();
+  const svcByHostPort = /* @__PURE__ */ new Map();
+  for (const row of assets) {
+    const id = Number(row.id);
+    const kind = String(row.type ?? "");
+    const domain2 = String(row.domain ?? "");
+    const ip = String(row.ip ?? "");
+    if (kind === "root_domain" && domain2) rootByDomain.set(domain2, id);
+    else if (kind === "subdomain" && domain2) subByDomain.set(domain2, id);
+    else if (kind === "ip" && ip) ipByAddr.set(ip, id);
+    else if (kind === "service") {
+      const { host, port } = hostPortOf(row);
+      if (host) {
+        if (!svcByHost.has(host)) svcByHost.set(host, id);
+        svcByHostPort.set(`${host}|${port}`, id);
+      }
+    }
+  }
+  const parentKeyCache = /* @__PURE__ */ new Map();
+  const parentKeyOf = (row) => {
+    const id = Number(row.id);
+    const cached2 = parentKeyCache.get(id);
+    if (cached2 !== void 0) return cached2;
+    const kind = String(row.type ?? "");
+    const domain2 = String(row.domain ?? "");
+    const ip = String(row.ip ?? "");
+    const rootDomain = String(row.root_domain ?? "");
+    const { host, port } = hostPortOf(row);
+    const pick2 = (...ids) => {
+      for (const candidate of ids) if (candidate && candidate !== id) return assetKey(candidate);
+      return "";
+    };
+    let parent = "";
+    if (kind === "subdomain") {
+      parent = pick2(rootByDomain.get(rootDomain));
+    } else if (kind === "service") {
+      parent = pick2(
+        subByDomain.get(domain2),
+        subByDomain.get(host),
+        ipByAddr.get(ip),
+        ipByAddr.get(host),
+        rootByDomain.get(rootDomain),
+        rootByDomain.get(host)
+      );
+    } else if (kind === "endpoint") {
+      parent = pick2(
+        svcByHostPort.get(`${host}|${port}`),
+        svcByHost.get(host),
+        subByDomain.get(host),
+        subByDomain.get(domain2),
+        ipByAddr.get(host),
+        ipByAddr.get(ip),
+        rootByDomain.get(rootDomain),
+        rootByDomain.get(host)
+      );
+    }
+    parentKeyCache.set(id, parent);
+    return parent;
+  };
+  for (let round = 0; round < 4; round++) {
+    let added = 0;
+    for (const row of [...byID.values()]) {
+      const parentKey = parentKeyOf(row);
+      if (!parentKey.startsWith("a:")) continue;
+      const parentId = Number(parentKey.slice(2));
+      if (byID.has(parentId)) continue;
+      const parentRow = all.get(parentId);
+      if (!parentRow) continue;
+      byID.set(parentId, parentRow);
+      added += 1;
+    }
+    if (!added) break;
+  }
+  const nodes = /* @__PURE__ */ new Map();
+  for (const row of byID.values()) {
+    const key = assetKey(Number(row.id));
+    const node2 = {
+      key,
+      kind: String(row.type ?? ""),
+      label: assetLabel(row),
+      asset_id: Number(row.id),
+      self: 0,
+      total: 0,
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      last_found_at: ""
+    };
+    const companyId = Number(row.company_id ?? 0);
+    if (companyId > 0) node2.company_id = companyId;
+    nodes.set(key, node2);
+  }
+  const parentOf = /* @__PURE__ */ new Map();
+  for (const row of byID.values()) {
+    const key = assetKey(Number(row.id));
+    const parentKey = parentKeyOf(row);
+    if (!parentKey || parentKey === key || !nodes.has(parentKey)) continue;
+    parentOf.set(key, parentKey);
+    nodes.get(key).parent = parentKey;
+  }
+  const topLevel = [...nodes.values()].filter(
+    (node2) => !node2.parent && node2.company_id && ["root_domain", "ip", "app"].includes(node2.kind)
+  );
+  if (topLevel.length) {
+    const companies = await store.companies.list();
+    const names = new Map(companies.map((row) => [Number(row.id), String(row.name ?? "")]));
+    for (const node2 of topLevel) {
+      const companyId = Number(node2.company_id);
+      const key = companyKey(companyId);
+      if (!nodes.has(key)) {
+        nodes.set(key, {
+          key,
+          kind: "company",
+          label: names.get(companyId) || `\u4F01\u4E1A #${companyId}`,
+          company_id: companyId,
+          self: 0,
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+          last_found_at: ""
+        });
+      }
+      node2.parent = key;
+      parentOf.set(node2.key, key);
+    }
+  }
+  const unassigned = {
+    key: UNASSIGNED_ASSET,
+    kind: "none",
+    label: "\u672A\u5173\u8054\u8D44\u4EA7",
+    self: 0,
+    total: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    last_found_at: ""
+  };
+  for (const hit of hits) {
+    const direct = [];
+    const touched = /* @__PURE__ */ new Set();
+    for (const id of hit.assetIDs) {
+      const node2 = nodes.get(assetKey(id));
+      if (!node2) continue;
+      direct.push(node2);
+      for (let key = node2.key; key; key = parentOf.get(key)) touched.add(key);
+    }
+    if (!direct.length) {
+      countFinding(unassigned, hit);
+      unassigned.self += 1;
+      continue;
+    }
+    for (const node2 of direct) node2.self += 1;
+    for (const key of touched) countFinding(nodes.get(key), hit);
+  }
+  const out = [...nodes.values()].filter((node2) => node2.total > 0);
+  if (unassigned.total > 0) out.push(unassigned);
+  out.sort((a, b) => {
+    if (a.kind === "none" !== (b.kind === "none")) return b.kind === "none" ? -1 : 1;
+    if (a.total !== b.total) return b.total - a.total;
+    return a.label.localeCompare(b.label);
+  });
+  const tree = {
+    nodes: out,
+    byKey: /* @__PURE__ */ new Map(),
+    finding_total: hits.length,
+    truncated: false,
+    dropped_kinds: []
+  };
+  for (const node2 of tree.nodes) tree.byKey.set(node2.key, node2);
+  if (maxNodes > 0 && tree.nodes.length > maxNodes) {
+    for (const kind of ["endpoint", "service"]) {
+      tree.nodes = tree.nodes.filter((node2) => node2.kind !== kind);
+      tree.truncated = true;
+      tree.dropped_kinds.push(kind);
+      if (tree.nodes.length <= maxNodes) break;
+    }
+  }
+  return tree;
+}
+function exportOrder(rows) {
+  return [...rows].sort((a, b) => {
+    const ra = EXPORT_SEVERITY_RANK[String(a.severity ?? "")] ?? 4;
+    const rb = EXPORT_SEVERITY_RANK[String(b.severity ?? "")] ?? 4;
+    if (ra !== rb) return ra - rb;
+    return String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? ""));
+  });
+}
+function findingTitle(row) {
+  return String(row.name ?? "").trim() || String(row.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B";
+}
+function findingsMarkdown(rows, taskNames, generatedAt) {
+  const items = exportOrder(rows);
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const row of items) if (counts[String(row.severity ?? "")] != null) counts[String(row.severity)] += 1;
+  const pad = (value) => String(value).padStart(2, "0");
+  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
+  const lines = ["# \u6F0F\u6D1E\u53D1\u73B0\u6C47\u603B\u62A5\u544A", "", `- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, `- **\u53D1\u73B0\u603B\u6570**\uFF1A${items.length} \u4E2A`, "", "## \u6458\u8981", "", "| \u4E25\u91CD\u7B49\u7EA7 | \u6570\u91CF |", "| --- | --- |"];
+  for (const [key, label] of [["critical", "\u4E25\u91CD"], ["high", "\u9AD8\u5371"], ["medium", "\u4E2D\u5371"], ["low", "\u4F4E\u5371"]]) {
+    lines.push(`| ${label} | ${counts[key]} |`);
+  }
+  lines.push("");
+  if (!items.length) {
+    lines.push("_\u65E0\u5339\u914D\u7684\u6F0F\u6D1E\u3002_", "");
+    return lines.join("\n");
+  }
+  lines.push("## \u6F0F\u6D1E\u660E\u7EC6", "");
+  items.forEach((row, index) => {
+    lines.push(`### ${index + 1}. [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, "");
+    if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
+    lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
+    const description = taskNames.get(String(row.task_id ?? "")) ?? "";
+    if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
+    lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`, "");
+    if (String(row.summary ?? "").trim()) lines.push(`${String(row.summary).trim()}`, "");
+    if (String(row.evidence ?? "").trim()) lines.push("**\u8BC1\u636E\uFF1A**", "", "```", String(row.evidence).trim(), "```", "");
+    if (String(row.report ?? "").trim()) lines.push("**\u8BE6\u7EC6\u62A5\u544A\uFF1A**", "", String(row.report).trim(), "");
+    lines.push("---", "");
+  });
+  return lines.join("\n");
+}
+function singleFindingMarkdown(row, taskNames, generatedAt) {
+  const pad = (value) => String(value).padStart(2, "0");
+  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
+  const lines = [`# [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, ""];
+  if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
+  lines.push(`- **\u4E25\u91CD\u7B49\u7EA7**\uFF1A${String(row.severity || "info")}`);
+  lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
+  const description = taskNames.get(String(row.task_id ?? "")) ?? "";
+  if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
+  lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`);
+  lines.push(`- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, "");
+  if (String(row.summary ?? "").trim()) lines.push("## \u6982\u8FF0", "", String(row.summary).trim(), "");
+  if (String(row.evidence ?? "").trim()) lines.push("## \u8BC1\u636E", "", "```", String(row.evidence).trim(), "```", "");
+  if (String(row.report ?? "").trim()) lines.push("## \u8BE6\u7EC6\u62A5\u544A", "", String(row.report).trim(), "");
+  return lines.join("\n");
+}
+function csvCell(value) {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+function findingsCsv(rows, taskNames) {
+  const items = exportOrder(rows);
+  const lines = ["ID,\u540D\u79F0,\u7C7B\u522B,\u4E25\u91CD\u7B49\u7EA7,\u72B6\u6001,\u6240\u5C5E\u4EFB\u52A1,\u53D1\u73B0\u65F6\u95F4,\u6982\u8FF0,\u6D41\u91CF\u8BC1\u636E\u6570\u91CF,\u6D41\u91CF\u8BC1\u636EID"];
+  for (const row of items) {
+    lines.push([
+      row.id,
+      findingTitle(row),
+      row.vulnclass,
+      row.severity || "info",
+      row.status || "pending",
+      taskNames.get(String(row.task_id ?? "")) ?? "",
+      row.created_at_text,
+      String(row.summary ?? "").trim(),
+      0,
+      ""
+    ].map(csvCell).join(","));
+  }
+  return `\uFEFF${lines.join("\r\n")}\r
+`;
+}
+function buildZip(entries) {
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const nameBuf = Buffer.from(entry.name, "utf8");
+    const crc = crc32(entry.data) >>> 0;
+    const compressed = deflateRawSync(entry.data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(67324752, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(2048, 6);
+    local.writeUInt16LE(8, 8);
+    local.writeUInt16LE(0, 10);
+    local.writeUInt16LE(33, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(compressed.length, 18);
+    local.writeUInt32LE(entry.data.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    local.writeUInt16LE(0, 28);
+    chunks.push(local, nameBuf, compressed);
+    central.push({ name: entry.name, crc, size: entry.data.length, compressed, offset });
+    offset += 30 + nameBuf.length + compressed.length;
+  }
+  const centralStart = offset;
+  for (const item of central) {
+    const nameBuf = Buffer.from(item.name, "utf8");
+    const header = Buffer.alloc(46);
+    header.writeUInt32LE(33639248, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(20, 6);
+    header.writeUInt16LE(2048, 8);
+    header.writeUInt16LE(8, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt16LE(33, 14);
+    header.writeUInt32LE(item.crc, 16);
+    header.writeUInt32LE(item.compressed.length, 20);
+    header.writeUInt32LE(item.size, 24);
+    header.writeUInt16LE(nameBuf.length, 28);
+    header.writeUInt16LE(0, 30);
+    header.writeUInt16LE(0, 32);
+    header.writeUInt16LE(0, 34);
+    header.writeUInt16LE(0, 36);
+    header.writeUInt32LE(0, 38);
+    header.writeUInt32LE(item.offset, 42);
+    chunks.push(header, nameBuf);
+    offset += 46 + nameBuf.length;
+  }
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(101010256, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(central.length, 8);
+  end.writeUInt16LE(central.length, 10);
+  end.writeUInt32LE(offset - centralStart, 12);
+  end.writeUInt32LE(centralStart, 16);
+  end.writeUInt16LE(0, 20);
+  return Buffer.concat([...chunks, end]);
+}
+async function taskNameMap() {
+  const tasks = await operations.writer.list(TASKS);
+  return new Map(tasks.map((row) => [String(row.id), String(row.description || row.name || "")]));
+}
+async function listMainSessions(explorationId) {
+  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(b.seq) - Number(a.seq));
+  const sessions = rows.map((row) => ({ seq: Number(row.seq), created_at: String(row.created_at ?? "") }));
+  sessions.push({ seq: 0, created_at: "0001-01-01T00:00:00Z" });
+  return sessions;
+}
+async function createMainSession(explorationId) {
+  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId);
+  const seq = rows.reduce((max, row) => Math.max(max, Number(row.seq ?? 0)), 0) + 1;
+  const id = await operations.writer.maxKey(MAIN_SESSIONS) + 1;
+  const record2 = { id: String(id), exploration_id: explorationId, seq, created_at: rfc33392(/* @__PURE__ */ new Date()) };
+  const [written] = await operations.writer.commit([{ table: MAIN_SESSIONS, key: String(id), record: record2 }]);
+  return written;
+}
+function retestDto(row) {
+  return {
+    id: Number(row.id),
+    finding_id: Number(row.finding_id),
+    conversation_id: row.conversation_id == null ? null : Number(row.conversation_id),
+    status: String(row.status ?? ""),
+    verdict: String(row.verdict ?? ""),
+    notes: String(row.notes ?? ""),
+    purpose: String(row.purpose ?? "retest"),
+    summary: String(row.summary ?? ""),
+    evidence: String(row.evidence ?? ""),
+    error: String(row.error ?? ""),
+    created_at: String(row.created_at ?? ""),
+    started_at: row.started_at ?? null,
+    finished_at: row.finished_at ?? null
+  };
+}
+async function retestAgentReady() {
+  const agents = await meta3.table("agents");
+  const agent = agents.find((row) => row.key === FINDING_RETEST_AGENT_KEY);
+  if (!agent || !agent.enabled) {
+    throw httpError(409, "\u6F0F\u6D1E\u590D\u6D4B Agent \u4E0D\u5B58\u5728\u6216\u672A\u542F\u7528\uFF0C\u8BF7\u5728 Agent \u7BA1\u7406\u4E2D\u914D\u7F6E retester");
+  }
+  const tools = await meta3.table("tools");
+  for (const key of FINDING_RETEST_TOOLS) {
+    const tool = tools.find((row) => row.key === key);
+    const bound = asArray(tool?.agents).includes(FINDING_RETEST_AGENT_KEY);
+    if (!tool || !tool.enabled || !bound) throw httpError(409, `\u8BF7\u4E3A\u590D\u6D4B Agent \u542F\u7528\u5E76\u7ED1\u5B9A\u5DE5\u5177\uFF1A${key}`);
+  }
+}
+async function enqueueFindingRetest(findingId, notes) {
+  const finding = await operations.writer.readRecord(FINDINGS, String(findingId));
+  if (!finding) throw httpError(404, "finding not found");
+  await retestAgentReady();
+  const rows = await operations.writer.list(FINDING_RETESTS);
+  const existing = rows.filter((row) => Number(row.finding_id) === findingId && RETEST_ACTIVE_STATUSES.includes(String(row.status))).sort((a, b) => Number(a.id) - Number(b.id))[0];
+  if (existing) return { retest: retestDto(existing), created: false };
+  const title = sliceRunes(String(finding.name ?? "").trim() || String(finding.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B", 100);
+  const convId = await operations.writer.maxKey(CONVERSATIONS) + 1;
+  const retestId = await operations.writer.maxKey(FINDING_RETESTS) + 1;
+  const activityId = await operations.writer.maxKey(CONVERSATION_ACTIVITIES) + 1;
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const message = notes ? `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002
+
+\u672C\u6B21\u590D\u6D4B\u8865\u5145\u8BF4\u660E\uFF1A
+${notes}` : `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002`;
+  const conversation = {
+    id: String(convId),
+    agent_key: FINDING_RETEST_AGENT_KEY,
+    title: `\u590D\u6D4B #${findingId} \xB7 ${title}`,
+    llm_profile_id: null,
+    project_id: null,
+    workspace: "",
+    pinned_at: null,
+    created_at: now,
+    updated_at: now
+  };
+  const retest = {
+    id: String(retestId),
+    finding_id: Number(findingId),
+    conversation_id: Number(convId),
+    status: "pending",
+    verdict: "",
+    notes,
+    purpose: "retest",
+    summary: "",
+    evidence: "",
+    error: "",
+    created_at: rfc33392(new Date(now)),
+    started_at: null,
+    finished_at: null
+  };
+  const [written] = await operations.writer.commit([
+    { table: CONVERSATIONS, key: String(convId), record: conversation },
+    {
+      table: CONVERSATION_ACTIVITIES,
+      key: String(activityId),
+      record: {
+        id: String(activityId),
+        conversation_id: String(convId),
+        worker: FINDING_RETEST_AGENT_KEY,
+        kind: "user",
+        tool: "",
+        tool_use_id: "",
+        is_error: false,
+        summary: `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}`,
+        detail: message,
+        input_tokens: null,
+        output_tokens: null,
+        cache_read_tokens: null,
+        cache_write_tokens: null,
+        outcome: "",
+        created_at: now
+      }
+    },
+    { table: FINDING_RETESTS, key: String(retestId), record: retest }
+  ]);
+  void written;
+  store.invalidate?.(["conversations", "conversation_activities"]);
+  return { retest: retestDto(retest), created: true };
+}
+function register(api2) {
+  api2.get("/api/exploration/graph", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ nodes: [], edges: [] });
+      const explorationId = Number(task.exploration_id);
+      const nodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(a.id) - Number(b.id)).slice(0, GRAPH_NODE_LIMIT);
+      const edges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId).sort(compareEdges).slice(0, GRAPH_EDGE_LIMIT);
+      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/frontier", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json([]);
+      const raw2 = Number(c.req.query("limit") ?? 0);
+      const limit = Number.isFinite(raw2) && raw2 > 0 ? Math.floor(raw2) : 100;
+      const explorationId = Number(task.exploration_id);
+      const rows = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId && row.kind === "intent" && row.state === "open").sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0) || Number(a.id) - Number(b.id)).slice(0, limit);
+      return c.json(rows.map(nodeDto));
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/main-sessions", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const sessions = await listMainSessions(Number(task.exploration_id));
+      return c.json({ sessions, current: sessions.length ? sessions[0].seq : 0 });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/main-session/new", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const record2 = await createMainSession(Number(task.exploration_id));
+      return c.json({ seq: Number(record2.seq), created_at: String(record2.created_at), current: Number(record2.seq) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/groups", async (c) => {
+    try {
+      const page = paginationParam(c.req.query("page"), 1, 0);
+      const limit = paginationParam(c.req.query("limit"), 10, 100);
+      const filter = filterFromQuery((name) => c.req.query(name));
+      let rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
+      if (filter.assetScope) {
+        const tree = await buildFindingAssetTree(rows);
+        rows = scopeFiltered(rows, filter, tree);
+      }
+      const tasks = await operations.writer.list(TASKS);
+      const byId = new Map(tasks.map((row) => [String(row.id), row]));
+      const buckets = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        const key = row.task_id == null ? "" : String(row.task_id);
+        const bucket = buckets.get(key) ?? { row: key ? byId.get(key) ?? null : null, items: [] };
+        bucket.items.push(row);
+        buckets.set(key, bucket);
+      }
+      const groups = [...buckets.entries()].map(([key, bucket]) => {
+        const task = bucket.row;
+        let status = String(task?.status ?? "");
+        if (!["done", "failed", "timeout"].includes(status)) {
+          if (task?.queued) status = "queued";
+          else if (task?.paused) status = "paused";
+        }
+        const severity = { critical: 0, high: 0, medium: 0, low: 0 };
+        let last = "";
+        for (const row of bucket.items) {
+          const value = String(row.severity ?? "");
+          if (severity[value] != null) severity[value] += 1;
+          const ts = String(row.created_at_text ?? "");
+          if (ts > last) last = ts;
+        }
+        return {
+          task_id: key ? Number(key) : null,
+          task_name: String(task?.name ?? ""),
+          task_description: String(task?.description ?? ""),
+          task_status: status,
+          count: bucket.items.length,
+          critical: severity.critical,
+          high: severity.high,
+          medium: severity.medium,
+          low: severity.low,
+          last_found_at: last
+        };
+      });
+      const rank = (group) => Math.max(0, ...["critical", "high", "medium", "low"].map((key, index) => group[key] > 0 ? 4 - index : -1));
+      groups.sort((a, b) => {
+        if (filter.sort === "severity") {
+          const diff = rank(b) - rank(a);
+          if (diff) return diff;
+        }
+        const byTime = String(b.last_found_at).localeCompare(String(a.last_found_at));
+        if (byTime) return byTime;
+        return (b.task_id ?? -1) - (a.task_id ?? -1);
+      });
+      const items = groups.slice((page - 1) * limit, (page - 1) * limit + limit);
+      return c.json({ items, total: groups.length, finding_total: rows.length, page, page_size: limit });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/export", async (c) => {
+    try {
+      const scope = String(c.req.query("scope") ?? "").trim();
+      const format = String(c.req.query("format") ?? "").trim();
+      const filter = filterFromQuery((name) => c.req.query(name));
+      let rows;
+      if (scope === "selected") {
+        const ids = [];
+        for (const part of String(c.req.query("ids") ?? "").split(",")) {
+          const text = part.trim();
+          if (!text) continue;
+          const id = Number(text);
+          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text}` }, 400);
+          ids.push(id);
+        }
+        if (!ids.length) return c.json({ error: "no findings selected" }, 400);
+        const all = await loadFindings();
+        const order2 = new Map(ids.map((id, index) => [String(id), index]));
+        rows = all.filter((row) => order2.has(String(row.id))).sort((a, b) => (order2.get(String(a.id)) ?? 0) - (order2.get(String(b.id)) ?? 0));
+      } else if (scope === "all") {
+        rows = await loadFindings();
+      } else if (scope === "filtered" || scope === "") {
+        rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
+        if (filter.assetScope) {
+          const tree = await buildFindingAssetTree(rows);
+          rows = scopeFiltered(rows, filter, tree);
+        }
+      } else {
+        return c.json({ error: `bad scope: ${scope}` }, 400);
+      }
+      const now = /* @__PURE__ */ new Date();
+      const names = await taskNameMap();
+      const base = `findings-${stamp(now)}`;
+      const download = (contentType, filename, body) => {
+        const payload = typeof body === "string" ? Buffer.from(body, "utf8") : body;
+        return new Response(new Uint8Array(payload), {
+          headers: {
+            "content-type": contentType,
+            "content-disposition": `attachment; filename="${filename}"`,
+            "content-length": String(payload.length)
+          }
+        });
+      };
+      switch (format) {
+        case "md-single":
+          return download("text/markdown; charset=utf-8", `${base}.md`, findingsMarkdown(rows, names, now));
+        case "csv":
+          return download("text/csv; charset=utf-8", `${base}.csv`, findingsCsv(rows, names));
+        case "json":
+          return download("application/json; charset=utf-8", `${base}.json`, `${JSON.stringify(rows.map(findingDto), null, 2)}
+`);
+        case "md-zip": {
+          const entries = [
+            { name: "findings.md", data: Buffer.from(findingsMarkdown(rows, names, now), "utf8") },
+            { name: "manifest.json", data: Buffer.from(`${JSON.stringify({ generated_at: now.toISOString(), scope: scope || "filtered", format, count: rows.length, findings: rows.map(findingDto) }, null, 2)}
+`, "utf8") }
+          ];
+          for (const row of exportOrder(rows)) {
+            entries.push({ name: `findings/finding-${row.id}.md`, data: Buffer.from(singleFindingMarkdown(row, names, now), "utf8") });
+          }
+          const zip = buildZip(entries);
+          return new Response(new Uint8Array(zip), {
+            headers: {
+              "content-type": "application/zip",
+              "content-disposition": `attachment; filename="${base}.zip"`,
+              "content-length": String(zip.length)
+            }
+          });
+        }
+        default:
+          return c.json({ error: `bad format: ${format}` }, 400);
+      }
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/asset-tree", async (c) => {
+    try {
+      const filter = filterFromQuery((name) => c.req.query(name));
+      const rows = (await loadFindings()).filter((row) => matchesFilter(row, { ...filter, assetScope: "" }));
+      const tree = await buildFindingAssetTree(rows);
+      return c.json({
+        nodes: tree.nodes,
+        finding_total: tree.finding_total,
+        truncated: tree.truncated,
+        ...tree.dropped_kinds.length ? { dropped_kinds: tree.dropped_kinds } : {}
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/retests/active", async (c) => {
+    try {
+      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => RETEST_ACTIVE_STATUSES.includes(String(row.status)) && row.conversation_id != null).sort((a, b) => Number(a.id) - Number(b.id));
+      return c.json({
+        retests: rows.map((row) => ({
+          id: Number(row.id),
+          finding_id: String(row.finding_id),
+          conversation_id: Number(row.conversation_id),
+          status: String(row.status)
+        }))
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/:id/lineage", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      const empty = { nodes: [], edges: [] };
+      if (finding.node_id == null || finding.task_id == null) return c.json(empty);
+      const task = await resolveTask(String(finding.task_id));
+      if (!task) return c.json(empty);
+      const explorationId = Number(task.exploration_id);
+      const allNodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId);
+      const allEdges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId);
+      const nodeId = String(finding.node_id);
+      const ancestors = /* @__PURE__ */ new Set();
+      const queue = [nodeId];
+      while (queue.length) {
+        const current = queue.shift();
+        if (ancestors.has(current)) continue;
+        ancestors.add(current);
+        for (const edge of allEdges) {
+          if (String(edge.dst) === current && !ancestors.has(String(edge.src))) queue.push(String(edge.src));
+        }
+      }
+      const nodes = allNodes.filter((row) => ancestors.has(String(row.id))).sort((a, b) => Number(a.id) - Number(b.id));
+      if (!nodes.length) return c.json(empty);
+      const edges = allEdges.filter((row) => ancestors.has(String(row.src)) && ancestors.has(String(row.dst))).sort(compareEdges);
+      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/findings/:id/deepen", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const body = await c.req.json().catch(() => ({}));
+      const description = String(body?.description ?? "").trim();
+      if (!description) return c.json({ error: "description is required" }, 400);
+      if (runeCount(description) > MAX_FOLLOW_UP_RUNES) {
+        return c.json({ error: `description must be at most ${MAX_FOLLOW_UP_RUNES} characters` }, 400);
+      }
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      if (finding.task_id == null || finding.node_id == null) {
+        return c.json({ error: "finding origin task or node is no longer available" }, 409);
+      }
+      const task = await operations.writer.readRecord(TASKS, String(finding.task_id));
+      if (!task || task.deleted_at_text) return c.json({ error: "finding origin task is no longer available" }, 409);
+      const findingNode = await operations.writer.readRecord(NODES, String(finding.node_id));
+      if (!findingNode || findingNode.kind !== "finding" || Number(findingNode.exploration_id) !== Number(task.exploration_id)) {
+        return c.json({ error: "finding origin task or node is no longer available" }, 409);
+      }
+      const explorationId = Number(task.exploration_id);
+      const nodes = await operations.writer.list(NODES);
+      const intentId = nodes.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
+      const anchors = (await operations.writer.list(ANCHORS)).filter((row) => String(row.node_id) === String(finding.node_id)).sort((a, b) => Number(a.asset_id) - Number(b.asset_id));
+      const activities = await operations.writer.list(ACTIVITY);
+      const activityId = activities.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
+      const now = /* @__PURE__ */ new Date();
+      const intent = {
+        id: String(intentId),
+        exploration_id: explorationId,
+        kind: "intent",
+        state: "open",
+        priority: 10,
+        origin: "human",
+        payload: {
+          text: description,
+          finding_id: String(id),
+          ...anchors.length ? { asset_ids: anchors.map((row) => Number(row.asset_id)) } : {}
+        },
+        created_at: rfc33392(now)
+      };
+      const ops = [
+        { table: NODES, key: String(intentId), record: intent },
+        {
+          table: EDGES,
+          key: `${finding.node_id}-derived_from-${intentId}`,
+          record: { exploration_id: explorationId, src: String(finding.node_id), dst: String(intentId), rel: "derived_from" }
+        },
+        {
+          table: ACTIVITY,
+          key: String(activityId),
+          record: {
+            id: String(activityId),
+            exploration_id: explorationId,
+            node_id: Number(intentId),
+            worker: "system",
+            kind: "text",
+            is_error: false,
+            summary: "\u4EBA\u5DE5\u63D0\u4EA4\u6F0F\u6D1E\u6DF1\u5165\u5229\u7528\u610F\u56FE",
+            detail: description,
+            metadata: {},
+            created_at: rfc33392(now),
+            created_unix: Math.floor(now.getTime() / 1e3)
+          }
+        }
+      ];
+      for (const anchor2 of anchors) {
+        const key = `${intentId}-${Number(anchor2.asset_id)}`;
+        ops.push({ table: ANCHORS, key, record: { node_id: Number(intentId), asset_id: Number(anchor2.asset_id) } });
+      }
+      await operations.writer.commit(ops);
+      store.invalidate?.(["nodes", "edges", "activity"]);
+      let queued = Boolean(task.queued);
+      try {
+        const admitted = await operations.controlTask(String(task.id), "resume");
+        queued = Boolean(admitted?.queued);
+      } catch {
+      }
+      const current = await operations.writer.readRecord(NODES, String(intentId));
+      return c.json({
+        task_id: Number(task.id),
+        intent_id: Number(intentId),
+        state: String(current?.state ?? "open"),
+        queued
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/:id/retests", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => Number(row.finding_id) === id).sort((a, b) => Number(b.id) - Number(a.id));
+      return c.json({ retests: rows.map(retestDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/findings/:id/retests", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const body = await c.req.json().catch(() => ({}));
+      const notes = String(body?.notes ?? "").trim();
+      if (runeCount(notes) > MAX_RETEST_NOTES_RUNES) {
+        return c.json({ error: `\u590D\u6D4B\u8865\u5145\u8BF4\u660E\u6700\u591A ${MAX_RETEST_NOTES_RUNES} \u4E2A\u5B57\u7B26` }, 400);
+      }
+      const result = await enqueueFindingRetest(id, notes);
+      return c.json(result, result.created ? 202 : 200);
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/activity/stream", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const explorationId = Number(task.exploration_id);
+      const intentRaw = String(c.req.query("intent") ?? "").trim();
+      const intentId = intentRaw && Number.isFinite(Number(intentRaw)) ? Number(intentRaw) : null;
+      let since = Math.max(0, Math.floor(Number(c.req.query("since") ?? 0) || 0));
+      const lastEventId = c.req.header("last-event-id");
+      if (lastEventId && Number.isFinite(Number(lastEventId))) since = Math.max(0, Math.floor(Number(lastEventId)));
+      const encoder = new TextEncoder();
+      const signal = c.req.raw.signal;
+      let timer;
+      let closed = false;
+      let lastPing = Date.now();
+      const stream = new ReadableStream({
+        start(controller) {
+          const stop = () => {
+            if (closed) return;
+            closed = true;
+            if (timer) clearInterval(timer);
+            timer = void 0;
+            try {
+              controller.close();
+            } catch {
+            }
+          };
+          const send = (chunk) => {
+            if (closed) return;
+            try {
+              controller.enqueue(encoder.encode(chunk));
+            } catch {
+              stop();
+            }
+          };
+          const emit = (row) => send(`id: ${Number(row.id)}
+data: ${JSON.stringify(activityDto(row))}
+
+`);
+          const pump = async () => {
+            const rows = (await operations.writer.list(ACTIVITY)).filter((row) => Number(row.exploration_id) === explorationId).filter((row) => Number(row.id) > since).filter((row) => intentId == null || Number(row.node_id) === intentId).sort((a, b) => Number(a.id) - Number(b.id));
+            for (const row of rows) {
+              if (closed) return;
+              if (Number(row.id) <= since) continue;
+              since = Number(row.id);
+              emit(row);
+            }
+          };
+          signal?.addEventListener?.("abort", stop, { once: true });
+          void (async () => {
+            try {
+              await pump();
+            } catch {
+              stop();
+              return;
+            }
+            if (closed) return;
+            timer = setInterval(() => {
+              void (async () => {
+                if (closed) return;
+                try {
+                  await pump();
+                } catch {
+                  stop();
+                  return;
+                }
+                if (Date.now() - lastPing >= STREAM_PING_MS) {
+                  lastPing = Date.now();
+                  send(": ping\n\n");
+                }
+              })();
+            }, STREAM_POLL_MS);
+            timer.unref?.();
+          })();
+        },
+        cancel() {
+          closed = true;
+          if (timer) clearInterval(timer);
+          timer = void 0;
+        }
+      });
+      return new Response(stream, {
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-cache, no-transform",
+          connection: "keep-alive",
+          "x-accel-buffering": "no"
+        }
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/activity/:seq", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "no task" }, 404);
+      const seq = Number(c.req.param("seq"));
+      if (!Number.isFinite(seq) || seq <= 0) return c.json({ error: "bad seq" }, 400);
+      const row = await operations.writer.readRecord(ACTIVITY, String(seq));
+      if (!row || Number(row.exploration_id) !== Number(task.exploration_id)) return c.json({ detail: "" });
+      return c.json({ detail: String(row.detail ?? "") });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+}
+
 // src/routes.ts
 var api = new Hono3();
+register(api);
 api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
 api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
 api.get("/api/agents/:key", async (c) => {
@@ -30872,7 +32039,7 @@ api.patch("/api/exploration/findings/:id", async (c) => {
   try {
     const record2 = await operations.patchFinding(c.req.param("id"), { status: body.status, severity: body.severity });
     store.invalidate?.(["findings"]);
-    return c.json(findingDto(record2));
+    return c.json(findingDto2(record2));
   } catch (error62) {
     const status = error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400;
     return c.json({ error: String(error62?.message ?? error62) }, status);
@@ -30980,7 +32147,7 @@ api.post("/api/assets/import", async (c) => {
   }
 });
 api.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
-var findingDto = (row) => ({
+var findingDto2 = (row) => ({
   traffic_count: 0,
   evidence_version: 0,
   report_evidence_version: 0,
@@ -31001,7 +32168,7 @@ api.get("/api/exploration/findings", async (c) => {
   const limit = c.req.query("limit");
   if (page == null && limit == null) {
     const rows2 = await store.findings.list(500);
-    return c.json(rows2.map(findingDto));
+    return c.json(rows2.map(findingDto2));
   }
   const size = Math.min(Number(limit ?? 20) || 20, 200);
   const current = Math.max(Number(page ?? 1) || 1, 1);
@@ -31020,7 +32187,7 @@ api.get("/api/exploration/findings", async (c) => {
   }
   const total = rows.length;
   const pageRows = rows.slice((current - 1) * size, current * size);
-  return c.json({ items: pageRows.map(findingDto), total, page: current, page_size: size });
+  return c.json({ items: pageRows.map(findingDto2), total, page: current, page_size: size });
 });
 api.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
 api.get("/api/exploration/findings/:id", async (c) => {
@@ -31028,7 +32195,7 @@ api.get("/api/exploration/findings/:id", async (c) => {
   const row = await store.findings.get(id);
   if (!row) return c.json({ error: "not found" }, 404);
   return c.json({
-    ...findingDto(row),
+    ...findingDto2(row),
     ...row.report ? { report: row.report } : {}
   });
 });
