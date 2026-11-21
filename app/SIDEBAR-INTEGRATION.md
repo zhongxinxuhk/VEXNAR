@@ -21,10 +21,11 @@ dsh 新会话首屏
 
 dsh 侧边栏
 ├─ 概览        → main: vexnar-overview （Web /dashboard 复刻，整页）
-├─ 执行台      → main: vexnar-workbench
-│                 ├─ 任务      （仪表盘计数 + 列表 + 详情）
-│                 ├─ 发现      （按任务范围过滤的漏洞列表 + 详情）
-│                 └─ 工具执行  （运行器 + 该任务的执行记录流）
+├─ 任务        → main: vexnar-tasks
+│                 ├─ 任务      （KPI 计数 + 可筛选分页清单 + 任务详情）
+│                 └─ 发现      （严重度/状态/任务/关键字筛选 + 分页 + 详情）
+│                 任务详情内：目标 / 意图 / 节点 / 覆盖度 / 该任务的发现 /
+│                 工具运行器 / 该任务的执行记录流（activity/history）
 └─ 流量        → main: vexnar-traffic（Yak 内核 History）
 
 dsh 设置页
@@ -51,7 +52,8 @@ dsh 设置页
 | 工作空间 | **dsh 原生 workspace/文件面板** | 本地文件 | 复用 |
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
-| 任务 / 发现 / 工具执行 | 执行台（三页签共享任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=`、`/api/exploration/activity/history` | 已接 |
+| 任务 / 发现 | 任务面板（清单 + 发现页签，共用任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=&severity=&status=&q=&page=&limit=` | 已接 |
+| 工具执行 / 执行记录 | 任务详情内（按任务落库） | `POST /api/engine/tools/run`、`/api/exploration/activity/history` | 已接 |
 | 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
@@ -71,8 +73,10 @@ dsh 设置页
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
-- 执行台：任务 / 发现 / 工具执行 共用顶部任务范围；工具执行页签在选择工具与 target 后按
-  该任务落库，下方直接列出该任务的执行记录（planner / main 逐步，含工具与结果）；
+- 任务面板：清单支持状态筛选、关键字搜索与分页（`/api/tasks` 一次返回全部任务，筛选分页
+  在客户端做）；发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，分页走 core 与 Go 的
+  `page`+`limit`；任务详情里给出该任务的发现、工具运行器（结果按任务落库）与该任务的执行
+  记录（planner / main 逐步，含工具与结果）；
 - 任务详情：暂停/恢复/归档按钮；
 - 流量：在 dsh 内读取 Yak 内核 History。会话流量按钮和 Agent 工具使用会话绑定的本地项目。详见 [Yak 内核流量 History](docs/YAK-HISTORY.md)。
 - 拦截规则：规则列表与删除（同样代理 Go）；

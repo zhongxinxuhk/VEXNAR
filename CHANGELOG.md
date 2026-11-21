@@ -14,18 +14,27 @@
 
 #### 变更
 
-- **侧边栏「任务 / 发现 / 工具执行」合成一个「执行台」**（`main: vexnar-workbench`）：三个页签共用面板
-  顶部的任务范围，任务列表点进去就是这个任务的发现与执行记录，不用三次重新筛；工具执行页签在选择
-  target 后按该任务落库，下方直接列出该任务的 `activity/history` 执行流。
+- **侧边栏改成「任务」一个入口**（`main: vexnar-tasks`）：面板是「任务 / 发现」两个页签，任务是对象
+  （清单 + 详情），发现是它的产出，两者共用任务范围。任务清单支持状态筛选、关键字搜索与分页；
+  发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，分页走 `page`+`limit`。
+- **工具执行下沉到任务详情**：选中任务后即可跑 nmap/httpx/ffuf/sqlmap（结果按该任务落库），
+  下方列出该任务的 `activity/history` 执行记录（planner / main 逐步，含工具与结果）。执行记录属于
+  任务的从属数据，不再占顶层入口。
 - **设置里「MCP」与「工具」合成「工具与 MCP」**（`settings.section: vexnar-tools-mcp`）：工具和提供工具的
   MCP server 是同一件事的两半，分两节只会让人来回切。
 
+#### 接口
+
+- **任务面板用到的每条接口在 Go 与 core 两侧一致**，并在 `app/vexnar-core/compare-domain.mjs` 里加了
+  对账项：`/api/exploration/findings?task_id=&severity=&status=&q=&page=&limit=` 在两边返回同一个 `total`
+  与同一批 `finding_id`，行字段（`finding_id`/`task_id`/`vulnclass`/`severity`/`status`/`summary`）逐字段相等。
+
 #### 移除的功能
 
-- **移除「日志」入口**（`vexnar-logs`）：它列的就是 `activity/history` 里 planner / main 的每一步，与执行台
-  工具执行页签里的执行记录是同一批数据；独立入口只是同一件事的第二个视图。
-- **移除「资产同步」设置节**（`vexnar-asset-sync`）：JSON 导入并入资产面板的「导入」页签，导入完成后自动
-  回到列表。
+- **移除「日志」入口**（`vexnar-logs`）：它列的就是 `activity/history` 里 planner / main 的每一步，与任务详情
+  里的执行记录是同一批数据；独立入口只是同一件事的第二个视图。
+- **移除「资产同步」设置节**（`vexnar-asset-sync`）：遗留资产导入入口已随资产面板一起退出 dsh 客户端，
+  导入由 core 的 `/api/assets` 承担。
 
 ### Web 控制台（执行台）
 
