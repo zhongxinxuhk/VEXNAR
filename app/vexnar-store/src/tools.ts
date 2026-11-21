@@ -6,7 +6,7 @@ import type { storeOperations } from './operations.js'
 
 type Ops = ReturnType<typeof storeOperations>
 
-export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap' | 'nuclei' | 'katana' | 'subfinder'
+export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap' | 'nuclei' | 'katana' | 'subfinder' | 'gobuster' | 'nikto' | 'openssl'
 
 export interface ToolSpec {
   name: ToolName
@@ -87,6 +87,52 @@ const templates: Record<ToolName, ToolSpec> = {
         if (row) results.push({ path: row[1], status: Number(row[2]), size: row[3] ? Number(row[3]) : 0 })
       }
       return { results }
+    }
+  },
+  gobuster: {
+    name: 'gobuster',
+    description: '目录枚举',
+    build(target, extra = {}) {
+      return { command: 'gobuster', args: ['dir', '-u', target, '-w', String(extra.wordlist ?? '/usr/share/wordlists/dirb/common.txt'), '-q', '--no-error'] }
+    },
+    parse(output) {
+      const results = []
+      for (const line of output.split('\n')) {
+        const row = line.match(/^(\/\S*)\s+\(Status:\s*(\d+)\)(?:\s+\[Size:\s*(\d+)\])?/)
+        if (row) results.push({ path: row[1], status: Number(row[2]), size: row[3] ? Number(row[3]) : 0 })
+      }
+      return { results }
+    }
+  },
+  nikto: {
+    name: 'nikto',
+    description: 'Web 服务器扫描',
+    build(target) {
+      return { command: 'nikto', args: ['-h', target, '-nointeractive', '-ask', 'no'] }
+    },
+    parse(output) {
+      const findings = []
+      for (const line of output.split('\n')) {
+        const text = line.replace(/^\+\s*/, '').trim()
+        if (!text || text.startsWith('Target') || text.startsWith('Start Time') || text.startsWith('End Time')) continue
+        const osvdb = text.match(/OSVDB-(\d+)/)
+        if (text.includes(':') || osvdb) findings.push({ text, osvdb: osvdb?.[1] ?? '' })
+      }
+      return { findings }
+    }
+  },
+  openssl: {
+    name: 'openssl',
+    description: 'TLS 证书探测',
+    build(target) {
+      return { command: 'openssl', args: ['s_client', '-connect', target, '-servername', target.split(':')[0], '-showcerts'] }
+    },
+    parse(output) {
+      const subject = output.match(/subject=\s*(.+)/)?.[1]?.trim() ?? ''
+      const issuer = output.match(/issuer=\s*(.+)/)?.[1]?.trim() ?? ''
+      const notBefore = output.match(/Not Before:\s*(.+)/)?.[1] ?? ''
+      const notAfter = output.match(/Not After\s*:\s*(.+)/)?.[1] ?? ''
+      return { subject, issuer, not_before: notBefore, not_after: notAfter, has_cert: Boolean(subject) }
     }
   },
   katana: {
@@ -228,6 +274,26 @@ export async function persistToolResult(ops: Ops, taskId: string, nodeId: string
       })
       created.push({ kind: 'finding', id: finding.finding_id })
     }
+  }
+  if (name === 'gobuster') {
+    for (const row of parsed.results ?? []) {
+      const url = /^https?:/.test(row.path) ? row.path : `${String(raw).match(/https?:\/\/[^\s]+/)?.[0]?.replace(/\/$/, '') ?? ''}${row.path}`
+      const asset = await ops.addAsset(taskId, { type: 'endpoint', url, status_code: row.status })
+      created.push({ kind: 'asset', id: asset.id })
+    }
+  }
+  if (name === 'nikto') {
+    for (const row of (parsed.findings ?? []).slice(0, 20)) {
+      const finding = await ops.reportFinding({
+        task_id: taskId, intent_id: nodeId, vulnclass: row.osvdb ? `OSVDB-${row.osvdb}` : 'nikto', severity: 'medium',
+        summary: row.text.slice(0, 300), evidence: row.text, worker: 'engine'
+      })
+      created.push({ kind: 'finding', id: finding.finding_id })
+    }
+  }
+  if (name === 'openssl' && parsed.has_cert) {
+    const asset = await ops.addAsset(taskId, { type: 'service', service_name: 'tls', domain: parsed.subject.replace(/^.*CN\s*=\s*/, ''), extra: { issuer: parsed.issuer, not_before: parsed.not_before, not_after: parsed.not_after } })
+    created.push({ kind: 'asset', id: asset.id })
   }
   if (name === 'katana') {
     for (const row of parsed.urls ?? []) {
