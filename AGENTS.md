@@ -23,6 +23,26 @@ command, network, MCP, plugin, or SCNet permissions.
   behavior on that build.
 - Local commit and merge instructions do not authorize remote pushes or history rewrites.
 
+## Multi-agent branch workflow
+
+Several agents develop this repository concurrently. One shared checkout and one shared history are
+what keep that work mergeable; a copied tree silently forks it.
+
+- Every feature, fix or chore starts on its own branch off the current `main`
+  (`git switch -c <type>/<topic>`, `type` ∈ feat/fix/chore/docs/refactor/test) before the first
+  edit. One branch carries one problem, so it can be reverted on its own.
+- A finished branch is committed, integrated into local `main` as described in "Commit and merge
+  completed changes", verified there, and then deleted (`git branch -d`). Do not leave finished
+  branches behind for someone else to clean up.
+- Never copy, clone or export the project, or a subtree of it, into another directory and develop
+  there. Work done outside this repository has no branch, no shared history and no merge path, so
+  it silently drops or reverts other agents' changes. If a separate checkout is genuinely needed,
+  use `git worktree add` against this same repository so branch and history stay shared.
+- Do not commit feature work directly on `main`, and do not rewrite or force-push shared branches.
+- If integration is blocked — conflict with another agent's in-flight work, or required checks that
+  failed or were skipped — stop and report the blocker instead of working around it in a copied
+  tree.
+
 ## Model access belongs to the Go backend
 
 VEXNAR's Go service is the single source of truth for model integration. The desktop and web
