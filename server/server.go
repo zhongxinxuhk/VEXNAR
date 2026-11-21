@@ -3532,6 +3532,7 @@ func (s *Server) settingsPayload() map[string]any {
 		"web_search_proxy":         proxy,                       // 独立出口代理(http/https/socks5)，空=直连
 		"global_proxy":             s.m.GlobalProxy(),           // 全局出口代理(http/https/socks5)，所有目标流量走它，空=直连
 		"proxy_default_pool":       s.m.EgressPoolID(),          // 代理池默认池 id(0=未配置，回落 global_proxy)
+		"egress_listener_auth":     s.m.ListenerAuthEnabled(),   // 回环出口端口是否强制代理认证(浏览器需关闭)
 		"proxy_pool_enabled":       s.m.Egress() != nil,         // 内置代理池是否可用(初始化失败时为 false)
 		"python_interpreter":       strings.TrimSpace(pyStored), // 用户/自动设的值(空=用运行时检测)
 		"workers":                  s.m.Workers(),               // 并发工作 agent 数(默认3)；对之后启动的任务生效
@@ -3629,6 +3630,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		NotifyEnabled    *bool   `json:"notify_enabled"`
 		NotifyBaseURL    *string `json:"notify_public_base_url"`
 		NotifyDigestMins *int    `json:"notify_digest_interval_min"`
+		// 出口端口鉴权：开启后回环出口监听要求 Proxy-Authorization（多用户主机）；
+		// 浏览器 MCP 无法携带凭据，开启后浏览器出口会失效。
+		EgressListenerAuth *bool `json:"egress_listener_auth"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, err.Error())
@@ -3642,6 +3646,12 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.ConstraintsInjectWorker != nil {
 		if err := s.m.pg.SetBool(settingConstraintsInjectWorker, *req.ConstraintsInjectWorker); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.EgressListenerAuth != nil {
+		if err := s.m.SetListenerAuth(*req.EgressListenerAuth); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}

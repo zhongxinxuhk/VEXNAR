@@ -6,6 +6,7 @@ import {
   CpuIcon,
   FlaskConicalIcon,
   KeyboardIcon,
+  LockIcon,
   RadioTowerIcon,
   SearchIcon,
   ShieldAlertIcon,
@@ -39,6 +40,7 @@ export default function SystemSettingsPage() {
   const [proxyInput, setProxyInput] = React.useState("");
   const [savingProxy, setSavingProxy] = React.useState(false);
   const [globalProxyInput, setGlobalProxyInput] = React.useState("");
+  const [listenerAuth, setListenerAuth] = React.useState(false);
   const [savingGlobalProxy, setSavingGlobalProxy] = React.useState(false);
   const [testing, setTesting] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
@@ -66,6 +68,7 @@ export default function SystemSettingsPage() {
     setTavilyKeySet(!!s.tavily_key_set);
     setProxyInput(s.web_search_proxy ?? "");
     setGlobalProxyInput(s.global_proxy ?? "");
+    setListenerAuth(!!s.egress_listener_auth);
     setPyInterp(s.python_interpreter ?? "");
     setWorkers(String(s.workers ?? 3));
     setInjectPlanner(s.constraints_inject_planner !== false);
@@ -261,6 +264,17 @@ export default function SystemSettingsPage() {
   };
 
   // Run a real "test" search ("test") against the CURRENT form values (backend +
+  const saveListenerAuth = (on: boolean) => {
+    setListenerAuth(on);
+    api
+      .setSettings({ egress_listener_auth: on })
+      .then(() => toast.success(on ? "已要求出口端口认证（浏览器出口将失效）" : "出口端口恢复免认证（仅回环）"))
+      .catch((e) => {
+        setListenerAuth(!on);
+        toast.error(e instanceof Error ? e.message : "保存失败");
+      });
+  };
+
   // proxy + entered key), falling back to saved values server-side. Toasts result.
   const runTest = () => {
     setTesting(true);
@@ -389,6 +403,26 @@ export default function SystemSettingsPage() {
             <p className="text-muted-foreground text-xs">
               {globalProxyInput.trim() ? "已配置 · 所有目标流量经此代理出网" : "未配置 · 目标流量直连出网"}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-4 break-inside-avoid md:mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LockIcon className="size-4" />
+              出口端口鉴权
+            </CardTitle>
+            <CardDescription>
+              回环（127.0.0.1）出口端口默认免认证，便于浏览器直接使用；同一台机器有多个系统用户时，建议开启本项，要求
+              <code>Proxy-Authorization</code> 才能使用出口。开启后 <b>浏览器 MCP 的出口会失效</b>（Chromium
+              无法携带代理凭据），命令行工具仍可用 <code>sess_&lt;会话&gt;:&lt;口令&gt;</code> 访问。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between gap-4">
+            <Label htmlFor="egress-listener-auth" className="font-normal text-muted-foreground text-sm">
+              要求出口端口代理认证
+            </Label>
+            <Switch id="egress-listener-auth" checked={listenerAuth} onCheckedChange={saveListenerAuth} />
           </CardContent>
         </Card>
 

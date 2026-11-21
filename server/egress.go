@@ -734,6 +734,25 @@ func (s *Server) agentEgressProxy(taskID string, role string) (addr, ca string) 
 	return ep.URL, ""
 }
 
+// ensureTaskEgressSession registers (idempotently) the worker session of a task so
+// a browser-bound listener can resolve it before the first agent request.
+func (s *Server) ensureTaskEgressSession(taskID int64) {
+	mgr := s.m.Egress()
+	if mgr == nil {
+		return
+	}
+	poolID := int64(0)
+	if b, err := mgr.Store().Binding(context.Background(), taskID); err == nil && b != nil {
+		poolID = b.PoolID
+	} else if def := s.m.EgressPoolID(); def > 0 {
+		poolID = def
+	}
+	if poolID == 0 {
+		return
+	}
+	_, _ = mgr.Endpoint(egress.SessionSpec{Key: taskSessionKey(taskID, "worker"), TaskID: taskID, Role: "worker", PoolID: poolID})
+}
+
 // revokeTaskEgress drops every egress session/lease of a deleted task.
 func (s *Server) revokeTaskEgress(taskID int64) {
 	mgr := s.m.Egress()
@@ -741,6 +760,7 @@ func (s *Server) revokeTaskEgress(taskID int64) {
 		return
 	}
 	mgr.RevokeTask(taskID)
+	s.m.DeactivateBrowserTask(taskID)
 	s.m.closeTaskRecordings(taskID)
 	_ = mgr.Store().DeleteBinding(context.Background(), taskID)
 }

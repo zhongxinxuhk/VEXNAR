@@ -569,6 +569,13 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	// OAST：每任务一套回调工具（token 只能签发给本任务）。未配置存储时返回 nil，
 	// 工具不出现，模型也就不会假装能用。
 	oastTaskID, _ := strconv.ParseInt(t.ID, 10, 64)
+	// 任务绑定了池：让浏览器 MCP 指向该任务的出口（单任务生效；多任务时回落默认池）。
+	if s.m.Egress() != nil {
+		if b, err := s.m.Egress().Store().Binding(context.Background(), oastTaskID); err == nil && b != nil {
+			s.ensureTaskEgressSession(oastTaskID)
+			s.m.ActivateBrowserTask(oastTaskID)
+		}
+	}
 	oastTools := agent.NewOASTTools(s.oastStore(), oastTaskID, s.oastBaseURL)
 	// 代理池工具：每角色一个会话键，和该角色 bash/WebFetch 的出口一致。
 	egWorker := agent.NewEgressTools(s.m.Egress(), oastTaskID, taskSessionKey(oastTaskID, "worker"))

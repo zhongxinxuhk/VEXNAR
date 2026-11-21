@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	xproxy "golang.org/x/net/proxy"
@@ -96,5 +97,48 @@ func TestFixedProxyURL(t *testing.T) {
 	m.Revoke("global:default")
 	if _, err := proxyClient(t, fixed).Get(target.URL); err == nil {
 		t.Fatal("fixed listener still serving after session revoke")
+	}
+}
+
+// TestFixedProxyURLRequiresAuth is the multi-user hardening: once the operator
+// requires listener auth, a credential-free browser port answers 407, while the
+// same listener accepts the session credential.
+func TestFixedProxyURLRequiresAuth(t *testing.T) {
+	socksAddr, closeFn := socks5Fixture(t)
+	defer closeFn()
+	m := newTestManager(t, socksAddr, nil)
+	ep, err := m.Endpoint(SessionSpec{Key: "task:41:worker", TaskID: 41, Mode: ModeSticky})
+	if err != nil {
+		t.Fatalf("Endpoint: %v", err)
+	}
+	m.SetRequireListenerAuth(true)
+	fixed, err := m.FixedProxyURL("task:41:worker")
+	if err != nil {
+		t.Fatalf("FixedProxyURL: %v", err)
+	}
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("authed-ok"))
+	}))
+	defer target.Close()
+
+	// No credential → must be rejected, not silently served.
+	resp, err := proxyClient(t, fixed).Get(target.URL)
+	if err == nil {
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusProxyAuthRequired {
+			t.Fatalf("status = %d, want 407", resp.StatusCode)
+		}
+	}
+
+	pu, _ := url.Parse(ep.URL)
+	authed := &url.URL{Scheme: "http", Host: strings.TrimPrefix(fixed, "http://"), User: pu.User}
+	resp, err = proxyClient(t, authed.String()).Get(target.URL)
+	if err != nil {
+		t.Fatalf("authenticated GET: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if string(body) != "authed-ok" {
+		t.Fatalf("body = %q", body)
 	}
 }
