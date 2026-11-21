@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -19,6 +19,27 @@ const store = await openStore()
 const meta = metaStore(storeRoot())
 const operations = storeOperations(storeRoot())
 const engine = createEngine(store as any, operations as any)
+const scheduler = createScheduler({ concurrency: 4 })
+const triggerStops: Array<() => void> = []
+for (const agent of await meta.table<any[]>('agents')) {
+  try {
+    const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
+      const channels = await meta.table<any[]>('notify')
+      if (!channels.length) return
+      await createNotifier(channels).dispatch({
+        kind: `trigger:${fire.event}`,
+        title: `agent ${agent.key} · ${fire.event}`,
+        text: fire.message || fire.event,
+        task_id: (fire.payload as any)?.task_id ? String((fire.payload as any).task_id) : undefined,
+        finding_id: (fire.payload as any)?.finding_id ? String((fire.payload as any).finding_id) : undefined
+      })
+    })
+    triggerStops.push(stop)
+  } catch {
+    // a broken trigger row must not stop the API
+  }
+}
+process.once('SIGTERM', () => { for (const stop of triggerStops) stop(); scheduler.stop() })
 await operations.writer.recover().catch(() => {})
 const releaseStoreLock = await operations.writer.lock()
 process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
