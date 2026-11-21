@@ -25,14 +25,13 @@ dsh 侧边栏
 │                 ├─ 任务      （仪表盘计数 + 列表 + 详情）
 │                 ├─ 发现      （按任务范围过滤的漏洞列表 + 详情）
 │                 └─ 工具执行  （运行器 + 该任务的执行记录流）
-└─ 流量        → main: vexnar-traffic（打开官方 Yakit）
+└─ 流量        → main: vexnar-traffic（Yak 内核 History）
 
 dsh 设置页
 ├─ Agent 管理  → settings.section: vexnar-agents
 ├─ 工具与 MCP  → settings.section: vexnar-tools-mcp（工具 / MCP server 两个页签）
 ├─ 通知推送    → settings.section: vexnar-notify
 ├─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
-└─ 审批记录    → settings.section: vexnar-approvals
 ```
 
 ### 为什么合并
@@ -53,7 +52,7 @@ dsh 设置页
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
 | 任务 / 发现 / 工具执行 | 执行台（三页签共享任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=`、`/api/exploration/activity/history` | 已接 |
-| 流量 | 原生 Yakit 窗口与会话项目关联 | `POST /api/yakit/open` | 已接 |
+| 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
 | MCP / 工具 / Skill | 「工具与 MCP」设置节 | `/api/mcp`、`/api/tools` | 骨架 |
@@ -75,7 +74,7 @@ dsh 设置页
 - 执行台：任务 / 发现 / 工具执行 共用顶部任务范围；工具执行页签在选择工具与 target 后按
   该任务落库，下方直接列出该任务的执行记录（planner / main 逐步，含工具与结果）；
 - 任务详情：暂停/恢复/归档按钮；
-- 流量：直接打开官方 Yakit。dsh 会话标题栏的 Yakit 动作会关联当前本地项目。详见 [官方 Yakit 联动](docs/YAKIT-NATIVE-INTEGRATION.md)。
+- 流量：在 dsh 内读取 Yak 内核 History。会话流量按钮和 Agent 工具使用会话绑定的本地项目。详见 [Yak 内核流量 History](docs/YAK-HISTORY.md)。
 - 拦截规则：规则列表与删除（同样代理 Go）；
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。
 

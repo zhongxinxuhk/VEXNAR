@@ -1256,6 +1256,135 @@ body[data-ds-dark-theme] {
   .vx-ov-draw,
   .vx-ov-skeleton { animation: none; }
 }
+
+
+.vx-yak-history {
+  font-size: 13px;
+  min-width: 0;
+}
+
+.vx-yak-filters, .vx-yak-pages, .vx-yak-packet header, .vx-yak-detail > header, .vx-yak-dialog > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.vx-yak-filters input:not([type="checkbox"]) {
+  width: 115px;
+}
+
+.vx-yak-filters input[aria-label="URL"] {
+  width: min(245px, 100%);
+}
+
+.vx-yak-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+  border: 1px solid var(--vx-border);
+  border-radius: 8px;
+}
+
+.vx-yak-grid aside {
+  padding: 10px;
+  min-width: 0;
+  border-inline-end: 1px solid var(--vx-border);
+}
+
+.vx-yak-grid aside button, .vx-yak-url {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+
+.vx-yak-grid aside button {
+  margin-top: 6px;
+}
+
+.vx-yak-list {
+  min-width: 0;
+}
+
+.vx-yak-table {
+  overflow: auto;
+  max-height: 46vh;
+}
+
+.vx-yak-table table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.vx-yak-table th, .vx-yak-table td {
+  text-align: start;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--vx-border);
+}
+
+.vx-yak-table th {
+  position: sticky;
+  top: 0;
+  background: var(--vx-surface);
+}
+
+.vx-yak-table tr[data-selected="true"] {
+  background: var(--vx-surface-sunken);
+}
+
+.vx-yak-url {
+  max-width: 340px;
+}
+
+.vx-yak-pages, .vx-yak-table > p {
+  padding: 8px 10px;
+}
+
+.vx-yak-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vx-yak-packet {
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 8px;
+}
+
+.vx-yak-packet pre {
+  overflow: auto;
+  min-height: 80px;
+  max-height: 300px;
+  padding: 10px;
+  background: var(--vx-surface-sunken);
+}
+
+.vx-yak-dialog {
+  width: min(1100px, 91vw);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+}
+
+@media (max-width: 720px) {
+  .vx-yak-grid, .vx-yak-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vx-yak-grid aside button {
+    display: inline-block;
+    margin-inline-end: 4px;
+  }
+}
 `
 
 /** Inject the stylesheet once. Returns a disposer that removes it. */

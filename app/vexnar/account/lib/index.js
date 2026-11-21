@@ -25,13 +25,14 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { registerYakHistoryTools } from './yak-history-tools.js'
 
 const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'logo.png')
 let logoBytes = null
 
 export const name = '@vexnar/dsh-account'
 
-export const inject = ['webServer', 'credentials', 'settings', 'connection', 'sessions']
+export const inject = ['webServer', 'credentials', 'settings', 'connection', 'sessions', 'tools']
 
 const KEY_REF = 'VEXNAR_NEWAPI_KEY'
 const PROVIDER = 'vexnar'
@@ -334,6 +335,7 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
+  registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
     const app = import('./core-embedded.js')
     ctx.effect(() => ctx.webServer.register({
@@ -352,8 +354,8 @@ export function apply(ctx) {
               return
             }
           }
-          const openingYakit = req.method === 'POST' && url.pathname === '/api/yakit/open'
-          const limit = openingYakit ? 8192 : url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
+          const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
+          const limit = readingYakHistory ? 8192 : url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
           const chunks = []
           let size = 0
           for await (const chunk of req) {
@@ -371,14 +373,14 @@ export function apply(ctx) {
             else if (value !== undefined) headers.set(key, value)
           }
           let body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
-          if (openingYakit) {
+          if (readingYakHistory) {
             let input
             try { input = JSON.parse(body.toString('utf8')) } catch {}
             if (!input || Array.isArray(input) || typeof input !== 'object' ||
-                Object.keys(input).some(key => key !== 'session_id') ||
+                ('workspace' in input || 'agent' in input) ||
                 (input.session_id !== undefined && (typeof input.session_id !== 'string' || !input.session_id))) {
               res.writeHead(400, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: '无效的 Yakit 会话请求' }))
+              res.end(JSON.stringify({ error: '无效的流量会话请求' }))
               return
             }
             // The Session header owns the original project. An Agent changing
@@ -389,7 +391,8 @@ export function apply(ctx) {
               res.end(JSON.stringify({ error: '当前会话没有可用的本地项目' }))
               return
             }
-            body = Buffer.from(JSON.stringify({ workspace }))
+            delete input.session_id
+            body = Buffer.from(JSON.stringify({ ...input, workspace }))
           }
           const request = new Request(url, { method: req.method, headers, body })
           const localPeer = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)

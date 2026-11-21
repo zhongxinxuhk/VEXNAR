@@ -81,8 +81,8 @@ test('apply registers every surface it owns', () => {
   const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
-    'conversation.session.header.actions:vexnar-yakit',
-    'conversation.hero.options:vexnar-yakit',
+    'conversation.session.header.actions:vexnar-yak-history',
+    'conversation.hero.options:vexnar-yak-history',
     ...['overview', 'workbench', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
     ...['agents', 'tools-mcp', 'notify', 'intercept']

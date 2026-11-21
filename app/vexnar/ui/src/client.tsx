@@ -2,10 +2,11 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useEffect, useRef, useState } from 'react'
+import { createElement as h, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
+import { YakHistory, SessionTrafficAction } from './yak-history.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -850,47 +851,8 @@ function WorkbenchPanel() {
     body)
 }
 
-function useYakitLaunch(sessionId?: string) {
-  const [state, setState] = useState<{ sessionId?: string | undefined; busy?: boolean; text?: string }>({})
-  const result = state.sessionId === sessionId ? state : {}
-
-  async function launch() {
-    setState({ sessionId, busy: true })
-    try {
-      const data = await callApi('/api/yakit/open', 'POST', { session_id: sessionId })
-      let text = '已打开 Yakit'
-      if (data.project_status === 'linked') text = `已打开 Yakit。项目：${data.project.name}`
-      if (data.project_status === 'unpaired') text = '已打开 Yakit。项目自动创建需要配置本地内核连接。'
-      if (data.project_status === 'unavailable') text = '已打开 Yakit。项目关联失败，请检查内核连接后重试。'
-      setState({ sessionId, text })
-    } catch (error) {
-      setState({ sessionId, text: String((error as Error).message) })
-    }
-  }
-
-  return { ...result, launch }
-}
-
 function TrafficPanel() {
-  const { busy, text, launch } = useYakitLaunch()
-  const attempted = useRef(false)
-  useEffect(() => {
-    if (!attempted.current) {
-      attempted.current = true
-      void launch()
-    }
-  }, [])
-  return h(PanelShell, { title: 'Yakit' },
-    h('p', { role: 'status' }, busy ? '正在打开 Yakit…' : text),
-    h('button', { type: 'button', disabled: busy, onClick: launch }, '打开 Yakit'))
-}
-
-function SessionYakitAction({ sessionId }: { sessionId?: string }) {
-  const { busy, text, launch } = useYakitLaunch(sessionId)
-  if (!sessionId) return null
-  return h('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
-    h('button', { type: 'button', disabled: busy, onClick: launch, title: '在 Yakit 中关联此会话的本地工作区' }, busy ? '打开中…' : 'Yakit'),
-    text && h('span', { role: 'status', title: text }, text))
+  return h(PanelShell, { title: '流量 History' }, h(YakHistory))
 }
 
 function AgentSettings() {
@@ -960,9 +922,9 @@ export function apply(ctx: {
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
   slots.inject('conversation.session.header.actions', () =>
-    slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-yakit' }, SessionYakitAction))
+    slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-yak-history' }, SessionTrafficAction))
   slots.inject('conversation.hero.options', () =>
-    slots.register({ name: 'conversation.hero.options', id: 'vexnar-yakit' }, SessionYakitAction))
+    slots.register({ name: 'conversation.hero.options', id: 'vexnar-yak-history' }, SessionTrafficAction))
   for (const panel of PANELS) {
     slots.inject('main', () => slots.register({ name: 'main', key: panel.id }, panel.component))
     slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon))
