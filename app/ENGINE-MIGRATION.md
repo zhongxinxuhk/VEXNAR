@@ -10,10 +10,12 @@
 本文只描述**执行引擎**（图谱、Agent 循环、工具、流量），读接口与存储见
 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。
 
-## 现状（E0 已完成）
+## 现状（E1 已完成）
 
-- 图 store 写入原语：`addNode / setNodeState / claimIntent / anchorAsset`，
-  全部走 journal + `rev`；
+- 图 store 写入原语：`addNode / setNodeState / claimIntent / reclaimExpired /
+  appendActivity / anchorAsset`，全部走 journal + `rev`；
+- 状态机白名单（非法迁移 409）、意图租约（`lease_until`）与超时回收、
+  活动流追加；
 - 漏洞上报 `report_finding`（finding + node + edge 原子提交）；
 - 目标、意图控制/重跑/消息、约束；
 - 读侧 22 项领域对账全绿。
@@ -36,9 +38,8 @@
 2. **同一数据单写者**：引擎写入 core 的 store，不并行写 PG。
 3. **可回退**：每个阶段保留 Go 对应实现，按任务切读/切写。
 
-## 下一步（E1 收尾）
+## 下一步（E2）
 
-- `claimIntent` 增加租约与超时回收；
-- 活动流 `appendActivity` 与引擎事件；
-- 节点状态机校验（`open→running→done/blocked/...`）；
-- 用 Go 的图谱行为做回放测试。
+- Agent 循环：planner 拆解目标 → 生成 intent → worker 抢占 → 工具调用 → 写回 fact/finding；
+- 模型调用只走 Go 回环网关；
+- 用 Go 的同一任务做行为回放（节点/边/活动序列）。
