@@ -67,7 +67,7 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
     return created
   }
 
-  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4) {
+  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4, options: { isCancelled?: () => boolean } = {}) {
     const claimed = await serialized(taskId, () => ops.claimIntent(taskId, worker))
     if (!claimed) return null
     const intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
@@ -76,6 +76,11 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
     let lastAsset: number | null = null
     try {
       for (let turn = 0; turn < maxTurns; turn++) {
+        if (options.isCancelled?.()) {
+          await ops.setNodeState(taskId, String(claimed.id), 'stopped').catch(() => {})
+          await ops.appendActivity(taskId, { kind: 'intent_stopped', worker, node_id: String(claimed.id), summary: 'cancelled' })
+          return { intent: Number(claimed.id), state: 'stopped' }
+        }
         const reply = await complete([
           { role: 'system', content: `你是渗透测试执行者。每回合只输出一个 JSON 动作，可用工具：
 - add_fact {"text"}

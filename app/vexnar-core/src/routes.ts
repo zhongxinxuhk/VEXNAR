@@ -754,7 +754,7 @@ api.post('/api/engine/plan', async (c) => {
 api.post('/api/engine/work', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   if (!body.task_id) return c.json({ error: 'task_id 不能为空' }, 400)
-  try { const taskId = String(body.task_id); return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? 'work#1'))) }) }
+  try { const taskId = String(body.task_id); return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? 'work#1'), 4, { isCancelled: () => taskQueue.isCancelled(taskId) })) }) }
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
 
@@ -765,7 +765,7 @@ api.post('/api/engine/queue/:taskId', async (c) => {
   const taskId = c.req.param('taskId')
   if (body.action === 'pause') taskQueue.pause(taskId)
   else if (body.action === 'resume') taskQueue.resume(taskId)
-  else if (body.action === 'cancel') return c.json({ cancelled: taskQueue.cancel(taskId) })
+  else if (body.action === 'cancel') return c.json(taskQueue.cancel(taskId))
   else return c.json({ error: 'action 需为 pause/resume/cancel' }, 400)
   return c.json({ ok: true, paused: taskQueue.pausedTasks })
 })

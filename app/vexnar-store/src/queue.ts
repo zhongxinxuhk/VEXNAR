@@ -15,6 +15,7 @@ export function createTaskQueue(options: { concurrency?: number } = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1)
   const entries: Entry[] = []
   const paused = new Set<string>()
+  const cancelled = new Set<string>()
   let active = 0
 
   function pump() {
@@ -32,6 +33,7 @@ export function createTaskQueue(options: { concurrency?: number } = {}) {
 
   return {
     enqueue(taskId: string, job: () => Promise<unknown>) {
+      cancelled.delete(taskId)
       return new Promise((resolve, reject) => {
         entries.push({ taskId, job, resolve, reject, state: 'queued' })
         pump()
@@ -40,16 +42,20 @@ export function createTaskQueue(options: { concurrency?: number } = {}) {
     pause(taskId: string) { paused.add(taskId) },
     resume(taskId: string) { paused.delete(taskId); pump() },
     cancel(taskId: string) {
-      let cancelled = 0
+      cancelled.add(taskId)
+      let queued = 0
+      let running = 0
       for (const entry of entries) {
-        if (entry.taskId === taskId && entry.state === 'queued') {
+        if (entry.taskId !== taskId) continue
+        if (entry.state === 'queued') {
           entry.state = 'cancelled'
           entry.reject(new Error('task cancelled'))
-          cancelled++
-        }
+          queued++
+        } else if (entry.state === 'running') running++
       }
-      return cancelled
+      return { queued, running }
     },
+    isCancelled(taskId: string) { return cancelled.has(taskId) },
     status() {
       return entries.map((entry) => ({ taskId: entry.taskId, state: entry.state }))
     },
