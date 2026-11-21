@@ -10,7 +10,7 @@
  * mounts the Go MCP endpoint. Go must already be running on 127.0.0.1:8787.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dshHome, readToken, resolveRuntime } from './dsh-runtime.mjs'
 
@@ -52,32 +52,11 @@ function ensureProfileDeps(profile) {
 
 if (!ensureProfileDeps(join(dshHome(), 'profiles', 'web'))) process.exit(1)
 
-/** Start vexnar-core as a sidecar; its reverse proxy is mounted by the account host plugin. */
-async function startCore() {
-  const { randomBytes } = await import('node:crypto')
-  const port = Number(process.env.VEXNAR_CORE_PORT || 8790)
-  const token = randomBytes(24).toString('hex')
-  const core = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
-    cwd: join(repoRoot, 'app', 'vexnar-core'),
-    stdio: 'inherit',
-    env: { ...process.env, PORT: String(port), VEXNAR_API_TOKEN: token, VEXNAR_GO_FALLBACK: process.env.VEXNAR_GO_FALLBACK || 'http://127.0.0.1:8787' }
-  })
-  const url = `http://127.0.0.1:${port}`
-  for (let i = 0; i < 50; i++) {
-    try {
-      const response = await fetch(`${url}/api/health`)
-      if (response.ok) return { core, url, token }
-    } catch {
-      // not listening yet
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  core.kill('SIGKILL')
-  throw new Error('vexnar-core did not become healthy')
+const profile = join(dshHome(), 'profiles', 'web')
+const embeddedSource = join(repoRoot, 'app', 'vexnar', 'account', 'lib', 'core-embedded.js')
+if (existsSync(embeddedSource)) {
+  copyFileSync(embeddedSource, join(profile, 'node_modules', '@vexnar', 'dsh-account', 'lib', 'core-embedded.js'))
 }
-
-const core = await startCore()
-console.log(`[dsh] core=${core.url}`)
 
 const child = spawn(process.execPath, [bin, ...args], {
   stdio: 'inherit',
@@ -87,15 +66,10 @@ const child = spawn(process.execPath, [bin, ...args], {
     VEXNAR_MCP_TOKEN: process.env.VEXNAR_MCP_TOKEN || readToken('mcp.token'),
   DSH_CLIENT_TITLE: 'VEXNAR',
     DSH_CLIENT_TITLE: 'VEXNAR',
-    VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken'),
-    VEXNAR_CORE_URL: core.url,
-    VEXNAR_CORE_TOKEN: core.token
+    VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken')
   }
 })
 child.on('exit', (code, signal) => {
-  core.core.kill('SIGTERM')
   if (signal) process.kill(process.pid, signal)
   else process.exit(code ?? 0)
 })
-process.on('SIGINT', () => { core.core.kill('SIGTERM'); process.exit(0) })
-process.on('SIGTERM', () => { core.core.kill('SIGTERM'); process.exit(0) })

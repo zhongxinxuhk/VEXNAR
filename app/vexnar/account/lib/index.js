@@ -2,7 +2,6 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { request as httpRequest } from 'node:http'
 
 /**
  * Host half of @vexnar/dsh-account.
@@ -335,38 +334,40 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
-  const coreUrl = process.env.VEXNAR_CORE_URL
-  const coreToken = process.env.VEXNAR_CORE_TOKEN
-  if (coreUrl) {
+  if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
+    const app = import('./core-embedded.js').then((module) => module.handle)
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/vexnar-api',
-      handler: (req, res) => {
-        const target = new URL((req.url || '/').replace(/^\/vexnar-api/, '') || '/', coreUrl)
-        const headers = { ...req.headers, host: target.host }
-        if (coreToken) headers['x-vexnar-token'] = coreToken
-        delete headers.authorization
-        const upstream = httpRequest(target, { method: req.method, headers }, (answer) => {
-          res.writeHead(answer.statusCode || 502, answer.headers)
-          answer.pipe(res)
-        })
-        upstream.on('error', () => {
+      handler: async (req, res) => {
+        try {
+          const chunks = []
+          for await (const chunk of req) chunks.push(chunk)
+          const url = new URL(req.url || '/', 'http://127.0.0.1')
+          url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
+          const headers = new Headers()
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (Array.isArray(value)) for (const item of value) headers.append(key, item)
+            else if (value !== undefined) headers.set(key, value)
+          }
+          const request = new Request(url, {
+            method: req.method,
+            headers,
+            body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
+          })
+          const response = await (await app)(request)
+          const responseHeaders = {}
+          for (const [key, value] of response.headers.entries()) responseHeaders[key] = value
+          res.writeHead(response.status, responseHeaders)
+          res.end(Buffer.from(await response.arrayBuffer()))
+        } catch (error) {
           res.statusCode = 502
           res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: 'vexnar-core unavailable' }))
-        })
-        req.pipe(upstream)
+          res.end(JSON.stringify({ error: String(error?.message || error) }))
+        }
       }
     }))
   }
-
-  ctx.effect(() => ctx.on('webserver/index-inject', (table) => {
-    table.push({ kind: 'style', text: PERMISSION_WARNING_CSS })
-    table.push({ kind: 'html', placement: 'head', html: BRAND_HEAD + '<link rel="icon" type="image/png" href="/vexnar-brand/favicon.png">' })
-    table.push({ kind: 'script', placement: 'body', text: FAVICON_SCRIPT })
-    table.push({ kind: 'script', placement: 'body', text: BRAND_SCRIPT })
-    table.push({ kind: 'script', placement: 'body', text: PERMISSION_WARNING_SCRIPT })
-  }))
 
   // Restore runs in the background: settings settles after every entry mounts,
   // so awaiting it inside apply would deadlock startup.
