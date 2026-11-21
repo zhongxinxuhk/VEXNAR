@@ -384,18 +384,29 @@ api.get('/api/tasks/:id/metrics', async (c) => {
 })
 
 // ── assets ────────────────────────────────────────────────────────────────
-const assetDto = (row: any) => ({
-  id: row.id,
-  type: row.type,
-  ...(row.company_id == null ? {} : { company_id: row.company_id }),
-  task_ids: row.task_ids ?? [],
-  ...(row.domain == null ? {} : { domain: row.domain }),
-  ...(row.root_domain == null ? {} : { root_domain: row.root_domain }),
-  ...(row.ip == null ? {} : { ip: row.ip }),
-  ...(row.port == null ? {} : { port: row.port }),
-  ...(row.url == null ? {} : { url: row.url }),
-  last_seen: row.last_seen
-})
+const ASSET_OPTIONAL = ['domain', 'root_domain', 'ip', 'c_segment', 'port', 'icp', 'bound_domains', 'open_ports',
+  'record_type', 'record_value', 'bundle_id', 'app_name', 'category', 'app_description', 'app_icp', 'url',
+  'service_type', 'service_name', 'favicon_mmh3', 'status_code', 'content_length', 'page_title', 'technologies',
+  'auth', 'method', 'params', 'extra']
+const ASSET_SOURCE = ['task_source', 'task_source_summary', 'task_source_node_id']
+
+const assetDto = (row: any) => {
+  const dto: Record<string, unknown> = { id: row.id, type: row.type }
+  if (row.company_id != null) dto.company_id = row.company_id
+  dto.task_ids = row.task_ids ?? []
+  for (const field of ASSET_OPTIONAL) {
+    const value = row[field]
+    if (value == null || value === '') continue
+    if (Array.isArray(value) && value.length === 0) continue
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) continue
+    dto[field] = value
+  }
+  dto.last_seen = row.last_seen
+  for (const field of ASSET_SOURCE) {
+    if (row[field] != null && row[field] !== '') dto[field] = row[field]
+  }
+  return dto
+}
 
 api.get('/api/assets', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 20) || 20, 200)
