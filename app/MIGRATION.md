@@ -230,6 +230,21 @@ Node 生态没有等价成熟件，三个选项：
 
 **任一项失败 → 重估排期，不进入 P1。**
 
+### P0-1 已完成（2026-11-21）
+
+[`app/spike/p0-db`](./spike/p0-db/README.md) 用 Kysely 读取 `tasks / findings /
+assets / exploration_nodes`，与运行中的 Go API 对账：
+
+```text
+[PASS] tasks: compared=232 mismatches=0
+[PASS] findings: compared=500 mismatches=0
+[PASS] assets: compared=73 mismatches=0
+[PASS] exploration_nodes: compared=100 mismatches=0
+```
+
+同时确认了两个必须带进迁移的语义：任务 `status` 由引擎计算、全局与任务内 finding
+使用不同 id（`findings.id` vs 探索节点 id）。
+
 ---
 
 ## 10. 验收标准（功能对等）

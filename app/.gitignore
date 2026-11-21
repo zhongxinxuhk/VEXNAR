@@ -10,3 +10,6 @@ vexnar/ui/node_modules/
 vexnar/ui/lib/client.cjs
 vexnar/account/node_modules/
 vexnar/account/lib/client.cjs
+
+# Spike dependencies
+spike/**/node_modules/
