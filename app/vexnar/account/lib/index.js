@@ -233,8 +233,15 @@ const PERMISSION_WARNING_SCRIPT = `
   const labels = new Set(['完全权限','Full access','フルアクセス','Acceso completo','Accès complet','Voller Zugriff','Полный доступ','Acesso total']);
   const paint = (node, full) => {
     if (!(node instanceof HTMLElement)) return;
-    if (full) { node.style.setProperty('color', '#dc2626', 'important'); node.style.setProperty('font-weight', '600', 'important'); }
-    else { node.style.removeProperty('color'); node.style.removeProperty('font-weight'); }
+    if (full) {
+      node.style.setProperty('color', '#dc2626', 'important');
+      node.style.setProperty('font-weight', '600', 'important');
+      node.dataset.vexnarFull = '1';
+    } else {
+      node.style.removeProperty('color');
+      node.style.removeProperty('font-weight');
+      delete node.dataset.vexnarFull;
+    }
   };
   const sweep = () => {
     document.querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]').forEach((node) => {
@@ -260,6 +267,10 @@ button[aria-label*="Voller Zugriff"] [class*="triggerLabel"],
 button[aria-label*="Полный доступ"] [class*="triggerLabel"],
 button[aria-label*="Acesso total"] [class*="triggerLabel"],
 button[aria-label*="完全权限"] { color: #dc2626 !important; }
+button[aria-label*="完全权限"] svg,
+button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #dc2626 !important; }
+[data-vexnar-full="1"], [data-vexnar-full="1"] svg,
+[data-vexnar-full="1"] svg * { color: #dc2626 !important; stroke: #dc2626 !important; }
 [role="menuitem"][aria-label*="完全权限"],
 [role="menuitem"][aria-label*="Full access"],
 [role="menuitem"][aria-label*="フルアクセス"],
