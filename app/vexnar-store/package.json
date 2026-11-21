@@ -1,0 +1,21 @@
+{
+  "name": "@vexnar/store",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VEXNAR storage: dsh-style JSON domain by default, PostgreSQL as an optional adapter",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "seed": "tsx seed.mjs",
+    "compare": "tsx compare.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}
