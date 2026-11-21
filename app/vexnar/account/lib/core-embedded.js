@@ -32629,7 +32629,8 @@ var routeModules = [
   { file: "./routes/agents.ts", scope: "agents" },
   { file: "./routes/workspace.ts", scope: "workspace" },
   { file: "./routes/sync.ts", scope: "scopesentry sync" },
-  { file: "./routes/update.ts", scope: "update/self-update" }
+  { file: "./routes/update.ts", scope: "update/self-update" },
+  { file: "./routes/auth.ts", scope: "auth/logs/system" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {

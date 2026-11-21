@@ -16,7 +16,9 @@ export function serviceToken() {
 
 /** Same HS256 contract as the Go service: Bearer header or cookie. */
 export const auth: MiddlewareHandler = async (c, next) => {
-  if (c.req.path === '/api/health') return next()
+  // Public: health, and the auth namespace (login/init/status self-guard;
+  // change-password verifies the caller's token inside its handler).
+  if (c.req.path === '/api/health' || c.req.path.startsWith('/api/auth/')) return next()
   const shared = process.env.VEXNAR_API_TOKEN || ''
   if (shared && c.req.header('x-vexnar-token') === shared) return next()
   const header = c.req.header('authorization') ?? ''
