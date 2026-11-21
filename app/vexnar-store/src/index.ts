@@ -12,6 +12,7 @@ export type { Store } from './types.js'
 export { metaStore } from './meta-store.js'
 export { storeOperations } from './operations.js'
 export { createEngine } from './engine.js'
+export { createRunner } from './exec.js'
 export { storeWriter, StoreConflict } from './writer.js'
 
 export function storeRoot() {
