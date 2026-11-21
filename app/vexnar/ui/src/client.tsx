@@ -5,6 +5,7 @@
 import { createElement as h, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
+import { HeroOverviewLayer, OverviewPanel } from './overview.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -387,6 +388,14 @@ function ConsoleIcon({ size }: { size?: number }): ReactNode {
     h('path', { d: 'M12 3 3 7l9 4 9-4-9-4Z' }),
     h('path', { d: 'm3 12 9 4 9-4' }),
     h('path', { d: 'm3 17 9 4 9-4' }))
+}
+
+/** 概览面板的图标：仪表盘弧 + 指针，与「任务」等列表图标区分开。 */
+function OverviewIcon({ size }: { size?: number }): ReactNode {
+  return h('svg', { width: size ?? 16, height: size ?? 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' },
+    h('path', { d: 'M5.5 19a8.5 8.5 0 1 1 13 0' }),
+    h('path', { d: 'M12 14 16 9' }),
+    h('circle', { cx: 12, cy: 14, r: 1.4 }))
 }
 
 async function callApi(path: string, method = 'GET', body?: unknown) {
@@ -889,6 +898,7 @@ function ApprovalsSettings() {
 }
 
 const PANELS = [
+  { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
   { id: 'vexnar-findings', label: '发现', order: 101, component: FindingsPanel },
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
@@ -948,6 +958,10 @@ export function apply(ctx: {
   // place because the headline has no slot of its own.
   slots.inject('conversation.hero.brand.mark', () =>
     slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
+  // 概览：hero 层在空白新会话首屏的最上方渲染仪表盘卡片，进入正常对话后只透传
+  // children，不占任何高度。
+  slots.inject('conversation.hero.frame', () =>
+    slots.register({ name: 'conversation.hero.frame', id: 'vexnar-overview', order: 20 }, HeroOverviewLayer))
   ctx.effect?.(() => installSkinBrandGuard())
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())

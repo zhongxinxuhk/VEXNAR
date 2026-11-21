@@ -350,6 +350,11 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
+.vx-ov,
+.vx-ov *,
+.vx-ov-page,
+.vx-ov-page * { box-sizing: border-box; }
+
 .vx-ov {
   container-type: inline-size;
   box-sizing: border-box;
@@ -593,7 +598,13 @@ body[data-ds-dark-theme] {
   color: var(--vx-text-faint);
 }
 
-.vx-ov-spark { margin-left: auto; flex: none; opacity: 0.92; overflow: visible; }
+.vx-ov-spark {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  opacity: 0.8;
+  pointer-events: none;
+}
 
 .vx-ov-kpi-foot {
   margin-top: 2px;
@@ -638,6 +649,8 @@ body[data-ds-dark-theme] {
 
 .vx-ov-card--trend,
 .vx-ov-card--dials { display: flex; flex-direction: column; min-height: 0; }
+
+.vx-ov-card--dials { overflow: hidden; }
 
 .vx-ov-h {
   display: flex;
@@ -729,13 +742,15 @@ body[data-ds-dark-theme] {
   border-top: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
 }
 
+/* Anchor both dials to the top of the row instead of centring them in whatever
+   height the taller trend card dictates: caption and rate line stay inside. */
 .vx-ov-dials {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: space-around;
-  gap: 6px;
-  padding-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  justify-items: center;
+  gap: 4px;
+  padding-top: 8px;
 }
 
 .vx-ov-dial {
@@ -750,6 +765,7 @@ body[data-ds-dark-theme] {
   position: relative;
   display: grid;
   place-items: center;
+  flex: none;
 }
 
 .vx-ov-dial-ring > svg { position: absolute; inset: 0; }
@@ -771,14 +787,16 @@ body[data-ds-dark-theme] {
 }
 
 .vx-ov-dial-caption {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--vx-text-dim);
 }
 
 .vx-ov-dial-sub {
-  max-width: 112px;
-  font-size: 9px;
+  max-width: 108px;
+  font-size: 8.5px;
+  line-height: 1.25;
   color: var(--vx-text-faint);
   text-align: center;
   white-space: nowrap;
@@ -1178,6 +1196,14 @@ body[data-ds-dark-theme] {
 @container (max-width: 400px) {
   .vx-ov-legend { display: none; }
   .vx-ov-kpi { flex-basis: 100%; }
+}
+
+/* 矮屏（笔记本半屏窗口）：概览只留标题栏与指标条，把高度让给输入框；
+   图表在侧边栏「概览」整页里完整呈现。 */
+@media (max-height: 780px) {
+  .vx-ov-charts { display: none; }
+  .vx-ov-kpi { padding: 8px 9px 7px; }
+  .vx-ov-num { font-size: 20px; }
 }
 
 @media (max-width: 900px) {
