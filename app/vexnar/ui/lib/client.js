@@ -342,205 +342,14 @@ body[data-ds-dark-theme] {
   --vx-chart-grid: var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.08));
 }
 
-/* The hero-frame layer wraps the conversation scroll body; in hero it stacks the
-   overview card above the transcript and keeps the scroll body flexed below. */
-.vx-ov-frame {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.vx-ov-frame[data-hero="1"] { padding-top: 12px; }
-
 .vx-ov-tone-blue { --vx-tone: var(--vx-chart-1); }
 .vx-ov-tone-violet { --vx-tone: var(--vx-chart-2); }
 .vx-ov-tone-green { --vx-tone: var(--vx-chart-3); }
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
-.vx-ov,
-.vx-ov *,
 .vx-ov-page,
 .vx-ov-page * { box-sizing: border-box; }
-
-.vx-ov {
-  container-type: inline-size;
-  box-sizing: border-box;
-  position: relative;
-  flex: none;
-  margin: 0 auto 10px;
-  width: calc(
-    100% -
-    var(--dsh-composer-side-clearance) -
-    var(--dsh-composer-side-clearance) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset)
-  );
-  max-width: calc(
-    var(--dsh-composer-card-max-width) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset)
-  );
-  border: 1px solid var(--vx-border);
-  border-radius: var(--dsw-radius-lg, 16px);
-  background: var(--vx-glass);
-  box-shadow: var(--dsw-elevation-panel, var(--vx-elevation));
-  color: var(--vx-text);
-  font-size: 12px;
-  line-height: 1.4;
-  overflow: hidden;
-  animation: vx-ov-in 0.3s var(--vx-ease) both;
-}
-
-/* One hairline of the chart hue along the top edge: reads as an instrument
-   panel rather than another message bubble. */
-.vx-ov::before,
-.vx-ov-page::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1.5px;
-  background: linear-gradient(90deg, transparent, var(--vx-chart-1), var(--vx-chart-2), transparent);
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.vx-ov-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
-}
-
-.vx-ov[data-open="0"] .vx-ov-head { border-bottom: 0; }
-
-.vx-ov-brand {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.vx-ov-brand h2 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--vx-text);
-}
-
-.vx-ov-glyph {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: 7px;
-  color: var(--vx-chart-1);
-  background: color-mix(in srgb, var(--vx-chart-1) 13%, transparent);
-}
-
-.vx-ov-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-live i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--vx-chart-3);
-  animation: vx-ov-pulse 2.6s ease-out infinite;
-}
-
-.vx-ov-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.vx-ov-updated {
-  font-size: 9.5px;
-  color: var(--vx-text-faint);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.vx-ov-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--vx-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--vx-text) 4%, transparent);
-}
-
-.vx-ov-seg > button {
-  border: 0;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--vx-text-dim);
-  font: inherit;
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 16px;
-  cursor: pointer;
-  transition: background var(--vx-dur-fast) var(--vx-ease), color var(--vx-dur-fast) var(--vx-ease);
-}
-
-.vx-ov-seg > button:hover { color: var(--vx-text); }
-
-.vx-ov-seg > button[aria-pressed="true"] {
-  background: var(--vx-surface);
-  color: var(--vx-text);
-  box-shadow: var(--dsw-shadow-lv1, 0 1px 2px rgba(0, 0, 0, 0.1));
-}
-
-.vx-ov-icon {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--vx-text-dim);
-  cursor: pointer;
-  transition: background var(--vx-dur-fast) var(--vx-ease), color var(--vx-dur-fast) var(--vx-ease);
-}
-
-.vx-ov-icon:hover { background: var(--vx-surface-sunken); color: var(--vx-text); }
-
-.vx-ov[data-open="0"] .vx-ov-icon svg { transform: rotate(-90deg); }
-.vx-ov-icon svg { transition: transform var(--vx-dur) var(--vx-ease); }
-
-.vx-ov-icon:focus-visible,
-.vx-ov-seg > button:focus-visible,
-.vx-ov-error button:focus-visible {
-  outline: 2px solid var(--vx-accent);
-  outline-offset: 1px;
-}
-
-.vx-ov-body {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 10px 12px 12px;
-}
 
 .vx-ov-kpis {
   display: flex;
@@ -640,12 +449,6 @@ body[data-ds-dark-theme] {
   flex: none;
   border-radius: 50%;
   vertical-align: middle;
-}
-
-.vx-ov-charts {
-  display: grid;
-  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
-  gap: 8px;
 }
 
 .vx-ov-card {
@@ -750,70 +553,6 @@ body[data-ds-dark-theme] {
   padding-top: 3px;
   border-top: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
 }
-
-/* Anchor both dials to the top of the row instead of centring them in whatever
-   height the taller trend card dictates: caption and rate line stay inside. */
-.vx-ov-dials {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: start;
-  justify-items: center;
-  gap: 4px;
-  padding-top: 8px;
-}
-
-.vx-ov-dial {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
-
-.vx-ov-dial-ring {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-
-.vx-ov-dial-ring > svg { position: absolute; inset: 0; }
-
-.vx-ov-dial-value {
-  font-size: 16px;
-  font-weight: 680;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: var(--vx-text);
-}
-
-.vx-ov-dial-value em {
-  margin-left: 1px;
-  font-style: normal;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-dial-caption {
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--vx-text-dim);
-}
-
-.vx-ov-dial-sub {
-  max-width: 108px;
-  font-size: 8.5px;
-  line-height: 1.25;
-  color: var(--vx-text-faint);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vx-ov-dial-arc { transition: stroke-dasharray 0.7s var(--vx-ease), stroke-dashoffset 0.7s var(--vx-ease); }
 
 .vx-ov-error {
   display: flex;
@@ -1196,44 +935,14 @@ body[data-ds-dark-theme] {
 .vx-ov-sys li b { font-family: var(--vx-mono); font-size: 10px; color: var(--vx-text); font-weight: 600; }
 .vx-ov-sys li b[data-on="1"] { color: var(--vx-chart-3); }
 
-@container (max-width: 560px) {
-  .vx-ov-charts { grid-template-columns: 1fr; }
-  .vx-ov-updated { display: none; }
-  .vx-ov-kpi { flex-basis: 132px; }
-}
-
-@container (max-width: 400px) {
-  .vx-ov-legend { display: none; }
-  .vx-ov-kpi { flex-basis: 100%; }
-}
-
-/* \u77EE\u5C4F\uFF08\u7B14\u8BB0\u672C\u534A\u5C4F\u7A97\u53E3\uFF09\uFF1A\u6982\u89C8\u53EA\u7559\u6807\u9898\u680F\u4E0E\u6307\u6807\u6761\uFF0C\u628A\u9AD8\u5EA6\u8BA9\u7ED9\u8F93\u5165\u6846\uFF1B
-   \u56FE\u8868\u5728\u4FA7\u8FB9\u680F\u300C\u6982\u89C8\u300D\u6574\u9875\u91CC\u5B8C\u6574\u5448\u73B0\u3002 */
-@media (max-height: 780px) {
-  .vx-ov-charts { display: none; }
-  .vx-ov-kpi { padding: 8px 9px 7px; }
-  .vx-ov-num { font-size: 20px; }
-}
-
 @media (max-width: 900px) {
   .vx-ov-split { grid-template-columns: 1fr; }
 }
 
 /* \u2500\u2500 motion \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-@keyframes vx-ov-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-
 @keyframes vx-ov-grow {
   from { transform: scaleY(0.03); opacity: 0.2; }
   to { transform: scaleY(1); opacity: 1; }
-}
-
-@keyframes vx-ov-pulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--vx-chart-3) 55%, transparent); }
-  70% { box-shadow: 0 0 0 5px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 @keyframes vx-card-in {
@@ -1250,11 +959,8 @@ body[data-ds-dark-theme] {
   .vx-loading::before { animation: none; }
   .vx-chip--action,
   .vx-seg > button { transition: none; }
-  .vx-ov,
-  .vx-ov-bar,
-  .vx-ov-live i { animation: none; }
+  .vx-ov-bar { animation: none; }
   .vx-ov-icon svg,
-  .vx-ov-dial-arc,
   .vx-ov-meter-track i,
   .vx-ov-row-track i,
   .vx-ov-code-track i { transition: none; }
@@ -1654,98 +1360,6 @@ function TrendChart({ points, height }) {
     ] })
   ] });
 }
-function Dial({ value, caption, sub, size = 84 }) {
-  const uid = (0, import_react.useId)().replace(/:/g, "");
-  const thickness = size >= 80 ? 9 : 7.5;
-  const radius = (size - thickness) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const ratio = Math.max(0, Math.min(1, value / 100));
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial-ring", style: { width: size, height: size }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-arc`, x1: "0", y1: "0", x2: "1", y2: "1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-chart-3)" } }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-chart-1)" } })
-        ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "circle",
-          {
-            cx: size / 2,
-            cy: size / 2,
-            r: radius,
-            fill: "none",
-            stroke: "var(--vx-chart-grid)",
-            strokeWidth: thickness
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "circle",
-          {
-            cx: size / 2,
-            cy: size / 2,
-            r: radius,
-            fill: "none",
-            stroke: `url(#${uid}-arc)`,
-            strokeWidth: thickness,
-            strokeLinecap: "round",
-            strokeDasharray: `${circumference * ratio} ${circumference}`,
-            transform: `rotate(-90 ${size / 2} ${size / 2})`,
-            className: "vx-ov-dial-arc"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-dial-value", children: [
-        Math.round(value),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "%" })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-caption", children: caption }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-sub", children: sub })
-  ] });
-}
-function SeverityDonut({ counts, size = 84 }) {
-  const thickness = size >= 80 ? 9 : 7.5;
-  const radius = (size - thickness) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const total = counts.critical + counts.high + counts.medium + counts.low;
-  let offset = 0;
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial-ring", style: { width: size, height: size }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { width: size, height: size, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { transform: `rotate(-90 ${size / 2} ${size / 2})`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: size / 2, cy: size / 2, r: radius, fill: "none", stroke: "var(--vx-chart-grid)", strokeWidth: thickness }),
-        SEVERITY_META.map((meta) => {
-          const value = counts[meta.key];
-          const length = total > 0 ? value / total * circumference : 0;
-          const drawn = Math.max(length - 2.5, 0);
-          const segment = length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "circle",
-            {
-              cx: size / 2,
-              cy: size / 2,
-              r: radius,
-              fill: "none",
-              stroke: meta.tone,
-              strokeWidth: thickness,
-              strokeLinecap: "round",
-              strokeDasharray: `${drawn} ${circumference - drawn}`,
-              strokeDashoffset: -offset,
-              className: "vx-ov-dial-arc"
-            },
-            meta.key
-          ) : null;
-          offset += length;
-          return segment;
-        })
-      ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-dial-value", children: [
-        counts.total || total,
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "\u4E2A" })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-caption", children: "\u6F0F\u6D1E\u5206\u5E03" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-sub", children: total === 0 ? "\u6682\u65E0\u53D1\u73B0" : `\u4E25\u91CD ${counts.critical} \xB7 \u9AD8\u5371 ${counts.high}` })
-  ] });
-}
 function Spark({ values, height = 16 }) {
   const uid = (0, import_react.useId)().replace(/:/g, "");
   const w = 74;
@@ -1954,197 +1568,8 @@ var RANGES = [
   { key: "30", days: 30, label: "30\u5929" },
   { key: "90", days: 90, label: "90\u5929" }
 ];
-function useStoredFlag(key, fallback) {
-  const [value, setValue] = (0, import_react.useState)(() => {
-    const raw = storeGet(key);
-    return raw === "" ? fallback : raw === "1";
-  });
-  return [value, (next) => {
-    setValue(next);
-    storeSet(key, next ? "1" : "0");
-  }];
-}
 function rangeLabel(key) {
   return RANGES.find((item) => item.key === key)?.label ?? key;
-}
-function HeroOverviewLayer({ hero, children }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-frame", "data-hero": hero ? "1" : "0", children: [
-    hero ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(OverviewCard, {}) : null,
-    children
-  ] });
-}
-function OverviewCard() {
-  const [open, setOpen] = useStoredFlag("vexnar.overview.open", true);
-  const [rangeKey, setRangeKey] = (0, import_react.useState)(() => {
-    const raw = storeGet("vexnar.overview.range");
-    return raw === "7" || raw === "30" || raw === "90" ? raw : "30";
-  });
-  const days = RANGES.find((item) => item.key === rangeKey)?.days ?? 30;
-  const { data, error, reload } = useOverview(12e3);
-  const view = (0, import_react.useMemo)(() => derive(data, days), [data, days]);
-  const running = view.counts.running;
-  const tokenSpark = view.trend.map((point) => point.input + point.output + point.cache);
-  const topAsset = view.assetRows[0];
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov", "data-open": open ? "1" : "0", "data-variant": "dock", "aria-label": "\u6982\u89C8", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "vx-ov-head", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-brand", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-glyph", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "gauge", size: 14 }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "\u6982\u89C8" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-live", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", {}),
-          "\u5B9E\u65F6"
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-seg", role: "group", "aria-label": "\u7EDF\u8BA1\u8303\u56F4", children: RANGES.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            type: "button",
-            "aria-pressed": rangeKey === item.key,
-            onClick: () => {
-              setRangeKey(item.key);
-              storeSet("vexnar.overview.range", item.key);
-            },
-            children: item.label
-          },
-          item.key
-        )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-updated", children: error !== "" ? "\u6570\u636E\u4E0D\u53EF\u7528" : clockLabel(data.updated) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            type: "button",
-            className: "vx-ov-icon",
-            "aria-expanded": open,
-            "aria-label": open ? "\u6536\u8D77\u6982\u89C8" : "\u5C55\u5F00\u6982\u89C8",
-            title: open ? "\u6536\u8D77\u6982\u89C8" : "\u5C55\u5F00\u6982\u89C8",
-            onClick: () => {
-              setOpen(!open);
-            },
-            children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "chevron", size: 14 })
-          }
-        )
-      ] })
-    ] }),
-    !open ? null : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-body", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-kpis", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          Kpi,
-          {
-            tone: "blue",
-            icon: "target",
-            label: "\u6D3B\u8DC3\u4EFB\u52A1",
-            value: String(running),
-            unit: `/ ${view.tasks.length}`,
-            spark: view.createdSeries,
-            detail: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
-              running > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-1)" }, children: [
-                "\u63A2\u7D22 ",
-                running
-              ] }) : null,
-              view.counts.paused > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-4)" }, children: [
-                "\u6682\u505C ",
-                view.counts.paused
-              ] }) : null,
-              view.counts.done > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-3)" }, children: [
-                "\u5B8C\u6210 ",
-                view.counts.done
-              ] }) : null,
-              view.tasks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u6682\u65E0\u4EFB\u52A1" }) : null
-            ] })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          Kpi,
-          {
-            tone: "red",
-            icon: "bug",
-            label: "\u786E\u8BA4\u53D1\u73B0",
-            value: String(view.sev.total),
-            detail: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SeverityChips, { counts: view.sev })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          Kpi,
-          {
-            tone: "violet",
-            icon: "network",
-            label: "\u8D44\u4EA7\u8282\u70B9",
-            value: String(view.totalAssets),
-            detail: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chips", children: topAsset !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              ASSET_LABELS[topAsset[0]] ?? topAsset[0],
-              " ",
-              topAsset[1]
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u8DE8\u4EFB\u52A1\u5171\u4EAB" }) })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          Kpi,
-          {
-            tone: "green",
-            icon: "activity",
-            label: "\u6D41\u91CF\u4EA4\u4E92",
-            value: String(data.traffic.length),
-            detail: data.capture ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-3)" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-3)" } }),
-              "\u5F55\u5236\u4E2D"
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u6355\u83B7\u672A\u5F00\u542F" })
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          Kpi,
-          {
-            tone: "amber",
-            icon: "zap",
-            label: `Token\uFF08${rangeLabel(rangeKey)}\uFF09`,
-            value: fmtNum(view.totals.input + view.totals.output),
-            spark: tokenSpark,
-            detail: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-                "\u5165 ",
-                fmtNum(view.totals.input)
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-                "\u51FA ",
-                fmtNum(view.totals.output)
-              ] })
-            ] })
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-charts", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: "vx-ov-card vx-ov-card--trend", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "zap", size: 13 }),
-            "\u6BCF\u65E5 Token \u6D88\u8017",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-legend", children: trendSeries.map((series) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: series.color } }),
-              series.label
-            ] }, series.key)) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrendChart, { points: view.trend, height: 132 })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: "vx-ov-card vx-ov-card--dials", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "shield", size: 13 }),
-            "\u8D28\u91CF\u4E0E\u98CE\u9669",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-sub", children: data.updated === 0 ? "\u52A0\u8F7D\u4E2D" : `\u8FD1 ${rangeLabel(rangeKey)}` })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dials", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dial, { value: view.hitRate, size: 72, caption: "\u7F13\u5B58\u547D\u4E2D\u7387", sub: `${fmtNum(view.totals.cache)} / ${fmtNum(view.totals.input)}` }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SeverityDonut, { counts: view.sev, size: 72 })
-          ] })
-        ] })
-      ] }),
-      error !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-error", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-          "\u6982\u89C8\u6570\u636E\u4E0D\u53EF\u7528\uFF1A",
-          error
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: reload, children: "\u91CD\u8BD5" })
-      ] })
-    ] })
-  ] });
 }
 function OverviewPanel() {
   const [rangeKey, setRangeKey] = (0, import_react.useState)(() => {
@@ -3479,7 +2904,6 @@ function apply(ctx) {
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));
   slots.inject("conversation.hero.brand.mark", () => slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
-  slots.inject("conversation.hero.frame", () => slots.register({ name: "conversation.hero.frame", id: "vexnar-overview", order: 20 }, HeroOverviewLayer));
   ctx.effect?.(() => installSkinBrandGuard());
   ctx.effect?.(() => installHeroSlogan());
   ctx.effect?.(() => installPermissionWarning());
