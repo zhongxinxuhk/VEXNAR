@@ -23,6 +23,16 @@ const EVENT_FLAGS: Array<[string, string, string]> = [
 ]
 
 /** Bind persisted agent triggers to a scheduler; returns a stop function. */
+/** A trigger fire becomes a task whose goal is the trigger message. */
+export async function spawnTriggerTask(ops: Ops, agentKey: string, fire: TriggerFire) {
+  const text = String(fire.message || fire.event)
+  return ops.createTask({
+    name: `trigger:${fire.event}`,
+    description: `agent ${agentKey} ${fire.event}: ${text}`,
+    goal: text
+  })
+}
+
 export async function startTriggers(store: Store, scheduler: Scheduler, ops: Ops, agentKey: string, handler: (fire: TriggerFire) => void | Promise<void>) {
   const triggers = (await store.triggers.list(agentKey)).filter((trigger) => trigger.enabled !== false)
   const stops: Array<() => void> = []

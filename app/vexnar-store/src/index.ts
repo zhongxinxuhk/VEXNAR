@@ -17,7 +17,7 @@ export { runTool, persistToolResult, toolSpecs } from './tools.js'
 export { blobStore } from './blobs.js'
 export { createScheduler } from './scheduler.js'
 export { createNotifier } from './notify.js'
-export { startTriggers } from './triggers.js'
+export { startTriggers, spawnTriggerTask } from './triggers.js'
 export { startSchedules } from './schedules.js'
 export { storeWriter, StoreConflict } from './writer.js'
 
