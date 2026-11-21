@@ -958,7 +958,9 @@ export interface ConversationTrafficCapture {
 export interface ConversationTrafficEndpoint {
   enabled: boolean;
   scope: string;
+  /** TS MITM 的会话专属代理地址（未抓包时为空）。 */
   proxy: string;
+  ca_pem_url?: string;
   capture?: ConversationTrafficCapture;
   ingest_url?: string;
   hook?: string;

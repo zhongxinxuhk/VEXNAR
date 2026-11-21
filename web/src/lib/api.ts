@@ -867,6 +867,8 @@ export const api = {
       enabled: boolean;
       scope: string;
       capture: ConversationTrafficCapture | null;
+      proxy?: string;
+      ca_pem_url?: string;
       ingest_url: string;
       hook: string;
     }>(`/api/conversations/${convId}/traffic/capture`, { action }),

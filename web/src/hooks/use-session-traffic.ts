@@ -7,11 +7,7 @@
 import * as React from "react";
 
 import { api, sseUrl } from "@/lib/api";
-import type {
-  ConversationTrafficCapture,
-  ConversationTrafficFlow,
-  ConversationTrafficResp,
-} from "@/lib/types";
+import type { ConversationTrafficCapture, ConversationTrafficFlow, ConversationTrafficResp } from "@/lib/types";
 
 // cap keeps a long-running conversation from growing the panel without bound.
 const cap = 500;
@@ -35,6 +31,9 @@ export type SessionTrafficState = {
   captureBusy: boolean;
   hook: string;
   ingestUrl: string;
+  /** TS MITM 抓包代理与本机 CA，工具/浏览器配置出口时使用。 */
+  proxy: string;
+  caPemUrl: string;
   startCapture: () => Promise<void>;
   stopCapture: () => Promise<void>;
   markRead: () => void;
@@ -69,6 +68,8 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
   const [captureBusy, setCaptureBusy] = React.useState(false);
   const [hook, setHook] = React.useState("");
   const [ingestUrl, setIngestUrl] = React.useState("");
+  const [proxy, setProxy] = React.useState("");
+  const [caPemUrl, setCaPemUrl] = React.useState("");
   const cursor = React.useRef(0);
   const source = React.useRef<EventSource | null>(null);
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,24 +91,27 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
     }
   }, []);
 
-  const loadWindow = React.useCallback(async (afterSeq: number) => {
-    const myGen = gen.current;
-    const r: ConversationTrafficResp = await api.conversationTraffic(convId, afterSeq);
-    if (disposed.current || myGen !== gen.current) return;
-    setEnabled(r.enabled);
-    setError("");
-    const rows = r.items ?? [];
-    setItems((prev) => {
-      let next = prev;
-      for (const row of rows) {
-        seen.current.add(row.id);
-        next = mergeFlow(next, row);
-      }
-      return next;
-    });
-    if (typeof r.next_seq === "number" && r.next_seq > cursor.current) cursor.current = r.next_seq;
-    setLoading(false);
-  }, [convId]);
+  const loadWindow = React.useCallback(
+    async (afterSeq: number) => {
+      const myGen = gen.current;
+      const r: ConversationTrafficResp = await api.conversationTraffic(convId, afterSeq);
+      if (disposed.current || myGen !== gen.current) return;
+      setEnabled(r.enabled);
+      setError("");
+      const rows = r.items ?? [];
+      setItems((prev) => {
+        let next = prev;
+        for (const row of rows) {
+          seen.current.add(row.id);
+          next = mergeFlow(next, row);
+        }
+        return next;
+      });
+      if (typeof r.next_seq === "number" && r.next_seq > cursor.current) cursor.current = r.next_seq;
+      setLoading(false);
+    },
+    [convId],
+  );
 
   // Capture state lives on the conversation, so it is fetched alongside the
   // window: the sidebar's empty state must say "not capturing yet" and offer
@@ -120,6 +124,8 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
       setCapture(r.capture ?? null);
       setHook(r.hook ?? "");
       setIngestUrl(r.ingest_url ?? "");
+      setProxy(r.proxy ?? "");
+      setCaPemUrl(r.ca_pem_url ?? "");
       setEnabled(r.enabled);
     } catch (e) {
       if (!disposed.current && myGen === gen.current) setError((e as Error).message);
@@ -135,6 +141,8 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
         setCapture(r.capture ?? null);
         setHook(r.hook ?? "");
         setIngestUrl(r.ingest_url ?? "");
+        setProxy(r.proxy ?? "");
+        setCaPemUrl(r.ca_pem_url ?? "");
         setEnabled(r.enabled);
         setError("");
         void loadWindow(0).catch(() => undefined);
@@ -220,7 +228,7 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
     };
-  }, [convId, connect, loadEndpoint, loadWindow, poll]);
+  }, [connect, loadEndpoint, loadWindow, poll]);
 
   const markRead = React.useCallback(() => setUnread(0), []);
   const refresh = React.useCallback(() => {
@@ -242,6 +250,8 @@ export function useSessionTraffic(convId: number): SessionTrafficState {
     captureBusy,
     hook,
     ingestUrl,
+    proxy,
+    caPemUrl,
     startCapture,
     stopCapture,
     markRead,
