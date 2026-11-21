@@ -30,8 +30,9 @@ app/                          # WebStorm 工程根（项目名 app）
 │  ├─ setup-app-profile.mjs   # 安装 UI 插件并写 profile patch
 │  └─ ide-mcp.mjs             # JetBrains IDE MCP 直连客户端
 └─ vexnar/
-   ├─ cordis.patch.yml        # provider + MCP 的 profile 覆盖层
-   └─ ui/                     # @vexnar/dsh-ui：finding / traffic 卡片
+   ├─ cordis.patch.yml        # provider + MCP + 品牌/账户的 profile 覆盖层
+   ├─ ui/                     # @vexnar/dsh-ui：卡片 + 品牌槽位
+   └─ account/                # @vexnar/dsh-account：账户登录与状态
 ```
 
 ## 上游版本
@@ -64,7 +65,7 @@ WebStorm 工程根是 `app/`，配置在 `app/.idea/runConfigurations/`，全部
 | `dsh web (isolated)` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_DSH_HOME=app/.dsh-home` |
 | `dsh desktop (isolated)` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
 | `UI cards build` | `app/vexnar/ui/package.json` | `build` | 产出 `lib/client.js` |
-| `Setup app profile` | `app/package.json` | `setup` | 安装 `@vexnar/dsh-ui` 并写 profile patch |
+| `Setup app profile` | `app/package.json` | `setup` | 安装 UI/账户插件并写 profile patch |
 
 启动器自动注入：`data/mcp.token` → `VEXNAR_MCP_TOKEN`，`data/desktop.token`（缺省
 `devtoken`）→ `VEXNAR_DESKTOP_TOKEN`。

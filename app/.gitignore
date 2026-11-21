@@ -8,3 +8,5 @@ dsh/
 # UI package build inputs/outputs that are reproducible.
 vexnar/ui/node_modules/
 vexnar/ui/lib/client.cjs
+vexnar/account/node_modules/
+vexnar/account/lib/client.cjs
