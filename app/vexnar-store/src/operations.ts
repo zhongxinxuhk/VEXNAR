@@ -882,5 +882,77 @@ export function storeOperations(root: string) {
     return { deleted: Number(constraintId) }
   }
 
-  return { writer, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function addNode(taskId: string, input: { kind?: string; payload?: any; state?: string; origin?: string; priority?: number; parent_id?: string; rel?: string }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const kind = String(input.kind ?? '')
+    if (!['fact', 'intent', 'goal', 'finding'].includes(kind)) throw Object.assign(new Error('kind 需为 fact/intent/goal/finding'), { status: 400 })
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'nodes'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const record = {
+      id: String(id), exploration_id: Number(task.exploration_id), kind,
+      state: String(input.state ?? (kind === 'intent' ? 'open' : 'confirmed')),
+      priority: Number(input.priority ?? (kind === 'finding' ? 9 : 0)),
+      origin: String(input.origin ?? 'agent'), payload: input.payload ?? {},
+      created_at: rfc3339(new Date())
+    }
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown> }> = [{ table: 'nodes', key: String(id), record }]
+    if (input.parent_id) {
+      const parent = String(input.parent_id)
+      const rel = String(input.rel ?? (kind === 'intent' ? 'spawns' : 'yields'))
+      ops.push({ table: 'edges', key: `${parent}-${rel}-${id}`, record: { exploration_id: Number(task.exploration_id), src: parent, dst: String(id), rel } })
+    }
+    await writer.commit(ops)
+    return record
+  }
+
+  async function setNodeState(taskId: string, nodeId: string, state: string) {
+    const task = await writer.readRecord('tasks', taskId)
+    const node = await writer.readRecord('nodes', nodeId)
+    if (!task || !node || String(node.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error('node 不存在'), { status: 404 })
+    const next = { ...node, state }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'nodes', key: nodeId, record: next, expectedRev: Number(node.rev ?? 0) }])
+    return written
+  }
+
+  async function claimIntent(taskId: string, worker: string) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'nodes'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const next = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'open')
+      .sort((a, b) => Number(b.priority) - Number(a.priority) || Number(a.id) - Number(b.id))[0]
+    if (!next) return null
+    const record = { ...next, state: 'running', payload: { ...(typeof next.payload === 'string' ? JSON.parse(next.payload) : next.payload), worker } }
+    delete record.rev
+    const [written] = await writer.commit([{ table: 'nodes', key: String(next.id), record, expectedRev: Number(next.rev ?? 0) }])
+    return written
+  }
+
+  async function anchorAsset(taskId: string, nodeId: string, assetId: string) {
+    const task = await writer.readRecord('tasks', taskId)
+    const node = await writer.readRecord('nodes', nodeId)
+    if (!task || !node || String(node.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error('node 不存在'), { status: 404 })
+    if (!(await writer.readRecord('assets', assetId))) throw Object.assign(new Error('asset 不存在'), { status: 404 })
+    await writer.commit([{ table: 'anchors', key: `${nodeId}-${assetId}`, record: { node_id: Number(nodeId), asset_id: Number(assetId) } }])
+    return { node_id: Number(nodeId), asset_id: Number(assetId) }
+  }
+
+  return { writer, addNode, setNodeState, claimIntent, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
