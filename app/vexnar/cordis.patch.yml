@@ -9,8 +9,6 @@
       name: '@vexnar/dsh-ui'
     - id: vexnar-account
       name: '@vexnar/dsh-account'
-    - id: vexnar-craft
-      name: '@vexnar/dsh-craft'
 
 # ── Model access: TypeScript → NewAPI directly ─────────────────────────────
 # The provider route is written at login by @vexnar/dsh-account into the
