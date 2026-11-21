@@ -269,7 +269,7 @@ function AccountSection() {
 }
 function apply(ctx) {
   ctx.slots.inject("settings.section", () => ctx.slots.register(
-    { name: "settings.section", id: "vexnar-account", label: "\u8D26\u6237", order: 30 },
+    { name: "settings.section", id: "vexnar-account", label: "\u8D26\u6237", order: -100 },
     AccountSection
   ));
 }

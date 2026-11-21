@@ -273,7 +273,7 @@ export function apply(ctx: {
 }): void {
   ctx.slots.inject('settings.section', () =>
     ctx.slots.register(
-      { name: 'settings.section', id: 'vexnar-account', label: '账户', order: 30 },
+      { name: 'settings.section', id: 'vexnar-account', label: '账户', order: -100 },
       AccountSection
     ))
 }
