@@ -41,6 +41,17 @@ npm run dev --prefix website
 
 旧地址（`downloads.html`、`credits.html` 等）保持可直接访问。浏览器前进、后退和复制链接均受支持。导航使用真实链接，没有 JavaScript 时仍可跨页阅读。404 以 `/VEXNAR/` 为资源基准，避免未知嵌套路径下的资源失效。
 
+## 页头与页脚
+
+页头左上角是双 logo 品牌区：项目 logo `assets/logo.png` 与单位 logo `assets/sec-logo.png`（希灵 SEC，指向 `sec.hn.cn`）以 1px 分隔线并列，窄屏下按断点缩放到 21 / 19 / 18 px，仍保留两个 logo。`assets/sec-logo.png` 是去白底后的透明 PNG（336×96），替换时保持同样的透明背景与 3.5:1 宽高比即可。
+
+页脚是三栏结构（品牌与单位、站点导航、项目资源），底部一行是版权与备案信息：
+
+- 琼ICP备2025060601号-1 → 链接到 `https://beian.miit.gov.cn/`
+- 琼公网安备46010002001548号 → 链接到 `https://beian.mps.gov.cn/#/query/webSearch?code=46010002001548`
+
+两处备案链接都在新窗口打开，并带 `rel="noopener noreferrer"`。备案号或查询地址变更时，同步修改 `src/App.jsx` 与 `tests/contracts.test.mjs` 中的同名断言。
+
 ## React 源码
 
 - `src/App.jsx`：站点外壳、导航、路由切换、页脚与快捷搜索入口。
@@ -52,7 +63,7 @@ npm run dev --prefix website
 - `src/architecture/Arch3D.jsx`：可拖拽旋转、展开、逐层剖析的 CSS 3D 分层视图；节点可直接跳转到源码行。
 - `src/architecture/layers.js`：六层结构、30 个节点、层间契约、生命周期与设计取舍。
 - `src/architecture.js`：系统、缓存、工具调用、双图四套节点级图与源码引用。
-- `src/styles/`：`home.css`、`console.css`、`architecture.css`、`credits.css` 分别承载站点版式、客户端、3D 视图与 DSH 致谢；`style.css` 保留项目数据页样式。
+- `src/styles/`：`home.css`、`console.css`、`architecture.css`、`credits.css` 分别承载站点版式、客户端、3D 视图与 DSH 致谢；`style.css` 保留项目数据页样式；`polish.css` 最后加载，只做页头双 logo 品牌区、页脚、按钮与卡片的表面精修，不改动页面结构。
 - `scripts/prerender.mjs`：从相同 React 组件生成可抓取的页面，再由浏览器 hydrate。
 
 ## 客户端展示
