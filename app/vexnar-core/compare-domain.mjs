@@ -92,6 +92,12 @@ const goTaskCounts = await get(GO, '/api/assets/counts?task_id=1137')
 const tsTaskCounts = await get(TS, '/api/assets/counts?task_id=1137')
 check('task asset counts', same(goTaskCounts, tsTaskCounts))
 
+for (const query of ['status=pending&limit=5&page=1', 'severity=high&limit=5&page=1', 'q=test&limit=5&page=1']) {
+  const goPage = await get(GO, `/api/exploration/findings?${query}`)
+  const tsPage = await get(TS, `/api/exploration/findings?${query}`)
+  check(`findings ${query}`, goPage.total === tsPage.total && same(goPage.items.map((row) => row.id), tsPage.items.map((row) => row.id)), `${goPage.total}/${tsPage.total}`)
+}
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)
