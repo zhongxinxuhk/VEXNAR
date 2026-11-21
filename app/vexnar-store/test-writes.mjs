@@ -193,6 +193,9 @@ const scheduleUpdate = await ops.updateSchedule(String(schedule.id), { frequency
 const scheduleDelete = await ops.deleteSchedule(String(schedule.id))
 check('schedule lifecycle', schedule.next_fire_at && scheduleUpdate.frequency === 'weekly' && scheduleDelete.deleted === schedule.id, JSON.stringify({ id: schedule.id, next: schedule.next_fire_at }))
 
+const delivery = await ops.recordDelivery({ channel_id: 1, event_kind: 'finding_created', title: 't', status: 'ok', attempts: 1 })
+check('delivery record', delivery.status === 'ok' && delivery.attempts === 1, JSON.stringify(delivery))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

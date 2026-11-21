@@ -26,7 +26,12 @@ for (const agent of await meta.table<any[]>('agents')) {
     const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
       const channels = await meta.table<any[]>('notify')
       if (!channels.length) return
-      await createNotifier(channels).dispatch({
+      await createNotifier(channels, undefined, async (channel, event, result) => {
+        await operations.recordDelivery({
+          channel_id: channel.id, event_kind: event.kind, title: event.title,
+          status: result.ok ? 'ok' : 'failed', attempts: result.attempts, error: result.detail
+        })
+      }).dispatch({
         kind: `trigger:${fire.event}`,
         title: `agent ${agent.key} · ${fire.event}`,
         text: fire.message || fire.event,
@@ -164,7 +169,12 @@ api.post('/api/exploration/findings', async (c) => {
   try {
     const result = await operations.reportFinding(body)
     store.invalidate?.(['nodes', 'findings', 'edges'])
-    void createNotifier(await meta.table('notify')).dispatch({
+    void createNotifier(await meta.table('notify'), undefined, async (channel, event, result) => {
+      await operations.recordDelivery({
+        channel_id: channel.id, event_kind: event.kind, title: event.title,
+        status: result.ok ? 'ok' : 'failed', attempts: result.attempts, error: result.detail
+      })
+    }).dispatch({
       kind: 'finding_created', title: String(body.vulnclass ?? 'finding'),
       text: String(body.summary ?? ''), task_id: String(body.task_id ?? ''), finding_id: String(result.finding_id)
     }).catch(() => {})

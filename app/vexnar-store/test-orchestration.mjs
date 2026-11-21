@@ -41,6 +41,14 @@ const notifier = createNotifier(channels, async (channel, event) => { sent.push(
 const dispatch = await notifier.dispatch({ kind: 'finding_created', title: 't', text: 'x' })
 check('notifier filters', sent.length === 1 && sent[0][0] === 1 && dispatch.length === 1, JSON.stringify(dispatch))
 
+let attempts = 0
+const retryRecords = []
+const retryNotifier = createNotifier([{ id: 9, kind: 'webhook', enabled: true, config: { url: 'http://x' } }],
+  async () => { attempts++; return { ok: attempts >= 3, detail: `try ${attempts}` } },
+  async (channel, event, result) => { retryRecords.push(result) })
+await retryNotifier.dispatch({ kind: 'finding_created', title: 't', text: 'x' })
+check('notifier retries then records', attempts === 3 && retryRecords[0]?.ok === true && retryRecords[0]?.attempts === 3, JSON.stringify({ attempts, record: retryRecords[0] }))
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)
