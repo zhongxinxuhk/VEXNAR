@@ -77,7 +77,7 @@ check('activity history', same(seqs(goActivity), seqs(tsActivity)) && goActivity
 
 const goTokens = await get(GO, '/api/exploration/tokens?task=657')
 const tsTokens = await get(TS, '/api/exploration/tokens?task=657')
-check('token stats', same(goTokens.workers, tsTokens.workers) && same(goTokens.total, tsTokens.total), `${goTokens.workers.length}/${tsTokens.workers.length}`)
+check('token stats', same(goTokens.workers, tsTokens.workers) && same(goTokens.sessions, tsTokens.sessions) && same(goTokens.total, tsTokens.total), `${goTokens.workers.length}/${tsTokens.workers.length} · sessions ${goTokens.sessions.length}/${tsTokens.sessions.length}`)
 
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
