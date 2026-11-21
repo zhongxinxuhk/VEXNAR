@@ -492,5 +492,92 @@ export function storeOperations(root: string) {
     return { ok: true }
   }
 
-  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool }
+  const TOOL_KINDS = new Set(['command', 'script', 'http', 'shell'])
+
+  async function createCustomTool(input: any) {
+    const key = String(input.key ?? '').trim()
+    if (!/^[a-z][a-z0-9_]*$/.test(key)) throw Object.assign(new Error('key 需小写字母开头，仅含小写字母/数字/下划线'), { status: 400 })
+    if (!TOOL_KINDS.has(String(input.kind))) throw Object.assign(new Error('kind 需为 command / script / http / shell'), { status: 400 })
+    if (input.kind === 'http' && !Object.keys(input.schema?.properties ?? {}).length) {
+      throw Object.assign(new Error('http 工具必须提供参数 JSON Schema'), { status: 400 })
+    }
+    const { tables, rows } = await metaTable('tools')
+    if (rows.some((row) => row.key === key)) throw Object.assign(new Error('该 key 已存在'), { status: 409 })
+    rows.push({
+      key, system: false, description: String(input.description ?? ''),
+      schema: input.schema ?? { type: 'object', properties: {} },
+      agents: input.agents ?? [], enabled: input.enabled ?? true,
+      kind: input.kind, exec: input.exec ?? {}, deferred: input.deferred ?? false, calls: 0
+    })
+    await meta.save(tables)
+    return { key }
+  }
+
+  async function updateCustomTool(key: string, input: any) {
+    const { tables, rows } = await metaTable('tools')
+    const row = rows.find((item) => item.key === key)
+    if (!row) throw Object.assign(new Error('tool 不存在'), { status: 404 })
+    if (row.system) throw Object.assign(new Error('内置工具不能按自定义工具修改'), { status: 400 })
+    for (const field of ['description', 'schema', 'agents', 'enabled', 'kind', 'exec', 'deferred']) {
+      if (input[field] !== undefined) row[field] = input[field]
+    }
+    await meta.save(tables)
+    return { ok: true }
+  }
+
+  async function deleteCustomTool(key: string) {
+    const { tables, rows } = await metaTable('tools')
+    const index = rows.findIndex((item) => item.key === key)
+    if (index < 0) throw Object.assign(new Error('tool 不存在'), { status: 404 })
+    if (rows[index].system) throw Object.assign(new Error('内置工具不能删除'), { status: 400 })
+    rows.splice(index, 1)
+    await meta.save(tables)
+    return { deleted: key }
+  }
+
+  async function saveMcpServer(input: any) {
+    const name = String(input.name ?? '').trim()
+    if (!name) throw Object.assign(new Error('name 不能为空'), { status: 400 })
+    const { tables, rows } = await metaTable('mcp')
+    if (input.id) {
+      const row = rows.find((item) => Number(item.id) === Number(input.id))
+      if (!row) throw Object.assign(new Error('MCP server 不存在'), { status: 404 })
+      for (const field of ['name', 'transport', 'command', 'args', 'env', 'url', 'enabled', 'insecure']) {
+        if (input[field] !== undefined) row[field] = input[field]
+      }
+      await meta.save(tables)
+      return { id: Number(row.id) }
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    rows.push({
+      id, name,
+      transport: String(input.transport ?? 'stdio'),
+      ...(input.command == null ? {} : { command: input.command }),
+      args: input.args ?? [], env: input.env ?? {},
+      ...(input.url == null ? {} : { url: input.url }),
+      enabled: input.enabled ?? true, insecure: input.insecure ?? false, tools: []
+    })
+    await meta.save(tables)
+    return { id }
+  }
+
+  async function setMcpEnabled(id: string, enabled: boolean) {
+    const { tables, rows } = await metaTable('mcp')
+    const row = rows.find((item) => Number(item.id) === Number(id))
+    if (!row) throw Object.assign(new Error('MCP server 不存在'), { status: 404 })
+    row.enabled = enabled
+    await meta.save(tables)
+    return { ok: true }
+  }
+
+  async function deleteMcpServer(id: string) {
+    const { tables, rows } = await metaTable('mcp')
+    const index = rows.findIndex((item) => Number(item.id) === Number(id))
+    if (index < 0) throw Object.assign(new Error('MCP server 不存在'), { status: 404 })
+    rows.splice(index, 1)
+    await meta.save(tables)
+    return { deleted: Number(id) }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }

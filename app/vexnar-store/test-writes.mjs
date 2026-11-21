@@ -101,6 +101,20 @@ const metaAfter = await (async () => {
 })()
 check('agent/tool update', agentUpdate.ok && toolUpdate.ok && metaAfter.agent.name === 'Goals 2' && metaAfter.tool.enabled === false, JSON.stringify(metaAfter))
 
+const custom = await ops.createCustomTool({ key: 'demo_custom', description: 'd', kind: 'command', exec: { command: 'echo hi' } })
+const customUpdate = await ops.updateCustomTool('demo_custom', { description: 'd2', enabled: false })
+const customDelete = await ops.deleteCustomTool('demo_custom')
+let customDup = null
+try { await ops.createCustomTool({ key: 'demo_tool', kind: 'command' }) } catch (error) { customDup = error }
+let customBadKey = null
+try { await ops.createCustomTool({ key: 'Bad-Key', kind: 'command' }) } catch (error) { customBadKey = error }
+check('custom tool lifecycle', custom.key === 'demo_custom' && customUpdate.ok && customDelete.deleted === 'demo_custom' && customDup?.status === 409 && customBadKey?.status === 400, JSON.stringify({ custom, customDup: customDup?.status, customBadKey: customBadKey?.status }))
+
+const mcp = await ops.saveMcpServer({ name: 'demo-mcp', transport: 'stdio', command: 'npx', args: ['x'] })
+const mcpDisabled = await ops.setMcpEnabled(String(mcp.id), false)
+const mcpDelete = await ops.deleteMcpServer(String(mcp.id))
+check('mcp lifecycle', mcp.id > 0 && mcpDisabled.ok && mcpDelete.deleted === mcp.id, JSON.stringify({ mcp, mcpDisabled, mcpDelete }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

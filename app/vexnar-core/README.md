@@ -80,6 +80,8 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `POST/PATCH/DELETE /api/notify/channels` | ✅ 通知渠道增改删 |
 | `PATCH /api/agents/:key` | ✅ 改名称/描述 |
 | `PUT /api/tools/:key` | ✅ 改描述/schema/绑定/启用 |
+| `POST/PUT/DELETE /api/tools/custom` | ✅ 自定义工具增改删（key/kind 校验、内置保护） |
+| `POST/PUT/DELETE /api/mcp` | ✅ MCP server 增改删与启停 |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**

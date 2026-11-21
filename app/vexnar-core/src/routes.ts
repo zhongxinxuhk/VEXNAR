@@ -273,6 +273,40 @@ api.put('/api/tools/:key', async (c) => {
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.post('/api/tools/custom', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const result = await operations.createCustomTool(body); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.put('/api/tools/custom/:key', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const result = await operations.updateCustomTool(c.req.param('key'), body); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/tools/custom/:key', async (c) => {
+  try { const result = await operations.deleteCustomTool(c.req.param('key')); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.post('/api/mcp', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const result = await operations.saveMcpServer(body); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.put('/api/mcp/:id/enabled', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const result = await operations.setMcpEnabled(c.req.param('id'), Boolean(body.enabled)); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/mcp/:id', async (c) => {
+  try { const result = await operations.deleteMcpServer(c.req.param('id')); meta.reload(); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.patch('/api/exploration/findings/:id', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
