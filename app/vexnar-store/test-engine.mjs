@@ -51,6 +51,13 @@ const planReplies = [JSON.stringify({ intents: [{ text: 'probe web', priority: 5
 const plan = await engine.plan(task.id, async () => planReplies.shift() ?? '{}')
 check('planner creates intent', plan.length === 1 && plan[0].state === 'open', JSON.stringify(plan.map((intent) => intent.id)))
 
+const planRounds = [
+  JSON.stringify({ intents: [{ text: 'PROBE WEB' }, { text: 'probe api' }] }),
+  JSON.stringify({ intents: [{ text: 'probe web' }, { text: 'probe api' }] })
+]
+const secondPlan = await engine.plan(task.id, async () => planRounds.shift() ?? '{}', { rounds: 2 })
+check('planner dedupes and rounds', secondPlan.length === 1 && secondPlan[0].payload.text === 'probe api', JSON.stringify(secondPlan.map((intent) => intent.payload.text)))
+
 const workReplies = [
   JSON.stringify({ tool: 'add_fact', args: { text: 'server is nginx' } }),
   JSON.stringify({ tool: 'add_asset', args: { type: 'root_domain', domain: 'engine.example' } }),
@@ -62,7 +69,7 @@ const workReplies = [
 ]
 const work = await engine.work(task.id, async () => workReplies.shift() ?? JSON.stringify({ tool: 'finish', args: {} }), 'work#1', 8)
 check('worker finishes intent', work?.state === 'done', JSON.stringify(work))
-const fact = await ops.writer.readRecord('nodes', String(Number(work.intent) + 1))
+const fact = (await records('nodes')).find((node) => node.kind === 'fact' && node.payload?.text === 'server is nginx')
 check('worker fact written', fact?.kind === 'fact' && fact?.payload.text === 'server is nginx', JSON.stringify(fact?.payload))
 const anchored = await ops.writer.readRecord('anchors', `${work.intent}-1`)
 check('worker asset linked', anchored?.asset_id === 1, JSON.stringify(anchored))

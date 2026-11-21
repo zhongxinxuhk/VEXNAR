@@ -44,33 +44,45 @@ function serialized<T>(key: string, task: () => Promise<T>): Promise<T> {
   return run
 }
 
-export function createEngine(store: Store, ops: Ops, options: { runner?: import('./exec.js').Runner } = {}) {
-  async function plan(taskId: string, complete: Complete, maxIntents = 5) {
+export function createEngine(store: Store, ops: Ops, engineOptions: { runner?: import('./exec.js').Runner } = {}) {
+  async function plan(taskId: string, complete: Complete, options: number | { maxIntents?: number; rounds?: number } = 5) {
+    const maxIntents = typeof options === 'number' ? options : Number(options.maxIntents ?? 5)
+    const rounds = Math.max(typeof options === 'number' ? 1 : Number(options.rounds ?? 1), 1)
     const task = await store.tasks.get(taskId)
     if (!task) throw new Error('task 不存在')
     const page = await store.nodes.page({ taskId, page: 1, size: 200, order: 'asc', kinds: ['fact', 'intent'] })
     const root = page.items.find((node: any) => node.kind === 'fact' && node.state === 'origin') ?? page.items.find((node: any) => node.kind === 'fact')
     const existing = page.items.filter((node: any) => node.kind === 'intent').map((node: any) => (typeof node.payload === 'string' ? JSON.parse(node.payload) : node.payload)?.text).filter(Boolean)
-
-    const reply = await complete([
-      { role: 'system', content: '你是渗透测试任务的规划者。把目标拆成可独立验证的意图，只输出 JSON：{"intents":[{"text":"...","priority":0}]}。不要重复已有意图。' },
-      { role: 'user', content: `任务目标：${task.goal}\n任务描述：${task.description}\n已有意图：${existing.join(' | ') || '无'}\n最多 ${maxIntents} 条。` }
-    ])
-    const data = parseJson(reply)
-    const intents = Array.isArray(data.intents) ? data.intents.slice(0, maxIntents) : []
     const created = []
-    for (const intent of intents) {
-      const text = String(intent.text ?? '').trim()
-      if (!text) continue
-      created.push(await ops.addNode(taskId, {
-        kind: 'intent',
-        payload: { text },
-        state: 'open',
-        priority: Number(intent.priority ?? 0),
-        origin: 'planner',
-        parent_id: root ? String(root.id) : undefined,
-        rel: 'spawns'
-      }))
+    const normalize = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim()
+    const seen = new Set(existing.map((text: string) => normalize(text)))
+
+    for (let round = 0; round < rounds; round++) {
+      const reply = await complete([
+        { role: 'system', content: '你是渗透测试任务的规划者。把目标拆成可独立验证的意图，只输出 JSON：{"intents":[{"text":"...","priority":0}]}。不要重复已有意图。' },
+        { role: 'user', content: `任务目标：${compact([String(task.goal)], 1000)}\n任务描述：${compact([String(task.description)], 1000)}\n已有意图：${compact([[...seen].join(' | ')], 2000) || '无'}\n最多 ${maxIntents} 条。` }
+      ])
+      const data = parseJson(reply)
+      const intents = Array.isArray(data.intents) ? data.intents.slice(0, maxIntents) : []
+      let added = 0
+      for (const intent of intents) {
+        const text = String(intent.text ?? '').trim()
+        if (!text) continue
+        const key = normalize(text)
+        if (seen.has(key)) continue
+        seen.add(key)
+        created.push(await ops.addNode(taskId, {
+          kind: 'intent',
+          payload: { text },
+          state: 'open',
+          priority: Number(intent.priority ?? 0),
+          origin: 'planner',
+          parent_id: root ? String(root.id) : undefined,
+          rel: 'spawns'
+        }))
+        added++
+      }
+      if (!added) break
     }
     await ops.appendActivity(taskId, { kind: 'plan', worker: 'planner', summary: `规划出 ${created.length} 条意图` })
     return created
@@ -148,18 +160,18 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
           continue
         }
         if (action.tool === 'run_tool') {
-          if (!options.runner) throw new Error('run_tool 未启用')
+          if (!engineOptions.runner) throw new Error('run_tool 未启用')
           const name = String(action.args?.name ?? '')
           const target = String(action.args?.target ?? '')
-          const result = await runTool(options.runner, name as any, target, action.args?.extra ?? {})
+          const result = await runTool(engineOptions.runner, name as any, target, action.args?.extra ?? {})
           const created = await persistToolResult(ops, taskId, String(claimed.id), name as any, result.parsed, result.stdout)
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: `run_tool:${name}`, node_id: String(claimed.id), summary: `created ${created.length}` })
           facts.push(`${name} ${target} → ${created.length} records`)
           continue
         }
         if (action.tool === 'run_command') {
-          if (!options.runner) throw new Error('run_command 未启用')
-          const result = await options.runner.run(String(action.args?.command ?? ''), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 30000) })
+          if (!engineOptions.runner) throw new Error('run_command 未启用')
+          const result = await engineOptions.runner.run(String(action.args?.command ?? ''), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 30000) })
           const text = `$ ${result.command} ${result.args.join(' ')} → code=${result.code} ${result.truncated ? '[truncated]' : ''}\n${result.stdout.slice(0, 4000)}${result.stderr ? `\n${result.stderr.slice(0, 2000)}` : ''}`
           await ops.addNode(taskId, { kind: 'fact', payload: { text, command: result.command, code: result.code }, state: 'confirmed', origin: worker, parent_id: String(claimed.id), rel: 'yields' })
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'run_command', node_id: String(claimed.id), is_error: result.code !== 0, summary: `${result.command} code=${result.code}` })
