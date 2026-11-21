@@ -47,6 +47,8 @@ const env = {
   ...process.env,
   DSH_HOME: dshHome(),
   VEXNAR_MCP_TOKEN: process.env.VEXNAR_MCP_TOKEN || readToken('mcp.token'),
+  DSH_CLIENT_TITLE: 'VEXNAR',
+    DSH_CLIENT_TITLE: 'VEXNAR',
   VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken')
 }
 
