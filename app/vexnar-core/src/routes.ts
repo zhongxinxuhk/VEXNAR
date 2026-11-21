@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -39,7 +39,15 @@ for (const agent of await meta.table<any[]>('agents')) {
     // a broken trigger row must not stop the API
   }
 }
-process.once('SIGTERM', () => { for (const stop of triggerStops) stop(); scheduler.stop() })
+const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
+  const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) })
+  store.invalidate?.(['tasks'])
+  if (process.env.VEXNAR_GATEWAY_TOKEN) {
+    await engine.plan(task.id, gatewayComplete)
+    await engine.workMany(task.id, gatewayComplete, 1)
+  }
+}, 30_000)
+process.once('SIGTERM', () => { for (const stop of triggerStops) stop(); stopSchedules(); scheduler.stop() })
 await operations.writer.recover().catch(() => {})
 const releaseStoreLock = await operations.writer.lock()
 process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
