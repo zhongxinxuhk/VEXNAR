@@ -172,7 +172,11 @@ func (s *Server) delegateToTask(ctx context.Context, in json.RawMessage, pick fu
 	}
 	tsx.SetNotify(t.Notify)         // 通用唤醒（无专用回调的写操作走它；读工具为 no-op）
 	tsx.SetNotifyHint(t.NotifyHint) // add_hint → 记一条「人新增了 N 条战略提示：…」触发并唤醒 planner
-	return pick(tsx).Call(ctx, inner, nil)
+	tool := pick(tsx)
+	if tool == nil {
+		return actool.Errorf("该任务没有绑定此工具"), nil
+	}
+	return tool.Call(ctx, inner, nil)
 }
 
 // --- tools ---
