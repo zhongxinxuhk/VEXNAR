@@ -1,0 +1,11 @@
+{
+  "name": "@vexnar/p0-mitm-spike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "P0-4 spike: compare the Go MITM capture with a mitmproxy sidecar",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "scripts": { "compare": "node compare.mjs" }
+}
