@@ -13,7 +13,6 @@ import { join } from 'node:path'
 const root = await mkdtemp(join(tmpdir(), 'vexnar-notify-mcp-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
-delete process.env.VEXNAR_GATEWAY_TOKEN
 // 测试用的假接收端在环回地址上；守卫默认拒绝，这里显式放开（与 Go 的
 // VEXNAR_NOTIFY_ALLOW_LOCAL 语义一致）。
 process.env.VEXNAR_NOTIFY_ALLOW_LOCAL = '1'

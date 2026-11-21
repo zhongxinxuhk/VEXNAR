@@ -1,8 +1,6 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { createServer } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,25 +26,15 @@ const root = await mkdtemp(join(tmpdir(), 'vexnar-conv-'))
 process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_STORE_ROOT = root
 
-// 本地 mock 模型网关：/chat/completions 固定返回一段助手文本，验证 gatewayComplete 全链路。
-const gateway = createServer((req, res) => {
-  let body = ''
-  req.on('data', (chunk) => (body += chunk))
-  req.on('end', () => {
-    res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'mock reply' } }] }))
-  })
-})
-await new Promise<void>((resolve) => { gateway.listen(0, '127.0.0.1', () => resolve()) })
-// listen(0, '127.0.0.1') 一定绑出 TCP 端口，address() 就是 AddressInfo。
-const port = (gateway.address() as AddressInfo).port
-process.env.VEXNAR_GATEWAY_URL = `http://127.0.0.1:${port}/api/desktop/openai/v1`
-process.env.VEXNAR_GATEWAY_TOKEN = 'test-token'
-
 // env 就绪后再动态 import：context.ts 顶层 await 会用上面的临时 SQLite 根目录。
 const { Hono } = await import('hono')
 const { register } = await import('../vexnar-core/src/routes/conversations.ts')
 const ctx = await import('../vexnar-core/src/context.ts')
+const { setModelCompletion } = await import('../vexnar-core/src/gateway.ts')
+
+// 进程内的模型通道：一次函数调用固定返回一段助手文本，验证 gatewayComplete 全链路。
+// 没有端口、没有令牌——宿主插件装进来的就是一个函数。
+setModelCompletion(async () => 'mock reply')
 
 // 预置一个 agent，供「创建会话校验 agent_key」与「mentions」使用。
 const tables = await ctx.meta.load()
@@ -150,5 +138,5 @@ for (const item of results) {
   console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`)
 }
 console.log(`root: ${root}`)
-gateway.close()
+setModelCompletion(undefined)
 process.exit(failed ? 1 : 0)

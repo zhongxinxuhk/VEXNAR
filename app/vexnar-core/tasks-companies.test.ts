@@ -12,7 +12,6 @@ const root = await mkdtemp(join(tmpdir(), 'vexnar-tasks-companies-'))
 process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_SQLITE_PATH = join(root, 'vexnar.sqlite')
-delete process.env.VEXNAR_GATEWAY_TOKEN
 
 const { register } = await import('./src/routes/tasks-companies.ts')
 const { meta, operations, store } = await import('./src/context.ts')

@@ -8,7 +8,7 @@
  * Two kinds of artifact, both under `lib/`:
  *
  *   - `lib/index.js`, `lib/platform.js`, `lib/platform-account.js`, `lib/login-page.js`,
- *     `lib/login-client.js`, `lib/model-gateway.js`, `lib/yak-history-tools.js` — the
+ *     `lib/login-client.js`, `lib/model-channel.js`, `lib/yak-history-tools.js` — the
  *     host half. dsh installs this package into a profile's `node_modules` and imports
  *     it from there, and Node refuses to strip types for files under `node_modules`,
  *     so every host module has to be real JS. esbuild transforms `src/*.ts`
@@ -38,7 +38,7 @@ const hostEntries = [
   'platform-account',
   'login-page',
   'login-client',
-  'model-gateway',
+  'model-channel',
   'yak-history-tools'
 ].map(name => join(here, 'src', `${name}.ts`))
 

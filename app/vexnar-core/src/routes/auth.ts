@@ -27,6 +27,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import jwt from 'jsonwebtoken'
 import type { Hono } from 'hono'
+import { modelCompletionReady } from '../gateway.ts'
 import { streamSSE } from 'hono/streaming'
 import { buildReport, meta, operations, parseJson, store } from '../context.ts'
 
@@ -1104,7 +1105,7 @@ export function register(api: Hono) {
       await writeSetting(ACTIVE_TASK_KEY, String(task.id))
       // 与 Go 一致：打开任务时顺带唤醒引擎（幂等；排队中的任务只切视图不抢并发）。
       void (async () => {
-        if (!process.env.VEXNAR_GATEWAY_TOKEN || task.queued) return
+        if (!modelCompletionReady() || task.queued) return
         const { engine, taskQueue, gatewayComplete } = await import('../context.ts')
         if (typeof engine?.plan !== 'function' || typeof taskQueue?.enqueue !== 'function') return
         await taskQueue.enqueue(String(task.id), async () => {
