@@ -98,6 +98,33 @@ for (const query of ['status=pending&limit=5&page=1', 'severity=high&limit=5&pag
   check(`findings ${query}`, goPage.total === tsPage.total && same(goPage.items.map((row) => row.id), tsPage.items.map((row) => row.id)), `${goPage.total}/${tsPage.total}`)
 }
 
+// dsh 客户端「任务」面板：发现按 task_id 过滤（任务详情与发现页签共用这一条），
+// 页面用 page+limit 分页 —— Go 与 core 必须返回同一个 total 与同一批 finding_id。
+// 历史库里的发现多数只有 node 没有 task_id，所以先从"按任务分组"里挑一个真有发现的任务。
+const goGroups = await get(GO, '/api/exploration/findings/groups?page=1&limit=20')
+const scopedGroup = (goGroups.items ?? []).find((row) => row.task_id != null)
+const scopedTaskId = scopedGroup ? String(scopedGroup.task_id) : ''
+if (scopedTaskId) {
+  for (const extra of ['', '&severity=high', '&status=confirmed', '&q=test']) {
+    const query = `task_id=${scopedTaskId}&page=1&limit=20${extra}`
+    const goScoped = await get(GO, `/api/exploration/findings?${query}`)
+    const tsScoped = await get(TS, `/api/exploration/findings?${query}`)
+    check(`findings task_id ${extra || 'plain'}`,
+      goScoped.total === tsScoped.total && same(goScoped.items.map((row) => row.finding_id), tsScoped.items.map((row) => row.finding_id)),
+      `${goScoped.total}/${tsScoped.total}`)
+  }
+  // 任务详情里"该任务的发现"用的是同一条查询；任务面板的列表列读 task_id 字段。
+  const goScopedRow = await get(GO, `/api/exploration/findings?task_id=${scopedTaskId}&page=1&limit=20`)
+  const tsScopedRow = await get(TS, `/api/exploration/findings?task_id=${scopedTaskId}&page=1&limit=20`)
+  const scopeFields = ['finding_id', 'task_id', 'vulnclass', 'severity', 'status', 'summary']
+  const pickScoped = (row) => Object.fromEntries(scopeFields.filter((k) => k in row).map((k) => [k, row[k]]))
+  check('findings task_id row fields',
+    same(goScopedRow.items.map(pickScoped), tsScopedRow.items.map(pickScoped)),
+    JSON.stringify(diff(canon(goScopedRow.items.map(pickScoped)), canon(tsScopedRow.items.map(pickScoped))).slice(0, 2)))
+} else {
+  check('findings task_id scope', false, '没有带 task_id 的发现，无法对账')
+}
+
 for (const dsl of ['test', 'method==GET', 'port>8000']) {
   const goSearch = await get(GO, `/api/assets?dsl=${encodeURIComponent(dsl)}&limit=5`)
   const tsSearch = await get(TS, `/api/assets?dsl=${encodeURIComponent(dsl)}&limit=5`)

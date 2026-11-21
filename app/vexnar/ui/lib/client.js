@@ -2502,14 +2502,6 @@ function OverviewPanel() {
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Agent" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-            data.sys.agentsOn,
-            "/",
-            data.sys.agents
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8D44\u4EA7\u8282\u70B9" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.assets.total) })
         ] }),
@@ -2845,33 +2837,159 @@ function Dashboard() {
     (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, tasks.error || findings.error || assets.error || tokens.error || "\u6570\u636E\u6765\u81EA\u672C\u5730\u6838\u5FC3")
   );
 }
-function TaskList({ onSelect, scope = "" }) {
-  const { data, error, loading } = useApi("/api/tasks");
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, error);
-  const all = data?.tasks ?? [];
-  const rows = (scope ? all.filter((task) => String(task.id) === scope) : all).slice(0, 30);
+var PAGE_SIZE = 20;
+var TASK_STATUS_LABELS = [
+  ["created", "\u5F85\u542F\u52A8"],
+  ["queued", "\u6392\u961F"],
+  ["running", "\u8FD0\u884C\u4E2D"],
+  ["paused", "\u6682\u505C"],
+  ["done", "\u5B8C\u6210"],
+  ["failed", "\u5931\u8D25"],
+  ["timeout", "\u8D85\u65F6"]
+];
+var SEVERITY_LABELS = [
+  ["critical", "\u4E25\u91CD"],
+  ["high", "\u9AD8\u5371"],
+  ["medium", "\u4E2D\u5371"],
+  ["low", "\u4F4E\u5371"]
+];
+var FINDING_STATUS_LABELS = [
+  ["pending", "\u5F85\u5904\u7406"],
+  ["in_progress", "\u5904\u7406\u4E2D"],
+  ["confirmed", "\u5DF2\u786E\u8BA4"],
+  ["resolved", "\u5DF2\u5904\u7406"],
+  ["fixed", "\u5DF2\u4FEE\u590D"],
+  ["false_positive", "\u8BEF\u62A5"],
+  ["ignored", "\u5FFD\u7565"],
+  ["duplicate", "\u91CD\u590D"],
+  ["risk_accepted", "\u98CE\u9669\u63A5\u53D7"]
+];
+function labelOf(table, value) {
+  const key = String(value ?? "");
+  return table.find(([id]) => id === key)?.[1] ?? (key || "\u2014");
+}
+function findingCount(task) {
+  const f = task?.findings ?? {};
+  return Number(f.critical ?? 0) + Number(f.high ?? 0) + Number(f.medium ?? 0) + Number(f.low ?? 0);
+}
+function Toolbar({ children }) {
+  return (0, import_react2.createElement)("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 10 } }, children);
+}
+function Pager({ page, pageCount, total, unit, onPage }) {
+  if (pageCount <= 1) {
+    return (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)", marginTop: 8 } }, `\u5171 ${total} ${unit}`);
+  }
   return (0, import_react2.createElement)(
-    "table",
-    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-    (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u72B6\u6001", "\u76EE\u6807"].map((title) => (0, import_react2.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
-    (0, import_react2.createElement)("tbody", null, rows.map((task) => (0, import_react2.createElement)(
-      "tr",
-      { key: task.id, onClick: () => onSelect?.(String(task.id)), style: { cursor: onSelect ? "pointer" : "default" } },
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, task.id),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, task.name || "\u2014"),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, task.status),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, task.goal)
-    )))
+    "div",
+    { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 12 } },
+    (0, import_react2.createElement)("button", { type: "button", disabled: page <= 0, onClick: () => onPage(page - 1) }, "\u4E0A\u4E00\u9875"),
+    (0, import_react2.createElement)("span", null, `${page + 1} / ${pageCount} \xB7 \u5171 ${total} ${unit}`),
+    (0, import_react2.createElement)("button", { type: "button", disabled: page + 1 >= pageCount, onClick: () => onPage(page + 1) }, "\u4E0B\u4E00\u9875")
   );
 }
-function TaskDetail({ id, onBack }) {
+function TaskList({ onOpen }) {
+  const { data, error, loading } = useApi("/api/tasks");
+  const [query, setQuery] = (0, import_react2.useState)("");
+  const [status, setStatus] = (0, import_react2.useState)("all");
+  const [page, setPage] = (0, import_react2.useState)(0);
+  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error);
+  const needle = query.trim().toLowerCase();
+  const rows = (data?.tasks ?? []).filter((task) => status === "all" || String(task.status) === status).filter((task) => !needle || [task.id, task.name, task.description, task.goal].some((value) => String(value ?? "").toLowerCase().includes(needle))).sort((a, b) => Number(b.id) - Number(a.id));
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount - 1);
+  const visible = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  return (0, import_react2.createElement)(
+    "div",
+    null,
+    (0, import_react2.createElement)(
+      Toolbar,
+      null,
+      (0, import_react2.createElement)("input", {
+        placeholder: "\u641C\u7D22 ID / \u540D\u79F0 / \u63CF\u8FF0 / \u76EE\u6807",
+        value: query,
+        onChange: (event) => {
+          setQuery(event.target.value);
+          setPage(0);
+        },
+        style: { minWidth: 260 }
+      }),
+      (0, import_react2.createElement)(
+        "select",
+        {
+          "aria-label": "\u4EFB\u52A1\u72B6\u6001",
+          value: status,
+          onChange: (event) => {
+            setStatus(event.target.value);
+            setPage(0);
+          }
+        },
+        (0, import_react2.createElement)("option", { key: "all", value: "all" }, "\u5168\u90E8\u72B6\u6001"),
+        TASK_STATUS_LABELS.map(([value, label]) => (0, import_react2.createElement)("option", { key: value, value }, label))
+      ),
+      (0, import_react2.createElement)(
+        "span",
+        { style: { fontSize: 12, color: "var(--vx-text-dim)", marginLeft: "auto" } },
+        `${rows.length} / ${(data?.tasks ?? []).length} \u4E2A\u4EFB\u52A1`
+      )
+    ),
+    rows.length === 0 ? (0, import_react2.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u4EFB\u52A1\u3002") : (0, import_react2.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)(
+        "tr",
+        null,
+        ["ID", "\u540D\u79F0", "\u72B6\u6001", "\u76EE\u6807", "\u53D1\u73B0", "\u5728\u9014", "\u6700\u8FD1\u6D3B\u52A8"].map((title) => (0, import_react2.createElement)("th", {
+          key: title,
+          style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" }
+        }, title))
+      )),
+      (0, import_react2.createElement)("tbody", null, visible.map((task) => (0, import_react2.createElement)(
+        "tr",
+        {
+          key: task.id,
+          onClick: () => onOpen(String(task.id)),
+          style: { cursor: "pointer" }
+        },
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", fontFamily: "var(--vx-mono)" } }, task.id),
+        (0, import_react2.createElement)(
+          "td",
+          { style: { padding: "6px 8px", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          task.name || task.description || "\u672A\u547D\u540D"
+        ),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, labelOf(TASK_STATUS_LABELS, task.status)),
+        (0, import_react2.createElement)(
+          "td",
+          { style: { padding: "6px 8px", fontSize: 12, color: "var(--vx-text-dim)" } },
+          `${task.goals_met ?? 0}/${task.goals_total ?? 0}`
+        ),
+        (0, import_react2.createElement)(
+          "td",
+          { style: { padding: "6px 8px" } },
+          findingCount(task) === 0 ? "0" : `${findingCount(task)}`,
+          findingCount(task) > 0 && (0, import_react2.createElement)("span", {
+            style: { marginLeft: 6, fontSize: 11, color: "var(--vx-negative)" }
+          }, `\u4E25\u91CD ${task.findings?.critical ?? 0} \xB7 \u9AD8 ${task.findings?.high ?? 0}`)
+        ),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", fontSize: 12 } }, task.in_flight ? `${task.in_flight}` : "\u2014"),
+        (0, import_react2.createElement)(
+          "td",
+          { style: { padding: "6px 8px", fontSize: 12, color: "var(--vx-text-dim)" } },
+          task.last_activity_unix ? fmtAgo(task.last_activity_unix) : "\u2014"
+        )
+      )))
+    ),
+    (0, import_react2.createElement)(Pager, { page: current, pageCount, total: rows.length, unit: "\u4E2A\u4EFB\u52A1", onPage: setPage })
+  );
+}
+function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }) {
   const [tick, setTick] = (0, import_react2.useState)(0);
   const task = useApi(`/api/tasks/${id}`, [tick]);
   const goals = useApi(`/api/tasks/${id}/goals`, [tick]);
   const intents = useApi(`/api/exploration/intents?task=${id}&limit=40`, [tick]);
   const coverage = useApi(`/api/tasks/${id}/coverage`, [tick]);
   const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`, [tick]);
+  const findings = useApi(`/api/exploration/findings?task_id=${encodeURIComponent(id)}&page=1&limit=20`, [tick, id]);
   const act = async (action) => {
     if (action === "archive" && !window.confirm("\u5F52\u6863\u540E\u8BE5\u4EFB\u52A1\u5C06\u4ECE\u5217\u8868\u79FB\u51FA\uFF0C\u7EE7\u7EED\uFF1F")) return;
     try {
@@ -2893,6 +3011,8 @@ function TaskDetail({ id, onBack }) {
   );
   const list = (value) => Array.isArray(value) ? value : value?.items ?? value?.goals ?? [];
   const goalRows = list(goals.data);
+  const findingRows = findings.data?.items ?? [];
+  const findingTotal = Number(findings.data?.total ?? findingRows.length);
   const intentRows = list(intents.data);
   const nodeRows = list(nodes.data);
   const cover = coverage.data ?? {};
@@ -2919,12 +3039,47 @@ function TaskDetail({ id, onBack }) {
     ),
     (0, import_react2.createElement)(
       "div",
-      { style: { display: "flex", gap: 8, margin: "10px 0 16px" } },
+      { style: { display: "flex", gap: 8, margin: "10px 0 16px", flexWrap: "wrap" } },
       status === "running" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => act("pause"), style: { cursor: "pointer" } }, "\u6682\u505C") : null,
       status === "paused" ? (0, import_react2.createElement)("button", { type: "button", onClick: () => act("resume"), style: { cursor: "pointer" } }, "\u6062\u590D") : null,
-      (0, import_react2.createElement)("button", { type: "button", onClick: () => act("archive"), style: { cursor: "pointer" } }, "\u5F52\u6863")
+      (0, import_react2.createElement)("button", { type: "button", onClick: () => act("archive"), style: { cursor: "pointer" } }, "\u5F52\u6863"),
+      (0, import_react2.createElement)("button", { type: "button", onClick: () => setTick((value) => value + 1), style: { cursor: "pointer" } }, "\u5237\u65B0"),
+      onOpenFindings ? (0, import_react2.createElement)("button", {
+        type: "button",
+        onClick: () => onOpenFindings(id),
+        style: { cursor: "pointer" }
+      }, `\u5728\u53D1\u73B0\u91CC\u67E5\u770B\uFF08${findingRows.length}\uFF09`) : null
     ),
     meta("\u76EE\u6807", (0, import_react2.createElement)("div", { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? "\u2014"))),
+    meta(
+      `\u53D1\u73B0\uFF08${findingRows.length}${findingTotal > findingRows.length ? ` / \u5171 ${findingTotal}` : ""}\uFF09`,
+      findingRows.length === 0 ? (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u8BE5\u4EFB\u52A1\u8FD8\u6CA1\u6709\u767B\u8BB0\u53D1\u73B0\u3002") : (0, import_react2.createElement)(
+        "div",
+        { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 } },
+        findingRows.map((finding) => (0, import_react2.createElement)(
+          "div",
+          {
+            key: String(finding.finding_id),
+            onClick: onOpenFinding ? () => onOpenFinding(String(finding.finding_id)) : void 0,
+            style: { display: "flex", gap: 8, alignItems: "baseline", cursor: onOpenFinding ? "pointer" : "default" }
+          },
+          (0, import_react2.createElement)("span", { className: "vx-ov-pill" }, labelOf(SEVERITY_LABELS, finding.severity)),
+          (0, import_react2.createElement)("span", { style: { color: "var(--vx-text-dim)", fontFamily: "var(--vx-mono)" } }, finding.vulnclass ?? ""),
+          (0, import_react2.createElement)("span", { style: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, finding.summary ?? ""),
+          (0, import_react2.createElement)(
+            "span",
+            { style: { color: "var(--vx-text-faint)", fontSize: 11, marginLeft: "auto" } },
+            labelOf(FINDING_STATUS_LABELS, finding.status)
+          )
+        ))
+      )
+    ),
+    meta("\u5DE5\u5177\u6267\u884C", (0, import_react2.createElement)(
+      "div",
+      null,
+      (0, import_react2.createElement)(ToolRunPage, { taskID: id }),
+      (0, import_react2.createElement)("div", { style: { marginTop: 14 } }, (0, import_react2.createElement)(ExecStream, { taskID: id }))
+    )),
     meta("\u7EDF\u8BA1", (0, import_react2.createElement)(
       "div",
       { style: { display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 12 } },
@@ -3591,35 +3746,124 @@ function PanelShell({ title, desc, children }) {
     children ?? null
   );
 }
-function FindingList({ taskID = "", onSelect }) {
-  const url = `/api/exploration/findings?page=1&limit=50${taskID ? `&task_id=${encodeURIComponent(taskID)}` : ""}`;
+function FindingsTab({ scope, onScope, onOpen }) {
+  const tasks = useApi("/api/tasks");
+  const [severity, setSeverity] = (0, import_react2.useState)("all");
+  const [status, setStatus] = (0, import_react2.useState)("all");
+  const [search, setSearch] = (0, import_react2.useState)("");
+  const [query, setQuery] = (0, import_react2.useState)("");
+  const [page, setPage] = (0, import_react2.useState)(1);
+  (0, import_react2.useEffect)(() => {
+    const timer = window.setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+  const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+  if (scope) params.set("task_id", scope);
+  if (severity !== "all") params.set("severity", severity);
+  if (status !== "all") params.set("status", status);
+  if (query) params.set("q", query);
+  const url = `/api/exploration/findings?${params.toString()}`;
   const { data, error, loading } = useApi(url, [url]);
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, error);
   const rows = data?.items ?? [];
+  const total = Number(data?.total ?? 0);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const options = tasks.data?.tasks ?? [];
   return (0, import_react2.createElement)(
     "div",
     null,
     (0, import_react2.createElement)(
-      "div",
-      { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginBottom: 8 } },
-      taskID ? `\u4EFB\u52A1 #${taskID} \xB7 \u5171 ${data?.total ?? 0} \u6761` : `\u5168\u90E8\u4EFB\u52A1 \xB7 \u5171 ${data?.total ?? 0} \u6761`
+      Toolbar,
+      null,
+      (0, import_react2.createElement)("input", {
+        placeholder: "\u641C\u7D22\u6458\u8981 / \u8BC1\u636E / \u6F0F\u6D1E\u7C7B",
+        value: search,
+        onChange: (event) => setSearch(event.target.value),
+        style: { minWidth: 240 }
+      }),
+      (0, import_react2.createElement)(
+        "select",
+        {
+          "aria-label": "\u4E25\u91CD\u5EA6",
+          value: severity,
+          onChange: (event) => {
+            setSeverity(event.target.value);
+            setPage(1);
+          }
+        },
+        (0, import_react2.createElement)("option", { key: "all", value: "all" }, "\u5168\u90E8\u4E25\u91CD\u5EA6"),
+        SEVERITY_LABELS.map(([value, label]) => (0, import_react2.createElement)("option", { key: value, value }, label))
+      ),
+      (0, import_react2.createElement)(
+        "select",
+        {
+          "aria-label": "\u5904\u7F6E\u72B6\u6001",
+          value: status,
+          onChange: (event) => {
+            setStatus(event.target.value);
+            setPage(1);
+          }
+        },
+        (0, import_react2.createElement)("option", { key: "all", value: "all" }, "\u5168\u90E8\u72B6\u6001"),
+        FINDING_STATUS_LABELS.map(([value, label]) => (0, import_react2.createElement)("option", { key: value, value }, label))
+      ),
+      (0, import_react2.createElement)(
+        "select",
+        {
+          "aria-label": "\u4EFB\u52A1\u8303\u56F4",
+          value: scope,
+          onChange: (event) => {
+            onScope(event.target.value);
+            setPage(1);
+          }
+        },
+        (0, import_react2.createElement)("option", { key: "all", value: "" }, "\u5168\u90E8\u4EFB\u52A1"),
+        options.slice(0, 200).map((task) => (0, import_react2.createElement)(
+          "option",
+          { key: task.id, value: String(task.id) },
+          `${task.id} \xB7 ${task.name || task.description || "\u672A\u547D\u540D"}`
+        ))
+      )
     ),
-    (0, import_react2.createElement)(
+    loading && rows.length === 0 ? (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : null,
+    error ? (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error) : null,
+    !loading && !error && rows.length === 0 ? (0, import_react2.createElement)(
+      "p",
+      { style: { fontSize: 12, color: "var(--vx-text-dim)" } },
+      scope ? `\u4EFB\u52A1 #${scope} \u4E0B\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u53D1\u73B0\u3002` : "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u53D1\u73B0\u3002"
+    ) : rows.length > 0 && (0, import_react2.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u4EFB\u52A1", "\u6F0F\u6D1E\u7C7B", "\u4E25\u91CD\u5EA6", "\u72B6\u6001", "\u6458\u8981"].map((title) => (0, import_react2.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
-      (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
+      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)(
         "tr",
-        { key: row.finding_id, onClick: () => onSelect?.(String(row.finding_id)), style: { cursor: onSelect ? "pointer" : "default" } },
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.finding_id),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.task_id ?? "\u2014"),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.vulnclass),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.severity),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.summary)
+        null,
+        ["ID", "\u4EFB\u52A1", "\u6F0F\u6D1E\u7C7B", "\u4E25\u91CD\u5EA6", "\u72B6\u6001", "\u6458\u8981"].map((title) => (0, import_react2.createElement)("th", {
+          key: title,
+          style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" }
+        }, title))
+      )),
+      (0, import_react2.createElement)("tbody", null, rows.map((finding) => (0, import_react2.createElement)(
+        "tr",
+        {
+          key: finding.finding_id,
+          onClick: () => onOpen(String(finding.finding_id)),
+          style: { cursor: "pointer" }
+        },
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", fontFamily: "var(--vx-mono)" } }, finding.finding_id),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", fontFamily: "var(--vx-mono)", color: "var(--vx-text-dim)" } }, finding.task_id ?? "\u2014"),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, finding.vulnclass ?? ""),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, labelOf(SEVERITY_LABELS, finding.severity)),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, labelOf(FINDING_STATUS_LABELS, finding.status)),
+        (0, import_react2.createElement)(
+          "td",
+          { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          finding.summary ?? ""
+        )
       )))
-    )
+    ),
+    (0, import_react2.createElement)(Pager, { page: Math.min(page, pageCount) - 1, pageCount, total, unit: "\u6761\u53D1\u73B0", onPage: (next) => setPage(next + 1) })
   );
 }
 function FindingDetail({ id, onBack }) {
@@ -3670,82 +3914,47 @@ function FindingDetail({ id, onBack }) {
     ) : null
   );
 }
-var WORKBENCH_TABS = [
+var TASKS_TABS = [
   ["tasks", "\u4EFB\u52A1"],
-  ["findings", "\u53D1\u73B0"],
-  ["runs", "\u5DE5\u5177\u6267\u884C"]
+  ["findings", "\u53D1\u73B0"]
 ];
-function WorkbenchPanel() {
-  const tasks = useApi("/api/tasks");
+function TasksPanel() {
   const [tab, setTab] = (0, import_react2.useState)("tasks");
-  const [taskID, setTaskID] = (0, import_react2.useState)("");
   const [detailID, setDetailID] = (0, import_react2.useState)("");
   const [findingID, setFindingID] = (0, import_react2.useState)("");
-  const options = tasks.data?.tasks ?? [];
-  const scoped = taskID !== "";
-  const pick2 = (id) => {
-    setTaskID(id);
-    setDetailID("");
-    setFindingID("");
-  };
+  const [scope, setScope] = (0, import_react2.useState)("");
   const tabButton = (id, label) => (0, import_react2.createElement)("button", { key: id, type: "button", "aria-pressed": tab === id, onClick: () => setTab(id) }, label);
+  const openFindings = (taskID) => {
+    setScope(taskID);
+    setFindingID("");
+    setTab("findings");
+  };
   let body;
   if (tab === "tasks") {
-    body = detailID ? (0, import_react2.createElement)(TaskDetail, { id: detailID, onBack: () => setDetailID("") }) : (0, import_react2.createElement)(
-      "div",
-      null,
-      (0, import_react2.createElement)(Dashboard),
-      (0, import_react2.createElement)(TaskList, { scope: taskID, onSelect: (id) => {
-        setDetailID(id);
-        setTaskID(id);
-      } })
-    );
-  } else if (tab === "findings") {
-    body = findingID ? (0, import_react2.createElement)(FindingDetail, { id: findingID, onBack: () => setFindingID("") }) : (0, import_react2.createElement)(FindingList, { taskID, onSelect: setFindingID });
+    body = detailID ? (0, import_react2.createElement)(TaskDetail, {
+      id: detailID,
+      onBack: () => setDetailID(""),
+      onOpenFindings: openFindings,
+      onOpenFinding: (findingID2) => {
+        setFindingID(findingID2);
+        setTab("findings");
+      }
+    }) : (0, import_react2.createElement)("div", null, (0, import_react2.createElement)(Dashboard), (0, import_react2.createElement)(TaskList, { onOpen: (id) => setDetailID(id) }));
   } else {
-    body = (0, import_react2.createElement)(
-      "div",
-      null,
-      (0, import_react2.createElement)(ToolRunPage, { taskID }),
-      (0, import_react2.createElement)(
-        "div",
-        { style: { marginTop: 18 } },
-        scoped ? (0, import_react2.createElement)(ExecStream, { taskID }) : (0, import_react2.createElement)(
-          "p",
-          { style: { fontSize: 12, color: "var(--vx-text-dim)", margin: 0 } },
-          "\u9009\u4E00\u4E2A\u4EFB\u52A1\u5373\u53EF\u770B\u5B83\u7684\u6267\u884C\u8BB0\u5F55\uFF1Aplanner / main \u6BCF\u4E00\u6B65\uFF0C\u542B\u5DE5\u5177\u8C03\u7528\u4E0E\u7ED3\u679C\u3002"
-        )
-      )
-    );
+    body = findingID ? (0, import_react2.createElement)(FindingDetail, { id: findingID, onBack: () => setFindingID("") }) : (0, import_react2.createElement)(FindingsTab, { scope, onScope: setScope, onOpen: setFindingID });
   }
   return (0, import_react2.createElement)(
     PanelShell,
-    { title: "\u6267\u884C\u53F0", desc: "\u4EFB\u52A1 / \u53D1\u73B0 / \u5DE5\u5177\u6267\u884C\u5171\u7528\u540C\u4E00\u4E2A\u4EFB\u52A1\u8303\u56F4" },
+    { title: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u6E05\u5355\u3001\u53D1\u73B0\uFF0C\u4EE5\u53CA\u6BCF\u4E2A\u4EFB\u52A1\u7684\u6267\u884C\u8BB0\u5F55" },
     (0, import_react2.createElement)(
       "div",
       { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 } },
       (0, import_react2.createElement)(
         "div",
-        { className: "vx-seg", role: "group", "aria-label": "\u6267\u884C\u53F0\u89C6\u56FE" },
-        WORKBENCH_TABS.map(([id, label]) => tabButton(id, label))
+        { className: "vx-seg", role: "group", "aria-label": "\u4EFB\u52A1\u89C6\u56FE" },
+        TASKS_TABS.map(([id, label]) => tabButton(id, label))
       ),
-      (0, import_react2.createElement)(
-        "select",
-        {
-          key: "scope",
-          "aria-label": "\u4EFB\u52A1\u8303\u56F4",
-          value: taskID,
-          onChange: (event) => pick2(event.target.value),
-          style: { minWidth: 240 }
-        },
-        (0, import_react2.createElement)("option", { key: "all", value: "" }, "\u5168\u90E8\u4EFB\u52A1"),
-        options.slice(0, 100).map((task) => (0, import_react2.createElement)(
-          "option",
-          { key: task.id, value: String(task.id) },
-          `${task.id} \xB7 ${task.name || task.description || "\u672A\u547D\u540D"}`
-        ))
-      ),
-      scoped ? (0, import_react2.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u4E09\u4E2A\u89C6\u56FE\u5171\u7528\u8FD9\u4E2A\u4EFB\u52A1\u8303\u56F4") : null
+      tab === "findings" && scope ? (0, import_react2.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, `\u4EFB\u52A1\u8303\u56F4 #${scope}`) : null
     ),
     body
   );
@@ -3849,7 +4058,7 @@ function ApprovalsSettings() {
 }
 var PANELS = [
   { id: "vexnar-overview", label: "\u6982\u89C8", order: 99, component: OverviewPanel, icon: OverviewIcon },
-  { id: "vexnar-workbench", label: "\u6267\u884C\u53F0", order: 100, component: WorkbenchPanel },
+  { id: "vexnar-tasks", label: "\u4EFB\u52A1", order: 100, component: TasksPanel },
   { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel },
   { id: "vexnar-assets", label: "\u8D44\u4EA7", order: 103, component: AssetsPanel }
 ];

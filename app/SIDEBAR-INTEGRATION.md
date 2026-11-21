@@ -21,10 +21,11 @@ dsh 新会话首屏
 
 dsh 侧边栏
 ├─ 概览        → main: vexnar-overview （Web /dashboard 复刻，整页）
-├─ 执行台      → main: vexnar-workbench
-│                 ├─ 任务      （仪表盘计数 + 列表 + 详情）
-│                 ├─ 发现      （按任务范围过滤的漏洞列表 + 详情）
-│                 └─ 工具执行  （运行器 + 该任务的执行记录流）
+├─ 任务        → main: vexnar-tasks
+│                 ├─ 任务      （KPI 计数 + 可筛选分页清单 + 任务详情）
+│                 └─ 发现      （严重度/状态/任务/关键字筛选 + 分页 + 详情）
+│                 任务详情内：目标 / 意图 / 节点 / 覆盖度 / 该任务的发现 /
+│                 工具运行器 / 该任务的执行记录流（activity/history）
 ├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
 └─ 资产        → main: vexnar-assets  （资产列表 / JSON 导入）
 
@@ -54,7 +55,8 @@ dsh 设置页
 | 工作空间 | **dsh 原生 workspace/文件面板** | 本地文件 | 复用 |
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
-| 任务 / 发现 / 工具执行 | 执行台（三页签共享任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=`、`/api/exploration/activity/history` | 已接 |
+| 任务 / 发现 | 任务面板（清单 + 发现页签，共用任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=&severity=&status=&q=&page=&limit=` | 已接 |
+| 工具执行 / 执行记录 | 任务详情内（按任务落库） | `POST /api/engine/tools/run`、`/api/exploration/activity/history` | 已接 |
 | 资产同步 | 资产面板的「导入」页签 | `/api/assets` | 已接 |
 | 流量 | 面板内证据查看 | `/api/exploration/findings/:id/traffic` | 骨架 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
@@ -72,14 +74,14 @@ dsh 设置页
   图形全部手绘 SVG（无 recharts 依赖），色板走 `--vx-chart-*` 令牌，浅色/深色随皮肤；
   新会话首屏的卡片在窗口高度 < 780px 时只保留标题栏与 KPI 条，把高度让给输入框；
 - 仪表盘：任务数、发现数、资产数、今日 Token；
-- 任务：最近 30 条任务（id/名称/状态/目标）；
-- 发现：最近 30 条发现（id/漏洞类/严重度/状态/摘要）；
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
-- 执行台：任务 / 发现 / 工具执行 共用顶部任务范围；工具执行页签在选择工具与 target 后按
-  该任务落库，下方直接列出该任务的执行记录（planner / main 逐步，含工具与结果）；
-- 任务详情：暂停/恢复/归档按钮；
+- 任务面板：清单支持状态筛选、关键字搜索与分页（数据源 `/api/tasks` 一次返回全部任务，
+  筛选分页在客户端做）；发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，分页走
+  core 与 Go 的 `page`+`limit`；任务详情里给出该任务的发现、工具运行器（结果按任务落库）
+  与该任务的执行记录（planner / main 逐步，含工具与结果）；
+- 任务详情：暂停/恢复/归档 / 刷新，并可跳到「发现」查看该任务的全部发现；
 - 流量页：通过内嵌 core 读取 Go 流量，支持导入 Yakit HAR 和登记资产。详见 [Yakit 对接设计](docs/YAKIT-TRAFFIC-ASSETS.md)；
 - 拦截规则：规则列表与删除（同样代理 Go）；
 - 审批记录：Go 无独立接口，占位说明。

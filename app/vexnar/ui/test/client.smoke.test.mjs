@@ -76,11 +76,11 @@ test('apply registers every surface it owns', () => {
     },
     effect: (fn) => fn()
   })
-  // 侧边栏：概览 + 执行台（任务/发现/工具执行 合并）+ 流量 + 资产；日志已并入执行台。
+  // 侧边栏：概览 + 任务（清单/发现，工具执行在任务详情里）+ 流量 + 资产。
   const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
-    ...['overview', 'workbench', 'traffic', 'assets']
+    ...['overview', 'tasks', 'traffic', 'assets']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
     // 设置：MCP 与工具合并成「工具与 MCP」，资产同步并进资产面板。
     ...['agents', 'tools-mcp', 'notify', 'intercept', 'approvals']
@@ -93,7 +93,7 @@ test('apply registers every surface it owns', () => {
   assert.deepEqual(registered, expected)
 })
 
-test('the fused surfaces replace their独立 entries', () => {
+test('the fused surfaces replace their 独立 entries', () => {
   const plugin = loadPlugin()
   const ids = []
   plugin.apply({
@@ -103,12 +103,12 @@ test('the fused surfaces replace their独立 entries', () => {
     },
     effect: (fn) => fn()
   })
-  for (const gone of ['vexnar-tasks', 'vexnar-findings', 'vexnar-tool-run', 'vexnar-logs',
+  for (const gone of ['vexnar-findings', 'vexnar-tool-run', 'vexnar-logs', 'vexnar-workbench',
     'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync']) {
     assert.equal(ids.some((id) => id.endsWith(`:${gone}`)), false,
-      `${gone} must be gone: its content lives in the workbench / 工具与 MCP / 资产 panel now`)
+      `${gone} must be gone: 发现 is a tab of 任务, 工具执行 lives in the task detail, 日志 is gone`)
   }
-  assert.ok(ids.includes('sidebar.panellist:vexnar-workbench'), 'the workbench must own the sidebar entry')
+  assert.ok(ids.includes('sidebar.panellist:vexnar-tasks'), 'the task panel owns the sidebar entry')
   assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')
 })
 
