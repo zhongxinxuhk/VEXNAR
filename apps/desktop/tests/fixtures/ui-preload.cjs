@@ -21,7 +21,7 @@ let savedMessages = [{
   ]
 }]
 // Backend conversations (the app no longer uses the Electron-local session store).
-let conversationSeq = 1
+let conversationSeq = 2
 let effort = 'high'
 const desktopProjects = [
   { id: '1', root_path: '/fixture/project-a', name: 'project-a', created_at: '2026-11-20T09:00:00Z' }
@@ -135,12 +135,14 @@ const sessionList = [
   }
 ]
 let resumeDraft = false
+let stopConversationCalls = 0
 let copiedTrace = ''
 let traceReads = 0
 let failNextOrderedResult = false
 let historicalCall = null
 contextBridge.exposeInMainWorld('__uiFixture', {
-  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads }),
+  sessionIndex: () => conversations.map(({ id, workspace, project_id }) => ({ id, workspace, project_id })),
+  snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads, stopConversationCalls }),
   seedOrdered: () => {
     failNextOrderedResult = true
     const rows = [
@@ -333,7 +335,7 @@ contextBridge.exposeInMainWorld('vexnar', {
       return ok(message)
     }
   },
-  workspace: { list: () => ok([]) },
+  workspace: { list: () => ok([]), choose: () => ok('/fixture/empty-project') },
   git: { status: () => ok({ branch: 'main', files: [] }) },
   backend: {
     status: () => ok({ connected: true, version: 'test' }),
@@ -423,6 +425,11 @@ contextBridge.exposeInMainWorld('vexnar', {
       if (path === '/settings') {
         if (method === 'PUT') system = { ...system, ...body }
         return ok(system)
+      }
+      if (/^\/conversations\/\d+\/stop$/.test(path) && method === 'POST') {
+        stopConversationCalls++
+        resumeDraft = false
+        return ok({ status: 'stopping' })
       }
       if (path === '/conversations/digest' && method === 'GET') {
         return ok({ items: [

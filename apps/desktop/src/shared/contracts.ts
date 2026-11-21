@@ -468,6 +468,7 @@ export type Session = {
    */
   projectId: string | null
   pinned: boolean
+  pinnedAt?: number
   createdAt: number
   updatedAt: number
 }

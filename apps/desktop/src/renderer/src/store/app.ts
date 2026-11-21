@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { create } from 'zustand'
+import { draftKeyFor, useDrafts } from './drafts'
 import { translate, useI18n } from '@/lib/i18n'
 import type { ProjectTaskFocus } from '@/lib/project-task'
 import {
@@ -107,6 +108,7 @@ type AppState = {
   /** Project list owned by Go; the sidebar groups threads by these rows. */
   projects: BackendProject[]
   activeSessionId: string | null
+  draftWorkspace: string
   messages: ChatMessage[]
   agentSessionId: string | null
   agentStatus: AgentStatus
@@ -150,6 +152,7 @@ type AppState = {
   loadOlderMessages: () => Promise<void>
   newSession: (workspace?: string) => Promise<void>
   switchWorkspace: (workspace: string) => Promise<void>
+  addProject: () => Promise<BackendProject | null>
   taskFocus: ProjectTaskFocus | null
   openProjectTask: (focus: ProjectTaskFocus) => void
   setProjectTaskSession: (sessionKey: string, sessionTitle?: string) => void
@@ -399,6 +402,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   taskFocus: null,
   activeSessionId: null,
+  draftWorkspace: '',
   messages: [],
   pendingApprovals: 0,
   hasOlderMessages: false,
@@ -458,18 +462,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         projects = projectRows
       } catch (error) {
         sessionsError = error instanceof Error ? error.message : String(error)
-      }
-      if (!sessions.length && !sessionsError) {
-        try {
-          const created = await conversations.create(
-            DEFAULT_AGENT_KEY,
-            newChatTitle(),
-            settings.workspaceRoot
-          )
-          sessions = [toSession(created)]
-        } catch (error) {
-          sessionsError = error instanceof Error ? error.message : String(error)
-        }
       }
       set({
         info: infoResult.ok ? infoResult.data : null,
@@ -606,8 +598,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   switchWorkspace: async (workspace) => {
-    // 切换工作区等价于在该目录下开一个新会话：目录写进设置，会话由后端登记。
-    await get().newSession(workspace)
+    const { activeSessionId, draftWorkspace, sessions } = get()
+    const current = activeSessionId ? sessions.find((row) => row.id === activeSessionId)?.workspace : draftWorkspace
+    if (current !== workspace) await get().newSession(workspace)
+  },
+
+  addProject: async () => {
+    const choice = await api.workspace.choose()
+    if (!choice.ok) {
+      set({ error: choice.error })
+      return null
+    }
+    if (!choice.data) return null
+    try {
+      const project = await projectApi.register(choice.data)
+      set((state) => ({ projects: [...state.projects.filter((row) => row.id !== project.id), project] }))
+      return project
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) })
+      return null
+    }
   },
 
   openProjectTask: (taskFocus) => {
@@ -628,45 +638,27 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   closeProjectTask: () => set({ taskFocus: null }),
 
-  newSession: async (workspaceOverride) => {
-    if (get().busy) await get().cancel()
-    const workspace = workspaceOverride ?? get().settings.workspaceRoot
-    if (workspace !== get().settings.workspaceRoot) {
-      const saved = await api.settings.set({ ...settingsInput(get().settings), workspaceRoot: workspace })
-      if (!saved.ok) {
-        set({ error: saved.error })
-        return
-      }
-      set({ settings: saved.data })
-      await Promise.all([get().refreshWorkspace(), get().refreshGit()])
-    }
-    try {
-      const created = await conversations.create(
-        DEFAULT_AGENT_KEY,
-        newChatTitle(),
-        workspace
-      )
-      const session = toSession(created)
-      sessionSelection++
-      stopPolling()
-      pending = null
-      activities = []
-      activityCursor = 0
-      turnActive = false
-      set((state) => ({
-        sessions: [session, ...state.sessions],
-        activeSessionId: session.id,
-        messages: [],
-        pendingApprovals: 0,
-        hasOlderMessages: false,
-        loadingOlderMessages: false,
-        agentSessionId: null,
-        busy: false,
-        agentStatus: 'idle'
-      }))
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : String(error) })
-    }
+  newSession: async (workspace = '') => {
+    sessionSelection++
+    stopPolling()
+    pending = null
+    activities = []
+    activityCursor = 0
+    turnActive = false
+    set({
+      view: 'chat',
+      activeSessionId: null,
+      draftWorkspace: workspace,
+      messages: [],
+      pendingApprovals: 0,
+      hasOlderMessages: false,
+      loadingOlderMessages: false,
+      taskFocus: null,
+      agentSessionId: null,
+      busy: false,
+      agentStatus: 'idle',
+      error: null
+    })
   },
 
   pinSession: async (id, pinned) => {
@@ -679,12 +671,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeSession: async (id) => {
-    const wasActive = id === get().activeSessionId
-    if (wasActive) {
-      stopPolling()
-      turnActive = false
-      pending = null
-    }
+
     try {
       await conversations.remove(id)
     } catch (error) {
@@ -693,44 +680,54 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const sessions = get().sessions.filter((session) => session.id !== id)
     set({ sessions })
-    if (wasActive) {
-      if (sessions[0]) await get().selectSession(sessions[0].id)
-      else await get().newSession()
-    }
+    if (id === get().activeSessionId) await get().newSession()
   },
 
   send: async (text, attachments = []) => {
     const trimmed = text.trim()
-    const sessionId = get().activeSessionId
-    if ((!trimmed && attachments.length === 0) || !sessionId || get().busy) return false
+    const { activeSessionId, draftWorkspace, busy } = get()
+    if ((!trimmed && attachments.length === 0) || busy) return false
 
-    // Optimistic bubble: the server persists the human turn within the same
-    // request, and the first poll replaces this with the stored activity row.
-    pending = { text: trimmed, images: attachments }
-    turnActive = true
-    set({
-      messages: renderActivities(sessionId),
-      busy: true,
-      agentStatus: 'streaming',
-      agentSessionId: sessionId,
-      error: null
-    })
+    const selection = sessionSelection
+    let sessionId = activeSessionId
+    const draftKey = draftKeyFor(draftWorkspace)
+    const submitted = useDrafts.getState().drafts[draftKey]
+    set({ busy: true, agentStatus: 'streaming', error: null })
     try {
-      // Images travel through the same /api/chat/upload route the web page uses,
-      // then the message carries their relative paths to the Go conversation.
+      if (!sessionId) {
+        const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle(), draftWorkspace)
+        const session = toSession(created)
+        sessionId = session.id
+        if (submitted && selection === sessionSelection) useDrafts.getState().patch(sessionId, submitted)
+        set((state) => ({
+          sessions: [session, ...state.sessions.filter((row) => row.id !== session.id)],
+          ...(selection === sessionSelection ? { activeSessionId: session.id } : {})
+        }))
+        if (session.projectId && !get().projects.some((row) => row.id === session.projectId)) void refreshSessions()
+      }
+      if (selection === sessionSelection) {
+        pending = { text: trimmed, images: attachments }
+        turnActive = true
+        set({ messages: renderActivities(sessionId), agentSessionId: sessionId })
+      }
       const files = await uploadImages(sessionId, attachments)
       await conversations.send(sessionId, trimmed, files)
-      pollUntilDone(sessionId)
+      if (selection === sessionSelection) {
+        if (!activeSessionId) useDrafts.getState().patch(sessionId, { text: '', images: [] })
+        pollUntilDone(sessionId)
+      }
       return true
     } catch (error) {
-      pending = null
-      turnActive = false
-      set({
-        busy: false,
-        agentStatus: 'error',
-        error: error instanceof Error ? error.message : String(error),
-        messages: renderActivities(sessionId)
-      })
+      if (selection === sessionSelection) {
+        pending = null
+        turnActive = false
+        set({
+          busy: false,
+          agentStatus: 'error',
+          error: error instanceof Error ? error.message : String(error),
+          messages: sessionId ? renderActivities(sessionId) : []
+        })
+      }
       return false
     }
   },

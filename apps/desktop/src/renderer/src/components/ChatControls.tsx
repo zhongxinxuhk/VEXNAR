@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useT } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
@@ -238,10 +239,18 @@ export function ContextBar({
   disabled: boolean
   hide: () => void
 }): React.JSX.Element {
+  const t = useT()
+  const projects = useAppStore((state) => state.projects)
+  const draftWorkspace = useAppStore((state) => state.draftWorkspace)
+  const editorWorkspace = useAppStore((state) => state.settings.workspaceRoot)
   const sessions = useAppStore((state) => state.sessions)
   const activeId = useAppStore((state) => state.activeSessionId)
   const switchWorkspace = useAppStore((state) => state.switchWorkspace)
-  const choose = useAppStore((state) => state.chooseWorkspace)
+  const addProject = useAppStore((state) => state.addProject)
+  const choose = async (): Promise<void> => {
+    const project = await addProject()
+    if (project) await switchWorkspace(project.root_path)
+  }
   const create = useAppStore((state) => state.newSession)
   const setRightTab = useAppStore((state) => state.setRightTab)
   const openSettings = useAppStore((state) => state.openSettings)
@@ -258,13 +267,8 @@ export function ContextBar({
   const [creating, setCreating] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const active = sessions.find((session) => session.id === activeId)
-  const projects = Array.from(
-    new Map(
-      sessions
-        .filter((session) => session.workspace)
-        .map((session) => [session.workspace, session])
-    ).values()
-  )
+  const workspace = activeId ? active?.workspace ?? '' : draftWorkspace
+  const editingWorkspaceMatches = Boolean(workspace && workspace === editorWorkspace)
   return (
     <div
       data-testid="composer-context"
@@ -306,7 +310,7 @@ export function ContextBar({
           >
             <Folder className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {basename(active?.workspace || '') || '选择工作区'}
+              {projects.find((project) => project.root_path === workspace)?.name || basename(workspace) || t('app.noWorkspace')}
             </span>
             <ChevronDown className="h-3 w-3 shrink-0 text-muted" />
           </button>
@@ -322,25 +326,23 @@ export function ContextBar({
               <Folder className="h-4 w-4" />
               选择文件夹…
             </DropdownMenu.Item>
-            {projects.map((session) => (
-              <DropdownMenu.Item
-                key={session.workspace}
-                className={item}
-                onSelect={() => void switchWorkspace(session.workspace)}
-              >
+            <DropdownMenu.Item className={item} onSelect={() => void switchWorkspace('')}>
+              <Folder className="h-4 w-4" />
+              {t('app.noWorkspace')}
+              {!workspace ? <Check className="ml-auto h-3.5 w-3.5" /> : null}
+            </DropdownMenu.Item>
+            {projects.map((project) => (
+              <DropdownMenu.Item key={project.id} className={item}
+                onSelect={() => void switchWorkspace(project.root_path)}>
                 <Folder className="h-4 w-4 shrink-0" />
-                <span className="max-w-64 truncate" title={session.workspace}>
-                  {basename(session.workspace)}
-                </span>
-                {active?.workspace === session.workspace && (
-                  <Check className="ml-auto h-3.5 w-3.5" />
-                )}
+                <span className="max-w-64 truncate" title={project.root_path}>{project.name}</span>
+                {workspace === project.root_path ? <Check className="ml-auto h-3.5 w-3.5" /> : null}
               </DropdownMenu.Item>
             ))}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      {active?.workspace ? (
+      {editingWorkspaceMatches ? (
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button
@@ -361,7 +363,7 @@ export function ContextBar({
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       ) : null}
-      {active?.workspace ? (
+      {editingWorkspaceMatches ? (
       <DropdownMenu.Root open={moreOpen} onOpenChange={setMoreOpen}>
         <DropdownMenu.Trigger asChild>
           <button
@@ -385,7 +387,7 @@ export function ContextBar({
             </DropdownMenu.Label>
             <DropdownMenu.Sub
               onOpenChange={(open) => {
-                if (!open || !active?.workspace) return
+                if (!open || !editingWorkspaceMatches) return
                 void window.vexnar.git.branches().then((result) => {
                   if (result.ok) setBranches(result.data)
                   else setIssue(result.error)
@@ -394,7 +396,7 @@ export function ContextBar({
             >
               <DropdownMenu.SubTrigger
                 className={item}
-                disabled={!active?.workspace}
+                disabled={!editingWorkspaceMatches}
               >
                 分支{' '}
                 <span className="ml-auto text-muted">
@@ -427,7 +429,7 @@ export function ContextBar({
             <DropdownMenu.Item
               className={item}
               disabled={
-                !active?.workspace || creating || (!git?.branch && !branch)
+                !editingWorkspaceMatches || creating || (!git?.branch && !branch)
               }
               onSelect={(event) => {
                 event.preventDefault()

@@ -5,6 +5,10 @@
 import { create } from 'zustand'
 import type { ImageAttachment } from '@shared/contracts'
 export type ComposerDraft = { text: string; images: ImageAttachment[] }
+export function draftKeyFor(workspace: string): string {
+  return workspace ? `new:${workspace}` : 'new'
+}
+
 export const emptyDraft: ComposerDraft = { text: '', images: [] }
 export const useDrafts = create<{
   drafts: Record<string, ComposerDraft>

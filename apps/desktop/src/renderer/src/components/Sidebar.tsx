@@ -4,153 +4,38 @@
 
 import { ConversationNotifications } from './chat/ConversationNotifications'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   ArrowUpDown,
   Bell,
   ChevronDown,
   ChevronRight,
-  Copy,
   Folder,
-  MoreHorizontal,
-  Pin,
-  PinOff,
   Plus,
   Search,
   SquarePen,
-  Trash2,
   X
 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { useLayout } from '@/store/layout'
 import { useAppStore } from '@/store/app'
-import { basename, cn } from '@/lib/utils'
-import type { Session } from '@shared/contracts'
+import { cn } from '@/lib/utils'
+import { SessionRow } from './SessionRow'
+import { movePinned, sessionNavigation } from '@/lib/session-navigation'
 
 const menuContent =
   'z-50 min-w-[168px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
 const menuItem =
   'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
 
-function projectName(path: string, fallback: string): string {
-  if (!path) return fallback
-  return basename(path) || path
-}
-
-function SessionRow({
-  session,
-  active,
-  pinned
-}: {
-  session: Session
-  active: boolean
-  pinned?: boolean
-}): React.JSX.Element {
-  const t = useT()
-  const selectSession = useAppStore((state) => state.selectSession)
-  const setView = useAppStore((state) => state.setView)
-  const pinSession = useAppStore((state) => state.pinSession)
-  const removeSession = useAppStore((state) => state.removeSession)
-
-  return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger asChild>
-    <div
-      className={cn(
-        'group relative flex h-[30px] items-center rounded-[7px] pl-[42px] pr-1',
-        active ? 'bg-[var(--codex-active)] text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => {
-          setView('chat')
-          void selectSession(session.id)
-        }}
-        className="min-w-0 flex-1 truncate text-left text-[12.5px] leading-[30px]"
-        title={session.title}
-      >
-        {session.title}
-      </button>
-
-      {pinned ? (
-        <Pin className="mr-1 h-3 w-3 shrink-0 text-muted/70" strokeWidth={1.8} />
-      ) : null}
-
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            aria-label={t('app.more')}
-            onClick={(event) => event.stopPropagation()}
-            className={cn(
-              'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted opacity-0 transition-opacity hover:bg-panel-3 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100',
-            )}
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content side="right" align="start" sideOffset={6} className={menuContent}>
-            <DropdownMenu.Item
-              className={menuItem}
-              onSelect={() => void pinSession(session.id, !session.pinned)}
-            >
-              {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-              {session.pinned ? t('app.unpin') : t('app.pin')}
-            </DropdownMenu.Item>
-            <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-            <DropdownMenu.Item
-              className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
-              onSelect={() => void removeSession(session.id)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {t('app.delete')}
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-    </div>
-      </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content className={menuContent}>
-          <ContextMenu.Item
-            className={menuItem}
-            onSelect={() => void pinSession(session.id, !session.pinned)}
-          >
-            {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-            {session.pinned ? t('app.unpin') : t('app.pin')}
-          </ContextMenu.Item>
-          <ContextMenu.Item
-            className={menuItem}
-            onSelect={() => void window.vexnar.app.copyText(session.title)}
-          >
-            <Copy className="h-3.5 w-3.5" />
-            复制会话标题
-          </ContextMenu.Item>
-          <ContextMenu.Separator className="my-1 h-px bg-line-soft" />
-          <ContextMenu.Item
-            className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
-            onSelect={() => void removeSession(session.id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {t('app.delete')}
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
-  )
-}
-
-type Project = {
-  /** Backend project id; empty string is the "unassigned" bucket. */
-  path: string
-  name: string
-  /** Canonical directory the project was registered with. */
-  rootPath: string
-  sessions: Session[]
-  latest: number
+const pinOrderKey = 'vexnar-sidebar-pin-order-v1'
+function readPinOrder(): string[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(pinOrderKey) ?? '[]')
+    return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 export function Sidebar(): React.JSX.Element {
@@ -159,11 +44,11 @@ export function Sidebar(): React.JSX.Element {
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const draftWorkspace = useAppStore((state) => state.draftWorkspace)
   const view = useAppStore((state) => state.view)
-  const settings = useAppStore((state) => state.settings)
   const newSession = useAppStore((state) => state.newSession)
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
-  const selectSession = useAppStore((state) => state.selectSession)
+  const addProject = useAppStore((state) => state.addProject)
   const setView = useAppStore((state) => state.setView)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
 
@@ -172,6 +57,7 @@ export function Sidebar(): React.JSX.Element {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const projectRows = useAppStore((state) => state.projects)
   const [projectsCollapsed, setProjectsCollapsed] = useState(false)
+  const [pinOrder, setPinOrder] = useState(readPinOrder)
   const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
   const lastAutoExpand = useRef<string | null>(null)
@@ -182,51 +68,22 @@ export function Sidebar(): React.JSX.Element {
 
   useEffect(() => {
     const current = sessions.find((session) => session.id === activeSessionId)
-    const key = current?.projectId ?? ''
+    const key = current?.projectId ?? (!activeSessionId ? projectRows.find((row) => row.root_path === draftWorkspace)?.id : undefined)
+    if (!key) return
     if (lastAutoExpand.current === key) return
     lastAutoExpand.current = key
     setExpanded((previous) => new Set(previous).add(key))
-  }, [activeSessionId, sessions])
+  }, [activeSessionId, sessions, draftWorkspace, projectRows])
 
-  const pinned = useMemo(
-    () => sessions.filter((session) => session.pinned).sort((a, b) => b.updatedAt - a.updatedAt),
-    [sessions]
+  const { pinned, projects: visibleProjects, recent: looseSessions } = useMemo(
+    () => sessionNavigation(sessions, projectRows, pinOrder, sortMode),
+    [sessions, projectRows, pinOrder, sortMode]
   )
-
-  const projects = useMemo(() => {
-    const unassigned = t('app.unassigned')
-    const byId = new Map(projectRows.map((project) => [project.id, project]))
-    const grouped = new Map<string, Project>()
-    for (const session of sessions) {
-      if (session.pinned) continue
-      // Grouping key is the backend project id. A thread without one is
-      // unassigned — it never inherits the directory currently open.
-      const key = session.projectId ?? ''
-      const row = key ? byId.get(key) : undefined
-      const current = grouped.get(key)
-      if (current) {
-        current.sessions.push(session)
-        current.latest = Math.max(current.latest, session.updatedAt)
-      } else {
-        grouped.set(key, {
-          path: key,
-          name: row?.name ?? (key ? projectName(session.workspace, key) : unassigned),
-          rootPath: row?.root_path ?? session.workspace,
-          sessions: [session],
-          latest: session.updatedAt
-        })
-      }
-    }
-    const list = [...grouped.values()]
-    for (const project of list) project.sessions.sort((a, b) => b.updatedAt - a.updatedAt)
-    list.sort((a, b) => {
-      if (a.rootPath && a.rootPath === settings.workspaceRoot) return -1
-      if (b.rootPath && b.rootPath === settings.workspaceRoot) return 1
-      if (sortMode === 'name') return a.name.localeCompare(b.name)
-      return b.latest - a.latest
-    })
-    return list
-  }, [sessions, projectRows, settings.workspaceRoot, sortMode, t])
+  const movePin = (id: string, delta: -1 | 1): void => {
+    const next = movePinned(pinned.map((row) => row.id), id, delta)
+    setPinOrder(next)
+    try { localStorage.setItem(pinOrderKey, JSON.stringify(next)) } catch { /* keep window state */ }
+  }
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase()
@@ -234,9 +91,10 @@ export function Sidebar(): React.JSX.Element {
     return sessions.filter(
       (session) =>
         session.title.toLowerCase().includes(value) ||
-        projectName(session.workspace, '').toLowerCase().includes(value)
+        session.workspace.toLowerCase().includes(value) ||
+        projectRows.some((project) => project.id === session.projectId && project.name.toLowerCase().includes(value))
     )
-  }, [sessions, query])
+  }, [sessions, projectRows, query])
 
   const toggleProject = (path: string): void => {
     setExpanded((previous) => {
@@ -248,14 +106,12 @@ export function Sidebar(): React.JSX.Element {
   }
 
   const createProject = async (): Promise<void> => {
-    await chooseWorkspace()
+    const project = await addProject()
+    if (project) {
+      setProjectsCollapsed(false)
+      setExpanded((previous) => new Set(previous).add(project.id))
+    }
   }
-
-  const looseSessions = useMemo(
-    () => projects.find((project) => !project.path)?.sessions ?? [],
-    [projects]
-  )
-  const visibleProjects = projects.filter((project) => project.path)
 
   if (!sidebarOpen) return <></>
 
@@ -373,6 +229,8 @@ export function Sidebar(): React.JSX.Element {
                   session={session}
                   active={view === 'chat' && session.id === activeSessionId}
                   pinned={session.pinned}
+                  sidebar
+                  showWorkspace
                 />
               ))
             )}
@@ -382,12 +240,15 @@ export function Sidebar(): React.JSX.Element {
             {pinned.length > 0 ? (
               <div className="pt-3">
                 <div className="px-2 pb-1.5 text-[11px] font-medium text-muted">{t('app.pinned')}</div>
-                {pinned.map((session) => (
+                {pinned.map((session, index) => (
                   <SessionRow
                     key={session.id}
                     session={session}
                     active={view === 'chat' && session.id === activeSessionId}
                     pinned
+                    sidebar
+                    moveUp={index > 0 ? () => movePin(session.id, -1) : undefined}
+                    moveDown={index < pinned.length - 1 ? () => movePin(session.id, 1) : undefined}
                   />
                 ))}
               </div>
@@ -436,16 +297,19 @@ export function Sidebar(): React.JSX.Element {
               </div>
             ) : (
               visibleProjects.map((project) => {
-                const open = expanded.has(project.path)
+                const open = expanded.has(project.id)
                 const visible = project.sessions
                 return (
-                  <div key={project.path || '__none'} className="mb-0.5">
+                  <div key={project.id} className="mb-0.5" data-project-id={project.id}>
+                    <div className="group/project flex items-center gap-0.5">
                     <button
                       type="button"
-                      onClick={() => toggleProject(project.path)}
+                      aria-expanded={open}
+                      title={project.rootPath}
+                      onClick={() => toggleProject(project.id)}
                       className={cn(
                         'group flex h-[31px] w-full items-center gap-2 rounded-[7px] px-2 text-left transition-colors',
-                        open && project.rootPath === settings.workspaceRoot
+                        open && sessions.some((row) => row.projectId === project.id && row.id === activeSessionId)
                           ? 'bg-panel-3/80 text-ink'
                           : 'text-ink-soft hover:bg-[var(--codex-hover)] hover:text-ink'
                       )}
@@ -459,11 +323,22 @@ export function Sidebar(): React.JSX.Element {
                         )}
                       />
                     </button>
+                    <button type="button" aria-label={t('app.newProjectChat', { project: project.name })}
+                      className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-panel-3"
+                      onClick={() => {
+                        setExpanded((previous) => new Set(previous).add(project.id))
+                        void newSession(project.rootPath)
+                      }}>
+                      <SquarePen className="size-3.5" aria-hidden="true" />
+                    </button>
+                    </div>
                     {open ? (
                       <div className="mt-0.5">
+                        {visible.length === 0 ? <p className="px-6 py-1 text-xs text-muted">{t('app.noChats')}</p> : null}
                         {visible.map((session) => (
                           <SessionRow
                             key={session.id}
+                            sidebar
                             session={session}
                             active={view === 'chat' && session.id === activeSessionId}
                           />
@@ -479,11 +354,12 @@ export function Sidebar(): React.JSX.Element {
             {looseSessions.length > 0 ? (
               <div className="mt-1">
                 <div className="flex items-center gap-1 px-2 pb-1 pt-4">
-                  <span className="text-[11px] font-medium text-muted">最近</span>
+                  <span className="text-[11px] font-medium text-muted">{t('app.recentChats')}</span>
                 </div>
                 {looseSessions.map((session) => (
                   <SessionRow
                     key={session.id}
+                    sidebar
                     session={session}
                     active={view === 'chat' && session.id === activeSessionId}
                   />

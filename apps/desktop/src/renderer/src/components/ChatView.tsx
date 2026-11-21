@@ -30,7 +30,7 @@ import {
   ModelPicker,
   type EffortLevel
 } from './ModelPicker'
-import { useDrafts, emptyDraft } from '@/store/drafts'
+import { draftKeyFor, useDrafts, emptyDraft } from '@/store/drafts'
 import { useLayout } from '@/store/layout'
 import { attachmentsSchema, type ImageAttachment } from '@shared/contracts'
 import { useChatSendMode } from '@/lib/chat-send-mode'
@@ -73,12 +73,17 @@ function modelLabel(model: string): string {
 
 function EmptyState(): React.JSX.Element {
   const t = useT()
-  const settings = useAppStore((state) => state.settings)
+  const draftWorkspace = useAppStore((state) => state.draftWorkspace)
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
-  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
+  const addProject = useAppStore((state) => state.addProject)
+  const switchWorkspace = useAppStore((state) => state.switchWorkspace)
+  const choose = async (): Promise<void> => {
+    const project = await addProject()
+    if (project) await switchWorkspace(project.root_path)
+  }
   const session = sessions.find((item) => item.id === activeSessionId)
-  const project = basename(session?.workspace || settings.workspaceRoot || '')
+  const project = basename(activeSessionId ? session?.workspace ?? '' : draftWorkspace)
   const title = project
     ? t('chat.buildTitle', { project })
     : t('chat.buildTitleNoProject')
@@ -92,7 +97,7 @@ function EmptyState(): React.JSX.Element {
             {title.split(project)[0]}
             <button
               type="button"
-              onClick={() => void chooseWorkspace()}
+              onClick={() => void choose()}
               className="underline decoration-dotted decoration-[1.5px] underline-offset-[6px] decoration-ink/50 transition-colors hover:decoration-ink"
             >
               {project}
@@ -117,17 +122,19 @@ function Composer(): React.JSX.Element {
   const setRightTab = useAppStore((state) => state.setRightTab)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const draftWorkspace = useAppStore((state) => state.draftWorkspace)
+  const draftId = activeSessionId || draftKeyFor(draftWorkspace)
 
   const draft = useDrafts(
-    (state) => state.drafts[activeSessionId || 'new'] ?? emptyDraft
+    (state) => state.drafts[draftId] ?? emptyDraft
   )
   const patchDraft = useDrafts((state) => state.patch)
   const text = draft.text
   const images = draft.images
   const setText = (value: string | ((old: string) => string)): void => {
     const current =
-      useDrafts.getState().drafts[activeSessionId || 'new'] ?? emptyDraft
-    patchDraft(activeSessionId || 'new', {
+      useDrafts.getState().drafts[draftId] ?? emptyDraft
+    patchDraft(draftId, {
       text: typeof value === 'function' ? value(current.text) : value
     })
   }
@@ -137,7 +144,7 @@ function Composer(): React.JSX.Element {
   const fileRef = useRef<HTMLInputElement>(null)
   const [showContext, setShowContext] = useState(true)
   const addImages = async (files: File[]): Promise<void> => {
-    const sessionKey = activeSessionId || 'new'
+    const sessionKey = draftId
     setAttachmentError('')
     try {
       if (files.length > 6) throw new Error('一次最多添加 6 张图片')
@@ -283,7 +290,7 @@ function Composer(): React.JSX.Element {
       return
     sendingRef.current = true
     setSubmitting(true)
-    const id = activeSessionId || 'new'
+    const id = draftId
     const submitted = useDrafts.getState().drafts[id]
     try {
       await effortPersist.current
@@ -414,7 +421,7 @@ function Composer(): React.JSX.Element {
                     type="button"
                     aria-label={`移除图片 ${image.name}`}
                     onClick={() =>
-                      patchDraft(activeSessionId || 'new', {
+                      patchDraft(draftId, {
                         images: images.filter((item) => item.id !== image.id)
                       })
                     }
@@ -627,6 +634,8 @@ export function ChatView(): React.JSX.Element {
   const t = useT()
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
+  const projects = useAppStore((state) => state.projects)
+  const draftWorkspace = useAppStore((state) => state.draftWorkspace)
   const messages = useAppStore((state) => state.messages)
   const lastMessage = messages.at(-1)
   const retryUser = lastMessage?.role === 'assistant'
@@ -646,19 +655,15 @@ export function ChatView(): React.JSX.Element {
   const toggleRight = useAppStore((state) => state.toggleRight)
   const rightOpen = useAppStore((state) => state.rightOpen)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
-  const projectName = useMemo(() => {
-    const path = sessions.find((item) => item.id === activeSessionId)?.workspace || ''
-    return path.split('/').filter(Boolean).pop() || ''
-  }, [sessions, activeSessionId])
   const session = useMemo(
     () => sessions.find((item) => item.id === activeSessionId),
     [sessions, activeSessionId]
   )
-  // 顶部项目图标只用于提示当前项目名，不承担点击行为
-  const projectLabel = useMemo(() => {
-    const root = session?.workspace || useAppStore.getState().settings.workspaceRoot || ''
-    return basename(root) || '未选择工作区'
-  }, [session?.workspace])
+  const currentWorkspace = activeSessionId ? session?.workspace ?? '' : draftWorkspace
+  const currentProject = projects.find((project) =>
+    activeSessionId ? project.id === session?.projectId : project.root_path === draftWorkspace)
+  const projectName = currentProject?.name || basename(currentWorkspace)
+  const projectLabel = projectName || t('app.noWorkspace')
 
   useLayoutEffect(() => {
     following.current = true
@@ -717,11 +722,6 @@ export function ChatView(): React.JSX.Element {
           >
             {session?.title || '新聊天'}
           </div>
-          {session?.workspace && (
-            <div className="truncate text-[10px] leading-3 text-muted">
-              {basename(session.workspace)}
-            </div>
-          )}
         </div>
         <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
         {activeSessionId && messages.length > 0 ? (

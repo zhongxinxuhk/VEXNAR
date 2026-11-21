@@ -341,11 +341,12 @@ function DiffView(): React.JSX.Element {
 function ProjectSessions(): React.JSX.Element {
   const t = useT()
   const root = useAppStore((state) => state.settings.workspaceRoot)
+  const projectId = useAppStore((state) => state.projects.find((project) => project.root_path === root)?.id)
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const newSession = useAppStore((state) => state.newSession)
-  const visible = useMemo(() => sessions.filter((session) => session.workspace === root)
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt), [sessions, root])
+  const visible = useMemo(() => sessions.filter((session) => projectId !== undefined && session.projectId === projectId)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt), [sessions, projectId])
 
   return (
     <div className="flex h-full flex-col" data-testid="project-sessions">
@@ -353,7 +354,7 @@ function ProjectSessions(): React.JSX.Element {
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink-soft" title={root}>
           {root || t('app.unassigned')}
         </span>
-        <Button variant="ghost" size="icon" aria-label={t('app.newChat')} onClick={() => void newSession()}>
+        <Button variant="ghost" size="icon" aria-label={t('app.newChat')} onClick={() => void newSession(root)}>
           <Plus className="size-4" />
         </Button>
       </div>

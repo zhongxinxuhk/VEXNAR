@@ -204,6 +204,9 @@ export function toSession(conversation: BackendConversation): Session {
     workspace: conversation.workspace ?? '',
     projectId: conversation.project_id != null ? String(conversation.project_id) : null,
     pinned: Boolean(conversation.pinned ?? conversation.pinned_at),
+    ...(conversation.pinned_at && Number.isFinite(Date.parse(conversation.pinned_at))
+      ? { pinnedAt: Date.parse(conversation.pinned_at) }
+      : {}),
     createdAt: tsOf(conversation.created_at),
     updatedAt: tsOf(conversation.updated_at)
   }

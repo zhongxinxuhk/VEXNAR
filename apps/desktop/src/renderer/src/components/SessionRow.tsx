@@ -4,7 +4,7 @@
 
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
 import type { Session } from '@shared/contracts'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -19,15 +19,22 @@ export function SessionRow({
   session,
   active,
   pinned,
-  showWorkspace = false
+  showWorkspace = false,
+  sidebar = false,
+  moveUp,
+  moveDown
 }: {
   session: Session
   active: boolean
   pinned?: boolean
   showWorkspace?: boolean
+  sidebar?: boolean
+  moveUp?: () => void
+  moveDown?: () => void
 }): React.JSX.Element {
   const t = useT()
   const selectSession = useAppStore((state) => state.selectSession)
+  const setView = useAppStore((state) => state.setView)
   const pinSession = useAppStore((state) => state.pinSession)
   const removeSession = useAppStore((state) => state.removeSession)
 
@@ -36,14 +43,19 @@ export function SessionRow({
       <ContextMenu.Trigger asChild>
         <div
           className={cn(
-            showWorkspace && 'h-11',
+            showWorkspace && 'min-h-10',
+            sidebar && 'pl-6',
             'group relative flex min-h-[30px] items-center rounded-[7px] pl-2 pr-1',
             active ? 'bg-[var(--codex-active)] text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
           )}
         >
           <button
             type="button"
-            onClick={() => void selectSession(session.id)}
+            aria-current={active ? 'page' : undefined}
+            onClick={() => {
+              if (sidebar) setView('chat')
+              void selectSession(session.id)
+            }}
             className="min-w-0 flex-1 truncate text-left text-[12.5px] leading-4"
             title={showWorkspace ? `${session.title} · ${session.workspace || t('app.unassigned')}` : session.title}
           >
@@ -62,7 +74,7 @@ export function SessionRow({
                 aria-label={t('app.more')}
                 onClick={(event) => event.stopPropagation()}
                 className={cn(
-                  'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted opacity-0 transition-opacity hover:bg-panel-3 hover:text-ink group-hover:opacity-100 data-[state=open]:opacity-100',
+                  'grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted opacity-0 transition-opacity hover:bg-panel-3 hover:text-ink group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100',
                 )}
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
@@ -77,6 +89,8 @@ export function SessionRow({
                   {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                   {session.pinned ? t('app.unpin') : t('app.pin')}
                 </DropdownMenu.Item>
+                {moveUp ? <DropdownMenu.Item className={menuItem} onSelect={moveUp}><ArrowUp className="size-3.5" />{t('app.movePinUp')}</DropdownMenu.Item> : null}
+                {moveDown ? <DropdownMenu.Item className={menuItem} onSelect={moveDown}><ArrowDown className="size-3.5" />{t('app.movePinDown')}</DropdownMenu.Item> : null}
                 <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
                 <DropdownMenu.Item
                   className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
