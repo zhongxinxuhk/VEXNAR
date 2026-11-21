@@ -7,6 +7,8 @@ import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
 import { YakHistory, SessionTrafficAction } from './yak-history.js'
+import { CORE_BASE, callApi, responseError, useApi } from './api.js'
+import { McpTab, ToolsTab } from './catalog.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -369,40 +371,6 @@ function OverviewIcon({ size }: { size?: number }): ReactNode {
     h('circle', { cx: 12, cy: 14, r: 1.4 }))
 }
 
-/**
- * 领域接口走同源 /vexnar-api。账户插件将流量和资产请求转给本机 Go 服务。
- */
-const CORE_BASE = '/vexnar-api'
-
-async function responseError(response: Response) {
-  const data = await response.json().catch(() => null)
-  return new Error(data?.error || `HTTP ${response.status}`)
-}
-
-async function callApi(path: string, method = 'GET', body?: unknown) {
-  const init: RequestInit = { method, headers: { 'content-type': 'application/json' } }
-  if (body !== undefined) init.body = JSON.stringify(body)
-  const response = await fetch(CORE_BASE + path, init)
-  if (!response.ok) throw await responseError(response)
-  return response.json()
-}
-
-function useApi(path: string, deps: unknown[] = []): { data: any; error: string; loading: boolean } {
-  const [state, setState] = useState<{ data: any; error: string; loading: boolean }>({ data: null, error: '', loading: true })
-  useEffect(() => {
-    let alive = true
-    fetch(CORE_BASE + path)
-      .then(async (response) => {
-        if (!response.ok) throw await responseError(response)
-        return response.json()
-      })
-      .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
-      .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
-    return () => { alive = false }
-  }, deps)
-  return state
-}
-
 function Dashboard() {
   const tasks = useApi('/api/tasks')
   const findings = useApi('/api/exploration/findings/stats')
@@ -725,60 +693,6 @@ function fmtAgo(unix: unknown): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m 前`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h 前`
   return `${Math.floor(seconds / 86400)}d 前`
-}
-
-/** 能力清单的一行说明：谁是这里的权威，写清楚比多一个开关有用。 */
-function CapabilityNote({ children }: { children: ReactNode }) {
-  return h('p', { style: { fontSize: 12, lineHeight: 1.6, color: 'var(--vx-text-dim)', margin: '0 0 12px' } }, children)
-}
-
-const CELL = { padding: '6px 8px' } as const
-const HEAD = { textAlign: 'left', padding: '6px 8px' } as const
-
-/**
- * MCP server 清单（只读）。
- *
- * 启停与删除移交 dsh：谁能被 agent 调用是权限问题，dsh 的插件页与权限预设在同一个
- * 地方回答它，这里再放一份开关只会让两处状态打架。平台侧清单留着，是因为用户需要
- * 知道「这些东西是谁提供的」。
- */
-function McpTab() {
-  const { data, error, loading } = useApi('/api/mcp')
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: 'var(--vx-negative)' } }, error)
-  const rows: any[] = data?.servers ?? []
-  return h('div', null,
-    h(CapabilityNote, null,
-      '平台注册的 MCP server。启停与调用权限由 dsh 统一管理：在插件页停用提供方插件，在权限预设里决定 agent 能调用哪些工具；这里只呈现注册结果。'),
-    rows.length === 0
-      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '平台还没有注册 MCP server。')
-      : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-        h('thead', null, h('tr', null, ['ID', '名称', '传输', '状态'].map((t) => h('th', { key: t, style: HEAD }, t)))),
-        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-          h('td', { style: CELL }, row.id),
-          h('td', { style: CELL }, row.name),
-          h('td', { style: CELL }, row.transport),
-          h('td', { style: CELL }, row.enabled ? '已注册' : '已停用'))))))
-}
-
-/** 工具清单（只读）：内置工具与自定义工具，来源记在 Key 里（mcp__<server>__<tool>）。 */
-function ToolsTab() {
-  const { data, error, loading } = useApi('/api/tools')
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: 'var(--vx-negative)' } }, error)
-  const rows: any[] = data?.tools ?? []
-  return h('div', null,
-    h(CapabilityNote, null,
-      '平台注册的工具。是否对 agent 开放由 dsh 统一管理：插件页决定工具面在不在，权限预设与审批决定单次调用放不放行；这里只呈现注册结果与调用次数。'),
-    rows.length === 0
-      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '平台还没有注册工具。')
-      : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-        h('thead', null, h('tr', null, ['Key', '类型', '状态', '调用'].map((t) => h('th', { key: t, style: HEAD }, t)))),
-        h('tbody', null, rows.map((row: any) => h('tr', { key: row.key },
-          h('td', { style: CELL }, row.key),
-          h('td', { style: CELL }, row.kind),
-          h('td', { style: CELL }, row.enabled ? '已注册' : '已停用'),
-          h('td', { style: CELL }, row.calls ?? 0))))))
 }
 
 function NotifyPage() {
