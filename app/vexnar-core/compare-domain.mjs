@@ -70,6 +70,11 @@ const tsIntents = await get(TS, '/api/exploration/intents?task=1823&limit=50')
 const ids = (value) => (Array.isArray(value) ? value : value.items).map((row) => row.id)
 check('intents ids', same(ids(goIntents), ids(tsIntents)), `${ids(goIntents).length}/${ids(tsIntents).length}`)
 
+const goActivity = await get(GO, '/api/exploration/activity/history?task=657&limit=10&session=plan')
+const tsActivity = await get(TS, '/api/exploration/activity/history?task=657&limit=10&session=plan')
+const seqs = (value) => value.items.map((row) => row.seq)
+check('activity history', same(seqs(goActivity), seqs(tsActivity)) && goActivity.snapshot_cursor === tsActivity.snapshot_cursor, `${seqs(goActivity).length}/${seqs(tsActivity).length}`)
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)

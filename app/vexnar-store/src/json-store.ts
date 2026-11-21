@@ -89,14 +89,24 @@ export function jsonStore(root: string): Store {
       list: async () => [...(await load('companies', companyRow))]
     },
     activity: {
-      history: async ({ taskId, before = 0, limit = 200 }) => {
+      history: async ({ taskId, session = '', before = 0, limit = 200 }) => {
         const tasks = await load('tasks', taskRow)
         const task = tasks.find((row) => String(row.id) === String(taskId))
         if (!task) return { items: [], snapshot: 0, hasMore: false }
-        const rows = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
-        const snapshot = rows.reduce((max, row) => Math.max(max, Number(row.id)), 0)
+        const all = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
+        const snapshot = all.reduce((max, row) => Math.max(max, Number(row.id)), 0)
+        let rows = all
+        if (session.startsWith('intent:')) {
+          rows = rows.filter((row) => String(row.node_id) === session.slice(7))
+        } else if (session === 'plan') {
+          rows = rows.filter((row) => row.worker === 'planner')
+        } else {
+          rows = rows.filter((row) => row.worker === 'mainagent')
+          if (session.startsWith('main:')) rows = rows.filter((row) => String(row.main_seg ?? 0) === session.slice(5))
+        }
         const filtered = rows.filter((row) => !before || Number(row.id) < before).sort((a, b) => Number(b.id) - Number(a.id))
-        return { items: filtered.slice(0, Math.min(limit, 500)), snapshot, hasMore: filtered.length > limit }
+        const page = filtered.slice(0, Math.min(limit, 500)).reverse()
+        return { items: page, snapshot, hasMore: filtered.length > limit }
       }
     },
     async taskMetrics() {

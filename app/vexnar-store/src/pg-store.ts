@@ -111,15 +111,24 @@ export function pgStore(connection: {
       }
     },
     activity: {
-      history: async ({ taskId, before = 0, limit = 200 }) => {
+      history: async ({ taskId, session = '', before = 0, limit = 200 }) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
         if (!task) return { items: [], snapshot: 0, hasMore: false }
         const [max] = await q('SELECT coalesce(max(id),0)::bigint AS n FROM activity WHERE exploration_id = $1', [task.exploration_id])
+        const filters = ['exploration_id = $1']
+        const values: unknown[] = [task.exploration_id, limit + 1]
+        if (session.startsWith('intent:')) { values.push(Number(session.slice(7))); filters.push(`node_id = $${values.length}`) }
+        else if (session === 'plan') filters.push("worker = 'planner'")
+        else {
+          filters.push("worker = 'mainagent'")
+          if (session.startsWith('main:')) { values.push(Number(session.slice(5))); filters.push(`coalesce(main_seg,0) = $${values.length}`) }
+        }
+        if (before) { values.push(before); filters.push(`id < $${values.length}`) }
         const rows = await q(`SELECT id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata,
           input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg,
           to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at
-          FROM activity WHERE exploration_id = $1 ${before ? 'AND id < $3' : ''} ORDER BY id DESC LIMIT $2`, before ? [task.exploration_id, limit + 1, before] : [task.exploration_id, limit + 1])
-        return { items: rows.slice(0, limit), snapshot: Number(max.n), hasMore: rows.length > limit }
+          FROM activity WHERE ${filters.join(' AND ')} ORDER BY id DESC LIMIT $2`, values)
+        return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit }
       }
     },
     async taskMetrics() {

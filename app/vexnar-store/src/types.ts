@@ -105,7 +105,7 @@ export interface Store {
   }
   taskMetrics(): Promise<Map<number, TaskMetrics>>
   activity: {
-    history(options: { taskId: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
+    history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
   }
   invalidate?(tables?: string[]): void
   nodes: {
