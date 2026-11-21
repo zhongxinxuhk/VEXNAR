@@ -4,6 +4,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { storeWriter } from './writer.js'
+import { metaStore } from './meta-store.js'
 
 const STATUSES = new Set(['pending', 'in_progress', 'confirmed', 'resolved', 'fixed', 'false_positive', 'ignored', 'duplicate', 'risk_accepted'])
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low'])
@@ -32,6 +33,14 @@ async function maxNumericKey(dir: string) {
 
 export function storeOperations(root: string) {
   const writer = storeWriter(root)
+  const meta = metaStore(root)
+
+  async function metaTable(name: string) {
+    const tables = await meta.load()
+    const rows = (tables[name] ?? []) as any[]
+    tables[name] = rows
+    return { tables, rows }
+  }
 
   async function createTask(input: { description?: string; goal?: string; name?: string }) {
     const description = String(input.description ?? '').trim()
@@ -204,5 +213,104 @@ export function storeOperations(root: string) {
     return { deleted: true, id: Number(id) }
   }
 
-  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask }
+  async function createCategory(name: string) {
+    const text = String(name ?? '').trim()
+    if (!text) throw Object.assign(new Error('分类名不能为空'), { status: 400 })
+    const { tables, rows } = await metaTable('taskCategories')
+    if (rows.some((row) => row.name === text)) throw Object.assign(new Error('分类已存在'), { status: 409 })
+    const now = rfc3339(new Date())
+    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text, task_count: 0, created_at: now, updated_at: now }
+    rows.push(row)
+    await meta.save(tables)
+    return row
+  }
+
+  async function renameCategory(id: string, name: string) {
+    const text = String(name ?? '').trim()
+    if (!text) throw Object.assign(new Error('分类名不能为空'), { status: 400 })
+    const { tables, rows } = await metaTable('taskCategories')
+    const row = rows.find((item) => String(item.id) === String(id))
+    if (!row) throw Object.assign(new Error('分类不存在'), { status: 404 })
+    row.name = text
+    row.updated_at = rfc3339(new Date())
+    await meta.save(tables)
+    return row
+  }
+
+  async function deleteCategory(id: string) {
+    const { tables, rows } = await metaTable('taskCategories')
+    const index = rows.findIndex((item) => String(item.id) === String(id))
+    if (index < 0) throw Object.assign(new Error('分类不存在'), { status: 404 })
+    rows.splice(index, 1)
+    await meta.save(tables)
+    // Detach tasks that referenced the category.
+    try {
+      for (const name of await readdir(join(root, 'tasks'))) {
+        if (!name.endsWith('.json')) continue
+        const doc = JSON.parse(await readFile(join(root, 'tasks', name), 'utf8'))
+        if (String(doc.record?.category_id ?? '') !== String(id)) continue
+        const next = { ...doc.record, category_id: null }
+        delete next.rev
+        await writer.commit([{ table: 'tasks', key: String(doc.record.id), record: next, expectedRev: Number(doc.record.rev ?? 0) }])
+      }
+    } catch {
+      // no tasks
+    }
+    return { deleted: Number(id) }
+  }
+
+  async function setTaskCategory(id: string, categoryId: number | null) {
+    const current = await writer.readRecord('tasks', id)
+    if (!current || current.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    if (categoryId !== null) {
+      const { rows } = await metaTable('taskCategories')
+      if (!rows.some((row) => Number(row.id) === Number(categoryId))) throw Object.assign(new Error('分类不存在'), { status: 404 })
+    }
+    const next = { ...current, category_id: categoryId }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'tasks', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return { task: written, category: categoryId === null ? null : (await metaTable('taskCategories')).rows.find((row) => Number(row.id) === Number(categoryId)) }
+  }
+
+  async function createTemplate(input: any) {
+    const name = String(input.name ?? '').trim()
+    const goal = String(input.goal ?? '').trim()
+    if (!name) throw Object.assign(new Error('模板名不能为空'), { status: 400 })
+    if (!goal) throw Object.assign(new Error('goal 不能为空'), { status: 400 })
+    const { tables, rows } = await metaTable('taskTemplates')
+    const now = rfc3339(new Date())
+    const row = {
+      id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1,
+      name, description: String(input.description ?? ''), goal,
+      category_id: input.category_id ?? null,
+      intercept_rules: input.intercept_rules ?? [],
+      created_at: now, updated_at: now
+    }
+    rows.push(row)
+    await meta.save(tables)
+    return row
+  }
+
+  async function updateTemplate(id: string, input: any) {
+    const { tables, rows } = await metaTable('taskTemplates')
+    const row = rows.find((item) => String(item.id) === String(id))
+    if (!row) throw Object.assign(new Error('模板不存在'), { status: 404 })
+    for (const key of ['name', 'description', 'goal', 'category_id', 'intercept_rules']) {
+      if (input[key] !== undefined) row[key] = input[key]
+    }
+    row.updated_at = rfc3339(new Date())
+    await meta.save(tables)
+    return row
+  }
+
+  async function deleteTemplate(id: string) {
+    const { tables, rows } = await metaTable('taskTemplates')
+    const index = rows.findIndex((item) => String(item.id) === String(id))
+    if (index < 0) throw Object.assign(new Error('模板不存在'), { status: 404 })
+    rows.splice(index, 1)
+    await meta.save(tables)
+    return { deleted: Number(id) }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate }
 }

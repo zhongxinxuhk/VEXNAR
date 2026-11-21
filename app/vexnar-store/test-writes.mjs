@@ -48,6 +48,23 @@ const paused = await ops.controlTask(task.id, 'pause')
 const resumed = await ops.controlTask(task.id, 'resume')
 check('pause then resume', paused.paused === true && resumed.paused === false, JSON.stringify({ paused: paused.paused, resumed: resumed.paused }))
 
+const category = await ops.createCategory('Batch A')
+const assigned = await ops.setTaskCategory(second.id, Number(category.id))
+check('category create/assign', assigned.task.category_id === Number(category.id) && assigned.category?.name === 'Batch A', JSON.stringify({ id: category.id, task: assigned.task.id }))
+let duplicateCategory = null
+try { await ops.createCategory('Batch A') } catch (error) { duplicateCategory = error }
+check('duplicate category rejected', duplicateCategory?.status === 409, String(duplicateCategory))
+const renamedCategory = await ops.renameCategory(String(category.id), 'Batch B')
+check('rename category', renamedCategory.name === 'Batch B', renamedCategory.name)
+const cleared = await ops.deleteCategory(String(category.id))
+const afterDelete = await ops.writer.readRecord('tasks', second.id)
+check('delete category detaches task', cleared.deleted === Number(category.id) && afterDelete?.category_id == null, JSON.stringify({ deleted: cleared.deleted, category: afterDelete?.category_id }))
+
+const template = await ops.createTemplate({ name: 'T1', description: 'd', goal: 'g' })
+const updatedTemplate = await ops.updateTemplate(String(template.id), { name: 'T1 renamed' })
+const removedTemplate = await ops.deleteTemplate(String(template.id))
+check('template lifecycle', updatedTemplate.name === 'T1 renamed' && removedTemplate.deleted === Number(template.id), JSON.stringify({ created: template.id, renamed: updatedTemplate.name }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

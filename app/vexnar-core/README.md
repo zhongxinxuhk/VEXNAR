@@ -72,6 +72,9 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
 | `PATCH /api/tasks/:id` | ✅ 改名/置顶，支持 `rev` 乐观锁 |
 | `POST /api/tasks/:id/control` | ✅ pause / resume |
 | `DELETE /api/tasks/:id` | ✅ 软删除：任务消失，findings 与图保留 |
+| `POST/PATCH/DELETE /api/task-categories` | ✅ 分类增改删；删除时自动解绑任务 |
+| `PATCH /api/tasks/:id/category` | ✅ 任务归入/移出分类 |
+| `POST/PATCH/DELETE /api/task-templates` | ✅ 模板增改删 |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**
