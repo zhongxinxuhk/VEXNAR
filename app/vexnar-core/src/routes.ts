@@ -11,10 +11,15 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { metaStore, openStore, storeRoot } from '../../vexnar-store/src/index.ts'
+import { metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 
 const store = await openStore()
 const meta = metaStore(storeRoot())
+const operations = storeOperations(storeRoot())
+await operations.writer.recover().catch(() => {})
+const releaseStoreLock = await operations.writer.lock()
+process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
+process.once('SIGTERM', () => { void releaseStoreLock(); process.exit(0) })
 
 export const api = new Hono()
 
@@ -109,6 +114,29 @@ api.get('/api/tasks/:id', async (c) => {
   if (!row) return c.json({ error: 'not found' }, 404)
   const metrics = await store.taskMetrics()
   return c.json(taskDto(row, metrics.get(Number(row.exploration_id))))
+})
+
+api.post('/api/tasks', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const record = await operations.createTask(body)
+    store.invalidate?.(['tasks'])
+    return c.json(taskDto(record), 201)
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
+  }
+})
+
+api.patch('/api/exploration/findings/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const record = await operations.patchFinding(c.req.param('id'), { status: body.status, severity: body.severity })
+    store.invalidate?.(['findings'])
+    return c.json(findingDto(record))
+  } catch (error: any) {
+    const status = error?.name === 'StoreConflict' ? 409 : error?.status ?? 400
+    return c.json({ error: String(error?.message ?? error) }, status)
+  }
 })
 
 api.get('/api/tasks/:id/metrics', async (c) => {

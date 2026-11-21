@@ -190,7 +190,11 @@ activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
 （tokens / goals / in_flight / findings）由 store 计算并与 Go 对账一致；
 `last_activity_unix` 仍是引擎内存心跳，读路径无法等价，比较时排除。
 
-下一步：写路径（journal + rev），然后 M3 接管写。
+写路径已落地：`store.writer` 提供 per-record 原子写、journal 提交/重放、
+`rev` 乐观锁、单写者锁；core 新增 `POST /api/tasks` 与
+`PATCH /api/exploration/findings/:id`，写后读缓存失效。写入测试 7/7。
+下一步：`report_finding`（finding+node+edge 跨实体事务）、任务更新/删除，
+然后 M3 全量接管写。
 
 ## 10. 待决问题
 
