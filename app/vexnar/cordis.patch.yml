@@ -13,6 +13,13 @@
 # Both endpoints are loopback-only by design; this file assumes the Go service
 # listens on 127.0.0.1:8787.
 
+# VEXNAR app rows mounted over the dsh web bundle.
+- insert:
+    - id: vexnar-ui
+      name: '@vexnar/dsh-ui'
+    - id: vexnar-account
+      name: '@vexnar/dsh-account'
+
 - id: llm-pi-ai
   config:
     providers:

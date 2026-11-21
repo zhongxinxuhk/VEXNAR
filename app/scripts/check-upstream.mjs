@@ -83,6 +83,16 @@ for (const dep of ['@deepseek-ai/dsh-client-ui-tool', '@deepseek-ai/dsh-client-u
   ok(`ui client injects ${dep}`, inject.includes(dep))
 }
 
+const accountPkg = JSON.parse(readFileSync(join(app, 'vexnar/account/package.json'), 'utf8'))
+const accountInject = accountPkg.dsh?.client?.inject ?? []
+ok('account client injects settings', accountInject.includes('@deepseek-ai/dsh-client-ui-settings'))
+
+const accountBundle = join(app, 'vexnar/account/lib/client.js')
+ok('account bundle built', existsSync(accountBundle), 'run npm run build in app/vexnar/account')
+if (existsSync(accountBundle)) {
+  ok('account bundle uses loader factory', readFileSync(accountBundle, 'utf8').includes('window.__ModuleLoader__.load({ id: "@vexnar/dsh-account"'))
+}
+
 const bundle = join(app, 'vexnar/ui/lib/client.js')
 ok('ui bundle built', existsSync(bundle), 'run `npm run ui:build`')
 if (existsSync(bundle)) {
