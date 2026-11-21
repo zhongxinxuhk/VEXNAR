@@ -243,6 +243,8 @@ flowchart TB
 
 实现要点：只在皮肤激活时动手；用 `data-vexnar-brand="1"` 幂等；`MutationObserver` 覆盖皮肤重渲染；折叠态只塞 mark，展开态 mark + wordmark。没有皮肤时走槽位注册，两条路互不干扰。
 
+尺寸跟皮肤自己的 lockup 走，而不是写死像素：mark 取 `clamp(22px, var(--dsh-claude-lockup-cap, 26px), 34px)`（皮肤是 18px 单位 × 1.75/1.35/1.1 响应式缩放），wordmark 取 lockup-cap 的 0.82 倍。这样皮肤换密度、收窄窗口时，标志不会被撑破或被缩到看不见。
+
 验证口径（皮肤加入后新增）：
 
 1. 亮/暗两套 + 皮肤的六套预设各看一眼卡片：severity 颜色必须仍然可辨；

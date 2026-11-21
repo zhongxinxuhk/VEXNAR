@@ -267,21 +267,26 @@ body[data-ds-dark-theme] .vx-sev-info { --vx-sev: var(--dsw-static-blue-400, #60
 /* \u2500\u2500 brand slots \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-mark { display: block; }
 
-/* The skin's brand nodes are rewritten in place; these keep the injected mark
-   and wordmark aligned with the skin's own metrics. */
+/* The skin's brand nodes are rewritten in place. Size the injected mark from
+   the skin's own lockup unit (--dsh-claude-lockup-cap: an 18px unit times a
+   responsive 1.75/1.35/1.1 scale) so the logo fits the row the skin reserved,
+   clamped so a narrow window cannot blow it up. Backticks are not allowed in
+   this string: the whole sheet is a template literal. */
 .vx-brand-logo {
   display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
   flex: none;
+  width: clamp(22px, var(--dsh-claude-lockup-cap, 26px), 34px);
+  height: clamp(22px, var(--dsh-claude-lockup-cap, 26px), 34px);
+  border-radius: 22%;
+  object-fit: contain;
 }
 
 .vx-brand-word {
   font-family: var(--dsw-font-family-brand, var(--dsw-font-family, inherit));
-  font-size: 13px;
+  font-size: clamp(15px, calc(var(--dsh-claude-lockup-cap, 26px) * 0.82), 26px);
   font-weight: 700;
   letter-spacing: 0.08em;
+  line-height: 1.2;
   color: inherit;
 }
 
