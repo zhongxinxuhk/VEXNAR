@@ -14,7 +14,8 @@ import { Agents, Approvals, AssetIntercept, Intercept, Llm, Logs, Mcp, Notify as
 
 const initialApprovals = () => approvalRows.reduce((map, row) => ({ ...map, [row.id]: row.state }), {});
 
-export default function AgentConsole({ initialView = 'chat', className = '' }) {
+export default function AgentConsole({ initialView = 'chat', className = '', mode = 'embed' }) {
+  const client = mode === 'client';
   const [view, setView] = useState(initialView);
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState('light');
@@ -105,12 +106,21 @@ export default function AgentConsole({ initialView = 'chat', className = '' }) {
     }
   })();
 
-  return <div className={`cx-window ${className}`} data-theme={theme}>
-    <div className="cx-chrome">
+  return <div className={`cx-window ${client ? 'is-client' : ''} ${className}`} data-theme={theme}>
+    {client ? <div className="cx-titlebar">
+      <span className="cx-lights" aria-hidden="true"><i /><i /><i /></span>
+      <span className="cx-app"><img src="assets/logo.png" width="15" height="15" alt="" /><b>VEXNAR</b><em>v1.0.0</em></span>
+      <span className="cx-title-task">T-2407 · acme.test 外部渗透</span>
+      <span className="cx-title-right">
+        <span className="cx-conn"><i aria-hidden="true" />本地 · 127.0.0.1:8088</span>
+        <span className="cx-title-chip">演示数据</span>
+        <a className="cx-exit" href="index.html" aria-label="返回官网" title="返回官网"><Icon name="external" size={12} /><span>返回官网</span></a>
+      </span>
+    </div> : <div className="cx-chrome">
       <span className="cx-lights" aria-hidden="true"><i /><i /><i /></span>
       <span className="cx-url"><Icon name="lock" size={12} />app.vexnar.local/{view}</span>
       <span className="cx-chrome-meta"><Badge tone="slate">演示环境</Badge><span className="cx-chrome-note">本地快照 · 不执行真实任务</span></span>
-    </div>
+    </div>}
     <div className={`cx ${collapsed ? 'is-collapsed' : ''}`}>
       <button type="button" className="cx-mobile-nav" aria-label="打开导航" aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><Icon name="menu" size={16} /></button>
       <aside className={`cx-side ${navOpen ? 'is-open' : ''}`} aria-label="控制台导航">
