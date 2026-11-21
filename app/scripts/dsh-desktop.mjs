@@ -9,10 +9,25 @@
  * DeepSeek Harness.app with this checkout's DSH_HOME so the same profile,
  * provider and MCP wiring apply.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { dshHome, readToken, resolveRuntime } from './dsh-runtime.mjs'
+
+
+/** Profile plugins are pnpm deps: restore them when node_modules was pruned. */
+function ensureProfileDeps(profile) {
+  const required = ['@vexnar/dsh-ui', '@vexnar/dsh-account']
+  const missing = required.some((name) => !existsSync(join(profile, 'node_modules', name, 'package.json')))
+  if (!missing) return true
+  console.log('[dsh] profile plugins missing; running pnpm install --frozen-lockfile')
+  const result = spawnSync('pnpm', ['install', '--frozen-lockfile'], { cwd: profile, stdio: 'inherit' })
+  if (result.status !== 0) {
+    console.error('[dsh] restore failed; run the "Setup app profile" run configuration once')
+    return false
+  }
+  return true
+}
 
 const runtime = resolveRuntime()
 const desktopEntry = join(runtime, 'apps', 'desktop', 'out', 'main', 'index.js')
@@ -24,6 +39,7 @@ const env = {
 }
 
 let child
+if (!ensureProfileDeps(join(dshHome(), 'profiles', 'web'))) process.exit(1)
 if (existsSync(desktopEntry)) {
   console.log(`[dsh] desktop source entry=${desktopEntry}`)
   child = spawn(join(runtime, 'node_modules', '.bin', 'electron'), [desktopEntry], { stdio: 'inherit', env })
