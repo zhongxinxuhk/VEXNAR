@@ -2,8 +2,11 @@
 
 import * as React from "react";
 
+import Link from "next/link";
+
 import { BarChart3Icon, ChevronLeftIcon, ChevronRightIcon, Loader2Icon, SearchIcon, TerminalIcon } from "lucide-react";
 
+import { WorkbenchTabs } from "@/components/workbench-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api } from "@/lib/api";
 import type { CommandRecord, ToolStat } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useWorkbenchScope, workbenchHref } from "@/lib/workbench-scope";
 
 function fmtTime(ts: string) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -54,7 +58,9 @@ export default function CommandsPage() {
   const [size, setSize] = React.useState(50);
   const [query, setQuery] = React.useState("");
   const [queryQ, setQueryQ] = React.useState("");
-  const [taskFilter, setTaskFilter] = React.useState("");
+  // Task scope is shared with 任务 / 发现 through the URL (?task=), so the three
+  // pages stay on the same task while you switch between them.
+  const [taskFilter, setTaskFilter] = useWorkbenchScope();
 
   const [commands, setCommands] = React.useState<CommandRecord[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -85,7 +91,7 @@ export default function CommandsPage() {
     let alive = true;
     setLoading(true);
     api
-      .commands({ task: taskFilter || undefined, q: queryQ || undefined, page, size })
+      .commands({ task_id: taskFilter || undefined, q: queryQ || undefined, page, size })
       .then((r) => {
         if (!alive) return;
         setCommands(r.commands ?? []);
@@ -108,7 +114,7 @@ export default function CommandsPage() {
     let alive = true;
     setStatsLoading(true);
     api
-      .commandStats({ task: taskFilter || undefined, q: queryQ || undefined })
+      .commandStats({ task_id: taskFilter || undefined, q: queryQ || undefined })
       .then((r) => alive && setStats(r.stats ?? []))
       .catch(() => alive && setStats([]))
       .finally(() => alive && setStatsLoading(false));
@@ -126,12 +132,22 @@ export default function CommandsPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <WorkbenchTabs active="commands" scope={taskFilter} onClearScope={() => setTaskFilter("")} />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <TerminalIcon className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-xl font-semibold tracking-tight">工具执行</h1>
           <Badge variant="secondary">{total}</Badge>
+          {taskFilter && (
+            <Link
+              href={`/function/tasks/detail?id=${encodeURIComponent(taskFilter)}`}
+              className="text-muted-foreground text-xs hover:text-foreground hover:underline"
+            >
+              仅任务 #{taskFilter}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -236,7 +252,16 @@ export default function CommandsPage() {
                       <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {fmtTime(cmd.created_at)}
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">#{cmd.exploration_id}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        <Link
+                          href={`/function/tasks/detail?id=${encodeURIComponent(String(cmd.task_id))}`}
+                          className="hover:text-foreground hover:underline"
+                          title={cmd.task_id ? `打开任务 #${cmd.task_id}（exploration #${cmd.exploration_id}）` : "该执行没有关联任务"}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          #{cmd.task_id || cmd.exploration_id}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs font-mono">
                           {cmd.worker || "-"}
@@ -341,7 +366,7 @@ export default function CommandsPage() {
                 <SheetDescription>{fmtTime(selected.created_at)}</SheetDescription>
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <Badge variant="outline" className="text-xs font-mono">
-                    #{selected.exploration_id}
+                    #{selected.task_id || selected.exploration_id}
                   </Badge>
                   <Badge variant="outline" className="text-xs font-mono">
                     {selected.worker || "-"}
@@ -358,6 +383,26 @@ export default function CommandsPage() {
                       成功
                     </Badge>
                   )}
+                  <span className="ml-auto flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      onClick={() => {
+                        setTaskFilter(String(selected.task_id));
+                        setSelected(null);
+                      }}
+                      disabled={!selected.task_id || taskFilter === String(selected.task_id)}
+                      title={selected.task_id ? "把这三个视图都收窄到该任务" : "该执行没有关联任务"}
+                    >
+                      仅看任务 #{selected.task_id}
+                    </Button>
+                    {selected.task_id > 0 && (
+                      <Button variant="outline" size="sm" className="h-7" asChild>
+                        <Link href={workbenchHref("findings", String(selected.task_id))}>该任务的发现</Link>
+                      </Button>
+                    )}
+                  </span>
                 </div>
               </SheetHeader>
               <div className="grid min-h-0 flex-1 grid-rows-2 divide-y">

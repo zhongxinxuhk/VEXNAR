@@ -5,12 +5,18 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/zhongxinxuhk/vexnar/db"
 )
+
+// errCommandScopeTaskMissing marks a ?task_id= that names no live task. The
+// handler answers 404 instead of quietly returning every task's executions.
+var errCommandScopeTaskMissing = errors.New("task not found")
 
 // pgListCommands returns tool executions (any tool) from the activity table.
 func (s *Server) pgListCommands(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +25,12 @@ func (s *Server) pgListCommands(w http.ResponseWriter, r *http.Request) {
 	size := atoiDefault(q.Get("size"), 50)
 	keyword := q.Get("q")
 
-	records, total, err := s.m.PG().ListCommands(commandTaskFilter(q.Get("task")), keyword, page, size)
+	scope, err := s.commandScope(q.Get("task"), q.Get("task_id"))
+	if err != nil {
+		writeErr(w, commandScopeStatus(err), err.Error())
+		return
+	}
+	records, total, err := s.m.PG().ListCommands(scope, keyword, page, size)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -37,12 +48,58 @@ func (s *Server) pgToolStats(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"stats": []db.ToolStat{}})
 		return
 	}
-	stats, err := pg.ToolStats(commandTaskFilter(q.Get("task")), q.Get("q"))
+	scope, err := s.commandScope(q.Get("task"), q.Get("task_id"))
+	if err != nil {
+		writeErr(w, commandScopeStatus(err), err.Error())
+		return
+	}
+	stats, err := pg.ToolStats(scope, q.Get("q"))
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"stats": stats})
+}
+
+// commandScope resolves the requested task scope to the exploration id the
+// activity table is keyed by.
+//
+// Two spellings exist because two identities do: activity rows carry
+// exploration_id, while tasks and findings carry the task id, and the two
+// sequences drift (a task created out of order gets a different exploration).
+// ?task_id= is the task id the 任务/发现 surfaces and the workbench use, resolved
+// here through the tasks row; ?task= stays the historical exploration id so
+// existing callers and bookmarked links keep working.
+func (s *Server) commandScope(task, taskID string) (*int64, error) {
+	if v := strings.TrimSpace(taskID); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid task_id %q", v)
+		}
+		task, err := s.m.PG().GetTask(id)
+		if err != nil {
+			return nil, err
+		}
+		if task == nil {
+			return nil, errCommandScopeTaskMissing
+		}
+		expID := task.ExplorationID
+		return &expID, nil
+	}
+	return commandTaskFilter(task), nil
+}
+
+// commandScopeStatus maps a scope error to a status code: a bad or unknown task
+// id is the caller's mistake, anything else is ours.
+func commandScopeStatus(err error) int {
+	switch {
+	case errors.Is(err, errCommandScopeTaskMissing):
+		return http.StatusNotFound
+	case strings.HasPrefix(err.Error(), "invalid task_id"):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 // commandTaskFilter parses the ?task= exploration id. Absent or unparsable → nil

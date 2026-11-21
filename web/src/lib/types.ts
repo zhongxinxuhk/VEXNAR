@@ -1397,6 +1397,7 @@ export interface ConvTokenSummary {
 export interface CommandRecord {
   id: number;
   exploration_id: number;
+  task_id: number; // 所属任务 id；0 = 没有任务行指向这条 exploration
   worker: string;
   tool: string;
   command: string; // raw tool input (JSON)
