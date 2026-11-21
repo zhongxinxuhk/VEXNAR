@@ -258,6 +258,13 @@ assets / exploration_nodes`，与运行中的 Go API 对账：
 6/6 断言通过；随后重启 Go，`/api/exploration/nodes` 能读到同一张图
 （intent done、fact confirmed、两条边）。临时任务已清理。
 
+### P0-4 已完成（2026-11-21）
+
+[`app/spike/p0-mitm`](./spike/p0-mitm/README.md) 用同一 curl 分别经过 Go MITM 与
+mitmproxy sidecar：11/11 通过——状态码、响应体 sha256 三方一致，两套代理签发的
+叶证书都能在各自 CA 下校验。附带发现：`openssl s_client` 探针会让 go-mitmproxy
+的下一次握手失败，证书证据需用 `curl -v` 单次请求采集（Node 代理迁移时要对齐或明确不兼容）。
+
 ---
 
 ## 10. 验收标准（功能对等）
