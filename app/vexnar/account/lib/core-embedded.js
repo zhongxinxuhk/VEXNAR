@@ -31451,6 +31451,7 @@ api.get("/api/exploration/nodes", async (c) => {
 var routeModules = [
   { file: "./routes/conversations.ts", scope: "conversations/chat" },
   { file: "./routes/desktop.ts", scope: "desktop gateway" },
+  { file: "./routes/visibility.ts", scope: "visibility/commands" },
   { file: "./routes/llm.ts", scope: "llm pool/records" },
   { file: "./routes/intercept.ts", scope: "intercept approvals" },
   { file: "./routes/traffic.ts", scope: "traffic evidence" },
