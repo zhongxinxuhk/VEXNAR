@@ -83,6 +83,12 @@ const cancelIntent = await ops.addNode(task.id, { kind: 'intent', payload: { tex
 const cancelledWork = await engine.work(task.id, async () => JSON.stringify({ tool: 'add_fact', args: { text: 'x' } }), 'work#c', 4, { isCancelled: () => { cancelChecks++; return cancelChecks > 1 } })
 check('work observes cancellation', cancelledWork?.state === 'stopped', JSON.stringify(cancelledWork))
 
+const longIntent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'long run' }, state: 'open' })
+const yielded = await engine.work(task.id, async () => JSON.stringify({ tool: 'add_fact', args: { text: 'step' } }), 'work#long', 2)
+check('long run yields to queue', yielded?.state === 'open' && yielded?.yielded === true, JSON.stringify(yielded))
+const resumed = await engine.work(task.id, async () => JSON.stringify({ tool: 'finish', args: { summary: 'resumed' } }), 'work#long', 2)
+check('yielded intent resumes', resumed?.state === 'done', JSON.stringify(resumed))
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 console.log(`root: ${root}`)

@@ -916,7 +916,7 @@ export function storeOperations(root: string) {
 
   const TRANSITIONS: Record<string, string[]> = {
     open: ['running', 'paused', 'blocked', 'stopped', 'deleted', 'cancelled'],
-    running: ['done', 'blocked', 'paused', 'stopped', 'deleted', 'cancelled'],
+    running: ['open', 'done', 'blocked', 'paused', 'stopped', 'deleted', 'cancelled'],
     paused: ['open', 'running', 'cancelled', 'deleted'],
     blocked: ['open', 'deleted', 'cancelled'],
     exhausted: ['open', 'deleted'],
