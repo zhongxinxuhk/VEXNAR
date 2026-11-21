@@ -41,6 +41,10 @@ app/                          # WebStorm 工程根（项目名 app）
 - commit：`9c2670d3bce5275e0d1610272958121af87787bb`
 - 许可：MIT（见 `dsh/LICENSE`），上游文件一律不加本仓库的 AGPL 头。
 
+## 存储架构
+
+域划分、读写路径、性能预算、冲突规则与迁移阶段见 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。
+
 ## 迁移评估
 
 Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [MIGRATION.md](./MIGRATION.md)。
