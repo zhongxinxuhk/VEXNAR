@@ -134,6 +134,9 @@ type Manager struct {
 	fixedMu sync.Mutex
 	fixed   map[string]*fixedEntry // session-bound no-auth listeners
 
+	hostMu sync.Mutex
+	hosts  map[string]*hostMemory // per-target-host node preferences (fanout)
+
 	events eventBus
 
 	ctx    context.Context

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Autumn-27/norma/llm"
+	actool "github.com/Autumn-27/norma/tool"
 	"github.com/Autumn-27/norma/transcript"
 	"github.com/zhongxinxuhk/vexnar/agent"
 	"github.com/zhongxinxuhk/vexnar/db"
@@ -569,7 +570,12 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	// 工具不出现，模型也就不会假装能用。
 	oastTaskID, _ := strconv.ParseInt(t.ID, 10, 64)
 	oastTools := agent.NewOASTTools(s.oastStore(), oastTaskID, s.oastBaseURL)
-	wk := agent.NewWorker(workerRuntime, "task-router", s.m.dir, tx, window, s.agentMaxTurns("worker"), oastTools...)
+	// 代理池工具：每角色一个会话键，和该角色 bash/WebFetch 的出口一致。
+	egWorker := agent.NewEgressTools(s.m.Egress(), oastTaskID, taskSessionKey(oastTaskID, "worker"))
+	egPlanner := agent.NewEgressTools(s.m.Egress(), oastTaskID, taskSessionKey(oastTaskID, "planner"))
+	egMain := agent.NewEgressTools(s.m.Egress(), oastTaskID, taskSessionKey(oastTaskID, "mainagent"))
+	wkExtra := append(append([]actool.CoreTool{}, oastTools...), egWorker...)
+	wk := agent.NewWorker(workerRuntime, "task-router", s.m.dir, tx, window, s.agentMaxTurns("worker"), wkExtra...)
 	wk.SetFindingRecorder(s.evidenceStore())
 	wk.SetAfterFinding(s.enqueueFindingVerification) // 上报后自动排独立验证（P1/R1.5，设置项 finding_auto_verify）
 	wk.SetCompactionWindowResolver(workerRuntime.CompactionWindow)
@@ -591,8 +597,8 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	pl.SetSteerWork(s.engine.SteerWork)
 	pl.SetProxy(s.agentEgressProxy(t.ID, "planner"))
 	pl.SetWebSearch(s.webSearchFor("planner"))
-	pl.SetConstraintInject(s.constraintInjectPlanner) // 操作约束注入 planner(可配置,默认开)
-	pl.SetExtraTools(oastTools)                       // OAST 回调工具（planner 也需要：它可先签发再派意图）
+	pl.SetConstraintInject(s.constraintInjectPlanner)                                 // 操作约束注入 planner(可配置,默认开)
+	pl.SetExtraTools(append(append([]actool.CoreTool{}, oastTools...), egPlanner...)) // OAST + 对抗出口工具
 	// cold-digest §7: 冷节点后台压缩。引擎经权威解析器实际驱动的就是这套 per-task planner
 	// (agentsForTask),Compactor 必须接在这里。走任务路由的 planner provider(§4:与 agent
 	// 同模型,随任务 LLM 链解析),压缩用 Complete 一次性生成 body。
@@ -606,6 +612,7 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	main.SetNoaEnabled(s.m.NoaCompactionEnabled) // 实验功能:noa 上下文压缩(平台级开关,每 run 读)
 	main.SetProxy(s.agentEgressProxy(t.ID, "mainagent"))
 	main.SetWebSearch(s.webSearchFor("mainagent"))
+	main.SetExtraTools(egMain)            // 对抗出口工具（主 agent 也可直接发对抗请求）
 	main.SetSteerWork(s.engine.SteerWork) // steer_work：人对运行中 work 实时纠偏
 	bundle := &taskAgentBundle{
 		runtime: goalRuntime, plannerRuntime: plannerRuntime, workerRuntime: workerRuntime,

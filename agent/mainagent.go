@@ -32,6 +32,7 @@ type MainAgent struct {
 	maxTurns        int                                    // max agent turns per run (0 = unlimited)
 	proxyAddr       string                                 // recording proxy for WebFetch (empty = direct)
 	proxyCACert     string                                 // recording proxy's CA cert path (HTTPS verify)
+	extraTools      []actool.CoreTool                      // host-provided tools (egress fanout/status)
 	webSearch       WebSearchOpts                          // web_search tool backend selection (off by default)
 	workDir         string                                 // shared work dir (surfaced in prompt as artifact-output target)
 	steerWork       func(intentID int64, msg string) error // engine callback: steer a running work (nil = off)
@@ -74,6 +75,9 @@ func (m *MainAgent) compactionWindow() int {
 	}
 	return m.window
 }
+
+// SetExtraTools appends host-provided tools (egress fanout/status) to every run.
+func (m *MainAgent) SetExtraTools(extra []actool.CoreTool) { m.extraTools = extra }
 
 // SetProxy points the main agent's WebFetch at the recording proxy plus the CA
 // cert it trusts to verify HTTPS through it (empty addr = direct).
@@ -131,6 +135,9 @@ func (m *MainAgent) Chat(ctx context.Context, taskID int64, mainSeg int, as *db.
 	// 领域工具 + 基础默认工具集（Read/Write/Edit/MultiEdit/LS/Glob/Grep/Bash）
 	// 资产覆盖度功能关闭时剔除 add_task_scope/list_untested_assets（不入 prompt）。
 	base := append(tsx.DropCoverageTools(tsx.MainAgentTools()), actool.DefaultTools()...)
+	if len(m.extraTools) > 0 {
+		base = append(base, m.extraTools...)
+	}
 	ctx = WithRunInfo(ctx, RunInfo{TaskID: taskID, ExplorationID: explorationID(ts)})
 	tools, def, cleanup := AugmentTools(ctx, "mainagent", base)
 	defer cleanup()
