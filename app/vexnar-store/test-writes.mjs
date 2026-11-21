@@ -140,6 +140,11 @@ const resumedIntent = await ops.controlIntent(second.id, '2000', { action: 'resu
 const cancelledIntent = await ops.controlIntent(second.id, '2000', { action: 'cancel', reason: 'dup work' })
 check('intent control', pausedIntent.state === 'paused' && resumedIntent.state === 'open' && cancelledIntent.state === 'deleted', JSON.stringify({ pausedIntent, resumedIntent, cancelledIntent }))
 
+await ops.writer.put({ table: 'nodes', key: '2001', record: { id: '2001', exploration_id: Number(second.exploration_id), kind: 'intent', state: 'blocked', payload: {}, priority: 1, origin: 'w', created_at: 'x' } })
+const rerun = await ops.rerunIntent(second.id, '2001')
+const rerunAgain = await ops.rerunIntent(second.id, '2001').catch((error) => error)
+check('intent rerun', rerun.reopened === 2001 && rerunAgain?.status === 409, JSON.stringify({ rerun, again: rerunAgain?.status }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

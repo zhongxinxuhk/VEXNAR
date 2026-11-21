@@ -70,6 +70,8 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/tasks/:id/goals` | ✅ 目标列表（id/text/vulnclass/state/origin/ts） |
 | `POST/PATCH/DELETE /api/tasks/:id/goals` | ✅ 目标新增/修改/删除；新增挂到根事实 `spawns` 边 |
 | `POST /api/tasks/:id/intents/:iid/control` | ✅ pause/resume/cancel（soft 删状态、hard 删节点与边） |
+| `POST /api/tasks/:id/intents/:iid/rerun` | ✅ blocked/exhausted/stopped → open |
+| `POST /api/tasks/:id/intents/rerun-blocked` | ✅ 批量重跑 blocked 意图 |
 | `GET /api/exploration/intents` | ✅ 意图列表，支持 `limit` / `before` / 分页形状 |
 | `GET /api/exploration/activity/history` | ✅ 活动历史，`session=main/plan/main:N/intent:ID`，`before` 游标 |
 | `GET /api/exploration/tokens` | ✅ workers / sessions / total 全部对账 |

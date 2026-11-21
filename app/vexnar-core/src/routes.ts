@@ -489,6 +489,22 @@ api.delete('/api/tasks/:id/goals/:gid', async (c) => {
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.post('/api/tasks/:id/intents/:iid/rerun', async (c) => {
+  try {
+    const result = await operations.rerunIntent(c.req.param('id'), c.req.param('iid'))
+    store.invalidate?.(['nodes'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.post('/api/tasks/:id/intents/rerun-blocked', async (c) => {
+  try {
+    const result = await operations.rerunBlocked(c.req.param('id'))
+    store.invalidate?.(['nodes'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.post('/api/tasks/:id/intents/:iid/control', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
