@@ -111,6 +111,22 @@ export function jsonStore(root: string): Store {
         const page = filtered.slice(0, Math.min(limit, 500)).reverse()
         return { items: page, snapshot, hasMore: filtered.length > limit }
       },
+      dailyTokens: async (days) => {
+        const rows = (await load('activity', { parse: (value) => value })).filter((row) => row.kind === 'result')
+        const cutoff = Date.now() / 1000 - Math.max(days, 1) * 86400
+        const buckets = new Map<string, any>()
+        for (const row of rows) {
+          const at = Number(row.created_unix ?? 0)
+          if (at < cutoff) continue
+          const day = new Date(String(row.created_at)).toISOString().slice(0, 10)
+          const bucket = buckets.get(day) ?? { day, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0 }
+          bucket.input_tokens += Number(row.input_tokens ?? 0)
+          bucket.output_tokens += Number(row.output_tokens ?? 0)
+          bucket.cache_read_tokens += Number(row.cache_read_tokens ?? 0)
+          buckets.set(day, bucket)
+        }
+        return [...buckets.values()].sort((a, b) => a.day.localeCompare(b.day))
+      },
       tokenStats: async (taskId) => {
         const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
         if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }

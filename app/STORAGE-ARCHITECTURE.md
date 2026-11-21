@@ -210,7 +210,7 @@ activity 的 session 过滤、seq/ts DTO、升序页与 snapshot 游标与 Go �
 tokens 的 workers/sessions/total 已对齐。目标与意图控制读写出齐：目标 CRUD；意图 pause/resume/cancel；意图重跑
 （单条与批量 blocked）。意图消息下发完成（31/31 写测试）。资产列表支持 `task_id` 过滤与计数，`task_asset_links` 已 seed，完整资产 DTO
 （含 method/status/technologies 与 task_source*）与 Go 逐字段一致。领域回归 12/12；发现列表补了 severity/status/vulnclass/task_id/q 过滤，分页总数与 Go 一致。
-资产 DSL（field=value/==/!=/比较、AND/OR/括号、裸词）已移植并对账。
+资产 DSL 已移植并对账；全局 token 日聚合（`/api/tokens/daily`）也已迁。
 引擎类接口继续走 fallback。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。

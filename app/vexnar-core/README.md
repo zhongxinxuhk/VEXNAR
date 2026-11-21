@@ -76,6 +76,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/exploration/intents` | ✅ 意图列表，支持 `limit` / `before` / 分页形状 |
 | `GET /api/exploration/activity/history` | ✅ 活动历史，`session=main/plan/main:N/intent:ID`，`before` 游标 |
 | `GET /api/exploration/tokens` | ✅ workers / sessions / total 全部对账 |
+| `GET /api/tokens/daily` | ✅ 按 UTC 日聚合 token，`days` 可调 |
 | `POST /api/tasks` | ✅ 新建任务：journal + rev，返回任务 DTO |
 | `PATCH /api/exploration/findings/:id` | ✅ 改状态/严重度：乐观锁，冲突 409 |
 | `POST /api/exploration/findings` | ✅ 上报漏洞：finding + node + edge 一次 journal 提交 |
