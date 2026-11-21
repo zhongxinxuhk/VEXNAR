@@ -925,7 +925,8 @@ const routeModules: Array<{ file: string; scope: string }> = [
   { file: './routes/workspace.ts', scope: 'workspace' },
   { file: './routes/sync.ts', scope: 'scopesentry sync' },
   { file: './routes/update.ts', scope: 'update/self-update' },
-  { file: './routes/auth.ts', scope: 'auth/logs/system' }
+  { file: './routes/auth.ts', scope: 'auth/logs/system' },
+  { file: './routes/gaps.ts', scope: 'misc gap fill' }
 ]
 for (const { file, scope } of routeModules) {
   try {
