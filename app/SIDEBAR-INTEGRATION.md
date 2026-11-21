@@ -9,18 +9,24 @@
 目标：把 web 控制台截图里的 21 个入口融入 dsh，而不是把 web 搬进 dsh。
 原则：**dsh 已有的能力不重复造**，VEXNAR 只补它没有的领域视图。
 
-## 顶层入口
+## 原生融入方式（不是嵌套）
 
-dsh 侧边栏新增一个顶级入口 **VEXNAR**（`sidebar.panellist`，order 50），
-点击打开主面板 `vexnar-console`（`main` slot）。面板内部再分「功能 / 系统」两组，
-顺序与 web 截图一致。
+不再做一个带内部导航的 VEXNAR 控制台。领域入口直接成为 dsh 的
+`sidebar.panellist` 顶级项，系统项进入 dsh 设置页的 `settings.section`。
 
 ```text
 dsh 侧边栏
-└─ VEXNAR  →  vexnar-console 面板
-   ├─ 功能：仪表盘 任务 发现 流量 工具执行 LLM录制 资产 资产同步
-   └─ 系统：LLM Agent MCP Skill 工具 通知推送 拦截规则 资产拦截
-             审批记录 日志 系统配置
+├─ 任务        → main: vexnar-tasks    （仪表盘计数 + 列表 + 详情）
+├─ 发现        → main: vexnar-findings
+├─ 流量        → main: vexnar-traffic
+├─ 资产        → main: vexnar-assets
+└─ 工具执行    → main: vexnar-tool-run
+
+dsh 设置页
+├─ Agent 管理  → settings.section: vexnar-agents
+├─ MCP         → settings.section: vexnar-mcp
+├─ 工具        → settings.section: vexnar-tools
+└─ 通知推送    → settings.section: vexnar-notify
 ```
 
 ## 哪些入口复用 dsh，哪些新建

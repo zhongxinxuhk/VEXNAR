@@ -641,58 +641,87 @@ function ApprovalsPage() {
     '审批记录：Go 侧暂无独立 REST 接口（web 控制台也没有该页），迁移时随拦截规则一起落地。')
 }
 
-function VexnarConsole(): ReactNode {
-  const [active, setActive] = useState('dashboard')
-  const [taskId, setTaskId] = useState('')
-  const [findingId, setFindingId] = useState('')
-  const items = NAV_GROUPS.flatMap((group) => group.items)
-  const current = items.find((item) => item.id === active) ?? items[0]
-  const selectPanel = (id: string) => { setActive(id); if (id !== 'tasks') setTaskId(''); if (id !== 'findings') setFindingId('') }
-  return h('div', { style: { display: 'flex', height: '100%', minHeight: 0, background: 'var(--vx-bg, #fff)' } },
-    h('aside', { style: { width: 240, flex: '0 0 240px', borderRight: '1px solid var(--vx-border, #e5e7eb)', overflowY: 'auto', padding: '12px 8px' } },
-      NAV_GROUPS.map((group) => h('div', { key: group.title, style: { marginBottom: 14 } },
-        h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', padding: '6px 10px' } }, group.title),
-        group.items.map((item) => h('button', {
-          key: item.id,
-          type: 'button',
-          onClick: () => selectPanel(item.id),
-          style: {
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-            padding: '8px 10px', border: 0, borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-            background: item.id === active ? 'var(--vx-active, #eef2ff)' : 'transparent',
-            color: 'var(--vx-fg, #111827)', fontSize: 14
-          }
-        }, h('span', null, item.label), item.badge ? h('span', { style: { minWidth: 18, height: 18, borderRadius: 9, background: '#f59e0b', color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center' } }, String(item.badge)) : null)))),
-      h('div', { style: { fontSize: 11, color: 'var(--vx-muted, #9ca3af)', padding: '8px 10px' } }, '数据源：vexnar-core')),
-    h('section', { style: { flex: 1, minWidth: 0, overflowY: 'auto', padding: 24 } },
-      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 } },
-        h('h1', { style: { fontSize: 22, margin: 0 } }, current.label),
-        h('button', {
-          type: 'button',
-          onClick: () => {
-            const url = window.prompt('vexnar-core 地址', localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790')
-            if (url) localStorage.setItem('vexnar.coreUrl', url.replace(/\/$/, ''))
-            const token = window.prompt('core 访问 token（VEXNAR_API_TOKEN）', localStorage.getItem('vexnar.coreToken') || '')
-            if (token) localStorage.setItem('vexnar.coreToken', token)
-            window.location.reload()
-          },
-          style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }
-        }, '连接 core')),
-      h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 20px' } }, current.desc),
-      current.id === 'dashboard' ? h(Dashboard)
-        : current.id === 'tasks' ? (taskId ? h(TaskDetail, { id: taskId, onBack: () => setTaskId('') }) : h(TaskList, { onSelect: setTaskId }))
-        : current.id === 'findings' ? (findingId ? h(FindingDetail, { id: findingId, onBack: () => setFindingId('') }) : h(FindingList, { onSelect: setFindingId }))
-        : current.id === 'agents' ? h(AgentsPage)
-        : current.id === 'mcp' ? h(McpPage)
-        : current.id === 'tools' ? h(ToolsPage)
-        : current.id === 'notify' ? h(NotifyPage)
-        : current.id === 'tools-run' ? h(ToolRunPage)
-        : current.id === 'traffic' ? h(TrafficPage)
-        : current.id === 'intercept' ? h(InterceptPage)
-        : current.id === 'approvals' ? h(ApprovalsPage)
-        : h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
-            '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
+function PanelShell({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
+  const connect = () => {
+    const url = window.prompt('vexnar-core 地址', localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790')
+    if (url) localStorage.setItem('vexnar.coreUrl', url.replace(/\/$/, ''))
+    const token = window.prompt('core 访问 token（VEXNAR_API_TOKEN）', localStorage.getItem('vexnar.coreToken') || '')
+    if (token) localStorage.setItem('vexnar.coreToken', token)
+    window.location.reload()
+  }
+  return h('div', { style: { height: '100%', overflowY: 'auto', padding: 24 } },
+    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4 } },
+      h('h1', { style: { fontSize: 22, margin: 0 } }, title),
+      h('button', { type: 'button', onClick: connect, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 } }, '连接 core')),
+    desc ? h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 18px' } }, desc) : h('div', { style: { height: 12 } }),
+    children)
 }
+
+function TasksPanel() {
+  const [taskId, setTaskId] = useState('')
+  return h(PanelShell, { title: '任务', desc: '任务列表、目标、意图与覆盖度' },
+    taskId ? h(TaskDetail, { id: taskId, onBack: () => setTaskId('') }) : h('div', null, h(Dashboard), h(TaskList, { onSelect: setTaskId })))
+}
+
+function FindingsPanel() {
+  const [findingId, setFindingId] = useState('')
+  return h(PanelShell, { title: '发现', desc: '漏洞列表、证据与流量绑定' },
+    findingId ? h(FindingDetail, { id: findingId, onBack: () => setFindingId('') }) : h(FindingList, { onSelect: setFindingId }))
+}
+
+function AssetsPanel() {
+  const { data, error, loading } = useApi('/api/assets?limit=50')
+  return h(PanelShell, { title: '资产', desc: '域名 / IP / 服务 / 端点' },
+    loading ? h('div', null, '加载中…')
+      : error ? h('div', { style: { color: '#dc2626' } }, error)
+        : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+            h('thead', null, h('tr', null, ['ID', '类型', '域名/IP', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+            h('tbody', null, (data?.assets ?? []).map((row: any) => h('tr', { key: row.id },
+              h('td', { style: { padding: '6px 8px' } }, row.id),
+              h('td', { style: { padding: '6px 8px' } }, row.type),
+              h('td', { style: { padding: '6px 8px' } }, row.domain || row.ip || row.url || ''),
+              h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
+              h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? ''))))))
+}
+
+function TrafficPanel() {
+  return h(PanelShell, { title: '流量', desc: '抓包列表（经 core 代理 Go 流量接口）' }, h(TrafficPage))
+}
+
+function ToolRunPanel() {
+  return h(PanelShell, { title: '工具执行', desc: 'nmap / httpx / ffuf / sqlmap' }, h(ToolRunPage))
+}
+
+function AgentSettings() {
+  return h(PanelShell, { title: 'Agent 管理', desc: '名称、描述与触发配置' }, h(AgentsPage))
+}
+
+function McpSettings() {
+  return h(PanelShell, { title: 'MCP', desc: 'MCP server 启停与删除' }, h(McpPage))
+}
+
+function ToolSettings() {
+  return h(PanelShell, { title: '工具', desc: '内置与自定义工具' }, h(ToolsPage))
+}
+
+function NotifySettings() {
+  return h(PanelShell, { title: '通知推送', desc: '渠道与投递' }, h(NotifyPage))
+}
+
+const PANELS = [
+  { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
+  { id: 'vexnar-findings', label: '发现', order: 101, component: FindingsPanel },
+  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
+  { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel },
+  { id: 'vexnar-tool-run', label: '工具执行', order: 104, component: ToolRunPanel }
+]
+
+const SETTINGS = [
+  { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
+  { id: 'vexnar-mcp', label: 'MCP', order: 41, component: McpSettings },
+  { id: 'vexnar-tools', label: '工具', order: 42, component: ToolSettings },
+  { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings }
+]
 
 export function apply(ctx: {
   slots?: {
@@ -718,10 +747,13 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
-  slots.inject('main', () =>
-    slots.register({ name: 'main', key: PANEL_ID }, VexnarConsole))
-  slots.inject('sidebar.panellist', () =>
-    slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 50, label: () => 'VEXNAR' }, ConsoleIcon))
+  for (const panel of PANELS) {
+    slots.inject('main', () => slots.register({ name: 'main', key: panel.id }, panel.component))
+    slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, ConsoleIcon))
+  }
+  for (const section of SETTINGS) {
+    slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: section.id, label: section.label, order: section.order }, section.component))
+  }
   // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
   // profile patch disables. Occupying the slot is the supported override route.
   slots.inject('sidebar.brand.mark', () =>
