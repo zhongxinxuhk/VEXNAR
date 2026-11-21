@@ -935,29 +935,34 @@ api.get('/api/exploration/nodes', async (c) => {
 })
 
 // ── 领域路由模块（各 agent 并行迁移，统一在此挂载）─────────────────
-const routeModules: Array<{ file: string; scope: string }> = [
-  { file: './routes/conversations.ts', scope: 'conversations/chat' },
-  { file: './routes/desktop.ts', scope: 'desktop gateway' },
-  { file: './routes/visibility.ts', scope: 'visibility/commands' },
-  { file: './routes/llm.ts', scope: 'llm pool/records' },
-  { file: './routes/intercept.ts', scope: 'intercept approvals' },
-  { file: './routes/traffic.ts', scope: 'traffic evidence' },
-  { file: './routes/skills.ts', scope: 'skills' },
-  { file: './routes/market.ts', scope: 'market' },
-  { file: './routes/tasks-companies.ts', scope: 'tasks/companies' },
-  { file: './routes/notify-mcp.ts', scope: 'notify/mcp/side-questions' },
-  { file: './routes/agents.ts', scope: 'agents' },
-  { file: './routes/workspace.ts', scope: 'workspace' },
-  { file: './routes/sync.ts', scope: 'scopesentry sync' },
-  { file: './routes/update.ts', scope: 'update/self-update' },
-  { file: './routes/auth.ts', scope: 'auth/logs/system' },
-  { file: './routes/gaps.ts', scope: 'misc gap fill' }
+//
+// 说明符必须写成字面量：esbuild 只能打包静态可分析的 `import('./routes/x.ts')`。
+// 写成 `import(file)` 时打包器把模块当外部依赖，产物 core-embedded.js 会去
+// `lib/routes/*.ts` 找源码——那里没有，于是 dsh 宿主里整片领域路由加载失败。
+type RouteModule = { register?: (api: Hono) => void }
+const routeModules: Array<{ load: () => Promise<RouteModule>; scope: string }> = [
+  { load: () => import('./routes/conversations.ts'), scope: 'conversations/chat' },
+  { load: () => import('./routes/desktop.ts'), scope: 'desktop gateway' },
+  { load: () => import('./routes/visibility.ts'), scope: 'visibility/commands' },
+  { load: () => import('./routes/llm.ts'), scope: 'llm pool/records' },
+  { load: () => import('./routes/intercept.ts'), scope: 'intercept approvals' },
+  { load: () => import('./routes/traffic.ts'), scope: 'traffic evidence' },
+  { load: () => import('./routes/skills.ts'), scope: 'skills' },
+  { load: () => import('./routes/market.ts'), scope: 'market' },
+  { load: () => import('./routes/tasks-companies.ts'), scope: 'tasks/companies' },
+  { load: () => import('./routes/notify-mcp.ts'), scope: 'notify/mcp/side-questions' },
+  { load: () => import('./routes/agents.ts'), scope: 'agents' },
+  { load: () => import('./routes/workspace.ts'), scope: 'workspace' },
+  { load: () => import('./routes/sync.ts'), scope: 'scopesentry sync' },
+  { load: () => import('./routes/update.ts'), scope: 'update/self-update' },
+  { load: () => import('./routes/auth.ts'), scope: 'auth/logs/system' },
+  { load: () => import('./routes/gaps.ts'), scope: 'misc gap fill' },
 ]
-for (const { file, scope } of routeModules) {
+for (const { load, scope } of routeModules) {
   try {
-    const mod = await import(file)
+    const mod = await load()
     mod.register?.(api)
   } catch (error) {
-    console.error(`[vexnar] failed to load route module ${scope} (${file}):`, error)
+    console.error(`[vexnar] failed to load route module ${scope}:`, error)
   }
 }

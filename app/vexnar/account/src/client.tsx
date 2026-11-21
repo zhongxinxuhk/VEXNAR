@@ -2,282 +2,213 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useEffect, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { createElement as h, Fragment, useEffect, useState } from 'react'
+import type { CSSProperties } from 'react'
 
-/**
- * VEXNAR account section.
- *
- * Login methods come from the NewAPI deployment's /api/status. Password login
- * uses NewAPI's API; every other method runs in a real Chrome window on the
- * NewAPI origin. After login the host stores the key in dsh's credential store
- * and configures the pi-ai provider directly — model traffic never touches the
- * Go gateway.
- */
+const api = '/vexnar-api/platform'
+const platform = 'https://platform.sec.hn.cn'
+const docs = 'https://docs.sec.hn.cn/'
+const accountEvent = 'vexnar:platform-account'
 
-interface Status {
-  configured?: boolean
-  base?: string
-  user?: string
-  models?: number
-  keySet?: boolean
-  model?: string
-  error?: string
+interface Provider {
+  id: string
+  name: string
+  models: { id: string; name?: string }[]
 }
 
-interface Methods {
-  base?: string
-  password?: boolean
-  passkey?: boolean
-  emailVerification?: boolean
-  turnstile?: boolean
-  oauth?: { slug: string; name: string }[]
-  error?: string
+interface Account {
+  signed_in: boolean
+  username: string
+  providers: Provider[]
 }
 
-const box: CSSProperties = {
+interface Login {
+  state: 'idle' | 'waiting' | 'done' | 'error'
+  message: string
+}
+
+const panel: CSSProperties = {
   border: '1px solid var(--dsw-alias-border-secondary, #e5e7eb)',
-  borderRadius: 10,
-  padding: 14,
-  color: 'var(--dsw-alias-label-primary, #111827)',
-  font: '13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  borderRadius: 10, padding: 16, display: 'grid', gap: 12
 }
-const field: CSSProperties = { display: 'grid', gap: 4, marginBottom: 10 }
+const field: CSSProperties = { display: 'grid', gap: 4 }
 const input: CSSProperties = {
   border: '1px solid var(--dsw-alias-border-secondary, #d1d5db)',
-  borderRadius: 6,
-  padding: '6px 8px',
-  font: 'inherit',
-  color: 'inherit',
-  background: 'transparent'
+  borderRadius: 6, padding: '6px 8px', font: 'inherit', color: 'inherit', background: 'transparent'
 }
 const button: CSSProperties = {
-  border: '1px solid var(--dsw-alias-border-secondary, #d1d5db)',
-  borderRadius: 6,
-  padding: '5px 12px',
-  font: 'inherit',
-  cursor: 'pointer',
-  background: 'transparent',
-  color: 'inherit'
-}
-const chip: CSSProperties = {
-  fontSize: 11,
-  padding: '1px 8px',
-  borderRadius: 999,
-  border: '1px solid var(--dsw-alias-border-secondary, #d1d5db)'
+  ...input, padding: '5px 12px', justifySelf: 'start', cursor: 'pointer'
 }
 
-async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) }
+async function request<T>(path: string, method = 'GET', body?: object): Promise<T> {
+  const response = await fetch(api + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
   })
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string }
-  if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`)
-  return body
+  const result = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
+  return result
 }
 
-export function AccountSection(): ReactNode {
-  const [status, setStatus] = useState<Status | null>(null)
-  const [methods, setMethods] = useState<Methods | null>(null)
+function useAccount() {
+  const [account, setAccount] = useState<Account>()
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [browser, setBrowser] = useState<{ state: string; message: string; user?: string }>({ state: 'idle', message: '' })
-  const [manual, setManual] = useState(false)
-  const [form, setForm] = useState({ username: '', password: '', base_url: '', api_key: '' })
-
-  const refresh = async (): Promise<void> => {
-    try {
-      setStatus(await jsonFetch<Status>('/vexnar-account/status'))
-      setError('')
-    } catch (err) {
-      setError(String((err as Error).message))
-    }
+  const onError = (reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))
+  const refresh = () => void request<Account>('/account').then(setAccount, onError)
+  const update = (account: Account) => {
+    setAccount(account)
+    setError('')
+    window.dispatchEvent(new Event(accountEvent))
   }
-
   useEffect(() => {
-    void refresh()
-    void jsonFetch<Methods>('/vexnar-account/methods').then(setMethods).catch((err) => setError(String(err.message)))
+    refresh()
+    window.addEventListener(accountEvent, refresh)
+    return () => window.removeEventListener(accountEvent, refresh)
   }, [])
+  return { account, error, onError, update }
+}
+
+export function AccountSection() {
+  const { account, error, onError, update } = useAccount()
+  const [available, setAvailable] = useState<string[]>([])
+  const [login, setLogin] = useState<Login>({ state: 'idle', message: '' })
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (browser.state !== 'starting' && browser.state !== 'waiting') return
+    if (account?.signed_in !== false) return
+    void request<{ methods: string[] }>('/methods').then(result => setAvailable(result.methods), onError)
+    void request<Login>('/login').then(setLogin, onError)
+  }, [account?.signed_in])
+
+  useEffect(() => {
+    if (login.state !== 'waiting') return
     const timer = window.setInterval(() => {
-      void jsonFetch<typeof browser>('/vexnar-account/login/browser/status').then((next) => {
-        setBrowser(next)
-        if (next.state === 'done') void refresh()
-      })
-    }, 1500)
+      void request<Login>('/login').then(next => {
+        setLogin(next)
+        if (next.state === 'done') void request<Account>('/account').then(update, onError)
+      }, onError)
+    }, 1200)
     return () => window.clearInterval(timer)
-  }, [browser.state])
+  }, [login.state])
 
-  const passwordLogin = async (): Promise<void> => {
+  const logout = async () => {
     setBusy(true)
     try {
-      await jsonFetch('/vexnar-account/login/password', {
-        method: 'POST',
-        body: JSON.stringify({ username: form.username.trim(), password: form.password })
-      })
-      await refresh()
-      setError('')
-    } catch (err) {
-      setError(String((err as Error).message))
+      update(await request<Account>('/account', 'DELETE'))
+      setLogin({ state: 'idle', message: '' })
+    } catch (error) {
+      onError(error)
     } finally {
       setBusy(false)
     }
   }
 
-  const browserLogin = async (): Promise<void> => {
-    try {
-      setBrowser(await jsonFetch('/vexnar-account/login/browser', { method: 'POST' }))
-    } catch (err) {
-      setError(String((err as Error).message))
-    }
+  return <div style={panel}>
+    <strong>HXSEC AI Platform</strong>
+    {account?.signed_in
+      ? <>
+          <span>已登录 {account.username}</span>
+          <button type="button" style={button} disabled={busy} onClick={() => void logout()}>退出登录</button>
+        </>
+      : <>
+          <span>在平台页面完成登录和二次验证。</span>
+          {available.length > 0 && <span>{available.join(' · ')}</span>}
+          <button type="button" style={button} disabled={!account || busy || login.state === 'waiting'} onClick={() => {
+            setBusy(true)
+            void request<Login>('/login', 'POST').then(setLogin, onError).finally(() => setBusy(false))
+          }}>登录 VEXNAR</button>
+          {login.state !== 'done' && login.message && <span role="status">{login.message}</span>}
+        </>}
+    {error && <span role="alert" style={{ color: 'var(--dsw-alias-label-danger, #b91c1c)' }}>{error}</span>}
+    <div style={{ display: 'flex', gap: 16 }}>
+      <a href={platform} target="_blank" rel="noreferrer">平台主页</a>
+      <a href={docs} target="_blank" rel="noreferrer">API 文档</a>
+    </div>
+  </div>
+}
+
+type Kind = 'deepseek' | 'custom' | 'platform'
+
+export function ModelsSection() {
+  const { account, error, onError, update } = useAccount()
+  const [kind, setKind] = useState<Kind>()
+  const [key, setKey] = useState('')
+  const [name, setName] = useState('')
+  const [baseURL, setBaseURL] = useState('')
+  const [busy, setBusy] = useState(false)
+  const select = (kind: Kind) => {
+    setKey('')
+    setKind(kind)
   }
 
-  const manualLogin = async (): Promise<void> => {
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault()
     setBusy(true)
     try {
-      await jsonFetch('/vexnar-account/login', {
-        method: 'POST',
-        body: JSON.stringify({ base_url: form.base_url.trim(), api_key: form.api_key.trim() })
-      })
-      await refresh()
-      setError('')
-    } catch (err) {
-      setError(String((err as Error).message))
+      update(await request<Account>('/providers', 'POST', { kind, name, base_url: baseURL, api_key: key }))
+      setKey('')
+      setKind(undefined)
+    } catch (error) {
+      onError(error)
     } finally {
       setBusy(false)
     }
   }
 
-  const configured = status?.configured === true
-  const oauth = methods?.oauth ?? []
+  if (!account?.signed_in) return <div style={panel}>
+    <span>{account ? '请先在「账户」中登录 VEXNAR，再添加模型 API。' : '正在读取账号状态…'}</span>
+    {error && <span role="alert">{error}</span>}
+  </div>
 
-  return h(
-    'div',
-    { style: { display: 'grid', gap: 14 } },
-    h(
-      'div',
-      { style: box },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-        h('strong', null, 'VEXNAR 账户'),
-        h('span', { style: { ...chip, color: configured ? '#15803d' : '#a16207' } },
-          configured ? '已连接' : '未登录'),
-        h('button', { type: 'button', style: { ...button, marginLeft: 'auto' }, onClick: () => void refresh() }, '刷新')
-      ),
-      h('div', { style: { marginTop: 8, color: 'var(--dsw-alias-label-secondary, #6b7280)' } },
-        configured
-          ? `${status?.user || 'NewAPI'} · ${status?.base ?? ''} · ${status?.models ?? 0} 个模型`
-          : methods?.base
-            ? `登录到 ${methods.base}，模型直连 NewAPI（不经 Go）`
-            : '读取 NewAPI 登录方式…'
-      ),
-      error ? h('div', { style: { marginTop: 8, color: '#b91c1c' } }, error) : null
-    ),
-
-    h(
-      'div',
-      { style: box },
-      h('div', { style: { marginBottom: 8, fontWeight: 600 } }, '登录方式'),
-      h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } },
-        methods?.password ? h('span', { style: chip }, '密码') : null,
-        methods?.passkey ? h('span', { style: chip }, 'Passkey') : null,
-        methods?.emailVerification ? h('span', { style: chip }, '邮箱验证码') : null,
-        ...oauth.map((provider) => h('span', { key: provider.slug, style: chip }, provider.name)),
-        methods?.turnstile ? h('span', { style: { ...chip, color: '#a16207' } }, 'Turnstile 已开启') : null
-      ),
-      h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-        h('button', { type: 'button', style: button, onClick: () => void browserLogin() }, '打开浏览器登录（支持全部方式）'),
-        methods?.password && !methods?.turnstile
-          ? h('button', { type: 'button', style: button, onClick: () => setManual(!manual) }, manual ? '收起密码登录' : '密码登录')
-          : null
-      ),
-      browser.state !== 'idle'
-        ? h('div', {
-            style: {
-              marginTop: 10,
-              color: browser.state === 'error' ? '#b91c1c' : 'var(--dsw-alias-label-secondary, #6b7280)'
-            }
-          }, `${browser.message}${browser.user ? `（${browser.user}）` : ''}`)
-        : null,
-      manual && methods?.password
-        ? h('div', { style: { marginTop: 12, display: 'grid', gap: 8 } },
-            h('label', { style: field }, '用户名 / 邮箱',
-              h('input', {
-                style: input,
-                value: form.username,
-                onChange: (event: { target: { value: string } }) => setForm({ ...form, username: event.target.value })
-              })),
-            h('label', { style: field }, '密码',
-              h('input', {
-                style: input,
-                type: 'password',
-                value: form.password,
-                onChange: (event: { target: { value: string } }) => setForm({ ...form, password: event.target.value })
-              })),
-            h('button', {
-              type: 'button',
-              style: button,
-              disabled: busy || form.username.trim() === '' || form.password === '',
-              onClick: () => void passwordLogin()
-            }, busy ? '登录中…' : '登录')
-          )
-        : null
-    ),
-
-    h(
-      'div',
-      { style: box },
-      h('div', { style: { marginBottom: 8, fontWeight: 600 } }, '手动填写 API Key'),
-      h('div', { style: { color: 'var(--dsw-alias-label-secondary, #6b7280)', marginBottom: 8 } },
-        'Key 存入 dsh 凭据库，模型目录自动从 /v1/models 读取。'),
-      h('label', { style: field }, 'API 根地址',
-        h('input', {
-          style: input,
-          placeholder: 'https://api.example.com',
-          value: form.base_url,
-          onChange: (event: { target: { value: string } }) => setForm({ ...form, base_url: event.target.value })
-        })),
-      h('label', { style: field }, 'API Key',
-        h('input', {
-          style: input,
-          type: 'password',
-          value: form.api_key,
-          onChange: (event: { target: { value: string } }) => setForm({ ...form, api_key: event.target.value })
-        })),
-      h('div', { style: { display: 'flex', gap: 8 } },
-        h('button', {
-          type: 'button',
-          style: button,
-          disabled: busy || form.base_url.trim() === '' || form.api_key.trim() === '',
-          onClick: () => void manualLogin()
-        }, '保存并连接'),
-        configured
-          ? h('button', {
-              type: 'button',
-              style: button,
-              onClick: () => void jsonFetch('/vexnar-account/logout', { method: 'POST' }).then(refresh).catch((err) => setError(String(err.message)))
-            }, '清除凭据')
-          : null
-      )
-    )
-  )
+  const deepseek = account.providers.some(provider => provider.id === 'deepseek')
+  const hxsec = account.providers.some(provider => provider.id === 'vexnar')
+  return <div style={panel}>
+    {account.providers.map(provider => <div key={provider.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <strong>{provider.name}</strong>
+      <span>{provider.models.length} 个模型</span>
+      {provider.id !== 'vexnar' && <button type="button" style={button} disabled={busy} onClick={() => {
+        setBusy(true)
+        void request<Account>('/providers', 'DELETE', { id: provider.id }).then(update, onError).finally(() => setBusy(false))
+      }}>移除</button>}
+    </div>)}
+    {!hxsec && <span>平台尚未关联可用的模型密钥。可以从平台创建 API Key 后在这里关联。</span>}
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {!hxsec && <button type="button" style={button} disabled={busy} onClick={() => select('platform')}>关联平台 API Key</button>}
+      <button type="button" style={button} disabled={busy} onClick={() => select('deepseek')}>
+        {deepseek ? '更新 DeepSeek API Key' : '添加 DeepSeek API Key'}
+      </button>
+      <button type="button" style={button} disabled={busy} onClick={() => select('custom')}>导入自定义 API</button>
+    </div>
+    {kind && <form onSubmit={event => void save(event)} style={{ display: 'grid', gap: 8 }}>
+      {kind === 'custom' && <>
+        <label style={field}>提供方名称
+          <input style={input} value={name} required onChange={event => setName(event.target.value)} />
+        </label>
+        <label style={field}>OpenAI 兼容 API 根地址
+          <input style={input} type="url" value={baseURL} placeholder="https://api.example.com/v1" required onChange={event => setBaseURL(event.target.value)} />
+        </label>
+      </>}
+      <label style={field}>{kind === 'deepseek' ? 'DeepSeek API Key' : 'API Key'}
+        <input style={input} type="password" autoComplete="off" value={key} required onChange={event => setKey(event.target.value)} />
+      </label>
+      <button type="submit" style={button} disabled={busy || !key.trim()}>{busy ? '正在验证…' : '验证并添加'}</button>
+    </form>}
+    {error && <span role="alert" style={{ color: 'var(--dsw-alias-label-danger, #b91c1c)' }}>{error}</span>}
+  </div>
 }
 
 export function apply(ctx: {
   slots: {
     inject: (name: string, register: () => unknown) => void
-    register: (options: { name: string; id: string; label: string; order?: number }, component: unknown) => unknown
+    register: (options: { name: string; id: string; label: string; order: number }, component: unknown) => unknown
   }
 }): void {
-  ctx.slots.inject('settings.section', () =>
-    ctx.slots.register(
-      { name: 'settings.section', id: 'vexnar-account', label: '账户', order: -100 },
-      AccountSection
-    ))
+  ctx.slots.inject('settings.section', () => {
+    ctx.slots.register({ name: 'settings.section', id: 'vexnar-account', label: '账户', order: -100 }, AccountSection)
+    return ctx.slots.register({ name: 'settings.section', id: 'models', label: '模型', order: 10 }, ModelsSection)
+  })
 }
 
 export const inject = ['slots']
-
 export default { name: '@vexnar/dsh-account', inject, apply }

@@ -43,7 +43,9 @@ await build({
   format: 'cjs',
   platform: 'browser',
   target: ['es2022'],
-  jsx: 'automatic',
+  jsx: 'transform',
+  jsxFactory: 'h',
+  jsxFragment: 'Fragment',
   external: externals,
   legalComments: 'none',
   logLevel: 'warning'

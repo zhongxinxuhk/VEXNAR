@@ -21,6 +21,7 @@ import (
 	actool "github.com/Autumn-27/norma/tool"
 	"github.com/zhongxinxuhk/vexnar/agent"
 	pgdb "github.com/zhongxinxuhk/vexnar/db"
+	"github.com/zhongxinxuhk/vexnar/egress"
 	"github.com/zhongxinxuhk/vexnar/enrich"
 	"github.com/zhongxinxuhk/vexnar/guard"
 	"github.com/zhongxinxuhk/vexnar/intercept"
@@ -249,6 +250,17 @@ type Manager struct {
 	// capture is on it becomes the MITM's upstream; when capture is off it is
 	// injected into agent bash env / WebFetch directly. See ProxyAddr.
 	globalProxy string
+	// egress is the embedded proxy-pool runtime (mihomo protocol core + SQLite
+	// store + loopback session gateway). It supersedes globalProxy when a default
+	// pool is configured: capture-on routes the MITM's upstream into the gateway,
+	// capture-off hands agents the gateway URL directly.
+	egress       *egress.Manager
+	egressURL    string // credential URL of the global-default session
+	egressPoolID int64  // 0 = no default pool
+	// recordings holds per-session recording listeners (capture on + pool bound).
+	// Keyed by sanitized session key; created lazily, closed on task end.
+	recMu      sync.Mutex
+	recordings map[string]*traffic.Listener
 }
 
 // Settings keys the UI toggles at runtime.
@@ -264,8 +276,11 @@ const (
 	// (http/https/socks5). Empty = direct. Distinct from web_search_proxy (which
 	// only routes the search backend) and the per-profile LLM proxy.
 	settingGlobalProxy = "global_proxy"
-	settingWorkers     = "workers"
-	settingLLMRecord   = "llm_record"
+	// settingProxyDefaultPool is the proxy-pool id used when a task has no explicit
+	// binding. 0 = unset (fall back to global_proxy / direct).
+	settingProxyDefaultPool = "proxy_default_pool"
+	settingWorkers          = "workers"
+	settingLLMRecord        = "llm_record"
 	// LLM 轮询(故障转移)。默认关闭——开启后走「全局激活配置」的 agent 在当前配置
 	// 不可用(余额不足/key 失效/限流/服务异常)时自动切到下一个配置。
 	// settingLLMPoolBindFallback 仅在轮询开启时有意义:默认关闭,即 agent/任务显式
@@ -377,7 +392,7 @@ func NewManager(dir, proxyAddr string) (*Manager, error) {
 	if err := pg.EnsureLLMUsageTable(); err != nil {
 		log.Printf("[llmusage] create table: %v", err)
 	}
-	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg)}
+	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg), recordings: map[string]*traffic.Listener{}}
 	if proxyAddr != "" {
 		tr, err := traffic.Open(filepath.Join(dir, "traffic"), proxyAddr)
 		if err != nil {
@@ -444,6 +459,7 @@ func NewManager(dir, proxyAddr string) (*Manager, error) {
 		}
 	}
 	m.enrich = enrich.New(m.assets, m.ProxyAddr, 4)
+	m.initEgress(filepath.Join(dir, "egress"))
 	// Reconcile the seeded browser MCP with the persisted capture state, so a
 	// restart with capture already on keeps Playwright routed through the proxy.
 	m.syncBrowserMCPProxy()
@@ -658,8 +674,8 @@ func (m *Manager) syncBrowserMCPProxy() {
 		return // user removed/renamed it — leave it alone
 	}
 
-	proxy := m.ProxyAddr()  // "" when capture off
-	cert := m.ProxyCACert() // "" when capture off
+	proxy := m.BrowserProxyURL() // credential-free; Chromium can't do proxy auth
+	cert := m.ProxyCACert()      // "" when capture off
 
 	args := stripProxyArgs(decodeStrSlice(srv.Args))
 	env := decodeStrMap(srv.Env)
@@ -751,11 +767,108 @@ func (m *Manager) Traffic() *traffic.Traffic { return m.traffic }
 // capturing, in the agent's own bash env / WebFetch when not.
 func (m *Manager) ProxyAddr() string {
 	if m.traffic != nil && m.TrafficEnabled() {
+		// Capture on: tools must keep talking to the MITM so traffic is recorded.
+		// The pool applies at the MITM's upstream instead (see applyEgressDefault).
 		return m.traffic.ProxyAddr()
 	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if m.egressURL != "" {
+		return m.egressURL
+	}
 	return m.globalProxy
+}
+
+// BrowserProxyURL is what a browser may receive as --proxy-server. Chromium cannot
+// answer proxy authentication (URL userinfo is ignored), so a pool-bound default
+// uses a credential-free fixed-port listener instead of the credential URL.
+func (m *Manager) BrowserProxyURL() string {
+	if m.traffic != nil && m.TrafficEnabled() {
+		return m.traffic.ProxyAddr() // MITM; its upstream already honors the pool
+	}
+	if m.egress != nil && m.EgressPoolID() > 0 {
+		if u, err := m.egress.FixedProxyURL("global:default"); err == nil {
+			return u
+		}
+	}
+	return m.ProxyAddr()
+}
+
+// Egress returns the proxy-pool runtime (nil when disabled by init failure).
+func (m *Manager) Egress() *egress.Manager { return m.egress }
+
+// EgressPoolID returns the configured default pool id (0 = none).
+func (m *Manager) EgressPoolID() int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.egressPoolID
+}
+
+// initEgress starts the pool runtime under <dataDir>/egress and applies the
+// persisted default pool. Failure disables pooling only — global_proxy still works.
+func (m *Manager) initEgress(dir string) {
+	mgr, err := egress.NewManager(egress.Options{DataDir: dir})
+	if err != nil {
+		log.Printf("[egress] disabled: %v", err)
+		return
+	}
+	m.egress = mgr
+	mgr.Start()
+	var poolID int64
+	if v, ok, _ := m.pg.GetSetting(settingProxyDefaultPool); ok {
+		if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil && n > 0 {
+			poolID = n
+		}
+	}
+	if err := m.applyEgressDefault(poolID); err != nil {
+		log.Printf("[egress] 默认池 %d 未生效: %v", poolID, err)
+	}
+}
+
+// applyEgressDefault points the global-default session at poolID and rewires the
+// MITM upstream when capture is on. poolID<=0 clears it and restores globalProxy.
+func (m *Manager) applyEgressDefault(poolID int64) error {
+	m.mu.Lock()
+	m.egressPoolID = poolID
+	m.egressURL = ""
+	if m.egress != nil {
+		m.egress.SetDefaultPool(poolID)
+	}
+	m.mu.Unlock()
+	if m.egress == nil {
+		return nil
+	}
+	if poolID <= 0 {
+		// Drop the global session and its credential-free listener: a removed pool
+		// must not keep routing browser traffic through its last node.
+		m.egress.Revoke("global:default")
+		if m.traffic != nil {
+			return m.traffic.SetUpstreamProxy(m.GlobalProxy())
+		}
+		return nil
+	}
+	ep, err := m.egress.Endpoint(egress.SessionSpec{Key: "global:default", PoolID: poolID})
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	m.egressURL = ep.URL
+	m.mu.Unlock()
+	if m.traffic != nil {
+		if err := m.traffic.SetUpstreamProxy(ep.URL); err != nil {
+			return err
+		}
+	}
+	log.Printf("[egress] 默认代理池 #%d 已生效（网关 %s）", poolID, m.egress.GatewayAddr())
+	return nil
+}
+
+// SetProxyDefaultPool persists and applies the default pool selection.
+func (m *Manager) SetProxyDefaultPool(poolID int64) error {
+	if err := m.pg.SetSetting(settingProxyDefaultPool, strconv.FormatInt(poolID, 10)); err != nil {
+		return err
+	}
+	return m.applyEgressDefault(poolID)
 }
 
 // ProxyCACert returns the CA cert path agents must trust to verify HTTPS through
@@ -805,6 +918,9 @@ func (m *Manager) SetGlobalProxy(raw string) error {
 }
 
 func (m *Manager) Close() error {
+	if m.egress != nil {
+		_ = m.egress.Close()
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.traffic != nil {

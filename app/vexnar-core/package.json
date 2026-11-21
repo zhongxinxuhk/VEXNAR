@@ -13,7 +13,8 @@
     "compare": "node compare.mjs",
     "compare:domain": "node compare-domain.mjs",
     "verify": "node verify.mjs",
-    "build:embedded": "node build-embedded.mjs"
+    "build:embedded": "node build-embedded.mjs",
+    "typecheck:traffic": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
@@ -23,6 +24,7 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }

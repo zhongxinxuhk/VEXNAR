@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { FindingRetestDialog } from "@/components/finding-retest-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { TablePagination } from "@/components/table-pagination";
+import { WorkbenchTabs } from "@/components/workbench-tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -51,6 +52,7 @@ import type {
   Severity,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { readTaskScope, workbenchHref, writeTaskScope } from "@/lib/workbench-scope";
 
 import { AssetTree, assetPathOf } from "./_components/asset-tree";
 import {
@@ -162,6 +164,13 @@ export default function FindingsPage() {
   const retestRefreshVersion = React.useRef(0);
   const [deepenDescription, setDeepenDescription] = React.useState("");
   const [deepening, setDeepening] = React.useState(false);
+  // 「全部任务」和「未关联」都不是具体任务,共享范围里按"无范围"处理。
+  const scopeTask = task === "all" || task === UNASSIGNED_TASK ? "" : task;
+  const scopeTaskLabel = React.useMemo(() => {
+    if (!scopeTask) return undefined;
+    const hit = (stats.tasks ?? []).find((option) => String(option.id) === scopeTask);
+    return hit ? hit.name || hit.description || `任务 #${scopeTask}` : undefined;
+  }, [scopeTask, stats.tasks]);
   const filterFingerprint = JSON.stringify([severity, status, vulnclass, task, sort, query]);
   const activeFilterFingerprint = React.useRef(filterFingerprint);
   activeFilterFingerprint.current = filterFingerprint;
@@ -218,6 +227,10 @@ export default function FindingsPage() {
         // Ignore malformed or legacy preferences and retain the defaults.
       }
     }
+    // 任务范围来自 URL 时优先于本地偏好:从 任务/工具执行 点进来必须落在这个任务上,
+    // 否则用户会看到"切了页签筛选就丢了"。没有 URL 范围才回落到偏好。
+    const scoped = readTaskScope();
+    if (scoped) setTask(scoped);
     setPreferencesHydrated(true);
   }, []);
 
@@ -228,6 +241,13 @@ export default function FindingsPage() {
       JSON.stringify({ view, severity, status, vulnclass, task, sort }),
     );
   }, [preferencesHydrated, severity, sort, status, task, view, vulnclass]);
+
+  // 任务筛选与 URI 双向对齐:改筛选写回 ?task=,另外两个页签跟着走。
+  // 「全部任务」和「未关联」都不是任务 id,不写进 URL。
+  React.useEffect(() => {
+    if (!preferencesHydrated) return;
+    writeTaskScope(task === "all" || task === UNASSIGNED_TASK ? "" : task);
+  }, [preferencesHydrated, task]);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => setQuery(search.trim()), 300);
@@ -816,10 +836,28 @@ export default function FindingsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-6">
+      <WorkbenchTabs
+        active="findings"
+        scope={scopeTask}
+        scopeLabel={scopeTaskLabel}
+        onClearScope={() => setTask("all")}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">发现</h1>
-          <p className="text-muted-foreground text-sm">跨任务漏洞汇总</p>
+          <p className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+            跨任务漏洞汇总
+            {scopeTask && (
+              <Link
+                href={workbenchHref("commands", scopeTask)}
+                prefetch={false}
+                className="inline-flex items-center gap-1 text-foreground hover:underline"
+              >
+                该任务的工具执行
+                <ArrowUpRightIcon className="size-3" aria-hidden="true" />
+              </Link>
+            )}
+          </p>
         </div>
         <Tabs value={view} onValueChange={(v) => setView(v as FindingView)}>
           <TabsList>

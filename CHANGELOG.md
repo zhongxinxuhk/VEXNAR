@@ -20,8 +20,11 @@
 - **工具执行下沉到任务详情**：选中任务后即可跑 nmap/httpx/ffuf/sqlmap（结果按该任务落库），
   下方列出该任务的 `activity/history` 执行记录（planner / main 逐步，含工具与结果）。执行记录属于
   任务的从属数据，不再占顶层入口。
-- **设置里「MCP」与「工具」合成「工具与 MCP」**（`settings.section: vexnar-tools-mcp`）：工具和提供工具的
-  MCP server 是同一件事的两半，分两节只会让人来回切。
+- **设置里「MCP」与「工具」并入「内置插件」分区**：工具和提供工具的 MCP server 是同一件事的两半，
+  而「谁提供、能不能调」本来就是插件与权限的问题。
+- **Agent 名册回给 dsh**：引擎的八个角色（goals / planner / main / worker / auto / pentest / reporter /
+  retester）是 `app/vexnar/cordis.patch.yml` 里的 `@deepseek-ai/dsh-agent-preset` 行，名称、描述与能力
+  组合都写在声明里，展示与编辑归 dsh 自己的「设置 → Agent 预设」。
 
 #### 接口
 
@@ -43,6 +46,33 @@
   里的执行记录是同一批数据；独立入口只是同一件事的第二个视图。
 - **移除「资产同步」设置节**（`vexnar-asset-sync`）：遗留资产导入入口已随资产面板一起退出 dsh 客户端，
   导入由 core 的 `/api/assets` 承担。
+- **移除「Agent 管理」设置节**（`vexnar-agents`）：同一批角色在 dsh 的「Agent 预设」里已经有一份声明式名册，
+  VEXNAR 那节只是它的第二个视图，而且改名写回的是引擎库、不是 dsh 真正在跑的定义。
+
+#### 修复的问题
+
+- **领域路由跟随 core-embedded 一起打包**：`routes.ts` 的路由表原来写成 `import(file)`，esbuild 只能把
+  静态可分析的说明符打进包，于是运行时会去 `lib/routes/*.ts` 找源码——那里没有，dsh 宿主里 16 个领域
+  路由整片加载失败（流量、LLM、任务、市场等全部 404）。改成每个模块一个字面量 `import('./routes/x.ts')`
+  的惰性装载表，仍是按 scope 逐个 try/catch，但产物自洽。
+- **启动脚本不再把一棵树的 `core-embedded.js` 盖到另一棵树的插件上**：profile 的 `file:` 依赖已经指明
+  它跑哪棵树，跨树覆盖会让 `handle`/`isGoDataRequest` 契约错位，表现为 `isGoDataRequest is not a function`
+  加一墙 unresolved route。现在按 profile 自己解析到的目录运行，需要换树用 `VEXNAR_DSH_BUNDLES=<repo>`。
+- **流量页按 Burp 的报文结构分色**：请求行/状态行、头部（名字、值、Cookie 键值、content-type）、正文
+  （JSON / HTML / XML / JS / CSS / 表单 / multipart / 二进制 hexdump）各一套颜色，JSON 默认美化；方法与
+  状态改成彩色胶囊，筛选条、表格、详情分栏一并重排。切词逻辑在 `app/vexnar/ui/src/http-packet.ts`。
+
+- **流量页跟着 dsh 的主题走，并支持报文内搜索**：颜色不再写死 hex，全部映射到 dsh 的
+  `--dsw-static-*` / `--dsw-alias-*`，深色由 `body[data-ds-dark-theme]` 切换；面板自己铺
+  `--vx-surface` 底色，宿主容器不换背景时也不会透出白底。请求/响应每栏一个搜索框，命中全部
+  高亮、显示 `当前/总数`，↑↓ 或 Enter/Shift+Enter 在命中之间跳转（自动滚到视野中央），Esc 清空。
+
+- **流量列表按网络分析器的形态重排**：引入 `@tanstack/react-virtual`（行虚拟化，固定 30px 行高）
+  与 `react-resizable-panels`（请求/响应可拖拽分栏，布局记忆），列表改成自绘网格：粘性表头、
+  行悬浮/选中态、响应大小用对数刻度色条表达（按状态码上色）、站点侧栏带计数、分页条带本页统计。
+  选型上比过 HTTP Toolkit / Thorclient UI / network-viewer 这类现成检视器，它们要么绑定自家
+  主题与状态管理，要么带 HAR 解析器；这里只取无头原语（两个依赖均 MIT，合计约 30 KB 打包），
+  配色仍走 dsh 主题 token。
 
 ### Web 控制台（执行台）
 
@@ -60,6 +90,11 @@
 
 - **侧边栏把三个入口收成一个「执行台」**：任务 / 发现 / 工具执行 原本是三个平级页签，共享任务范围后合并为
   一个可展开入口，搜索面板同步按父级分组。
+- **流量详情按 Burp 的报文结构分色**：点开一条流量后，起始行（`方法 路径 协议` / `协议 状态码 原因`）、
+  头部（名字、值、Cookie 键值、content-type、`<url>; rel=…`）、正文各用一套颜色；正文按 content-type 与内容
+  嗅探切换 JSON / HTML / XML / JS / CSS / 表单 / multipart / 二进制（hexdump）渲染，JSON 默认美化并可切回原文。
+  抽屉补上方法胶囊、状态胶囊、URL 复制、请求/响应体积、行号与 2000 行折叠；列表行选中加左侧色条，状态列
+  改成带颜色点的胶囊。解析与逐行切词在 `web/src/lib/http-packet.ts`，配 `http-packet.test.mjs`（10 项）。
 
 #### 移除的功能
 

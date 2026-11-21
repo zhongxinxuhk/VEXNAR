@@ -71,6 +71,12 @@ import type {
   NotificationMeta,
   PromptVar,
   PromptVersion,
+  ProxyHealth,
+  ProxyNodeView,
+  ProxyParseResult,
+  ProxyPool,
+  ProxySessionSnapshot,
+  ProxyState,
   SessionTokenUsage,
   Settings,
   Severity,
@@ -89,6 +95,7 @@ import type {
   TaskGoal,
   TaskLLMResolutions,
   TaskNode,
+  TaskProxyBinding,
   TaskScopeRow,
   TaskTemplate,
   TokenTotal,
@@ -825,8 +832,7 @@ export const api = {
   // 渠道是多实例资源（同一类型可配多个机器人、各有过滤规则），因此独立成组，
   // 不塞进扁平的 settings 键值里。
   notifyMeta: () => get<NotificationMeta>(`/notify/meta`),
-  notifyChannels: () =>
-    get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
+  notifyChannels: () => get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
   notifyCreateChannel: (payload: {
     name: string;
     kind: string;
@@ -1281,18 +1287,22 @@ export const api = {
   interceptJudgeUsage: (days = 30) => get<JudgeUsage>(`/intercept/judge/usage?days=${days}`),
 
   // ---- commands (tool execution history, any tool) ----
-  commands: (params?: { task?: string; q?: string; page?: number; size?: number }) => {
+  // task_id 是任务 id（任务/发现/执行台共用同一个身份），后端会换成 activity 表用的
+  // exploration_id；task 保留为历史写法（exploration id）。
+  commands: (params?: { task?: string; task_id?: string; q?: string; page?: number; size?: number }) => {
     const sp = new URLSearchParams();
     if (params?.task) sp.set("task", params.task);
+    if (params?.task_id) sp.set("task_id", params.task_id);
     if (params?.q) sp.set("q", params.q);
     sp.set("page", String(params?.page ?? 0));
     sp.set("size", String(params?.size ?? 50));
     return get<{ commands: CommandRecord[]; total: number }>(`/commands?${sp}`);
   },
-  // 各工具调用次数；沿用列表的 task/q 筛选，统计的是整个结果集而非当前页。
-  commandStats: (params?: { task?: string; q?: string }) => {
+  // 各工具调用次数；沿用列表的 task_id/task/q 筛选，统计的是整个结果集而非当前页。
+  commandStats: (params?: { task?: string; task_id?: string; q?: string }) => {
     const sp = new URLSearchParams();
     if (params?.task) sp.set("task", params.task);
+    if (params?.task_id) sp.set("task_id", params.task_id);
     if (params?.q) sp.set("q", params.q);
     return get<{ stats: ToolStat[] }>(`/commands/stats?${sp}`);
   },
@@ -1325,4 +1335,65 @@ export const api = {
   // 202 即返回，实际下载在后台跑，进度走 /api/update/stream。
   applyUpdate: () => post<{ ok: boolean; target: string }>(`/update/apply`),
   rollbackUpdate: () => post<{ ok: boolean }>(`/update/rollback`),
+
+  // ---- 代理池（egress）----
+  // 节点密钥只存在于 Go 端 SQLite（AES-GCM 加密），这里拿到的 DTO 永远没有口令。
+  proxyState: () => get<ProxyState>(`/proxy/state`),
+  proxyPools: () => get<ProxyPool[]>(`/proxy/pools`),
+  createProxyPool: (p: Partial<ProxyPool>) => post<ProxyPool>(`/proxy/pools`, p),
+  updateProxyPool: (id: number, p: Partial<ProxyPool>) => patch<ProxyPool>(`/proxy/pools/${id}`, p),
+  deleteProxyPool: (id: number) => del<{ deleted: number }>(`/proxy/pools/${id}`),
+  proxyPoolNodes: (id: number) => get<ProxyNodeView[]>(`/proxy/pools/${id}/nodes`),
+  addProxyPoolNodes: (id: number, nodeIDs: number[]) =>
+    post<{ pool_id: number; node_ids: number[] }>(`/proxy/pools/${id}/nodes`, { node_ids: nodeIDs }),
+  removeProxyPoolNode: (id: number, nodeID: number) =>
+    del<{ pool_id: number; node_ids: number[] }>(`/proxy/pools/${id}/nodes/${nodeID}`),
+  proxyNodes: () => get<ProxyNodeView[]>(`/proxy/nodes`),
+  createProxyNode: (n: {
+    name?: string;
+    protocol?: string;
+    server?: string;
+    port?: number;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string>;
+    uri?: string;
+    tags?: string[];
+    weight?: number;
+    max_conns?: number;
+    enabled?: boolean;
+    note?: string;
+  }) => post<{ created: number; updated: number }>(`/proxy/nodes`, n),
+  updateProxyNode: (
+    id: number,
+    p: {
+      name?: string;
+      tags?: string[];
+      weight?: number;
+      max_conns?: number;
+      enabled?: boolean;
+      note?: string;
+      config?: Record<string, unknown>;
+      secrets?: Record<string, string>;
+    },
+  ) => patch<ProxyNodeView>(`/proxy/nodes/${id}`, p),
+  deleteProxyNode: (id: number) => del<{ deleted: number }>(`/proxy/nodes/${id}`),
+  proxyParse: (text: string, url = "") => post<ProxyParseResult>(`/proxy/nodes/parse`, { text, url }),
+  proxyImport: (text: string, pool_id?: number, tags?: string[], url = "") =>
+    post<{ created: number; updated: number; added_to_pool: number; issues: ProxyParseResult["issues"] }>(
+      `/proxy/nodes/import`,
+      { text, url, pool_id: pool_id ?? 0, tags: tags ?? [] },
+    ),
+  proxyBatch: (p: { ids: number[]; action: string; pool_id?: number; tags?: string[] }) =>
+    post<{ updated: number; deleted: number; checked: ProxyHealth[] | null }>(`/proxy/nodes/batch`, p),
+  proxyCheckNode: (id: number) => post<ProxyHealth>(`/proxy/nodes/${id}/check`),
+  proxyCheckPool: (id: number) => post<ProxyHealth[]>(`/proxy/pools/${id}/check`),
+  setProxyDefaultPool: (pool_id: number) => put<{ pool_id: number }>(`/proxy/default-pool`, { pool_id }),
+  proxyTaskBinding: (taskId: number) =>
+    get<{ task_id: number; binding: TaskProxyBinding | null; worker_session?: ProxySessionSnapshot }>(
+      `/tasks/${taskId}/proxy`,
+    ),
+  setProxyTaskBinding: (taskId: number, b: Omit<TaskProxyBinding, "task_id">) =>
+    put<TaskProxyBinding>(`/tasks/${taskId}/proxy`, b),
+  deleteProxyTaskBinding: (taskId: number) => del<{ task_id: number; binding: null }>(`/tasks/${taskId}/proxy`),
+  proxyResetLeases: (task_id = 0) => post<{ reset: boolean; task_id: number }>(`/proxy/leases/reset`, { task_id }),
 };

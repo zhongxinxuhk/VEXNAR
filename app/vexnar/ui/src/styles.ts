@@ -344,6 +344,8 @@ body[data-ds-dark-theme] {
   height: 100%;
   overflow-y: auto;
   padding: 22px 24px 40px;
+  /* 自己铺底：宿主容器未必跟着主题换背景，插件不能透出上一层的白。 */
+  background: var(--vx-surface);
   color: var(--vx-text);
   font-size: 13px;
 }
@@ -1261,123 +1263,719 @@ body[data-ds-dark-theme] {
 .vx-yak-history {
   font-size: 13px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.vx-yak-filters, .vx-yak-pages, .vx-yak-packet header, .vx-yak-detail > header, .vx-yak-dialog > header {
+/* ── 筛选条 ─────────────────────────────────────────────── */
+.vx-yak-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-filters input:not([type="checkbox"]),
+.vx-yak-filters select {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+  font-size: 12px;
 }
 
 .vx-yak-filters input:not([type="checkbox"]) {
-  width: 115px;
+  width: 112px;
 }
 
 .vx-yak-filters input[aria-label="URL"] {
-  width: min(245px, 100%);
+  width: min(230px, 100%);
 }
 
+.vx-yak-filters input:focus-visible,
+.vx-yak-filters select:focus-visible {
+  outline: 2px solid var(--vx-accent);
+  outline-offset: 1px;
+}
+
+.vx-yak-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vx-yak-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.vx-yak-actions button,
+.vx-yak-pages button,
+.vx-yak-copy,
+.vx-yak-close,
+.vx-yak-segmented button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vx-yak-actions button:hover,
+.vx-yak-pages button:hover,
+.vx-yak-copy:hover,
+.vx-yak-close:hover {
+  background: var(--vx-surface-sunken);
+}
+
+.vx-yak-actions button:disabled,
+.vx-yak-pages button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vx-yak-actions .vx-yak-primary {
+  border-color: transparent;
+  background: var(--vx-text);
+  color: var(--vx-surface);
+  font-weight: 600;
+}
+
+/* ── 列表 ───────────────────────────────────────────────── */
 .vx-yak-grid {
   display: grid;
-  grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
   border: 1px solid var(--vx-border);
-  border-radius: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--vx-surface);
 }
 
 .vx-yak-grid aside {
-  padding: 10px;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--vx-surface-sunken);
   border-inline-end: 1px solid var(--vx-border);
 }
 
-.vx-yak-grid aside button, .vx-yak-url {
+.vx-yak-aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vx-border);
+  color: var(--vx-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vx-yak-aside-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  overflow: auto;
+  max-height: 46vh;
+}
+
+.vx-yak-aside-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vx-text);
+  font-size: 11.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.vx-yak-aside-list button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-yak-aside-list button small {
+  color: var(--vx-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-aside-list button:hover {
+  background: var(--vx-surface);
+}
+
+.vx-yak-list {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vx-yak-table {
+  position: relative;
+  overflow: auto;
+  max-height: 46vh;
+  background: var(--vx-surface);
+}
+
+.vx-yak-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--vx-border);
+  background: var(--vx-surface-sunken);
+}
+
+.vx-yak-head button {
+  padding: 7px 9px;
+  border: 0;
+  background: none;
+  color: var(--vx-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: start;
+  cursor: pointer;
+}
+
+.vx-yak-head button:disabled {
+  cursor: default;
+}
+
+.vx-yak-head .vx-yak-th--end {
+  text-align: end;
+}
+
+.vx-yak-body {
+  position: relative;
+}
+
+.vx-yak-row {
+  position: absolute;
+  inset-inline: 0;
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--vx-border) 55%, transparent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vx-yak-row > * {
+  padding-inline: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.vx-yak-row:hover {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
+}
+
+.vx-yak-row[data-selected="true"] {
+  background: var(--vx-surface-sunken);
+  box-shadow: inset 2px 0 0 0 var(--vx-text);
+}
+
+.vx-yak-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-size-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.vx-yak-sizebar {
+  flex: 1;
+  min-width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--vx-border) 80%, transparent);
+}
+
+.vx-yak-sizebar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--vx-syn-punct);
+}
+
+.vx-yak-sizebar[data-tone="success"] i { background: var(--vx-status-success); }
+.vx-yak-sizebar[data-tone="redirect"] i { background: var(--vx-status-redirect); }
+.vx-yak-sizebar[data-tone="warn"] i { background: var(--vx-status-warn); }
+.vx-yak-sizebar[data-tone="error"] i { background: var(--vx-status-error); }
+.vx-yak-sizebar[data-tone="info"] i { background: var(--vx-syn-punct); }
+
+.vx-yak-id,
+.vx-yak-num {
+  font-variant-numeric: tabular-nums;
+  color: var(--vx-muted);
+}
+
+.vx-yak-dim {
+  color: var(--vx-muted);
+}
+
+.vx-yak-type {
+  font-family: var(--vx-mono);
+  font-size: 11px;
+  color: var(--vx-muted);
+}
+
+.vx-yak-url {
   display: block;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 0;
+  background: none;
+  color: var(--vx-text);
+  font-family: var(--vx-mono);
+  font-size: 11.5px;
   text-align: start;
+  cursor: pointer;
 }
 
-.vx-yak-grid aside button {
-  margin-top: 6px;
+.vx-yak-url:hover {
+  text-decoration: underline;
 }
 
-.vx-yak-list {
-  min-width: 0;
+.vx-yak-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--vx-border);
+  color: var(--vx-muted);
+  font-size: 12px;
 }
 
-.vx-yak-table {
-  overflow: auto;
-  max-height: 46vh;
+.vx-yak-pages > span {
+  margin-inline-end: auto;
 }
 
-.vx-yak-table table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
+/* ── 方法与状态胶囊 ─────────────────────────────────────── */
+.vx-method,
+.vx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  font-family: var(--vx-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-.vx-yak-table th, .vx-yak-table td {
-  text-align: start;
-  padding: 6px 9px;
-  border-bottom: 1px solid var(--vx-border);
+.vx-method--get { color: var(--vx-method-get); }
+.vx-method--post { color: var(--vx-method-post); }
+.vx-method--put { color: var(--vx-method-put); }
+.vx-method--patch { color: var(--vx-method-patch); }
+.vx-method--delete { color: var(--vx-method-delete); }
+.vx-method--options { color: var(--vx-method-options); }
+.vx-method--other { color: var(--vx-muted); }
+
+.vx-status {
+  font-variant-numeric: tabular-nums;
 }
 
-.vx-yak-table th {
-  position: sticky;
-  top: 0;
+.vx-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vx-status--success { color: var(--vx-status-success); }
+.vx-status--redirect { color: var(--vx-status-redirect); }
+.vx-status--warn { color: var(--vx-status-warn); }
+.vx-status--error { color: var(--vx-status-error); }
+.vx-status--info { color: var(--vx-muted); }
+
+/* ── 报文详情 ───────────────────────────────────────────── */
+.vx-yak-detail {
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  padding: 10px;
   background: var(--vx-surface);
 }
 
-.vx-yak-table tr[data-selected="true"] {
-  background: var(--vx-surface-sunken);
+.vx-yak-detail > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
 }
 
-.vx-yak-url {
-  max-width: 340px;
+.vx-yak-detail-url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vx-muted);
+  font-size: 11.5px;
 }
 
-.vx-yak-pages, .vx-yak-table > p {
-  padding: 8px 10px;
+.vx-yak-close {
+  margin-inline-start: auto;
 }
 
 .vx-yak-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  gap: 0;
+  min-height: 240px;
+}
+
+.vx-yak-split > [data-panel] {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 拖拽分隔条：视觉上一条竖线，命中区 8px。 */
+.vx-yak-resize {
+  position: relative;
+  width: 9px;
+  flex: 0 0 9px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.vx-yak-resize::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: var(--vx-border);
+}
+
+.vx-yak-resize:hover::after,
+.vx-yak-resize[data-resize-handle-state="drag"]::after,
+.vx-yak-resize[data-resize-handle-state="hover"]::after {
+  background: var(--vx-accent);
 }
 
 .vx-yak-packet {
   min-width: 0;
-  padding: 0 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-inline: 4px;
   border: 1px solid var(--vx-border);
-  border-radius: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--vx-surface);
 }
 
-.vx-yak-packet pre {
-  overflow: auto;
-  min-height: 80px;
-  max-height: 300px;
-  padding: 10px;
+.vx-yak-packet > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--vx-border);
   background: var(--vx-surface-sunken);
 }
 
+.vx-yak-packet > header strong {
+  font-size: 12px;
+}
+
+.vx-yak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vx-yak-chip--request { background: color-mix(in oklab, var(--vx-method-get) 10%, transparent); color: var(--vx-method-get); border-color: color-mix(in oklab, var(--vx-method-get) 28%, transparent); }
+.vx-yak-chip--response { background: color-mix(in oklab, var(--vx-status-success) 10%, transparent); color: var(--vx-status-success); border-color: color-mix(in oklab, var(--vx-status-success) 30%, transparent); }
+
+.vx-yak-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-search input {
+  width: 96px;
+  border: 0;
+  background: none;
+  color: var(--vx-text);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.vx-yak-search small {
+  color: var(--vx-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-search button {
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--vx-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vx-yak-search button:hover {
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+}
+
+.vx-yak-size {
+  color: var(--vx-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-segmented {
+  display: inline-flex;
+  margin-inline-start: auto;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--vx-surface);
+  border: 1px solid var(--vx-border);
+  gap: 2px;
+}
+
+.vx-yak-segmented button {
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vx-muted);
+  font-size: 11px;
+}
+
+.vx-yak-segmented button[aria-pressed="true"] {
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+  font-weight: 600;
+}
+
+.vx-yak-code {
+  overflow: auto;
+  max-height: 340px;
+  padding: 8px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.65;
+  background: var(--vx-surface);
+}
+
+.vx-yak-line {
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.65em;
+}
+
+.vx-yak-line:hover {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 65%, transparent);
+}
+
+.vx-yak-line--start {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
+}
+
+.vx-yak-line code {
+  font: inherit;
+}
+
+.vx-yak-separator {
+  margin: 4px 10px;
+  border-top: 1px dashed var(--vx-border);
+}
+
+.vx-yak-note {
+  padding: 2px 10px;
+  color: var(--vx-muted);
+  font-size: 11px;
+}
+
+/* 报文着色：颜色全部取自 dsh 的静态色板，深色由 body[data-ds-dark-theme] 切换，
+   组件自己不维护第二套主题。 */
+body {
+  --vx-syn-header: var(--dsw-static-blue-800, #1e40af);
+  --vx-syn-key: var(--dsw-static-blue-600, #2563eb);
+  --vx-syn-url: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-query-key: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-string: var(--dsw-static-green-900, #14532d);
+  --vx-syn-number: var(--dsw-static-amber-600, #d97706);
+  --vx-syn-literal: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-tag: var(--dsw-static-red-600, #dc2626);
+  --vx-syn-attr: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #4b5563);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-400, #94a3b8);
+  --vx-method-get: var(--dsw-static-blue-600, #2563eb);
+  --vx-method-post: var(--dsw-static-green-500, #22c55e);
+  --vx-method-put: var(--dsw-static-amber-600, #d97706);
+  --vx-method-patch: var(--dsw-static-violet-600, #7c3aed);
+  --vx-method-delete: var(--dsw-static-red-600, #dc2626);
+  --vx-method-options: var(--dsw-static-deepseek-500, #4d6bfe);
+  --vx-status-success: var(--dsw-static-green-500, #22c55e);
+  --vx-status-redirect: var(--dsw-static-blue-500, #3b82f6);
+  --vx-status-warn: var(--dsw-static-amber-500, #f59e0b);
+  --vx-status-error: var(--dsw-static-red-500, #ef4444);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 55%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 92%, transparent);
+}
+
+/* 深色：同一批语义换成色板里更亮的台阶。 */
+body[data-ds-dark-theme] {
+  --vx-syn-header: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-key: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-url: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-syn-query-key: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-string: var(--dsw-static-green-400, #4ade80);
+  --vx-syn-number: var(--dsw-static-amber-400, #fbbf24);
+  --vx-syn-literal: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-tag: var(--dsw-static-red-400, #f87171);
+  --vx-syn-attr: var(--dsw-static-deepseek-400, #7c93ff);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #cbd5e1);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-600, #64748b);
+  --vx-method-get: var(--dsw-static-blue-300, #93c5fd);
+  --vx-method-post: var(--dsw-static-green-400, #4ade80);
+  --vx-method-put: var(--dsw-static-amber-400, #fbbf24);
+  --vx-method-patch: var(--dsw-static-violet-400, #a78bfa);
+  --vx-method-delete: var(--dsw-static-red-400, #f87171);
+  --vx-method-options: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-status-success: var(--dsw-static-green-400, #4ade80);
+  --vx-status-redirect: var(--dsw-static-blue-300, #93c5fd);
+  --vx-status-warn: var(--dsw-static-amber-400, #fbbf24);
+  --vx-status-error: var(--dsw-static-red-400, #f87171);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 38%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 70%, transparent);
+}
+
+.vx-tone--method { font-weight: 600; }
+.vx-tone--url { color: var(--vx-syn-url); }
+.vx-tone--query-key { color: var(--vx-syn-query-key); }
+.vx-tone--query-value { color: var(--vx-syn-string); }
+.vx-tone--proto,
+.vx-tone--reason { color: var(--vx-muted); }
+.vx-tone--status { font-weight: 600; }
+.vx-tone--header { color: var(--vx-syn-header); font-weight: 500; }
+.vx-tone--value { color: var(--vx-syn-value); }
+.vx-tone--cookie-key { color: var(--vx-syn-header); }
+.vx-tone--cookie-value { color: var(--vx-syn-value); }
+.vx-tone--key { color: var(--vx-syn-key); }
+.vx-tone--string { color: var(--vx-syn-string); }
+.vx-tone--number { color: var(--vx-syn-number); }
+.vx-tone--literal { color: var(--vx-syn-literal); }
+.vx-tone--tag { color: var(--vx-syn-tag); }
+.vx-tone--attr { color: var(--vx-syn-attr); }
+.vx-tone--comment { color: var(--vx-muted); font-style: italic; }
+.vx-tone--punct { color: var(--vx-syn-punct); }
+.vx-tone--muted { color: var(--vx-muted); }
+
+/* 搜索命中 */
+.vx-hit {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--vx-hit-bg);
+  color: inherit;
+}
+
+.vx-hit[data-active="true"] {
+  background: var(--vx-hit-active);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--vx-syn-number) 60%, transparent);
+}
+
+.vx-yak-hint,
+.vx-yak-alert {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.vx-yak-hint { color: var(--vx-muted); }
+.vx-yak-alert { color: var(--vx-negative); }
+
 .vx-yak-dialog {
-  width: min(1100px, 91vw);
+  width: min(1180px, 93vw);
   max-height: 88vh;
   overflow: auto;
   padding: 14px;
   border: 1px solid var(--vx-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--vx-surface);
   color: var(--vx-text);
 }
 
-@media (max-width: 720px) {
-  .vx-yak-grid, .vx-yak-split {
+.vx-yak-dialog > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.vx-yak-dialog > header button {
+  margin-inline-start: auto;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  .vx-yak-grid,
+  .vx-yak-split {
     grid-template-columns: minmax(0, 1fr);
   }
   .vx-yak-grid aside button {

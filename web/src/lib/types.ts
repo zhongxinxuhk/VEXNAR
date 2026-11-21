@@ -1397,6 +1397,7 @@ export interface ConvTokenSummary {
 export interface CommandRecord {
   id: number;
   exploration_id: number;
+  task_id: number; // 所属任务 id；0 = 没有任务行指向这条 exploration
   worker: string;
   tool: string;
   command: string; // raw tool input (JSON)
@@ -1613,4 +1614,112 @@ export interface InterceptExecution {
   session: string;
   seq: number;
   items: Activity[];
+}
+
+// ---- 代理池（egress） ----
+/** 一个出口节点 + 运行时健康/计数。密钥永不返回。 */
+export interface ProxyNodeView {
+  id: number;
+  name: string;
+  protocol: string;
+  server: string;
+  port: number;
+  tags: string[] | null;
+  weight: number;
+  max_conns: number;
+  enabled: boolean;
+  egress_ip?: string;
+  note?: string;
+  state: "unknown" | "up" | "degraded" | "down" | "cooldown";
+  latency_ms: number;
+  requests: number;
+  failures: number;
+  inflight: number;
+  success_rate: number;
+}
+
+export interface ProxyPool {
+  id: number;
+  name: string;
+  strategy: string;
+  mode_default: string;
+  fallback: "block" | "direct";
+  fanout_k: number;
+  max_conns: number;
+  health_url: string;
+  ip_probe_url: string;
+  check_interval: number;
+  sticky_ttl: number;
+  note?: string;
+  node_count?: number;
+  healthy_count?: number;
+  members?: number[] | null;
+}
+
+/** 一个活跃会话（task × role）的实时出口状态。 */
+export interface ProxySessionSnapshot {
+  session: string;
+  task_id: number;
+  role: string;
+  pool_id: number;
+  pool_name: string;
+  mode: string;
+  fallback: string;
+  node_id?: number;
+  node_name?: string;
+  node_ip?: string;
+  expires_at?: string;
+  requests: number;
+  failures: number;
+  last_error?: string;
+}
+
+export interface ProxyState {
+  enabled: boolean;
+  gateway: string;
+  default_pool: number;
+  pools: ProxyPool[] | null;
+  nodes: ProxyNodeView[] | null;
+  sessions: ProxySessionSnapshot[] | null;
+  /** 捕获开启时为会话创建的录制实例数。 */
+  recordings?: number;
+  /** SOCKS5 入站地址（为空表示未启动）。 */
+  socks?: string;
+}
+
+export interface ProxyParseIssue {
+  raw?: string;
+  error: string;
+}
+
+export interface ProxyParsedNode {
+  name: string;
+  protocol: string;
+  server: string;
+  port: number;
+}
+
+export interface ProxyParseResult {
+  nodes: ProxyParsedNode[] | null;
+  issues: ProxyParseIssue[] | null;
+}
+
+export interface ProxyHealth {
+  node_id: number;
+  state: string;
+  latency_ms: number;
+  success_rate: number;
+  fail_streak: number;
+  checked_at: string;
+  cooldown_until: string;
+  last_error?: string;
+}
+
+export interface TaskProxyBinding {
+  task_id: number;
+  pool_id: number;
+  mode: string;
+  fanout_k: number;
+  fallback: "block" | "direct";
+  max_conns: number;
 }

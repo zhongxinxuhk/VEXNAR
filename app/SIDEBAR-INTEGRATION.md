@@ -30,9 +30,13 @@ dsh 侧边栏
 
 dsh 设置页
 ├─ Agent 预设  → **dsh 原生设置节**（名册 = app/vexnar/cordis.patch.yml 的 preset 行）
-├─ 工具与 MCP  → settings.section: vexnar-tools-mcp（工具 / MCP server 两个页签）
 ├─ 通知推送    → settings.section: vexnar-notify
-├─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
+└─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
+
+dsh 设置页 · 内置插件
+├─ 全部插件    → settings.plugins.tab: all（dsh 自带清单）
+├─ 工具        → settings.plugins.tab: vexnar-plugin-tools（只读）
+└─ MCP server  → settings.plugins.tab: vexnar-plugin-mcp（只读）
 ```
 
 ### 为什么合并
@@ -42,13 +46,15 @@ dsh 设置页
   任务范围，切页签不用重新选。
 - **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
   工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
-- **MCP / 工具** 是同一件事的两半（工具从哪来），拆成两个设置节只会让人来回切。
 - **Agent 名册只有一份**：引擎的每个角色都是 `app/vexnar/cordis.patch.yml` 里一条
   `@deepseek-ai/dsh-agent-preset`（goals / planner / main / worker / auto / pentest /
   reporter / retester）。名称、描述、能力组合都在那份声明里，展示与编辑归 dsh 自己的
   设置 → Agent 预设；再挂一个 VEXNAR 的「Agent 管理」只是同一份名册的第二个视图，
   而且它的编辑写回引擎库，改的还不是 dsh 真正在跑的那份定义。引擎按需生成的
   `lock_agent_<id>` / `write_lock_agent_<id>` 是运行产物，不进名册。
+- **MCP / 工具** 是同一件事的两半（工具从哪来），而「谁提供、能不能调」本来就是
+  插件与权限的问题。所以它们不占独立设置节，而是「内置插件」分区的两个标签页：清单
+  只读，启停与调用权限由 dsh（插件页 + 权限预设）统一管理，避免两处开关互相打架。
 
 ## 哪些入口复用 dsh，哪些新建
 
@@ -63,7 +69,7 @@ dsh 设置页
 | 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
 | Agent | **dsh 原生「Agent 预设」设置节**（`cordis.patch.yml` 的 preset 行） | preset 声明（名称/描述/插件组合） | 已接 |
-| MCP / 工具 / Skill | 「工具与 MCP」设置节 | `/api/mcp`、`/api/tools` | 骨架 |
+| MCP / 工具 / Skill | 「内置插件」分区标签页（只读清单，权限归 dsh） | `/api/mcp`、`/api/tools` | 骨架 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
 
