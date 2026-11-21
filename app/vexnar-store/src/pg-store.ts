@@ -121,6 +121,13 @@ export function pgStore(connection: {
         return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }))
       }
     },
+    constraints: {
+      list: async (taskId) => {
+        const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
+        if (!task) return []
+        return q("SELECT id, kind, text, COALESCE(origin,'') AS origin, created_at::text AS created_at FROM task_constraints WHERE exploration_id = $1 ORDER BY (kind='deny'), id", [task.exploration_id])
+      }
+    },
     activity: {
       history: async ({ taskId, session = '', before = 0, limit = 200 }) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])

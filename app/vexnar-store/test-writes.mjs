@@ -150,6 +150,11 @@ const sent = await ops.sendIntentMessage(goalTask.id, '2002', { message: 'steer'
 const sentAgain = await ops.sendIntentMessage(goalTask.id, '2002', { message: 'steer', request_id: 'req-1' }).catch((error) => error)
 check('intent message', sent.state === 'running' && sent.accepted === true && sentAgain?.status === 409, JSON.stringify({ sent, again: sentAgain?.status }))
 
+const constraint = await ops.addConstraint(goalTask.id, { kind: 'deny', text: 'no brute force' })
+const constraintEdit = await ops.editConstraint(goalTask.id, String(constraint.id), { kind: 'allow' })
+const constraintDelete = await ops.deleteConstraint(goalTask.id, String(constraint.id))
+check('constraint lifecycle', constraint.kind === 'deny' && constraintEdit.kind === 'allow' && constraintDelete.deleted === constraint.id, JSON.stringify({ id: constraint.id, edit: constraintEdit.kind }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

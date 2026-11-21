@@ -104,6 +104,9 @@ export interface Store {
     list(): Promise<any[]>
   }
   taskMetrics(): Promise<Map<number, TaskMetrics>>
+  constraints: {
+    list(taskId: string): Promise<any[]>
+  }
   activity: {
     history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
     tokenStats(taskId: string): Promise<{ workers: any[]; sessions: any[]; total: any }>

@@ -835,5 +835,52 @@ export function storeOperations(root: string) {
     return { id: Number(intentId), state: 'running', accepted: true, request_id: requestId }
   }
 
-  return { writer, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function addConstraint(taskId: string, input: { kind?: string; text?: string }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const kind = String(input.kind ?? '')
+    if (kind !== 'allow' && kind !== 'deny') throw Object.assign(new Error('kind 需为 allow 或 deny'), { status: 400 })
+    const text = String(input.text ?? '').trim()
+    if (!text) throw Object.assign(new Error('约束内容不能为空'), { status: 400 })
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'constraints'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'constraints', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const record = { id, exploration_id: Number(task.exploration_id), kind, text, origin: 'human', created_at: rfc3339(new Date()) }
+    await writer.commit([{ table: 'constraints', key: String(id), record }])
+    return record
+  }
+
+  async function editConstraint(taskId: string, constraintId: string, input: { kind?: string; text?: string }) {
+    const node = await writer.readRecord('constraints', constraintId)
+    if (!node) throw Object.assign(new Error('约束不存在'), { status: 404 })
+    const next = { ...node }
+    if (input.kind !== undefined) {
+      if (input.kind !== 'allow' && input.kind !== 'deny') throw Object.assign(new Error('kind 需为 allow 或 deny'), { status: 400 })
+      next.kind = input.kind
+    }
+    if (input.text !== undefined) {
+      const text = String(input.text).trim()
+      if (!text) throw Object.assign(new Error('约束内容不能为空'), { status: 400 })
+      next.text = text
+    }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'constraints', key: constraintId, record: next, expectedRev: Number(node.rev ?? 0) }])
+    return written
+  }
+
+  async function deleteConstraint(taskId: string, constraintId: string) {
+    const node = await writer.readRecord('constraints', constraintId)
+    if (!node) throw Object.assign(new Error('约束不存在'), { status: 404 })
+    await rm(join(root, 'constraints', `${constraintId}.json`), { force: true })
+    return { deleted: Number(constraintId) }
+  }
+
+  return { writer, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
