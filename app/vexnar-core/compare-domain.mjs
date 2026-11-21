@@ -36,9 +36,9 @@ const check = (name, ok, detail = '') => results.push({ name, ok, detail })
 
 const goTasks = (await get(GO, '/api/tasks')).tasks
 const tsTasks = (await get(TS, '/api/tasks')).tasks
-const taskFields = ['id', 'exploration_id', 'name', 'description', 'goal', 'paused', 'queued', 'created_unix', 'completed_unix', 'coverage_enabled']
+const taskFields = ['id', 'exploration_id', 'name', 'description', 'goal', 'paused', 'queued', 'created_unix', 'completed_unix', 'coverage_enabled', 'tokens', 'goals_total', 'goals_met', 'in_flight', 'findings']
 const pick = (row) => Object.fromEntries(taskFields.map((k) => [k, row[k]]))
-check('tasks core fields', same(goTasks.map(pick), tsTasks.map(pick)), `${goTasks.length}/${tsTasks.length}`)
+check('tasks core fields', same(goTasks.map(pick), tsTasks.map(pick)), JSON.stringify(diff(canon(goTasks.map(pick)), canon(tsTasks.map(pick))).slice(0,2)))
 
 const goAssets = await get(GO, '/api/assets?type=root_domain&limit=200')
 const tsAssets = await get(TS, '/api/assets?type=root_domain&limit=200')

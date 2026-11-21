@@ -46,8 +46,8 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 | `GET /api/settings` | ✅（只暴露 Go 的 20 个白名单键） |
 | `GET /api/assets/counts` | ✅ |
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |
-| `GET /api/tasks`、`/api/tasks/:id` | 🟡 已实现，指标字段暂为 0（待引擎迁移） |
-| `GET /api/tasks/:id/metrics` | 🟡 返回零值结构 |
+| `GET /api/tasks`、`/api/tasks/:id` | ✅ 核心字段 + tokens/goals/in_flight/findings 已对账；`last_activity_unix` 为引擎内存值，暂不比较 |
+| `GET /api/tasks/:id/metrics` | 🟡 漏洞计数已填，其余验证类指标待迁移 |
 | `GET /api/assets` | 🟡 已实现核心字段，DSL/图查询未迁 |
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |

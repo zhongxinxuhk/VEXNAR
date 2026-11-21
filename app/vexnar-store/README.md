@@ -25,6 +25,7 @@ store/
 ├─ edges/<src>-<rel>-<dst>.json
 ├─ assets/<id>.json
 ├─ companies/<ordinal-id>.json
+├─ activity/<id>.json
 └─ meta.json                 single-file 域（配置类）
 ```
 

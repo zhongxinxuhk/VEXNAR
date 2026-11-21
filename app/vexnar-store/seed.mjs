@@ -37,6 +37,7 @@ const tasks = await pg.tasks.list()
 const findings = await pg.findings.list(100000)
 const assets = (await pg.assets.list({ limit: 100000 })).rows
 const companies = await pg.companies.list()
+const activity = (await pg.pool.query(`SELECT id::text AS id, exploration_id, kind, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at, extract(epoch from created_at)::bigint AS created_unix FROM activity`)).rows
 const nodes = (await pg.nodes.page({ taskId: '0', page: 1, size: 1 })).items // shape probe only
 void nodes
 
@@ -52,6 +53,7 @@ const tables = [
   ['assets', assets, (row) => String(row.id)],
   ['companies', companies, (row, index) => `${String(index).padStart(4, '0')}-${row.id}`],
   ['nodes', allNodes.rows, (row) => String(row.id)],
+  ['activity', activity, (row) => String(row.id)],
   ['edges', allEdges.rows, (row) => `${row.src}-${row.rel}-${row.dst}`]
 ]
 for (const [name, rows, keyOf] of tables) {
