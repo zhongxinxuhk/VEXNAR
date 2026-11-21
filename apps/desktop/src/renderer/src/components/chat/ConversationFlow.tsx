@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { ChevronRight, SquareTerminal, Wrench } from 'lucide-react'
+import { PlanPreview } from './PlanPreview'
 import { AgentLoading } from '@/components/agent-ui/LoadingMark'
 import { ToolCallRow } from '@/components/agent-ui/ToolCallRow'
 import { Markdown } from '@/components/Markdown'
@@ -71,6 +72,13 @@ export function ConversationFlow({ message, quotaFailure }: {
               {message.streaming && last ? (
                 <div data-execution-phase="reasoning"><AgentLoading label={t('chat.phaseReasoning')} /></div>
               ) : t('chat.reasoningRecorded')}
+            </div>
+          )
+        }
+        if (block.kind === 'plan') {
+          return (
+            <div key={block.sequence} data-flow="plan" data-sequence={block.sequence}>
+              <PlanPreview conversationId={message.sessionId} call={block.call} />
             </div>
           )
         }

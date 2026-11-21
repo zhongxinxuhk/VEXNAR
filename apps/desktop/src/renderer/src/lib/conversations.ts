@@ -324,7 +324,9 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         }
         message.toolCalls?.push(call)
         const last = message.flow?.at(-1)
-        if (last?.kind === 'calls') last.calls.push(call)
+        if (call.name.toLowerCase() === 'todowrite') {
+          message.flow?.push({ kind: 'plan', sequence: item.seq, call })
+        } else if (last?.kind === 'calls') last.calls.push(call)
         else message.flow?.push({ kind: 'calls', sequence: item.seq, calls: [call] })
         message.toolEvents?.push({
           ...call.started, tool: call.name, worker: item.worker, outcome: 'invoked'

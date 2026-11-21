@@ -58,6 +58,7 @@ export type ChatExecutionPhase = 'reasoning' | 'tools' | 'answer'
 export type ChatFlowBlock =
   | { kind: 'text'; sequence: number; text: string }
   | { kind: 'reasoning'; sequence: number }
+  | { kind: 'plan'; sequence: number; call: ToolCall }
   | { kind: 'calls'; sequence: number; calls: ToolCall[] }
 
 export type ChatMessage = Omit<Message, 'toolCalls'> & {
