@@ -26,6 +26,15 @@ function parseJson(text: string): any {
  * intent and executes a bounded tool loop. The model is injected, so the
  * transport (Go loopback gateway) stays outside the engine and tests use a fake.
  */
+/** Keep the head and tail of long context so a run cannot grow unbounded. */
+export function compact(texts: string[], maxChars = 4000) {
+  const joined = texts.join(' | ')
+  if (joined.length <= maxChars) return joined
+  const head = joined.slice(0, Math.floor(maxChars * 0.3))
+  const tail = joined.slice(-Math.floor(maxChars * 0.6))
+  return `${head} … [${joined.length - head.length - tail.length} chars compacted] … ${tail}`
+}
+
 const claimChains = new Map<string, Promise<unknown>>()
 
 function serialized<T>(key: string, task: () => Promise<T>): Promise<T> {
@@ -67,7 +76,7 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
     return created
   }
 
-  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4, options: { isCancelled?: () => boolean } = {}) {
+  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4, options: { isCancelled?: () => boolean; continueOnLimit?: boolean } = {}) {
     const claimed = await serialized(taskId, () => ops.claimIntent(taskId, worker))
     if (!claimed) return null
     const intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
@@ -93,7 +102,7 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
 - run_tool {"name":"nmap|httpx|ffuf|sqlmap","target":"...","extra":{}}（结果自动落资产/发现）
 - finish {"summary"}
 只输出 {"tool":"...","args":{...}}，不要解释。` },
-          { role: 'user', content: `任务：${task?.goal}\n当前意图：${intent?.text}\n已得事实：${facts.join(' | ') || '无'}` }
+          { role: 'user', content: `任务：${compact([String(task?.goal ?? '')], 1000)}\n当前意图：${compact([String(intent?.text ?? '')], 1000)}\n已得事实：${compact(facts) || '无'}` }
         ])
         const action = parseJson(reply)
         if (action.tool === 'finish') {
@@ -161,9 +170,14 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
         }
         throw new Error(`未知工具: ${String(action.tool)}`)
       }
-      await ops.setNodeState(taskId, String(claimed.id), 'blocked')
-      await ops.appendActivity(taskId, { kind: 'intent_blocked', worker, node_id: String(claimed.id), summary: '达到回合上限' })
-      return { intent: Number(claimed.id), state: 'blocked' }
+      if (options.continueOnLimit === false) {
+        await ops.setNodeState(taskId, String(claimed.id), 'blocked')
+        await ops.appendActivity(taskId, { kind: 'intent_blocked', worker, node_id: String(claimed.id), summary: '达到回合上限' })
+        return { intent: Number(claimed.id), state: 'blocked' }
+      }
+      await ops.setNodeState(taskId, String(claimed.id), 'open').catch(() => {})
+      await ops.appendActivity(taskId, { kind: 'intent_yielded', worker, node_id: String(claimed.id), summary: '回合上限，交回队列续跑' })
+      return { intent: Number(claimed.id), state: 'open', yielded: true }
     } catch (error: any) {
       await ops.setNodeState(taskId, String(claimed.id), 'blocked').catch(() => {})
       await ops.appendActivity(taskId, { kind: 'intent_blocked', worker, node_id: String(claimed.id), is_error: true, summary: String(error?.message ?? error) })
