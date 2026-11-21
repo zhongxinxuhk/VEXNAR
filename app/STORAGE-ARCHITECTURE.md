@@ -195,7 +195,11 @@ activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
 `PATCH /api/exploration/findings/:id`，写后读缓存失效。写入测试 7/7。
 `report_finding` 已落地：finding + finding 节点 + `yields` 边在**一个 journal 提交**
 里写入，校验 task/intent 归属；写入测试 9/9，HTTP 冒烟通过。
-下一步：任务更新/删除（pause/resume/delete）与并发冲突，然后 M3 全量接管写。
+任务生命周期已落地：PATCH 改名/置顶（`rev` 冲突 409）、pause/resume、
+软删除（任务从列表消失，findings/图保留）。写入测试 **14/14**。
+journal 恢复只重放 `prepared`；`failed`（如乐观锁冲突）不重放，避免半记录覆盖。
+
+下一步：M3 全量接管写与 Go 只读回退，随后补 activity 写入与工具调用审计。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。
 
