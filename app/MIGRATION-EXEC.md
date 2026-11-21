@@ -142,3 +142,37 @@
 5. 流量：同会话抓包条数与 body 哈希一致。
 6. 通知 6 通道实发成功。
 7. 无新端口；`/vexnar-api` 前缀内完成全部读写。
+
+## 4. 完成状态（2026-11-21 收尾）
+
+**路由覆盖：275/275 条 Go 路由全部有 TS 实现（0 未覆盖）。**
+
+| 工作包 | 路由数 | 模块文件 | 自检 |
+|---|---:|---|---|
+| WP-0 存储 | — | `vexnar-store/src/sqlite.ts` + `backend.ts` | store 97/97（SQLite） |
+| WP-1 桌面网关 | 19 | `routes/desktop.ts` | 12/12 |
+| WP-2 审批拦截 | 28 | `routes/intercept.ts` | 25/25 |
+| WP-3 LLM 池/记录 | 22 | `routes/llm.ts` | ALL PASS |
+| WP-4 会话/聊天 | 16 | `routes/conversations.ts` | 20/20 |
+| WP-5 技能/市场 | 19 | `routes/skills.ts` + `market.ts` | 31/31 |
+| WP-6 流量证据 | 8 | `routes/traffic.ts` | 12/12 |
+| WP-7 工作区/同步/更新 | 16 | `routes/workspace.ts` + `sync.ts` + `update.ts` | PASS |
+| WP-9 鉴权/日志/系统 | 12 | `routes/auth.ts` | 23/23 |
+| WP-11 可见性/命令 | 6 | `routes/visibility.ts` | 39/39 |
+| WP-12 探索图扩展 | 14 | `routes/exploration.ts` | 29/29 |
+| WP-13 Agents 配置 | 15 | `routes/agents.ts` | 60/60 |
+| WP-14 通知/MCP/侧问 | 11 | `routes/notify-mcp.ts` | 35/35 |
+| WP-15 任务/公司扩展 | 12 | `routes/tasks-companies.ts` | 42/42 |
+| 补齐零散路由 | 11 | `routes/gaps.ts` | 11/11 |
+
+**模块自检：14/14 个 `*.test.mjs` 全部 exit 0；store 双后端 97（SQLite）/98（JSON）。**
+
+集成方式：所有模块 `export function register(api)`，由 `routes.ts` 末尾的 `routeModules`
+列表统一挂载；`exploration` 因静态路径优先级在 `api` 创建后立即注册。全部经
+`app/vexnar-core/build-embedded.mjs` 打进 `dsh` 内嵌 bundle（`/vexnar-api` 前缀，无新端口）。
+
+**仍未完成（后续项）**：
+- MITM 抓包采集本体（P0-4 已验证 mitmproxy sidecar 等价；`traffic.ts` 已预留
+  `ingestTrafficEvidence` / `recordExchange` 供 sidecar 接入）；
+- UI 样式对齐 `web/` 观感（`app/vexnar/ui` 卡片/面板）；
+- 与 Go 的逐端点运行时对账（当前为路由+自检级覆盖，非逐字段对账）。
