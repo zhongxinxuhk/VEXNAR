@@ -451,6 +451,25 @@ api.get('/api/exploration/findings/:id', async (c) => {
   })
 })
 
+api.get('/api/tasks/:id/goals', async (c) => {
+  const taskId = c.req.param('id')
+  const task = await store.tasks.get(taskId)
+  if (!task) return c.json({ error: 'task not found' }, 404)
+  const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: 'desc', kinds: ['goal'] })
+  const goals = items.map((row: any) => {
+    const payload = typeof row.payload === 'string' ? parseJson(row.payload) : row.payload ?? {}
+    return {
+      id: String(row.id),
+      text: String((payload as any).text ?? ''),
+      ...((payload as any).vulnclass ? { vulnclass: (payload as any).vulnclass } : {}),
+      state: row.state,
+      ...(row.origin == null ? {} : { origin: row.origin }),
+      ts: String(row.created_at).replace(/\.\d+/, '')
+    }
+  })
+  return c.json({ goals })
+})
+
 api.get('/api/exploration/tokens', async (c) => {
   const taskId = c.req.query('task') ?? ''
   if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } })

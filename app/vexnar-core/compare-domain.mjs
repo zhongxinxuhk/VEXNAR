@@ -79,6 +79,10 @@ const goTokens = await get(GO, '/api/exploration/tokens?task=657')
 const tsTokens = await get(TS, '/api/exploration/tokens?task=657')
 check('token stats', same(goTokens.workers, tsTokens.workers) && same(goTokens.sessions, tsTokens.sessions) && same(goTokens.total, tsTokens.total), `${goTokens.workers.length}/${tsTokens.workers.length} · sessions ${goTokens.sessions.length}/${tsTokens.sessions.length}`)
 
+const goGoals = await get(GO, '/api/tasks/657/goals')
+const tsGoals = await get(TS, '/api/tasks/657/goals')
+check('goals', same(goGoals, tsGoals), `${goGoals.goals.length}/${tsGoals.goals.length}`)
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)
