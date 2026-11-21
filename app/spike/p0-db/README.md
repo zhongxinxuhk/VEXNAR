@@ -13,9 +13,8 @@
 前提：Go 后端在 `127.0.0.1:8787`、PostgreSQL 在 `config.json` 指向的库。
 
 ```sh
-cd app/spike/p0-db
-npm install
-npm run reconcile
+cd app && pnpm install                            # workspace 统一安装，只需一次
+pnpm --filter @vexnar/p0-db-spike run reconcile
 ```
 
 JWT 由仓库根的 `jwt.key` 现场签名（HS256，`sub=VEXNAR`），不需要管理员密码。

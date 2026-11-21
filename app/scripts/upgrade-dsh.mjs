@@ -74,4 +74,4 @@ lock.commit = commit
 lock.verifiedAt = new Date().toISOString().slice(0, 10)
 writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`)
 console.log(`upstream.lock.json updated to ${tag}`)
-console.log('next: npm run setup, then verify the app boots and the brand/account patch still applies')
+console.log('next: pnpm run setup, then verify the app boots and the brand/account patch still applies')

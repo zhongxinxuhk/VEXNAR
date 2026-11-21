@@ -6,6 +6,7 @@
       <script value="web" />
     </scripts>
     <node-interpreter value="project" />
+    <package-manager value="pnpm" />
     <envs>
       <env name="VEXNAR_DSH_HOME" value="$PROJECT_DIR$/.dsh-home" />
     </envs>

@@ -1,0 +1,35 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# app/ 的唯一包管理入口：pnpm workspace。
+#
+# 规则（别再加回第二个包管理器）：
+#   - 全 app 只有一个 lockfile：app/pnpm-lock.yaml；
+#   - 不许出现 package-lock.json / yarn.lock，也不许在子包里放 pnpm-lock.yaml、
+#     pnpm-workspace.yaml —— 子包只声明依赖，安装与锁定都在这里；
+#   - 在 app/ 下用 `pnpm install`、`pnpm run <script>`、`pnpm --filter <pkg> run <script>`。
+#
+# app/dsh/ 是 scripts/fetch-dsh.sh 拉取的 MIT 上游工作树（git-ignored），它自带
+# workspace 与 lockfile，故意不在下面的 packages 里。
+packages:
+  # dsh bundle patch + 两个客户端插件
+  - vexnar
+  - vexnar/ui
+  - vexnar/account
+  # TypeScript 核心与存储
+  - vexnar-core
+  - vexnar-store
+  # P0 验证 spike
+  - spike/*
+
+# 以下 pnpm 设置只认 pnpm-workspace.yaml（pnpm 11 起 .npmrc 里的同名项不再生效）：
+# 插件运行在 dsh runtime/profile 里，@deepseek-ai/* 由 profile 提供，
+# 所以 workspace 既不自动装 peer，也不因缺 peer 报错。
+autoInstallPeers: false
+strictPeerDependencies: false
+engineStrict: false
+
+# 构建脚本白名单：只有 esbuild（ui/account 打包）需要跑 postinstall。
+allowBuilds:
+  esbuild: true

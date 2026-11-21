@@ -16,8 +16,8 @@ dsh web 客户端里的 VEXNAR 工具卡片。
 ## 构建
 
 ```sh
-npm install          # 仅首次：esbuild
-npm run build        # src/client.tsx -> lib/client.js
+cd app && pnpm install   # 仅首次：workspace 统一装 esbuild 等 devDependencies
+pnpm run ui:build        # src/client.tsx -> lib/client.js
 ```
 
 产物是 dsh Client 模块表要求的闭包工厂：
