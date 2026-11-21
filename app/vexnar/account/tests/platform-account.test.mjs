@@ -158,6 +158,64 @@ test('用户可以接入自己的第三方 API', async () => {
   assert.ok(deepseek.providers.some((provider) => provider.id === 'deepseek'))
   assert.equal(deepseek.providers.find((provider) => provider.id === 'deepseek').format, 'openai-completions')
 })
+
+test('编辑提供方：显示名称、模型目录与重试策略都落到本地', async () => {
+  const account = createPlatformAccount({ home: accounts })
+  const before = await account.status()
+  const target = before.providers.find((provider) => provider.id.startsWith('custom-'))
+  assert.ok(target, '上一个用例添加的自定义提供方应还在')
+  assert.deepEqual(target.models.map((model) => model.id), ['c-1'])
+  assert.equal(target.retry, 'normal')
+  assert.equal(target.key_configured, true)
+  assert.equal(target.base, `${upstream}/custom/v1`)
+  assert.equal('key' in target, false, '编辑响应同样不能带密钥')
+
+  const view = await account.updateProvider({
+    id: target.id,
+    name: '自建网关 v2',
+    api_key: '',
+    base_url: `${upstream}/custom/v1`,
+    retry: 'always',
+    models: [{ id: 'c-1', name: 'One' }, { id: 'c-2' }, { id: 'c-2' }]
+  })
+  const edited = view.providers.find((provider) => provider.id === target.id)
+  assert.equal(edited.name, '自建网关 v2')
+  assert.equal(edited.retry, 'always')
+  assert.deepEqual(edited.models, [{ id: 'c-1', name: 'One' }, { id: 'c-2' }], '重复 ID 只留一条')
+
+  const raw = JSON.parse(await readFile(join(accounts, 'vexnar-account.json'), 'utf8'))
+  const stored = raw.providers.find((provider) => provider.id === target.id)
+  assert.equal(stored.key, 'sk-good', '密钥留空即沿用已存的那把')
+  assert.equal(stored.retry, 'always')
+})
+
+test('编辑提供方：坏 key 整笔拒绝，原配置不动', async () => {
+  const account = createPlatformAccount({ home: accounts })
+  const before = await account.status()
+  const target = before.providers.find((provider) => provider.id.startsWith('custom-'))
+  const refused = await account.updateProvider({ id: target.id, api_key: 'sk-wrong' })
+    .then(() => null, (error) => error)
+  assert.equal(refused.status, 422)
+
+  const after = await account.status()
+  const kept = after.providers.find((provider) => provider.id === target.id)
+  assert.equal(kept.name, target.name)
+  assert.equal(kept.key_configured, true)
+})
+
+test('编辑提供方：平台行的地址与密钥由平台签发，不能改', async () => {
+  const account = createPlatformAccount({ home: accounts })
+  const baseChange = await account.updateProvider({ id: 'vexnar', base_url: 'https://evil.example.com/v1' })
+    .then(() => null, (error) => error)
+  assert.equal(baseChange.status, 400)
+  const key = await account.updateProvider({ id: 'vexnar', api_key: 'sk-good' })
+    .then(() => null, (error) => error)
+  assert.equal(key.status, 400)
+  const unknown = await account.updateProvider({ id: 'nope', name: 'x' })
+    .then(() => null, (error) => error)
+  assert.equal(unknown.status, 404)
+})
+
 test('平台提供方不可移除，第三方可以移除', async () => {
   const account = createPlatformAccount({ home: accounts })
   await assert.rejects(() => account.removeProvider('vexnar'), (error) => error.status === 400)

@@ -160,7 +160,10 @@ export function installPlatform(ctx) {
         api: provider.id === 'vexnar' ? 'openai-responses' : 'openai-completions',
         baseURL: provider.base,
         apiKeyEnv: ref,
-        models: provider.models
+        models: provider.models,
+        // 只有「所有错误都重试」需要显式写入；normal 就是适配器自己的默认策略，
+        // 写进去只会把默认值冻结在这一版代码上。
+        ...provider.retry === 'always' ? { retryPolicy: { mode: 'always' } } : {}
       }
     }
     for (const id of syncedProviders) {
@@ -370,6 +373,11 @@ export function installPlatform(ctx) {
     POST: async (req) => {
       const input = await readJson(req)
       await account.addProvider(input)
+      return syncCatalog(await account.read())
+    },
+    PATCH: async (req) => {
+      const input = await readJson(req)
+      await account.updateProvider(input)
       return syncCatalog(await account.read())
     },
     DELETE: async (req) => {
