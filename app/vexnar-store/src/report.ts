@@ -2,6 +2,36 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+
+/** Persist a rendered report under `<root>/reports` with an atomic write. */
+export async function saveReport(root: string, taskId: string, markdown: string, stats: unknown) {
+  const dir = join(root, 'reports')
+  await mkdir(dir, { recursive: true, mode: 0o700 })
+  const id = `${taskId}-${Date.now()}`
+  const file = join(dir, `${id}.md`)
+  await writeFile(`${file}.tmp`, markdown, { mode: 0o600 })
+  await rename(`${file}.tmp`, file)
+  await writeFile(join(dir, `${id}.json`), `${JSON.stringify({ task_id: taskId, stats, created_at: new Date().toISOString() }, null, 2)}\n`, { mode: 0o600 })
+  return { id, path: file, bytes: Buffer.byteLength(markdown) }
+}
+
+export async function listReports(root: string, taskId: string) {
+  const dir = join(root, 'reports')
+  const out = []
+  try {
+    for (const name of await readdir(dir)) {
+      if (!name.endsWith('.md') || !name.startsWith(`${taskId}-`)) continue
+      const content = await readFile(join(dir, name), 'utf8')
+      out.push({ id: name.slice(0, -3), bytes: Buffer.byteLength(content) })
+    }
+  } catch {
+    // none
+  }
+  return out.sort((a, b) => b.id.localeCompare(a.id))
+}
+
 /** Render a task report from findings, assets and graph counts. */
 export function buildReport(input: {
   task: any

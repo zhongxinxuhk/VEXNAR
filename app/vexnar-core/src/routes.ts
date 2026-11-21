@@ -2,6 +2,8 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from 'hono'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 /** JSONB columns arrive as objects from the store and as strings from legacy rows. */
 function parseJson(value: unknown): unknown {
   if (typeof value !== 'string') return value
@@ -11,7 +13,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, buildReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -816,6 +818,34 @@ api.get('/api/tasks/:id/report', async (c) => {
   const assets = (await store.assets.list({ taskId: String(task.id), limit: 1000, offset: 0 })).rows
   const overview = await operations.graphOverview(String(task.id))
   return c.json(buildReport({ task, findings, assets, overview }))
+})
+
+async function renderTaskReport(taskId: string) {
+  const task = await store.tasks.get(taskId)
+  if (!task) return null
+  const findings = (await store.findings.list(100000)).filter((row: any) => String(row.task_id ?? '') === String(task.id))
+  const assets = (await store.assets.list({ taskId: String(task.id), limit: 1000, offset: 0 })).rows
+  const overview = await operations.graphOverview(String(task.id))
+  return buildReport({ task, findings, assets, overview })
+}
+
+api.post('/api/tasks/:id/report/export', async (c) => {
+  const report = await renderTaskReport(c.req.param('id'))
+  if (!report) return c.json({ error: 'task not found' }, 404)
+  return c.json(await saveReport(storeRoot(), String(c.req.param('id')), report.markdown, report.stats), 201)
+})
+
+api.get('/api/tasks/:id/reports', async (c) => c.json({ reports: await listReports(storeRoot(), String(c.req.param('id'))) }))
+
+api.get('/api/tasks/:id/reports/:reportId', async (c) => {
+  const id = c.req.param('reportId')
+  if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: 'bad report id' }, 400)
+  try {
+    const content = await readFile(join(storeRoot(), 'reports', `${id}.md`), 'utf8')
+    return new Response(content, { headers: { 'content-type': 'text/markdown; charset=utf-8' } })
+  } catch {
+    return c.json({ error: '报告不存在' }, 404)
+  }
 })
 
 api.get('/api/tasks/:id/goals', async (c) => {
