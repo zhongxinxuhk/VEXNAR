@@ -72,6 +72,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `POST /api/tasks/:id/intents/:iid/control` | ✅ pause/resume/cancel（soft 删状态、hard 删节点与边） |
 | `POST /api/tasks/:id/intents/:iid/rerun` | ✅ blocked/exhausted/stopped → open |
 | `POST /api/tasks/:id/intents/rerun-blocked` | ✅ 批量重跑 blocked 意图 |
+| `POST /api/tasks/:id/intents/:iid/messages` | ✅ 向已暂停 Worker 下发消息：置 running + 记 message 活动 |
 | `GET /api/exploration/intents` | ✅ 意图列表，支持 `limit` / `before` / 分页形状 |
 | `GET /api/exploration/activity/history` | ✅ 活动历史，`session=main/plan/main:N/intent:ID`，`before` 游标 |
 | `GET /api/exploration/tokens` | ✅ workers / sessions / total 全部对账 |
