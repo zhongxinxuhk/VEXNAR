@@ -7406,6 +7406,111 @@ var init_esm = __esm({
   }
 });
 
+// ../vexnar-store/src/task-status.ts
+function isTerminalTaskStatus(status) {
+  return BY_KEY.get(status)?.terminal === true;
+}
+function resolveTaskStatus(row) {
+  const stored = String(row?.status ?? "").trim();
+  if (isTerminalTaskStatus(stored)) return stored;
+  if (row?.queued === true || stored === "queued") return "queued";
+  if (row?.paused === true || stored === "paused") return "paused";
+  if (stored === "running") return "running";
+  return "created";
+}
+function summarizeTasks(rows, metrics, options = {}) {
+  const days = Math.max(Math.floor(Number(options.days ?? 30)) || 30, 1);
+  const nowSec = Number(options.now ?? Date.now()) / 1e3;
+  const cutoff = nowSec - days * DAY_SECONDS;
+  const prevCutoff = cutoff - days * DAY_SECONDS;
+  const by_status = Object.fromEntries(TASK_STATUS_KEYS.map((key) => [key, 0]));
+  const findings = { total: 0, critical: 0, high: 0, medium: 0, low: 0 };
+  const tokens = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, total: 0 };
+  const throughput = new Array(days).fill(0);
+  let goals_total = 0;
+  let goals_met = 0;
+  let in_flight = 0;
+  let created_window = 0;
+  let created_prev = 0;
+  for (const row of rows ?? []) {
+    const status = resolveTaskStatus(row);
+    by_status[status] += 1;
+    const metric = metrics?.get(Number(row.exploration_id ?? 0));
+    if (metric !== void 0) {
+      const critical = Number(metric.findings?.critical ?? 0);
+      const high = Number(metric.findings?.high ?? 0);
+      const medium = Number(metric.findings?.medium ?? 0);
+      const low = Number(metric.findings?.low ?? 0);
+      findings.critical += critical;
+      findings.high += high;
+      findings.medium += medium;
+      findings.low += low;
+      findings.total += critical + high + medium + low;
+      tokens.input_tokens += Number(metric.input_tokens ?? 0);
+      tokens.output_tokens += Number(metric.output_tokens ?? 0);
+      tokens.cache_read_tokens += Number(metric.cache_read_tokens ?? 0);
+      tokens.cache_write_tokens += Number(metric.cache_write_tokens ?? 0);
+      goals_total += Number(metric.goals_total ?? 0);
+      goals_met += Number(metric.goals_met ?? 0);
+      in_flight += Number(metric.in_flight ?? 0);
+    }
+    const createdUnix = Number(row.created_unix ?? 0);
+    if (createdUnix >= cutoff) {
+      created_window += 1;
+      const ago = Math.min(days - 1, Math.floor((nowSec - createdUnix) / DAY_SECONDS));
+      const index = days - 1 - ago;
+      throughput[index] = (throughput[index] ?? 0) + 1;
+    } else if (createdUnix >= prevCutoff) {
+      created_prev += 1;
+    }
+  }
+  tokens.total = tokens.input_tokens + tokens.output_tokens;
+  const total = (rows ?? []).length;
+  const active = by_status.queued + by_status.running;
+  const terminal = by_status.done + by_status.failed + by_status.timeout;
+  return {
+    total,
+    by_status,
+    active,
+    paused: by_status.paused,
+    terminal,
+    done: by_status.done,
+    failed: by_status.failed,
+    timeout: by_status.timeout,
+    completion_rate: total > 0 ? by_status.done / total * 100 : 0,
+    goals_total,
+    goals_met,
+    goal_rate: goals_total > 0 ? goals_met / goals_total * 100 : 0,
+    in_flight,
+    findings,
+    tokens,
+    window_days: days,
+    created_window,
+    created_prev,
+    throughput,
+    lifecycle: TASK_LIFECYCLE.map((item) => ({ ...item })),
+    generated_unix: Math.floor(nowSec)
+  };
+}
+var TASK_LIFECYCLE, TASK_STATUS_KEYS, BY_KEY, DAY_SECONDS;
+var init_task_status = __esm({
+  "../vexnar-store/src/task-status.ts"() {
+    "use strict";
+    TASK_LIFECYCLE = [
+      { key: "created", label: "\u5F85\u542F\u52A8", tone: "muted", terminal: false, active: false, hint: "\u5DF2\u521B\u5EFA\uFF0C\u5F15\u64CE\u8FD8\u6CA1\u8FD0\u884C\u8FC7" },
+      { key: "queued", label: "\u6392\u961F\u4E2D", tone: "info", terminal: false, active: true, hint: "\u7B49\u5F85\u5E76\u53D1\u69FD\u4F4D" },
+      { key: "running", label: "\u8FDB\u884C\u4E2D", tone: "success", terminal: false, active: true, hint: "\u5F15\u64CE\u5728\u8DD1\uFF0C\u672A\u6682\u505C" },
+      { key: "paused", label: "\u5DF2\u6682\u505C", tone: "warn", terminal: false, active: false, hint: "\u4EBA\u5DE5\u6682\u505C\uFF0C\u8FDB\u5EA6\u4FDD\u7559" },
+      { key: "done", label: "\u5DF2\u5B8C\u6210", tone: "success", terminal: true, active: false, hint: "\u76EE\u6807\u8FBE\u6210\u6216\u5F15\u64CE\u6B63\u5E38\u6536\u5C3E" },
+      { key: "failed", label: "\u5931\u8D25", tone: "error", terminal: true, active: false, hint: "\u4E2D\u6B62\u6216\u6267\u884C\u9519\u8BEF" },
+      { key: "timeout", label: "\u5DF2\u8D85\u65F6", tone: "error", terminal: true, active: false, hint: "\u8D85\u51FA\u4EFB\u52A1\u65F6\u9650\uFF0C\u5F15\u64CE\u5DF2\u6536\u5C3E" }
+    ];
+    TASK_STATUS_KEYS = TASK_LIFECYCLE.map((item) => item.key);
+    BY_KEY = new Map(TASK_LIFECYCLE.map((item) => [item.key, item]));
+    DAY_SECONDS = 86400;
+  }
+});
+
 // ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
@@ -27892,6 +27997,17 @@ function pgStore(connection) {
   const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
   const rfc2 = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
   const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
+  const TASK_SELECT = `SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
+          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
+          ${rfc2("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
+          ${rfc2("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix,
+          ${rfc2("archived_at")} AS archived_at_text`;
+  const parseTaskRow = (row) => taskRow.parse({
+    ...row,
+    exploration_id: Number(row.exploration_id),
+    stored_status: String(row.status ?? ""),
+    status: resolveTaskStatus(row)
+  });
   return {
     backend: "postgres",
     pool,
@@ -27899,22 +28015,10 @@ function pgStore(connection) {
       await pool.query("select 1");
     },
     tasks: {
-      list: async () => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc2("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc2("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks ORDER BY tasks.id DESC`);
-        return rows.map((row) => taskRow.parse({ ...row, exploration_id: Number(row.exploration_id) }));
-      },
-      get: async (id) => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc2("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc2("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks WHERE id = $1`, [id]);
-        return rows[0] ? taskRow.parse({ ...rows[0], exploration_id: Number(rows[0].exploration_id) }) : void 0;
-      }
+      // 活动清单 = 未删除、未归档。归档任务在数据库里同时写 archived_at 与 deleted_at，
+      // 因此这里两个条件都要给；只按 deleted_at 过滤会让归档任务重新出现在列表里。
+      list: () => q(TASK_SELECT + " FROM tasks WHERE deleted_at IS NULL AND archived_at IS NULL ORDER BY tasks.id DESC").then((rows) => rows.map(parseTaskRow)),
+      get: (id) => q(TASK_SELECT + " FROM tasks WHERE id = $1", [id]).then((rows) => rows[0] ? parseTaskRow(rows[0]) : void 0)
     },
     findings: {
       list: async (limit = 500) => {
@@ -28259,6 +28363,7 @@ var init_pg_store = __esm({
   "../vexnar-store/src/pg-store.ts"() {
     "use strict";
     init_esm();
+    init_task_status();
     init_types();
     esm_default.types.setTypeParser(20, (value) => Number(value));
   }
@@ -28518,8 +28623,12 @@ function createStore(backend2, readTable, init = async () => {
       for (const key of tables) delete cache[key];
     },
     tasks: {
-      list: async () => [...await load("tasks", taskRow)].filter((row) => !row.deleted_at_text && !row.archived_at_text).sort((a, b) => Number(b.id) - Number(a.id)),
-      get: async (id) => (await load("tasks", taskRow)).find((row) => String(row.id) === String(id) && !row.deleted_at_text)
+      // 同样的生命周期解析：JSON/SQLite 后端的行也不得把 paused/queued 留给调用方拼。
+      list: async () => [...await load("tasks", taskRow)].filter((row) => !row.deleted_at_text && !row.archived_at_text).sort((a, b) => Number(b.id) - Number(a.id)).map(resolveTaskRow),
+      get: async (id) => {
+        const row = (await load("tasks", taskRow)).find((item) => String(item.id) === String(id) && !item.deleted_at_text);
+        return row === void 0 ? void 0 : resolveTaskRow(row);
+      }
     },
     findings: {
       list: async (limit = 500) => [...await load("findings", findingRow)].sort((a, b) => String(b.created_at_text).localeCompare(String(a.created_at_text))).slice(0, limit),
@@ -28818,11 +28927,14 @@ function jsonStore(root) {
     await mkdir4(root, { recursive: true, mode: 448 });
   });
 }
+var resolveTaskRow;
 var init_json_store = __esm({
   "../vexnar-store/src/json-store.ts"() {
     "use strict";
+    init_task_status();
     init_types();
     init_per_record();
+    resolveTaskRow = (row) => ({ ...row, stored_status: String(row.status ?? ""), status: resolveTaskStatus(row) });
   }
 });
 
@@ -31405,6 +31517,7 @@ var init_src = __esm({
     init_queue();
     init_report();
     init_writer();
+    init_task_status();
     init_meta_store();
   }
 });
@@ -48096,6 +48209,7 @@ var init_gaps = __esm({
 init_dist();
 await init_context2();
 await init_exploration();
+init_task_status();
 import { readFile as readFile9 } from "node:fs/promises";
 import { join as join13 } from "node:path";
 var api = new Hono3();
@@ -48185,6 +48299,12 @@ api.get("/api/tasks", async (c) => {
     page,
     size
   });
+});
+api.get("/api/tasks/summary", async (c) => {
+  const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+  const rows = await store.tasks.list();
+  const metrics = await store.taskMetrics();
+  return c.json(summarizeTasks(rows, metrics, { days }));
 });
 api.get("/api/tasks/:id", async (c) => {
   const row = await store.tasks.get(c.req.param("id"));

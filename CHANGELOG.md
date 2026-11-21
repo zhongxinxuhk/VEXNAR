@@ -143,6 +143,18 @@
 
 #### 修复的问题
 
+- **任务状态收敛成一份定义（七个状态）**：`created` / `queued` / `running` / `paused` / `done` /
+  `failed` / `timeout`，由服务端解析后发布；存储列 `status` 与 `paused`/`queued` 开关的组合规则只写一次
+  （`server/task_summary.go` 的 `TaskLifecycle` 与 `app/vexnar-store/src/task-status.ts`）。此前 TS 核心直接
+  回存储列，暂停任务在客户端显示成「待启动」；`timeout` 在客户端无人认识，超时任务从卡片和健康度里
+  消失；`draft` / `archived` 从来不是状态，选「已归档」必然是空列表。归档回到它本来的身份——`archived_at`
+  标记，活动清单按 `deleted_at IS NULL AND archived_at IS NULL` 取。
+- **任务统计改读一条服务端聚合**：新增 `GET /api/tasks/summary`（Go + TS 核心同契约），回答 total、
+  七状态计数、完成率、目标达成、在途意图、漏洞与 Token 合计、窗口新建与按天分布。概览 KPI 的主数值
+  从「运行中 / 全部任务」（无任务在跑时就是 `0 / 232`）改成任务总数 + 分档；健康度环读同一行的
+  `completion_rate` / `goal_rate`；任务面板的筛选计数不再统计当前页的 20 条。聚合取不到时界面退回
+  全量清单自算并标注「统计不可用」，不再把缺数据画成 0。
+
 - **LLM 不可用后不再把整条意图队列刷一遍**：鉴权/权限错误（401/403）不再计入意图级重跑，避免用同一个坏 key 重试；意图重跑次数用完后，任务会按与手动暂停相同的路径停住（写 `paused`、取消在跑 worker、释放并发槽），不再继续领取新意图。修复模型配置后点「继续」，必要时重跑已 blocked 的意图；其它失败（工具错误、步数上陉、额度故障转移）保持原逻辑不变。
 
 ### 0day 与攻击链路（P0）

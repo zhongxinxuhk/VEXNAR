@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { mkdir } from 'node:fs/promises'
+import { resolveTaskStatus } from './task-status.js'
 import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store, type TaskMetrics } from './types.js'
 import { readPerRecord } from './per-record.js'
 
@@ -32,8 +33,15 @@ export function createStore(backend: Store['backend'], readTable: (table: string
       for (const key of tables) delete cache[key]
     },
     tasks: {
-      list: async () => [...(await load('tasks', taskRow))].filter((row) => !row.deleted_at_text && !row.archived_at_text).sort((a, b) => Number(b.id) - Number(a.id)),
-      get: async (id) => (await load('tasks', taskRow)).find((row) => String(row.id) === String(id) && !row.deleted_at_text)
+      // 同样的生命周期解析：JSON/SQLite 后端的行也不得把 paused/queued 留给调用方拼。
+      list: async () => [...(await load('tasks', taskRow))]
+        .filter((row) => !row.deleted_at_text && !row.archived_at_text)
+        .sort((a, b) => Number(b.id) - Number(a.id))
+        .map(resolveTaskRow),
+      get: async (id) => {
+        const row = (await load('tasks', taskRow)).find((item) => String(item.id) === String(id) && !item.deleted_at_text)
+        return row === undefined ? undefined : resolveTaskRow(row)
+      }
     },
     findings: {
       list: async (limit = 500) =>
@@ -334,3 +342,6 @@ export function jsonStore(root: string): Store {
     await mkdir(root, { recursive: true, mode: 0o700 })
   })
 }
+
+/** 存储行 → 对外任务行：status 统一成生命周期状态，原始列留在 stored_status。 */
+const resolveTaskRow = (row: any) => ({ ...row, stored_status: String(row.status ?? ''), status: resolveTaskStatus(row) })

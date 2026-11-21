@@ -3073,6 +3073,7 @@ async function getJson(path, signal) {
 }
 var EMPTY_DATA = {
   tasks: [],
+  summary: null,
   stats: { total: 0, pending: 0, critical: 0, high: 0, medium: 0, low: 0 },
   findings: [],
   assets: {},
@@ -3102,7 +3103,8 @@ async function loadOverview(signal) {
     getJson("/api/agents", signal),
     getJson("/api/mcp", signal),
     getJson("/api/tools", signal),
-    getJson("/api/traffic/hosts", signal)
+    getJson("/api/traffic/hosts", signal),
+    getJson("/api/tasks/summary?days=30", signal)
   ]);
   const rejected = settled.slice(0, 5).filter((item) => item.status === "rejected")[0];
   const failure = rejected === void 0 ? void 0 : rejected.reason;
@@ -3118,6 +3120,7 @@ async function loadOverview(signal) {
   const mcp = pick(settled[8], {});
   const tools = pick(settled[9], {});
   const hostRows = pick(settled[10], {});
+  const summary = pick(settled[11], {});
   const countOn = (rows) => (rows ?? []).filter((row) => row.enabled !== false).length;
   const sessions = Array.isArray(capture.sessions) ? capture.sessions : [];
   const recent = Array.isArray(capture.recent) ? capture.recent : [];
@@ -3125,6 +3128,7 @@ async function loadOverview(signal) {
     error,
     data: {
       tasks: Array.isArray(tasks.tasks) ? tasks.tasks : [],
+      summary: summary !== null && typeof summary === "object" && Number.isFinite(Number(summary.total)) ? summary : null,
       stats: {
         total: Number(stats.total ?? 0),
         pending: Number(stats.pending ?? 0),
@@ -3253,14 +3257,28 @@ var STATUS_LABELS = {
   duplicate: "\u91CD\u590D",
   risk_accepted: "\u63A5\u53D7\u98CE\u9669"
 };
-var TASK_STATUS = {
-  created: { label: "\u5F85\u542F\u52A8", tone: "var(--vx-text-faint)" },
-  queued: { label: "\u6392\u961F", tone: "var(--vx-chart-2)" },
-  running: { label: "\u8FD0\u884C\u4E2D", tone: "var(--vx-chart-1)" },
-  paused: { label: "\u5DF2\u6682\u505C", tone: "var(--vx-chart-4)" },
-  done: { label: "\u5DF2\u5B8C\u6210", tone: "var(--vx-chart-3)" },
-  failed: { label: "\u5931\u8D25", tone: "var(--vx-chart-5)" }
+var TASK_LIFECYCLE_FALLBACK = [
+  { key: "created", label: "\u5F85\u542F\u52A8", tone: "muted" },
+  { key: "queued", label: "\u6392\u961F\u4E2D", tone: "info" },
+  { key: "running", label: "\u8FDB\u884C\u4E2D", tone: "success" },
+  { key: "paused", label: "\u5DF2\u6682\u505C", tone: "warn" },
+  { key: "done", label: "\u5DF2\u5B8C\u6210", tone: "success" },
+  { key: "failed", label: "\u5931\u8D25", tone: "error" },
+  { key: "timeout", label: "\u5DF2\u8D85\u65F6", tone: "error" }
+];
+var STATUS_TONE = {
+  muted: "var(--vx-text-faint)",
+  info: "var(--vx-chart-2)",
+  success: "var(--vx-chart-3)",
+  warn: "var(--vx-chart-4)",
+  error: "var(--vx-chart-5)"
 };
+var TASK_STATUS_META = Object.fromEntries(
+  TASK_LIFECYCLE_FALLBACK.map((entry) => [entry.key, { label: entry.label, tone: STATUS_TONE[entry.tone] ?? "var(--vx-text-faint)" }])
+);
+function statusMetaOf(status) {
+  return TASK_STATUS_META[status] ?? { label: status === "" ? "\u2014" : status, tone: "var(--vx-text-faint)" };
+}
 function useWidth() {
   const [width, setWidth] = (0, import_react.useState)(0);
   const observer = (0, import_react.useRef)(null);
@@ -3810,22 +3828,25 @@ var CODE_TONES = [
 function derive(data, days) {
   const cutoff = Date.now() / 1e3 - days * 86400;
   const prevCutoff = cutoff - days * 86400;
-  const counts = { created: 0, queued: 0, running: 0, paused: 0, done: 0, failed: 0 };
+  const counts = { created: 0, queued: 0, running: 0, paused: 0, done: 0, failed: 0, timeout: 0 };
   let goalsMet = 0;
   let goalsTotal = 0;
   let created = 0;
   let createdPrev = 0;
+  let inFlight = 0;
   const throughput = new Array(days).fill(0);
   for (const task of data.tasks) {
-    const status = task.status ?? "";
-    if (status === "created") counts.created += 1;
-    else if (status === "queued") counts.queued += 1;
+    const status = String(task.status ?? "");
+    if (status === "queued") counts.queued += 1;
     else if (status === "running") counts.running += 1;
     else if (status === "paused") counts.paused += 1;
     else if (status === "done") counts.done += 1;
     else if (status === "failed") counts.failed += 1;
+    else if (status === "timeout") counts.timeout += 1;
+    else counts.created += 1;
     goalsMet += Number(task.goals_met ?? 0);
     goalsTotal += Number(task.goals_total ?? 0);
+    inFlight += Number(task.in_flight ?? 0);
     const createdUnix = Number(task.created_unix ?? 0);
     if (createdUnix >= cutoff) {
       created += 1;
@@ -3902,11 +3923,41 @@ function derive(data, days) {
   const recentTasks = [...data.tasks].sort((left, right) => Number(right.last_activity_unix ?? right.created_unix ?? 0) - Number(left.last_activity_unix ?? left.created_unix ?? 0)).slice(0, 7);
   const findings = [...data.findings].sort((left, right) => (Date.parse(right.ts ?? "") || 0) - (Date.parse(left.ts ?? "") || 0));
   const activity = [...data.activity].sort((left, right) => Number(right.seq ?? 0) - Number(left.seq ?? 0));
+  const summary = data.summary;
+  const num2 = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const taskTotal = summary === null ? data.tasks.length : num2(summary.total, data.tasks.length);
+  if (summary?.by_status !== void 0) {
+    counts.created = num2(summary.by_status.created, counts.created);
+    counts.queued = num2(summary.by_status.queued, counts.queued);
+    counts.running = num2(summary.by_status.running, counts.running);
+    counts.paused = num2(summary.by_status.paused, counts.paused);
+    counts.done = num2(summary.by_status.done, counts.done);
+    counts.failed = num2(summary.by_status.failed, counts.failed);
+    counts.timeout = num2(summary.by_status.timeout, counts.timeout);
+  }
+  if (summary !== null) {
+    goalsMet = num2(summary.goals_met, goalsMet);
+    goalsTotal = num2(summary.goals_total, goalsTotal);
+    inFlight = num2(summary.in_flight, inFlight);
+  }
+  const lifecycle = Array.isArray(summary?.lifecycle) && summary.lifecycle.length > 0 ? summary.lifecycle.filter((entry) => typeof entry?.key === "string") : TASK_LIFECYCLE_FALLBACK;
+  const statusMeta = {};
+  for (const entry of lifecycle) {
+    statusMeta[entry.key] = { label: entry.label ?? entry.key, tone: STATUS_TONE[entry.tone] ?? "var(--vx-text-faint)" };
+  }
+  const completionRate = summary === null ? taskTotal > 0 ? counts.done / taskTotal * 100 : 0 : num2(summary.completion_rate, taskTotal > 0 ? counts.done / taskTotal * 100 : 0);
+  const goalRate = summary === null ? goalsTotal > 0 ? goalsMet / goalsTotal * 100 : 0 : num2(summary.goal_rate, goalsTotal > 0 ? goalsMet / goalsTotal * 100 : 0);
   return {
     scopeDays: days,
     counts,
-    completionRate: data.tasks.length > 0 ? counts.done / data.tasks.length * 100 : 0,
-    goalRate: goalsTotal > 0 ? goalsMet / goalsTotal * 100 : 0,
+    taskTotal,
+    taskInFlight: inFlight,
+    lifecycle,
+    statusMeta,
+    completionRate,
+    goalRate,
+    goalsMet,
+    goalsTotal,
     created,
     createdPrev,
     throughput,
@@ -3940,9 +3991,17 @@ function WorkerChip({ worker }) {
   const tone = worker === "planner" ? "violet" : worker === "mainagent" ? "blue" : "green";
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `vx-ov-worker vx-ov-tone-${tone}`, children: worker === "" ? "agent" : worker });
 }
-function StatusPill({ status }) {
-  const meta = TASK_STATUS[status];
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-pill", style: meta === void 0 ? void 0 : { color: meta.tone, borderColor: `color-mix(in srgb, ${meta.tone} 38%, transparent)`, background: `color-mix(in srgb, ${meta.tone} 10%, transparent)` }, children: meta?.label ?? (status === "" ? "\u2014" : status) });
+function StatusPill({ status, meta }) {
+  const resolved = meta ?? statusMetaOf(status);
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    "span",
+    {
+      className: "vx-ov-pill",
+      title: status === "" ? void 0 : status,
+      style: { color: resolved.tone, borderColor: `color-mix(in srgb, ${resolved.tone} 38%, transparent)`, background: `color-mix(in srgb, ${resolved.tone} 10%, transparent)` },
+      children: resolved.label
+    }
+  );
 }
 function OverviewPanel() {
   const [rangeKey, setRangeKey] = (0, import_react.useState)(() => {
@@ -3986,29 +4045,23 @@ function OverviewPanel() {
         {
           tone: "blue",
           icon: "target",
-          label: "\u4EFB\u52A1",
-          value: String(view.counts.running),
-          unit: `/ ${view.tasks.length}`,
+          label: "\u4EFB\u52A1\u603B\u6570",
+          value: fmtInt(view.taskTotal),
+          unit: "\u4E2A",
           delta: deltaOf(view.created, view.createdPrev),
           spark: view.throughput,
           footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
-            view.counts.created > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u5F85\u542F\u52A8 ",
-              view.counts.created
-            ] }) : null,
-            view.counts.done > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u5B8C\u6210 ",
-              view.counts.done
-            ] }) : null,
-            view.counts.paused > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u6682\u505C ",
-              view.counts.paused
-            ] }) : null,
-            view.counts.failed > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u5931\u8D25 ",
-              view.counts.failed
-            ] }) : null,
-            view.tasks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u6682\u65E0\u4EFB\u52A1" }) : null
+            view.lifecycle.map((entry) => {
+              const value = view.counts[entry.key] ?? 0;
+              if (value === 0) return null;
+              return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: view.statusMeta[entry.key]?.tone }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: view.statusMeta[entry.key]?.tone } }),
+                view.statusMeta[entry.key]?.label ?? entry.label,
+                " ",
+                fmtInt(value)
+              ] }, entry.key);
+            }),
+            view.taskTotal === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u6682\u65E0\u4EFB\u52A1" }) : null
           ] })
         }
       ),
@@ -4175,19 +4228,19 @@ function OverviewPanel() {
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "layers", title: "Top \u6F0F\u6D1E\u7C7B", caption: `\u6700\u8FD1 ${data.findings.length} \u6761`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HBars, { rows: view.vulnTop }) })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "target", title: "\u4EFB\u52A1\u5065\u5EB7\u5EA6", caption: `${view.tasks.length} \u4E2A\u4EFB\u52A1`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-health", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.completionRate, label: "\u5B8C\u6210\u7387", caption: `${view.counts.done} / ${view.tasks.length}` }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.goalRate, label: "\u76EE\u6807\u8FBE\u6210", caption: `${fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.goals_met ?? 0), 0))} \u4E2A\u76EE\u6807` }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "target", title: "\u4EFB\u52A1\u5065\u5EB7\u5EA6", caption: `${fmtInt(view.taskTotal)} \u4E2A\u4EFB\u52A1 \xB7 \u8FD1 ${days} \u5929\u65B0\u5EFA ${fmtInt(view.created)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-health", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.completionRate, label: "\u5B8C\u6210\u7387", caption: `${fmtInt(view.counts.done)} / ${fmtInt(view.taskTotal)}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.goalRate, label: "\u76EE\u6807\u8FBE\u6210", caption: `${fmtInt(view.goalsMet)} / ${fmtInt(view.goalsTotal)} \u76EE\u6807` }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-health-side", children: [
-          Object.entries(TASK_STATUS).map(([key, meta]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-status-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-dot", style: { background: meta.tone } }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: meta.label }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: view.counts[key] })
-          ] }, key)),
+          view.lifecycle.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-status-row", title: entry.hint, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-dot", style: { background: view.statusMeta[entry.key]?.tone } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: view.statusMeta[entry.key]?.label ?? entry.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.counts[entry.key] ?? 0) })
+          ] }, entry.key)),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-status-row", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-dot", style: { background: "var(--vx-text-faint)" } }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5728\u9014\u610F\u56FE" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.in_flight ?? 0), 0)) })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.taskInFlight) })
           ] })
         ] })
       ] }) }),
@@ -4217,7 +4270,7 @@ function OverviewPanel() {
         ] }, row.finding_id ?? row.id ?? `finding-${index}`);
       }) }) })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 12, icon: "clock", title: "\u4EFB\u52A1", caption: `${view.tasks.length} \u4E2A\u4EFB\u52A1 \xB7 \u6309\u6700\u8FD1\u6D3B\u52A8\u6392\u5E8F`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "vx-ov-table", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 12, icon: "clock", title: "\u4EFB\u52A1", caption: `${fmtInt(view.taskTotal)} \u4E2A\u4EFB\u52A1 \xB7 \u6309\u6700\u8FD1\u6D3B\u52A8\u6392\u5E8F`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "vx-ov-table", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: ["\u4EFB\u52A1", "\u72B6\u6001", "\u5F15\u64CE", "\u76EE\u6807\u8FDB\u5EA6", "\u5728\u9014", "\u6700\u8FD1\u6D3B\u52A8"].map((title) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: title }, title)) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: view.recentTasks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { colSpan: 6, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u4EFB\u52A1" }) }) }) : view.recentTasks.map((task, index) => {
         const total = Number(task.goals_total ?? 0);
@@ -4228,7 +4281,7 @@ function OverviewPanel() {
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: task.description ?? task.name ?? "\u672A\u547D\u540D\u4EFB\u52A1" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: task.id ?? "" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusPill, { status: String(task.status ?? "") }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusPill, { status: String(task.status ?? ""), meta: view.statusMeta[String(task.status ?? "")] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-engine", children: task.engine_mode ?? "idle" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: pct === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-muted", children: "\u2014" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-progress", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { style: { width: `${pct}%` } }) }),
@@ -10123,6 +10176,7 @@ var query = (params) => {
 };
 var tasksApi = {
   list: (params) => get(`/tasks${query({ q: params.q, status: params.status, page: params.page, size: params.size })}`),
+  summary: (days = 30) => get(`/tasks/summary${query({ days })}`),
   get: (id) => get(`/tasks/${encodeURIComponent(id)}`),
   create: (input) => post("/tasks", input),
   control: (id, action) => post(`/tasks/${encodeURIComponent(id)}/control`, { action }),
@@ -10230,13 +10284,13 @@ function relTime(input) {
   return new Date(time).toLocaleDateString("zh-CN");
 }
 var STATUS_TEXT = {
-  draft: ["\u8349\u7A3F", "muted"],
+  created: ["\u5F85\u542F\u52A8", "muted"],
+  queued: ["\u6392\u961F\u4E2D", "redirect"],
   running: ["\u8FDB\u884C\u4E2D", "success"],
   paused: ["\u5DF2\u6682\u505C", "warn"],
-  queued: ["\u6392\u961F\u4E2D", "redirect"],
   done: ["\u5DF2\u5B8C\u6210", "success"],
   failed: ["\u5931\u8D25", "error"],
-  archived: ["\u5DF2\u5F52\u6863", "muted"]
+  timeout: ["\u5DF2\u8D85\u65F6", "error"]
 };
 function statusTone(status) {
   return STATUS_TEXT[status ?? ""]?.[1] ?? "muted";
@@ -11046,6 +11100,13 @@ function ReportSection({ task }) {
 
 // src/tasks/workspace.tsx
 var import_jsx_runtime7 = require("react/jsx-runtime");
+var CHIP_TONE = {
+  muted: "muted",
+  info: "redirect",
+  success: "success",
+  warn: "warn",
+  error: "error"
+};
 var TABS = [
   ["sessions", "\u4F1A\u8BDD"],
   ["overview", "\u603B\u89C8"],
@@ -11060,11 +11121,13 @@ var TABS = [
 ];
 var STATUS_FILTER = [
   ["", "\u5168\u90E8\u72B6\u6001"],
+  ["created", "\u5F85\u542F\u52A8"],
+  ["queued", "\u6392\u961F\u4E2D"],
   ["running", "\u8FDB\u884C\u4E2D"],
   ["paused", "\u5DF2\u6682\u505C"],
   ["done", "\u5DF2\u5B8C\u6210"],
   ["failed", "\u5931\u8D25"],
-  ["archived", "\u5DF2\u5F52\u6863"]
+  ["timeout", "\u5DF2\u8D85\u65F6"]
 ];
 function TaskRow({ task, onOpen }) {
   const findings = task.findings ?? { critical: 0, high: 0, medium: 0, low: 0 };
@@ -11109,14 +11172,15 @@ function TasksWorkspace() {
   const [error, setError] = (0, import_react9.useState)("");
   const key = `tasks:${query2}:${status}:${page}:${size}`;
   const list = useResource(key, () => tasksApi.list({ q: query2, status, page, size }));
+  const summary = useResource("tasks:summary", () => tasksApi.summary());
   const rows = list.data?.tasks ?? [];
   const total = list.data?.total ?? rows.length;
   const pages = Math.max(1, Math.ceil(total / size));
-  const stats = (0, import_react9.useMemo)(() => {
-    const counts = /* @__PURE__ */ new Map();
-    for (const task of rows) counts.set(task.status, (counts.get(task.status) ?? 0) + 1);
-    return counts;
-  }, [rows]);
+  const lifecycle = summary.data?.lifecycle ?? [];
+  const statusline = (0, import_react9.useMemo)(() => {
+    const counts = summary.data?.by_status ?? {};
+    return lifecycle.map((entry) => ({ ...entry, value: Number(counts[entry.key] ?? 0) })).filter((entry) => entry.value > 0);
+  }, [lifecycle, summary.data]);
   if (open) return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TaskDetailPage, { id: open, onBack: () => setOpen("") });
   const create = () => {
     if (!draft.description.trim()) return;
@@ -11140,7 +11204,10 @@ function TasksWorkspace() {
         setPage(1);
       }, ariaLabel: "\u72B6\u6001", options: STATUS_FILTER }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Select, { value: String(size), onChange: (value) => setSize(Number(value)), ariaLabel: "\u6BCF\u9875", options: [["10", "10 / \u9875"], ["20", "20 / \u9875"], ["50", "50 / \u9875"]] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: list.reload, children: "\u5237\u65B0" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: () => {
+        list.reload();
+        summary.reload();
+      }, children: "\u5237\u65B0" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "vx-task-spacer" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "vx-task-hint", children: [
         "\u5171 ",
@@ -11162,11 +11229,18 @@ function TasksWorkspace() {
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ErrorLine, { error })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "vx-task-statusline", children: Array.from(stats.entries()).map(([value, count]) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: `vx-chip vx-chip--${value === "running" ? "success" : value === "paused" ? "warn" : value === "failed" ? "error" : "muted"}`, children: [
-      value,
-      " \xB7 ",
-      count
-    ] }, value)) }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "vx-task-statusline", children: summary.data !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "vx-task-hint", children: [
+        "\u5171 ",
+        summary.data.total,
+        " \u4E2A\u4EFB\u52A1"
+      ] }),
+      statusline.map((entry) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: `vx-chip vx-chip--${CHIP_TONE[entry.tone] ?? "muted"}`, children: [
+        entry.label,
+        " \xB7 ",
+        entry.value
+      ] }, entry.key))
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "vx-task-hint", children: summary.error ? `\u7EDF\u8BA1\u4E0D\u53EF\u7528\uFF1A${summary.error}` : "\u8BFB\u53D6\u7EDF\u8BA1\u2026" }) }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Card, { className: "vx-task-listcard", children: [
       list.loading ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Empty2, { text: "\u8BFB\u53D6\u4EFB\u52A1\u2026" }) : rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Empty2, { text: "\u6CA1\u6709\u5339\u914D\u7684\u4EFB\u52A1", hint: "\u6362\u4E2A\u7B5B\u9009\u6761\u4EF6\uFF0C\u6216\u5728\u4E0A\u65B9\u65B0\u5EFA\u4E00\u4E2A\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "vx-task-rows", children: rows.map((task) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TaskRow, { task, onOpen: () => setOpen(String(task.id)) }, task.id)) }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ErrorLine, { error: list.error })

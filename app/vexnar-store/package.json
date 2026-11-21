@@ -25,7 +25,8 @@
     "test:queue": "tsx test-queue.mjs",
     "test:import": "tsx test-import.mjs",
     "import:evidence": "tsx import-evidence.mjs",
-    "test:report": "tsx test-report.mjs"
+    "test:report": "tsx test-report.mjs",
+    "test:task-status": "tsx test-task-status.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",
