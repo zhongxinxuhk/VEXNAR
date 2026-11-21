@@ -8,6 +8,10 @@ import { api } from './routes.js'
 
 const app = new Hono()
 const fallback = (process.env.VEXNAR_GO_FALLBACK || '').replace(/\/$/, '')
+const fallbackMethods = (process.env.VEXNAR_FALLBACK_METHODS || '')
+  .split(',')
+  .map((method) => method.trim().toUpperCase())
+  .filter(Boolean)
 
 app.use('/api/*', auth)
 app.route('/', api)
@@ -19,13 +23,16 @@ const NATIVE = [
   '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes'
 ]
 
-app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null }))
+app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null, methods: fallbackMethods.length ? fallbackMethods : 'all' }))
 
 // M3 transition: unported routes fall through to the Go service, so the web
 // console can point at the TS core before every write is migrated.
 app.all('/api/*', async (c) => {
   if (!fallback) {
     return c.json({ error: 'route not migrated', path: c.req.path, fallback: null }, 501)
+  }
+  if (fallbackMethods.length && !fallbackMethods.includes(c.req.method)) {
+    return c.json({ error: 'method not proxied', path: c.req.path, method: c.req.method, allowed: fallbackMethods }, 501)
   }
   const url = new URL(c.req.url)
   const target = `${fallback}${url.pathname}${url.search}`

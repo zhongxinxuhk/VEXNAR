@@ -29,6 +29,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 
 - 已迁移的 14 组路由由 TS 处理；
 - 其余 `/api/*` 原样转发给 Go（方法、body、Authorization/cookie、状态码）；
+- `VEXNAR_FALLBACK_METHODS=GET` 可只放行读请求，未迁移的写请求直接 501；
 - 未配置 fallback 时返回 `501 {"error":"route not migrated"}`；
 - `GET /api/_migration` 返回原生路由清单与当前 fallback 地址。
 
