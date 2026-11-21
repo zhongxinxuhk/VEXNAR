@@ -133,7 +133,7 @@ meta 表主键即 key
 - 同一个 `Store` 接口，两种实现；`VEXNAR_STORE=postgres` 时整体切换，**不混用**。
 - 用途：
   1. 存量部署继续跑；
-  2. 从 PG 一次性导入 JSON（`npm run seed`）；
+  2. 从 PG 一次性导入 JSON（`pnpm --filter @vexnar/store run seed`）；
   3. 回退通道（JSON 出问题时切回）。
 - 写支持在 P2 补；当前 PG 适配器只读。
 - 切换流程：停写（或维护窗口）→ 导入/导出 → 校验计数与抽样 → 切 `VEXNAR_STORE`
@@ -203,8 +203,8 @@ M3 第一段：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理，未迁移路由�
 `/api/_migration` 暴露原生清单。web 可先整体指向 TS core，再逐条把写接口迁过来。
 
 分类/模板、资产挂载、任务范围写路由已迁；资产挂载幂等计数，范围域名/IP
-会同时建资产。写入测试 **22/22**。剩余：归档、通知渠道、agents/tools 配置，
-然后关闭 fallback。
+会同时建资产。写入测试 **22/22**。通知渠道增改删、agent 名称/描述、tool 配置已迁；写入测试 **24/24**。
+剩余：归档、自定义工具/MCP 配置，然后关闭 fallback。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。
 

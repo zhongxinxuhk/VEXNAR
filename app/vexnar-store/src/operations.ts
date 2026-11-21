@@ -36,6 +36,7 @@ export function storeOperations(root: string) {
   const meta = metaStore(root)
 
   async function metaTable(name: string) {
+    meta.reload()
     const tables = await meta.load()
     const rows = (tables[name] ?? []) as any[]
     tables[name] = rows
@@ -430,5 +431,66 @@ export function storeOperations(root: string) {
     return { deleted: Number(scopeId) }
   }
 
-  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope }
+  async function createChannel(input: any) {
+    const name = String(input.name ?? '').trim()
+    const kind = String(input.kind ?? '').trim()
+    if (!name) throw Object.assign(new Error('渠道名不能为空'), { status: 400 })
+    if (!kind) throw Object.assign(new Error('kind 不能为空'), { status: 400 })
+    const { tables, rows } = await metaTable('notify')
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const row = {
+      id, name, kind,
+      enabled: input.enabled ?? true,
+      config: input.config ?? {},
+      mode: String(input.mode ?? ''),
+      filter: input.filter ?? {},
+      rate_per_min: Number(input.rate_per_min ?? 0)
+    }
+    rows.push(row)
+    await meta.save(tables)
+    return { id }
+  }
+
+  async function updateChannel(id: string, input: any) {
+    const { tables, rows } = await metaTable('notify')
+    const row = rows.find((item) => String(item.id) === String(id))
+    if (!row) throw Object.assign(new Error('渠道不存在'), { status: 404 })
+    for (const key of ['name', 'kind', 'enabled', 'config', 'mode', 'filter', 'rate_per_min']) {
+      if (input[key] !== undefined) row[key] = input[key]
+    }
+    await meta.save(tables)
+    return { id: Number(id) }
+  }
+
+  async function deleteChannel(id: string) {
+    const { tables, rows } = await metaTable('notify')
+    const index = rows.findIndex((item) => String(item.id) === String(id))
+    if (index < 0) throw Object.assign(new Error('渠道不存在'), { status: 404 })
+    rows.splice(index, 1)
+    await meta.save(tables)
+    return { ok: true }
+  }
+
+  async function updateAgent(key: string, input: { name?: string; description?: string }) {
+    const { tables, rows } = await metaTable('agents')
+    const row = rows.find((item) => item.key === key)
+    if (!row) throw Object.assign(new Error('agent 不存在'), { status: 404 })
+    if (input.name !== undefined) row.name = String(input.name)
+    if (input.description !== undefined) row.description = String(input.description)
+    await meta.save(tables)
+    return { ok: true }
+  }
+
+  async function updateTool(key: string, input: any) {
+    const { tables, rows } = await metaTable('tools')
+    const row = rows.find((item) => item.key === key)
+    if (!row) throw Object.assign(new Error('tool 不存在'), { status: 404 })
+    for (const field of ['description', 'schema', 'agents', 'enabled']) {
+      if (input[field] !== undefined) row[field] = input[field]
+    }
+    await meta.save(tables)
+    return { ok: true }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool }
 }

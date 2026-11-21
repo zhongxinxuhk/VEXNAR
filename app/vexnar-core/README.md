@@ -12,9 +12,9 @@ TypeScript 只读 API 的第一片：直接读现有 PostgreSQL，与 Go 服务�
 ## 运行
 
 ```sh
-cd app/vexnar-core
-npm install
-PORT=8790 npm start        # Go 在 8787 时用于对账
+cd app && pnpm install     # workspace 统一安装，只需一次
+cd vexnar-core
+PORT=8790 pnpm start       # Go 在 8787 时用于对账
 node compare.mjs           # 逐端点对比 Go 与 TS
 ```
 
@@ -24,7 +24,7 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 ## M3 过渡：未迁移路由回退 Go
 
 ```sh
-VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
+VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 ```
 
 - 已迁移的 14 组路由由 TS 处理；
@@ -43,7 +43,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
 写路径：`journal`（prepared→apply→committed）+ 每记录 `rev` + 单写者锁
 （`store.lock`，崩溃残留 pid 会被识别并接管）；读侧写后自动失效缓存。
 `VEXNAR_STORE=postgres` + `VEXNAR_PG_URL` 可整体切回 PostgreSQL；存量导入：
-  `cd ../vexnar-store && npm run seed`。
+  `pnpm --filter @vexnar/store run seed`。
 
 ## 端点（20）
 
@@ -77,6 +77,9 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
 | `POST/PATCH/DELETE /api/task-templates` | ✅ 模板增改删 |
 | `POST/DELETE /api/tasks/:id/assets` | ✅ 资产挂载/卸载（幂等计数） |
 | `POST/DELETE /api/tasks/:id/scope` | ✅ 任务范围增删（域名/IP 同时建资产） |
+| `POST/PATCH/DELETE /api/notify/channels` | ✅ 通知渠道增改删 |
+| `PATCH /api/agents/:key` | ✅ 改名称/描述 |
+| `PUT /api/tools/:key` | ✅ 改描述/schema/绑定/启用 |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**

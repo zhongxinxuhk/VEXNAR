@@ -80,6 +80,27 @@ const scopeId = scope1.scopes_added === 1 ? 1 : 2
 const scopeDel = await ops.deleteScope(second.id, String(scopeId))
 check('scope add/dedupe/delete', scope1.scopes_added === 1 && scope1.assets_linked === 1 && scope2.scopes_existing === 1 && scopeDel.deleted === scopeId, JSON.stringify({ scope1, scope2, scopeDel }))
 
+const channel = await ops.createChannel({ name: 'IM', kind: 'webhook', config: { url: 'http://example' } })
+const channelUpdate = await ops.updateChannel(String(channel.id), { enabled: false })
+const channelDelete = await ops.deleteChannel(String(channel.id))
+check('notify channel lifecycle', channel.id > 0 && channelUpdate.id === channel.id && channelDelete.ok === true, JSON.stringify({ channel, channelUpdate, channelDelete }))
+
+await (async () => {
+  const meta = (await import('./src/meta-store.ts')).metaStore(root)
+  const tables = await meta.load()
+  tables.agents = [{ key: 'goals', name: 'Goals', description: 'd' }]
+  tables.tools = [{ key: 'demo_tool', description: 'd', agents: [], enabled: true }]
+  await meta.save(tables)
+})()
+const agentUpdate = await ops.updateAgent('goals', { name: 'Goals 2', description: 'd2' })
+const toolUpdate = await ops.updateTool('demo_tool', { enabled: false, agents: ['planner'] })
+const metaAfter = await (async () => {
+  const meta = (await import('./src/meta-store.ts')).metaStore(root)
+  const tables = await meta.load()
+  return { agent: tables.agents[0], tool: tables.tools[0] }
+})()
+check('agent/tool update', agentUpdate.ok && toolUpdate.ok && metaAfter.agent.name === 'Goals 2' && metaAfter.tool.enabled === false, JSON.stringify(metaAfter))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

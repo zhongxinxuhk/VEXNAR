@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path'
 export interface MetaStore {
   backend: 'json'
   load(): Promise<Record<string, any[] | Record<string, unknown>>>
+  reload(): void
   table<T = any[]>(name: string): Promise<T>
   save(next: Record<string, any[] | Record<string, unknown>>): Promise<void>
 }
@@ -35,6 +36,7 @@ export function metaStore(root: string): MetaStore {
   return {
     backend: 'json',
     load,
+    reload() { cache = null },
     async table(name) {
       const tables = await load()
       return (tables[name] ?? []) as any
