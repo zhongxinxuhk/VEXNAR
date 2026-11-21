@@ -184,6 +184,16 @@ test('拦截规则设置面用的就是 Web 控制台那组接口', () => {
   assert.ok(bundle.includes('vx-int-switch'), 'enable/disable is a switch, not a text column')
 })
 
+test('浮层挂到 body：设置弹窗的 transform 不能当它的容器', () => {
+  // 真实回归：设置弹窗（以及 Claude Style 皮肤）中间层带 transform，`position: fixed`
+  // 会被换成那一层，抽屉从弹窗左上角开始、右侧超出窗口被裁。宿主自己的设置弹窗也是
+  // createPortal 到 body 的，这里跟它保持一致。
+  assert.ok(bundle.includes('createPortal'), 'drawer/dialog overlay must portal out of the settings dialog')
+  assert.ok(bundle.includes('require("react-dom")'), 'react-dom comes from the dsh module table, like the settings sections that already portal')
+  // 控件是 100% 宽 + 内边距；没有 border-box 就会横向溢出，出现横向滚动条并把输入框切掉。
+  assert.ok(bundle.includes('box-sizing: border-box'), 'form controls need border-box, or 100% width overflows the drawer')
+})
+
 test('the stylesheet only references tokens dsh actually defines', () => {
   for (const stale of ['--dsw-alias-bg-secondary', '--dsw-alias-border-secondary']) {
     assert.equal(bundle.includes(stale), false, `${stale} does not exist upstream; it would fall back to a hex literal`)

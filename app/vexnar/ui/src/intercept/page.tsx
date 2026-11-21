@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import * as reactDom from 'react-dom'
 
 import { Button, Card, Empty, ErrorLine } from '../tasks/ui.js'
 import { DEFAULT_SCOPE_TOOLS, errText, interceptApi } from './api.js'
@@ -27,6 +28,9 @@ import type {
  * 拦截范围（哪些工具进入匹配）、模型兜底审批的配置与用量。区别只在渲染层——这里
  * 用 dsh 的别名 token，跟着壳的主题、字号和深色模式走，不引入第二套组件库。
  */
+
+/** dsh 的客户端模块表提供 react-dom；取不到时抽屉退化成行内浮层，功能不受影响。 */
+const createPortal = (reactDom as { createPortal?: (node: ReactNode, host: Element) => ReactNode }).createPortal
 
 const TABS = [
   ['rules', '拦截规则'],
@@ -81,10 +85,15 @@ function useEscape(active: boolean, close: () => void): void {
   useEffect(() => {
     if (!active) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close()
+      if (event.key !== 'Escape') return
+      // 抽屉开在设置弹窗里：Esc 先关最上面这一层。不拦下来，宿主会顺手把
+      // 整个设置弹窗一起关掉（它也在 window 上监听 Esc）。
+      event.preventDefault()
+      event.stopPropagation()
+      close()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [active, close])
 }
 
@@ -133,7 +142,7 @@ function Field({ label, hint, children }: { label: string; hint?: ReactNode; chi
 }
 
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }): ReactNode {
-  return (
+  const layer = (
     <div
       className="vx-int-overlay"
       role="presentation"
@@ -144,6 +153,11 @@ function Overlay({ children, onClose }: { children: ReactNode; onClose: () => vo
       {children}
     </div>
   )
+  // 挂到 body：设置弹窗（以及 Claude Style 皮肤）会在中间层放 transform，
+  // 那会把 position: fixed 的容器换成那一层，抽屉于是从弹窗左上角开始、
+  // 超出窗口右边缘并被裁掉。宿主自己的设置弹窗也是 createPortal 到 body 的。
+  const host = typeof document === 'undefined' ? undefined : document.body
+  return host && typeof createPortal === 'function' ? createPortal(layer, host) : layer
 }
 
 const PlusIcon = (): ReactNode => (

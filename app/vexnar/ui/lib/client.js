@@ -2646,6 +2646,11 @@ body[data-ds-dark-theme] {
 /* \u2500\u2500 \u62E6\u622A\u89C4\u5219\uFF08\u8BBE\u7F6E\u9875\uFF09 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
    \u4E0E\u4EFB\u52A1\u9762\u677F\u5171\u7528\u4E00\u5957 token \u4E0E .vx-task-* \u57FA\u4EF6\uFF1B\u8FD9\u91CC\u53EA\u8865\u8FD9\u5F20\u9875\u81EA\u5DF1\u7684\u5F62\u72B6\uFF1A
    \u4FE1\u606F\u6761\u3001\u89C4\u5219\u8868\u3001\u5F00\u5173\u3001\u6D6E\u5C42\u62BD\u5C49\u4E0E\u6A21\u578B\u515C\u5E95\u7684\u7EDF\u8BA1\u5757\u3002 */
+.vx-int-page,
+.vx-int-overlay,
+.vx-int-page *,
+.vx-int-overlay * { box-sizing: border-box; }
+
 .vx-int-page {
   display: flex;
   flex-direction: column;
@@ -2905,7 +2910,7 @@ textarea.vx-int-prompt {
 .vx-int-sheet {
   display: flex;
   flex-direction: column;
-  width: min(420px, 100vw);
+  width: min(448px, 100vw);
   height: 100%;
   background: var(--vx-surface);
   border-inline-start: 1px solid var(--vx-border);
@@ -2943,7 +2948,8 @@ textarea.vx-int-prompt {
 .vx-int-sheet-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -11311,6 +11317,7 @@ function TaskDetailPage({ id, onBack }) {
 
 // src/intercept/page.tsx
 var import_react10 = require("react");
+var reactDom = __toESM(require("react-dom"), 1);
 
 // src/intercept/api.ts
 var listOf2 = (value, key) => {
@@ -11418,6 +11425,7 @@ var errText = (error) => error instanceof Error ? error.message : String(error);
 
 // src/intercept/page.tsx
 var import_jsx_runtime8 = require("react/jsx-runtime");
+var createPortal2 = reactDom.createPortal;
 var TABS2 = [
   ["rules", "\u62E6\u622A\u89C4\u5219"],
   ["judge", "\u6A21\u578B\u914D\u7F6E"]
@@ -11458,10 +11466,13 @@ function useEscape(active, close) {
   (0, import_react10.useEffect)(() => {
     if (!active) return;
     const onKey = (event) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [active, close]);
 }
 var fmtTokens = (value) => {
@@ -11497,7 +11508,7 @@ function Field3({ label, hint, children }) {
   ] });
 }
 function Overlay({ children, onClose }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+  const layer = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
     "div",
     {
       className: "vx-int-overlay",
@@ -11508,6 +11519,8 @@ function Overlay({ children, onClose }) {
       children
     }
   );
+  const host = typeof document === "undefined" ? void 0 : document.body;
+  return host && typeof createPortal2 === "function" ? createPortal2(layer, host) : layer;
 }
 var PlusIcon = () => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M6 2.25v7.5M2.25 6h7.5", stroke: "currentColor", strokeWidth: "1.4", strokeLinecap: "round" }) });
 var PencilIcon = () => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(

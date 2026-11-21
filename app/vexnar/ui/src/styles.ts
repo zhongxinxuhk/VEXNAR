@@ -2624,6 +2624,11 @@ body[data-ds-dark-theme] {
 /* ── 拦截规则（设置页） ───────────────────────────────────────────
    与任务面板共用一套 token 与 .vx-task-* 基件；这里只补这张页自己的形状：
    信息条、规则表、开关、浮层抽屉与模型兜底的统计块。 */
+.vx-int-page,
+.vx-int-overlay,
+.vx-int-page *,
+.vx-int-overlay * { box-sizing: border-box; }
+
 .vx-int-page {
   display: flex;
   flex-direction: column;
@@ -2883,7 +2888,7 @@ textarea.vx-int-prompt {
 .vx-int-sheet {
   display: flex;
   flex-direction: column;
-  width: min(420px, 100vw);
+  width: min(448px, 100vw);
   height: 100%;
   background: var(--vx-surface);
   border-inline-start: 1px solid var(--vx-border);
@@ -2921,7 +2926,8 @@ textarea.vx-int-prompt {
 .vx-int-sheet-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
