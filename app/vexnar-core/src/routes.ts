@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from 'hono'
 import { db, parseJson, rfc3339, sql, unix } from './db.js'
+import { openStore } from '../../vexnar-store/src/index.ts'
+
+const store = await openStore()
 
 export const api = new Hono()
 
@@ -266,27 +269,13 @@ api.get('/api/settings', async (c) => {
 })
 
 // ── tasks ─────────────────────────────────────────────────────────────────
-const taskSelect = (where?: (qb: any) => any) => {
-  let query = db
-    .selectFrom('tasks')
-    .select([
-      'id', 'exploration_id', 'name', 'description', 'goal', 'status', 'paused', 'queued',
-      'category_id', 'pinned_at', 'llm_profile_id', 'active_llm_profile_id', 'coverage_enabled',
-      'created_at', 'completed_at'
-    ])
-    .select([rfc3339('created_at').as('created_at_text'), rfc3339('completed_at').as('completed_at_text')])
-    .select([unix('created_at').as('created_unix'), unix('completed_at').as('completed_unix')])
-  if (where) query = where(query)
-  return query
-}
-
 const taskDto = (row: any) => ({
   id: String(row.id),
   exploration_id: Number(row.exploration_id),
   name: row.name,
   ...(row.category_id == null ? {} : { category_id: row.category_id }),
   pinned: row.pinned_at != null,
-  ...(row.pinned_at == null ? {} : { pinned_at: row.pinned_at.toISOString?.() ?? String(row.pinned_at) }),
+  ...(row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) }),
   description: row.description,
   goal: row.goal,
   status: row.status,
@@ -312,23 +301,22 @@ const taskDto = (row: any) => ({
 })
 
 api.get('/api/tasks', async (c) => {
-  const rows = await taskSelect((q) => q.orderBy('id', 'desc')).execute()
+  const rows = await store.tasks.list()
   return c.json({ tasks: rows.map(taskDto) })
 })
 
 api.get('/api/tasks/:id', async (c) => {
-  const id = c.req.param('id')
-  const row = await taskSelect((q) => q.where('id', '=', id)).executeTakeFirst()
+  const row = await store.tasks.get(c.req.param('id'))
   if (!row) return c.json({ error: 'not found' }, 404)
   return c.json(taskDto(row))
 })
 
 api.get('/api/tasks/:id/metrics', async (c) => {
-  const task = await db.selectFrom('tasks').select(['id', 'exploration_id']).where('id', '=', c.req.param('id')).executeTakeFirst()
+  const task = await store.tasks.get(c.req.param('id'))
   if (!task) return c.json({ error: 'not found' }, 404)
   return c.json({
-    task_id: task.id,
-    exploration_id: task.exploration_id,
+    task_id: Number(task.id),
+    exploration_id: Number(task.exploration_id),
     mttd_seconds: null,
     findings_total: 0,
     findings_by_severity: {},
@@ -347,55 +335,36 @@ api.get('/api/tasks/:id/metrics', async (c) => {
 })
 
 // ── assets ────────────────────────────────────────────────────────────────
+const assetDto = (row: any) => ({
+  id: row.id,
+  type: row.type,
+  ...(row.company_id == null ? {} : { company_id: row.company_id }),
+  task_ids: row.task_ids ?? [],
+  ...(row.domain == null ? {} : { domain: row.domain }),
+  ...(row.root_domain == null ? {} : { root_domain: row.root_domain }),
+  ...(row.ip == null ? {} : { ip: row.ip }),
+  ...(row.port == null ? {} : { port: row.port }),
+  ...(row.url == null ? {} : { url: row.url }),
+  last_seen: row.last_seen
+})
+
 api.get('/api/assets', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 20) || 20, 200)
   const offset = Math.max(Number(c.req.query('offset') ?? 0) || 0, 0)
-  const type = c.req.query('type')
-  let query = db.selectFrom('assets').selectAll()
-  let countQuery = db.selectFrom('assets').select(sql<number>`count(*)::int`.as('n'))
-  if (type) {
-    query = query.where('type', '=', type)
-    countQuery = countQuery.where('type', '=', type)
-  }
-  const rows = await query.orderBy('last_seen', 'desc').orderBy('id', 'desc').limit(limit).offset(offset).execute()
-  const [{ n }] = await countQuery.execute()
-  return c.json({
-    assets: rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      ...(row.company_id == null ? {} : { company_id: row.company_id }),
-      task_ids: row.task_ids ?? [],
-      ...(row.domain == null ? {} : { domain: row.domain }),
-      ...(row.root_domain == null ? {} : { root_domain: row.root_domain }),
-      ...(row.ip == null ? {} : { ip: row.ip }),
-      ...(row.port == null ? {} : { port: row.port }),
-      ...(row.url == null ? {} : { url: row.url }),
-      last_seen: row.last_seen
-    })),
-    count: rows.length,
-    total: Number(n)
-  })
+  const type = c.req.query('type') || undefined
+  const { rows, total } = await store.assets.list({ type, limit, offset })
+  return c.json({ assets: rows.map(assetDto), count: rows.length, total })
 })
 
-api.get('/api/assets/counts', async (c) => {
-  const rows = await db.selectFrom('assets').select(['type']).select(sql<number>`count(*)::int`.as('n')).groupBy('type').execute()
-  return c.json(Object.fromEntries(rows.map((row) => [row.type, Number(row.n)])))
-})
+api.get('/api/assets/counts', async (c) => c.json(await store.assets.counts()))
 
 // ── findings / nodes ──────────────────────────────────────────────────────
-const findingSelect = () =>
-  db
-    .selectFrom('findings as f')
-    .leftJoin('exploration_nodes as n', 'n.id', 'f.node_id')
-    .select(['f.id', 'f.node_id', 'f.vulnclass', 'f.name', 'f.severity', 'f.status', 'f.summary', 'f.evidence', 'f.task_id', 'f.created_at'])
-    .select([rfc3339('f.created_at').as('ts')])
-
 const findingDto = (row: any) => ({
   traffic_count: 0,
   evidence_version: 0,
   report_evidence_version: 0,
   report_stale: false,
-  id: String(row.node_id ?? row.id),
+  id: String(row.id),
   finding_id: String(row.id),
   vulnclass: row.vulnclass,
   ...(row.name ? { name: row.name } : {}),
@@ -404,76 +373,32 @@ const findingDto = (row: any) => ({
   summary: row.summary,
   evidence: row.evidence,
   ...(row.task_id == null ? {} : { task_id: String(row.task_id) }),
-  ts: row.ts
+  ts: row.created_at_text
 })
 
 api.get('/api/exploration/findings', async (c) => {
   const page = c.req.query('page')
   const limit = c.req.query('limit')
+  const stats = await store.findings.stats()
   if (page == null && limit == null) {
-    const rows = await findingSelect().orderBy('f.created_at', 'desc').limit(500).execute()
+    const rows = await store.findings.list(500)
     return c.json(rows.map(findingDto))
   }
   const size = Math.min(Number(limit ?? 20) || 20, 200)
   const current = Math.max(Number(page ?? 1) || 1, 1)
-  const rows = await findingSelect().orderBy('f.created_at', 'desc').limit(size).offset((current - 1) * size).execute()
-  const [{ n }] = await db.selectFrom('findings').select(sql<number>`count(*)::int`.as('n')).execute()
-  return c.json({ items: rows.map(findingDto), total: Number(n), page: current, page_size: size })
+  const rows = (await store.findings.list(current * size)).slice((current - 1) * size, current * size)
+  return c.json({ items: rows.map(findingDto), total: stats.total, page: current, page_size: size })
 })
 
-api.get('/api/exploration/findings/stats', async (c) => {
-  const bySeverity = await db.selectFrom('findings').select(['severity']).select(sql<number>`count(*)::int`.as('n')).groupBy('severity').execute()
-  const byStatus = await db.selectFrom('findings').select(['status']).select(sql<number>`count(*)::int`.as('n')).groupBy('status').execute()
-  const classes = await db.selectFrom('findings').select('vulnclass').distinct().where('vulnclass', '<>', '').orderBy('vulnclass').execute()
-  const severity = Object.fromEntries(bySeverity.map((row) => [row.severity, Number(row.n)]))
-  const status = Object.fromEntries(byStatus.map((row) => [row.status, Number(row.n)]))
-  return c.json({
-    total: Object.values(severity).reduce((a, b) => a + b, 0),
-    pending: status.pending ?? 0,
-    critical: severity.critical ?? 0,
-    high: severity.high ?? 0,
-    medium: severity.medium ?? 0,
-    low: severity.low ?? 0,
-    vulnclasses: classes.map((row) => row.vulnclass),
-    tasks: await db
-      .selectFrom('findings as f')
-      .leftJoin('tasks as t', 't.id', 'f.task_id')
-      .select(['f.task_id as id', sql<string>`coalesce(t.name, '')`.as('name'), sql<string>`coalesce(t.description, '')`.as('description')])
-      .select(sql<number>`count(*)::int`.as('count'))
-      .where('f.task_id', 'is not', null)
-      .groupBy(['f.task_id', 't.name', 't.description'])
-      .orderBy(sql`max(f.created_at)`, 'desc')
-      .execute()
-  })
-})
+api.get('/api/exploration/findings/stats', async (c) => c.json(await store.findings.stats()))
 
 api.get('/api/exploration/findings/:id', async (c) => {
   const id = c.req.param('id')
-  const row = await db
-    .selectFrom('findings')
-    .selectAll()
-    .where((eb) => eb.or([eb('id', '=', id), eb('node_id', '=', id)]))
-    .executeTakeFirst()
+  const row = await store.findings.get(id)
   if (!row) return c.json({ error: 'not found' }, 404)
-  const node = row.node_id ? await db.selectFrom('exploration_nodes').select(['payload', 'created_at']).where('id', '=', row.node_id).executeTakeFirst() : null
-  const payload = parseJson(node?.payload) as any
   return c.json({
-    traffic_count: 0,
-    evidence_version: 0,
-    report_evidence_version: 0,
-    report_stale: false,
-    id: String(row.node_id ?? row.id),
-    finding_id: String(row.id),
-    vulnclass: row.vulnclass,
-    ...(row.name ? { name: row.name } : {}),
-    severity: row.severity,
-    status: row.status,
-    summary: row.summary,
-    evidence: row.evidence,
-    ...(row.report ? { report: row.report } : {}),
-    ...(payload?.summary && !row.summary ? { summary: payload.summary } : {}),
-    ...(row.task_id == null ? {} : { task_id: String(row.task_id) }),
-    ts: (node?.created_at ?? row.created_at).toISOString()
+    ...findingDto(row),
+    ...(row.report ? { report: row.report } : {})
   })
 })
 
@@ -481,44 +406,25 @@ api.get('/api/exploration/nodes', async (c) => {
   const taskId = c.req.query('task') ?? ''
   const page = Math.max(Number(c.req.query('page') ?? 1) || 1, 1)
   const size = Math.min(Number(c.req.query('size') ?? 20) || 20, 200)
-  const task = taskId
-    ? await db.selectFrom('tasks').select(['id', 'exploration_id']).where('id', '=', taskId).executeTakeFirst()
-    : null
-  if (!task) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} })
-
+  if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} })
   const kinds = (c.req.query('kind') ?? '').split(',').filter(Boolean)
   const states = (c.req.query('state') ?? '').split(',').filter(Boolean)
-  let query = db.selectFrom('exploration_nodes').selectAll().where('exploration_id', '=', task.exploration_id)
-  let countQuery = db.selectFrom('exploration_nodes').select(sql<number>`count(*)::int`.as('n')).where('exploration_id', '=', task.exploration_id)
-  if (kinds.length) {
-    query = query.where('kind', 'in', kinds)
-    countQuery = countQuery.where('kind', 'in', kinds)
-  }
-  if (states.length) {
-    query = query.where('state', 'in', states)
-    countQuery = countQuery.where('state', 'in', states)
-  }
   const order = c.req.query('order') === 'asc' ? 'asc' : 'desc'
-  const rows = await query.orderBy('priority', 'desc').orderBy('id', order).limit(size).offset((page - 1) * size).execute()
-  const [{ n }] = await countQuery.execute()
-  const ids = rows.map((row) => row.id)
-  const edges = ids.length
-    ? await db.selectFrom('exploration_edges').selectAll().where((eb) => eb.or([eb('src_id', 'in', ids), eb('dst_id', 'in', ids)])).execute()
-    : []
+  const { items, total, edges } = await store.nodes.page({ taskId, page, size, order, kinds, states })
   return c.json({
-    items: rows.map((row) => ({
+    items: items.map((row: any) => ({
       id: String(row.id),
       type: row.kind,
-      payload: JSON.stringify(parseJson(row.payload) ?? {}),
+      payload: JSON.stringify(typeof row.payload === 'string' ? parseJson(row.payload) : row.payload ?? {}),
       priority: row.priority,
       state: row.state,
       ...(row.origin == null ? {} : { origin: row.origin }),
-      ts: row.created_at.toISOString()
+      ts: row.created_at
     })),
-    total: Number(n),
+    total,
     page,
     size,
-    edges: edges.map((edge) => ({ src: String(edge.src_id), dst: String(edge.dst_id), rel: edge.rel })),
+    edges: edges.map((edge: any) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
     refs: {}
   })
 })

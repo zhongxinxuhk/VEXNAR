@@ -40,7 +40,7 @@ void nodes
 const allNodes = await pg.pool.query(`SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin,
   to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') AS created_at
   FROM exploration_nodes ORDER BY id`)
-const allEdges = await pg.pool.query('SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges')
+const allEdges = await pg.pool.query('SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges')
 
 for (const [name, rows] of [
   ['tasks', tasks],

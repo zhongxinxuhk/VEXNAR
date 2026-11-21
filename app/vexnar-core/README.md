@@ -21,6 +21,12 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 鉴权与 Go 相同：`Authorization: Bearer <HS256 JWT>`（用仓库根 `jwt.key` 签发）或
 `vexnar_token` cookie；`/api/health` 免鉴权。
 
+## 存储
+
+领域数据默认走 dsh 风格 JSON store（`$DSH_HOME/vexnar/store`，由 `@vexnar/store`
+提供）；`VEXNAR_STORE=postgres` + `VEXNAR_PG_URL` 可切回 PostgreSQL 适配器。
+存量导入：`cd ../vexnar-store && npm run seed`。
+
 ## 端点（20）
 
 | 端点 | 状态 |
@@ -43,7 +49,8 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
 
-最近一次对账：**12/12 PASS**（tasks/assets/nodes 因派生字段未纳入严格对账）。
+最近一次对账：元数据 **12/12 PASS**；领域端点 **6/6 PASS**
+（`node compare-domain.mjs`：tasks 核心字段、assets、findings、findings stats、nodes items/edges）。
 
 ## 对账中确认的实现细节
 

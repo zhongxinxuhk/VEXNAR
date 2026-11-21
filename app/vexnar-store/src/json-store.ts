@@ -66,7 +66,7 @@ export function jsonStore(root: string): Store {
           if (!row.task_id) continue
           const key = String(row.task_id)
           const info = taskInfo.get(key)
-          const entry = byTask.get(key) ?? { id: key, name: info?.name ?? '', description: info?.description ?? '', count: 0, last: '' }
+          const entry = byTask.get(key) ?? { id: Number(key), name: info?.name ?? '', description: info?.description ?? '', count: 0, last: '' }
           entry.count += 1
           entry.last = entry.last > row.created_at_text ? entry.last : row.created_at_text
           byTask.set(key, entry)
@@ -106,10 +106,10 @@ export function jsonStore(root: string): Store {
         let rows = (await load('nodes', nodeRow)).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
         if (kinds.length) rows = rows.filter((row) => kinds.includes(row.kind))
         if (states.length) rows = rows.filter((row) => states.includes(row.state))
-        rows.sort((a, b) => Number(b.priority) - Number(a.priority) || (order === 'asc' ? Number(a.id) - Number(b.id) : Number(b.id) - Number(a.id)))
+        rows.sort((a, b) => (order === 'asc' ? Number(a.id) - Number(b.id) : Number(b.id) - Number(a.id)))
         const items = rows.slice((page - 1) * size, (page - 1) * size + size)
         const ids = new Set(items.map((row) => String(row.id)))
-        const edges = (await load('edges', { parse: (value) => value })).filter((edge) => ids.has(String(edge.src)) || ids.has(String(edge.dst)))
+        const edges = (await load('edges', { parse: (value) => value })).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id) && (ids.has(String(edge.src)) || ids.has(String(edge.dst))))
         return { items, total: rows.length, edges }
       }
     }

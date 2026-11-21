@@ -277,7 +277,9 @@ tools.calls、stats.tasks 等契约细节。
 按产品方向，**数据存储跟随 dsh**：默认用 `$DSH_HOME/vexnar/store` 下的 JSON 域
 （可读、原子写、zod 校验），PostgreSQL 降级为可选适配器。`app/vexnar-store` 已实现
 两种后端，并从现有 PG 导入后逐项对比：tasks/findings/assets/nodes/stats **6/6 一致**。
-`vexnar-core` 的领域读端点将在下一步切到该 store；PG 模式保留给存量部署。
+`vexnar-core` 已切到该 store：领域读端点（tasks/assets/findings/nodes/stats/counts）
+默认走 JSON，PG 仅作为可选适配器；与 Go 的领域对账 **6/6 PASS**，元数据端点仍保持
+**12/12 PASS**（P1-2 完成）。
 
 ---
 
