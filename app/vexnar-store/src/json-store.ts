@@ -114,6 +114,9 @@ export function jsonStore(root: string): Store {
         }))
       }
     },
+    triggers: {
+      list: async (agentKey) => (await load('agent_triggers', { parse: (value) => value })).filter((row) => row.agent_key === agentKey).sort((a, b) => Number(a.id) - Number(b.id))
+    },
     coverage: async (taskId) => {
       const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
       if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] }

@@ -108,6 +108,7 @@ export interface Store {
     list(taskId: string): Promise<any[]>
   }
   coverage(taskId: string): Promise<{ scope_rows: number; denominator: number; tested: number; pct: number | null; by_type: any[] }>
+  triggers: { list(agentKey: string): Promise<any[]> }
   traffic(findingId: string): Promise<any | null>
   activity: {
     history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>

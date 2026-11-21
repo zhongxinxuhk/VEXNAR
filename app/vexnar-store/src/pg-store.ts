@@ -133,6 +133,11 @@ export function pgStore(connection: {
         bindings: rows.map((row) => ({ id: String(row.id), finding_id: String(row.finding_id), snapshot_id: String(row.snapshot_id), role: row.role, note: row.note ?? '', position: Number(row.position), created_at: row.created_at, snapshot: row.snapshot }))
       }
     },
+    triggers: {
+      list: async (agentKey) => (await q(`SELECT id, agent_key, enabled, interval_sec, on_finding, on_goal_met, on_task_timeout, on_tool_call, on_task_create,
+        interval_message, finding_message, goal_message, task_timeout_message, tool_call_message, task_create_message, tool_names,
+        COALESCE(last_fire::text,'') AS last_fire FROM agent_triggers WHERE agent_key=$1 ORDER BY id`, [agentKey]))
+    },
     coverage: async (taskId) => {
       const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
       if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] }

@@ -181,6 +181,13 @@ check('activity append', activityRecord.kind === 'event' && activityRecord.summa
 const overview = await ops.graphOverview(goalTask.id)
 check('graph overview', overview.by_kind.intent >= 1 && overview.by_kind.fact >= 1 && overview.edges >= 1, JSON.stringify({ kinds: overview.by_kind, edges: overview.edges }))
 
+const trigger = await ops.createTrigger('goals', { on_finding: true, finding_message: 'check' })
+const triggerUpdate = await ops.updateTrigger('goals', String(trigger.id), { enabled: false })
+const triggerDelete = await ops.deleteTrigger('goals', String(trigger.id))
+let invalidTrigger = null
+try { await ops.createTrigger('goals', {}) } catch (error) { invalidTrigger = error }
+check('trigger lifecycle', trigger.on_finding === true && triggerUpdate.enabled === false && triggerDelete.deleted === trigger.id && invalidTrigger?.status === 400, JSON.stringify({ id: trigger.id, update: triggerUpdate.enabled }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
