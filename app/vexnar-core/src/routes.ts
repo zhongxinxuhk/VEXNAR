@@ -13,7 +13,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, buildReport, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -829,7 +829,24 @@ async function renderTaskReport(taskId: string) {
   return buildReport({ task, findings, assets, overview })
 }
 
+api.get('/api/tasks/:id/report/html', async (c) => {
+  const task = await store.tasks.get(c.req.param('id'))
+  if (!task) return c.json({ error: 'task not found' }, 404)
+  const findings = (await store.findings.list(100000)).filter((row: any) => String(row.task_id ?? '') === String(task.id))
+  const assets = (await store.assets.list({ taskId: String(task.id), limit: 1000, offset: 0 })).rows
+  return new Response(buildReportHtml({ task, findings, assets }), { headers: { 'content-type': 'text/html; charset=utf-8' } })
+})
+
 api.post('/api/tasks/:id/report/export', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  if (body.format === 'html') {
+    const task = await store.tasks.get(c.req.param('id'))
+    if (!task) return c.json({ error: 'task not found' }, 404)
+    const findings = (await store.findings.list(100000)).filter((row: any) => String(row.task_id ?? '') === String(task.id))
+    const assets = (await store.assets.list({ taskId: String(task.id), limit: 1000, offset: 0 })).rows
+    const html = buildReportHtml({ task, findings, assets })
+    return c.json(await saveReport(storeRoot(), String(task.id), html, { findings: findings.length, assets: assets.length }, 'html'), 201)
+  }
   const report = await renderTaskReport(c.req.param('id'))
   if (!report) return c.json({ error: 'task not found' }, 404)
   return c.json(await saveReport(storeRoot(), String(c.req.param('id')), report.markdown, report.stats), 201)

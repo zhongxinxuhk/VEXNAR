@@ -5,7 +5,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
-import { buildReport, listReports, saveReport } from './src/report.ts'
+import { buildReport, buildReportHtml, escapeHtml, listReports, saveReport } from './src/report.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-report-'))
 const ops = storeOperations(root)
@@ -30,6 +30,9 @@ check('report counts assets', report.stats.assets === 1 && report.stats.findings
 const saved = await saveReport(root, task.id, report.markdown, report.stats)
 const listed = await listReports(root, task.id)
 check('report saved and listed', saved.bytes > 0 && listed.some((item) => item.id === saved.id), JSON.stringify({ saved, listed }))
+
+const html = buildReportHtml({ task: await ops.writer.readRecord('tasks', task.id), findings, assets })
+check('html escapes and renders', html.includes('SQL注入') && html.includes('class="finding high"') && escapeHtml('<x>') === '&lt;x&gt;', html.length)
 
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
