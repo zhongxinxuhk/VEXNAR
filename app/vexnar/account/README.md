@@ -23,8 +23,15 @@ VEXNAR 在 dsh 设置面板里的「账户」页。上游 DeepSeek 账户组件�
   这是唯一能覆盖"所有已配置方式"且不用逐个实现 provider 的做法。
 - **手动**：API 根地址 + Key，适配关闭网页登录的部署。
 
-登录成功后统一调用 Go `POST /api/desktop/llm/configure`，把 base_url/key/model 写进
-Go 进程；浏览器只拿到 `/vexnar-account/*` 的同源结果。
+登录成功后：
+
+1. `ctx.credentials.set('VEXNAR_NEWAPI_KEY', key)` 写入 dsh 凭据库；
+2. `ctx.settings.update('llm-pi-ai', { providers: { vexnar: { baseURL, apiKeyEnv, models } } })`
+   注册 provider 路由；
+3. 账户信息写入 `$DSH_HOME/vexnar-account.json`（0600），重启后自动恢复。
+
+**模型请求由 dsh 的 pi-ai 适配器直连 NewAPI，不经过 Go 网关。** 浏览器只拿到
+`/vexnar-account/*` 的同源结果，key 只在 Host 的凭据库里。
 
 ## 路由（Host 半）
 
@@ -43,8 +50,8 @@ Go 进程；浏览器只拿到 `/vexnar-account/*` 的同源结果。
 | 变量 | 默认 | 用途 |
 |---|---|---|
 | `VEXNAR_NEWAPI_BASE` | `https://api.sec.hn.cn` | NewAPI 站点 |
-| `VEXNAR_API_BASE` | `http://127.0.0.1:8787` | Go 服务 |
-| `VEXNAR_DESKTOP_TOKEN` | 无 | Go 桌面网关 token |
+
+
 | `VEXNAR_BROWSER_PROFILE` | `app/.dsh-home/browser` | 浏览器登录的持久化 profile |
 
 ## 边界

@@ -5,42 +5,40 @@
 /**
  * Host half of @vexnar/dsh-account.
  *
- * Login is delegated to NewAPI itself, so every method the deployment enables
- * works without re-implementing providers:
+ * Model access is TypeScript end to end: login obtains a NewAPI API key, stores
+ * it in dsh's credential store, and configures the pi-ai provider route so the
+ * agent calls NewAPI directly. The Go desktop gateway is not involved.
  *
- *   - discovery:  GET {newapi}/api/status -> password / oauth / passkey / 2FA
- *   - password:   POST {newapi}/api/user/login, then create an API key over the
- *                 session cookie
- *   - everything else (GitHub, GitCode, LinuxDO, OIDC, WeChat, Telegram,
- *     passkey, 2FA): a real Chrome window on the NewAPI origin; the user logs in
- *     there with whatever method is configured, and we read the session cookie,
- *     create an API key and close the window
- *   - manual:     API root + key, for deployments where automation is unwanted
+ * Login lanes (all methods the NewAPI deployment enables):
+ *   - password:  POST {newapi}/api/user/login, then create an API key
+ *   - everything else (GitHub/GitCode/Gitee/Modelscope/LinuxDO/OIDC/WeChat/
+ *     Telegram/Discord/passkey/2FA): a real Chrome window on the NewAPI origin;
+ *     the user logs in there and we read the session, create the key, close it
+ *   - manual: paste an API key
  *
- * After any lane succeeds the key is handed to the Go gateway
- * (POST /api/desktop/llm/configure); the browser never receives the key or the
- * desktop token.
+ * After any lane: credential `VEXNAR_NEWAPI_KEY` + settings namespace
+ * `llm-pi-ai` provider `vexnar` (baseURL, model catalog) are written. Requests
+ * resolve the credential per call, so rotating the key needs no restart.
  */
 
-import { mkdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 
 export const name = '@vexnar/dsh-account'
 
-export const inject = ['webServer']
+export const inject = ['webServer', 'credentials', 'settings']
 
-// ── configuration ──────────────────────────────────────────────────────────
+const KEY_REF = 'VEXNAR_NEWAPI_KEY'
+const PROVIDER = 'vexnar'
+
 function newapiBase() {
   return (process.env.VEXNAR_NEWAPI_BASE || 'https://api.sec.hn.cn').replace(/\/+$/, '')
 }
-function goBase() {
-  return (process.env.VEXNAR_API_BASE || 'http://127.0.0.1:8787').replace(/\/+$/, '')
-}
-function desktopToken() {
-  return process.env.VEXNAR_DESKTOP_TOKEN || ''
+function accountFile() {
+  const home = process.env.DSH_HOME || join(process.cwd(), '.dsh-home')
+  return join(home, 'vexnar-account.json')
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
 function send(res, status, body) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -74,25 +72,6 @@ function cookieHeader(setCookie) {
   return setCookie.map((line) => line.split(';')[0]).join('; ')
 }
 
-async function goConfigure(apiKey, model) {
-  const token = desktopToken()
-  if (token === '') throw new Error('VEXNAR_DESKTOP_TOKEN 未设置，Go 网关未启用')
-  const response = await fetch(`${goBase()}/api/desktop/llm/configure`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-VEXNAR-Desktop-Token': token },
-    body: JSON.stringify({
-      provider: 'openai-responses',
-      base_url: `${newapiBase()}/v1`,
-      api_key: apiKey,
-      model
-    })
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || `Go 网关返回 HTTP ${response.status}`)
-  return body
-}
-
-/** Create a NewAPI API key over an authenticated session. */
 async function createApiKey(call, name) {
   const created = await call('/api/token/', {
     method: 'POST',
@@ -103,9 +82,7 @@ async function createApiKey(call, name) {
   }
   const list = await call(`/api/token/search?keyword=${encodeURIComponent(name)}`)
   const rows = list.body?.data?.items ?? list.body?.data ?? []
-  const match = Array.isArray(rows)
-    ? rows.find((row) => row?.name === name) ?? rows[0]
-    : undefined
+  const match = Array.isArray(rows) ? rows.find((row) => row?.name === name) ?? rows[0] : undefined
   if (!match?.id) throw new Error('创建成功但找不到该 API Key')
   const keyRes = await call(`/api/token/${match.id}/key`, { method: 'POST' })
   const key = keyRes.body?.data?.key
@@ -113,25 +90,89 @@ async function createApiKey(call, name) {
   return key
 }
 
-/** First model the key may use, used as the Go profile default. */
-async function pickModel(apiKey) {
+/** Model catalog for the pi-ai route: everything the key may call. */
+async function listModels(apiKey) {
   const response = await fetch(`${newapiBase()}/v1/models`, {
     headers: { Authorization: `Bearer ${apiKey}` }
   })
-  if (!response.ok) return ''
+  if (!response.ok) return []
   const body = await response.json().catch(() => ({}))
-  return body?.data?.[0]?.id || ''
+  return (body?.data ?? [])
+    .map((row) => ({ id: String(row?.id ?? ''), name: String(row?.name ?? row?.id ?? '') }))
+    .filter((row) => row.id !== '')
 }
 
-// ── browser lane state ─────────────────────────────────────────────────────
+async function persist(account) {
+  const path = accountFile()
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, `${JSON.stringify(account, null, 2)}\n`, { mode: 0o600 })
+}
+
+async function readAccount() {
+  try {
+    return JSON.parse(await readFile(accountFile(), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/** Write the credential and the provider route into dsh. */
+async function applyAccount(ctx, account, key) {
+  await ctx.credentials.set(KEY_REF, key)
+  await ctx.settings.update('llm-pi-ai', {
+    providers: {
+      [PROVIDER]: {
+        displayName: 'VEXNAR · NewAPI',
+        api: 'openai-completions',
+        baseURL: `${account.base}/v1`,
+        apiKeyEnv: KEY_REF,
+        models: account.models.map((model) => ({ id: model.id, name: model.name || model.id }))
+      }
+    }
+  })
+  await persist({ base: account.base, models: account.models, user: account.user ?? '', savedAt: Date.now() })
+}
+
+/** Re-apply the stored route on boot so a restart keeps working. */
+async function restore(ctx) {
+  const account = await readAccount()
+  if (!account?.base || !Array.isArray(account.models) || account.models.length === 0) return
+  const stored = await ctx.credentials.resolve(KEY_REF)
+  if (!stored?.value) return
+  await ctx.settings.update('llm-pi-ai', {
+    providers: {
+      [PROVIDER]: {
+        displayName: 'VEXNAR · NewAPI',
+        api: 'openai-completions',
+        baseURL: `${account.base}/v1`,
+        apiKeyEnv: KEY_REF,
+        models: account.models.map((model) => ({ id: model.id, name: model.name || model.id }))
+      }
+    }
+  })
+}
+
+function statusOf(account, credential) {
+  return {
+    configured: Boolean(credential?.value) && Boolean(account?.base),
+    base: account?.base ?? newapiBase(),
+    user: account?.user ?? '',
+    models: account?.models?.length ?? 0,
+    keySet: Boolean(credential?.value),
+    model: account?.models?.[0]?.id ?? ''
+  }
+}
+
+// ── browser lane ───────────────────────────────────────────────────────────
 const browserLogin = { state: 'idle', message: '', user: '', startedAt: 0 }
 
-async function runBrowserLogin() {
+async function runBrowserLogin(ctx) {
   Object.assign(browserLogin, { state: 'starting', message: '正在打开 Chrome…', user: '', startedAt: Date.now() })
   let context
   try {
     const { chromium } = await import('playwright-core')
-    const profile = process.env.VEXNAR_BROWSER_PROFILE || join(process.cwd(), '.dsh-home', 'browser')
+    const home = process.env.DSH_HOME || join(process.cwd(), '.dsh-home')
+    const profile = process.env.VEXNAR_BROWSER_PROFILE || join(home, 'browser')
     await mkdir(profile, { recursive: true })
     context = await chromium.launchPersistentContext(profile, {
       channel: 'chrome',
@@ -165,12 +206,12 @@ async function runBrowserLogin() {
         data: init?.body,
         headers: init?.body ? { 'Content-Type': 'application/json' } : undefined
       })
-      const body = await response.json().catch(() => ({}))
-      return { status: response.status(), body }
+      return { status: response.status(), body: await response.json().catch(() => ({})) }
     }
     const key = await createApiKey(call, `vexnar-app-${Date.now()}`)
-    const model = await pickModel(key)
-    await goConfigure(key, model)
+    const models = await listModels(key)
+    if (models.length === 0) throw new Error('读取模型列表失败')
+    await applyAccount(ctx, { base: newapiBase(), user, models }, key)
     Object.assign(browserLogin, { state: 'done', message: `已登录：${user}`, user })
   } catch (error) {
     Object.assign(browserLogin, { state: 'error', message: String(error?.message || error) })
@@ -181,6 +222,10 @@ async function runBrowserLogin() {
 
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
+  // Restore runs in the background: settings settles after every entry mounts,
+  // so awaiting it inside apply would deadlock startup.
+  void restore(ctx).catch((error) => console.warn('[vexnar-account] restore failed:', String(error?.message || error)))
+
   ctx.effect(() =>
     ctx.webServer.register({
       kind: 'exact',
@@ -236,9 +281,10 @@ export function apply(ctx) {
           }
           const call = (path, init) => newapiJson(path, init, cookie)
           const key = await createApiKey(call, `vexnar-app-${Date.now()}`)
-          const model = await pickModel(key)
-          const status = await goConfigure(key, model)
-          send(res, 200, { ...status, model })
+          const models = await listModels(key)
+          if (models.length === 0) throw new Error('读取模型列表失败')
+          await applyAccount(ctx, { base: newapiBase(), user: username, models }, key)
+          send(res, 200, statusOf({ base: newapiBase(), models, user: username }, { value: key }))
         } catch (error) {
           send(res, 400, { error: String(error?.message || error) })
         }
@@ -255,7 +301,7 @@ export function apply(ctx) {
           send(res, 202, browserLogin)
           return
         }
-        void runBrowserLogin()
+        void runBrowserLogin(ctx)
         send(res, 202, browserLogin)
       }
     })
@@ -275,18 +321,20 @@ export function apply(ctx) {
       path: '/vexnar-account/login',
       handler: async (req, res) => {
         try {
-          const payload = await readJson(req)
-          const token = desktopToken()
-          if (token === '') {
-            send(res, 503, { error: 'VEXNAR_DESKTOP_TOKEN 未设置，Go 网关未启用' })
+          const { base_url = '', api_key = '' } = await readJson(req)
+          const base = String(base_url).replace(/\/+$/, '')
+          const key = String(api_key).trim()
+          if (base === '' || key === '') {
+            send(res, 400, { error: 'base_url 与 api_key 必填' })
             return
           }
-          const response = await fetch(`${goBase()}/api/desktop/llm/configure`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-VEXNAR-Desktop-Token': token },
-            body: JSON.stringify(payload)
-          })
-          send(res, response.status, await response.json().catch(() => ({})))
+          const models = await listModels(key)
+          if (models.length === 0) {
+            send(res, 400, { error: '该 Key 读取不到模型列表' })
+            return
+          }
+          await applyAccount(ctx, { base: base.replace(/\/v1$/, ''), user: '', models }, key)
+          send(res, 200, statusOf({ base, models }, { value: key }))
         } catch (error) {
           send(res, 400, { error: String(error?.message || error) })
         }
@@ -299,19 +347,9 @@ export function apply(ctx) {
       kind: 'exact',
       path: '/vexnar-account/status',
       handler: async (_req, res) => {
-        const token = desktopToken()
-        if (token === '') {
-          send(res, 503, { error: 'VEXNAR_DESKTOP_TOKEN 未设置，Go 网关未启用' })
-          return
-        }
-        try {
-          const response = await fetch(`${goBase()}/api/desktop/llm`, {
-            headers: { 'X-VEXNAR-Desktop-Token': token }
-          })
-          send(res, response.status, await response.json().catch(() => ({})))
-        } catch (error) {
-          send(res, 502, { error: `Go 网关不可达: ${String(error?.message || error)}` })
-        }
+        const account = await readAccount()
+        const credential = await ctx.credentials.resolve(KEY_REF)
+        send(res, 200, statusOf(account, credential))
       }
     })
   )
@@ -321,20 +359,9 @@ export function apply(ctx) {
       kind: 'exact',
       path: '/vexnar-account/logout',
       handler: async (_req, res) => {
-        const token = desktopToken()
-        if (token === '') {
-          send(res, 503, { error: 'VEXNAR_DESKTOP_TOKEN 未设置，Go 网关未启用' })
-          return
-        }
-        try {
-          const response = await fetch(`${goBase()}/api/desktop/llm/clear`, {
-            method: 'POST',
-            headers: { 'X-VEXNAR-Desktop-Token': token }
-          })
-          send(res, response.status, await response.json().catch(() => ({})))
-        } catch (error) {
-          send(res, 502, { error: String(error?.message || error) })
-        }
+        await ctx.credentials.unset(KEY_REF)
+        await persist({ base: '', models: [] })
+        send(res, 200, { configured: false })
       }
     })
   )

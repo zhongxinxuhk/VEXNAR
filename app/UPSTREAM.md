@@ -151,5 +151,5 @@ npm run upstream:upgrade -- --rollback
 - [x] 品牌：官方行 disabled，VEXNAR 占据 `sidebar.brand.*`
 - [x] 账户：四行 disabled，模型只走 Go 网关
 - [x] 升级脚本失败自动回滚
-- [x] 账户插件骨架：`@vexnar/dsh-account`（设置页「账户」，经 Go 网关登录）
+- [x] 账户插件：`@vexnar/dsh-account`（设置页「账户」，登录后 TS 直连 NewAPI）
 - [ ] 首次真实升级演练（等下一个 tag）

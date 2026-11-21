@@ -75,7 +75,7 @@ function AccountSection() {
   const [busy, setBusy] = (0, import_react.useState)(false);
   const [browser, setBrowser] = (0, import_react.useState)({ state: "idle", message: "" });
   const [manual, setManual] = (0, import_react.useState)(false);
-  const [form, setForm] = (0, import_react.useState)({ username: "", password: "", base_url: "", api_key: "", model: "", provider: "openai-responses" });
+  const [form, setForm] = (0, import_react.useState)({ username: "", password: "", base_url: "", api_key: "" });
   const refresh = async () => {
     try {
       setStatus(await jsonFetch("/vexnar-account/status"));
@@ -125,12 +125,7 @@ function AccountSection() {
     try {
       await jsonFetch("/vexnar-account/login", {
         method: "POST",
-        body: JSON.stringify({
-          base_url: form.base_url.trim(),
-          api_key: form.api_key.trim(),
-          model: form.model.trim(),
-          provider: form.provider
-        })
+        body: JSON.stringify({ base_url: form.base_url.trim(), api_key: form.api_key.trim() })
       });
       await refresh();
       setError("");
@@ -140,7 +135,7 @@ function AccountSection() {
       setBusy(false);
     }
   };
-  const configured = status?.configured === true || status?.key_set === true;
+  const configured = status?.configured === true;
   const oauth = methods?.oauth ?? [];
   return (0, import_react.createElement)(
     "div",
@@ -152,18 +147,17 @@ function AccountSection() {
         "div",
         { style: { display: "flex", alignItems: "center", gap: 10 } },
         (0, import_react.createElement)("strong", null, "VEXNAR \u8D26\u6237"),
-        (0, import_react.createElement)("span", {
-          style: {
-            ...chip,
-            color: configured ? "#15803d" : "#a16207"
-          }
-        }, configured ? "\u5DF2\u8FDE\u63A5" : "\u672A\u767B\u5F55"),
+        (0, import_react.createElement)(
+          "span",
+          { style: { ...chip, color: configured ? "#15803d" : "#a16207" } },
+          configured ? "\u5DF2\u8FDE\u63A5" : "\u672A\u767B\u5F55"
+        ),
         (0, import_react.createElement)("button", { type: "button", style: { ...button, marginLeft: "auto" }, onClick: () => void refresh() }, "\u5237\u65B0")
       ),
       (0, import_react.createElement)(
         "div",
         { style: { marginTop: 8, color: "var(--dsw-alias-label-secondary, #6b7280)" } },
-        configured ? `${status?.provider ?? ""} \xB7 ${status?.model ?? ""}${status?.base_url ? ` \xB7 ${status.base_url}` : ""}` : methods?.base ? `\u767B\u5F55\u5230 ${methods.base}` : "\u8BFB\u53D6 NewAPI \u767B\u5F55\u65B9\u5F0F\u2026"
+        configured ? `${status?.user || "NewAPI"} \xB7 ${status?.base ?? ""} \xB7 ${status?.models ?? 0} \u4E2A\u6A21\u578B` : methods?.base ? `\u767B\u5F55\u5230 ${methods.base}\uFF0C\u6A21\u578B\u76F4\u8FDE NewAPI\uFF08\u4E0D\u7ECF Go\uFF09` : "\u8BFB\u53D6 NewAPI \u767B\u5F55\u65B9\u5F0F\u2026"
       ),
       error ? (0, import_react.createElement)("div", { style: { marginTop: 8, color: "#b91c1c" } }, error) : null
     ),
@@ -227,11 +221,11 @@ function AccountSection() {
     (0, import_react.createElement)(
       "div",
       { style: box },
-      (0, import_react.createElement)("div", { style: { marginBottom: 8, fontWeight: 600 } }, "\u624B\u52A8\u914D\u7F6E API Key"),
+      (0, import_react.createElement)("div", { style: { marginBottom: 8, fontWeight: 600 } }, "\u624B\u52A8\u586B\u5199 API Key"),
       (0, import_react.createElement)(
         "div",
         { style: { color: "var(--dsw-alias-label-secondary, #6b7280)", marginBottom: 8 } },
-        "\u9002\u7528\u4E8E\u5173\u95ED\u4E86\u7F51\u9875\u767B\u5F55\u7684\u90E8\u7F72\uFF1B\u51ED\u636E\u76F4\u63A5\u5199\u5165 Go \u8FDB\u7A0B\u3002"
+        "Key \u5B58\u5165 dsh \u51ED\u636E\u5E93\uFF0C\u6A21\u578B\u76EE\u5F55\u81EA\u52A8\u4ECE /v1/models \u8BFB\u53D6\u3002"
       ),
       (0, import_react.createElement)(
         "label",
@@ -239,7 +233,7 @@ function AccountSection() {
         "API \u6839\u5730\u5740",
         (0, import_react.createElement)("input", {
           style: input,
-          placeholder: "https://api.example.com/v1",
+          placeholder: "https://api.example.com",
           value: form.base_url,
           onChange: (event) => setForm({ ...form, base_url: event.target.value })
         })
@@ -256,22 +250,12 @@ function AccountSection() {
         })
       ),
       (0, import_react.createElement)(
-        "label",
-        { style: field },
-        "\u6A21\u578B ID",
-        (0, import_react.createElement)("input", {
-          style: input,
-          value: form.model,
-          onChange: (event) => setForm({ ...form, model: event.target.value })
-        })
-      ),
-      (0, import_react.createElement)(
         "div",
         { style: { display: "flex", gap: 8 } },
         (0, import_react.createElement)("button", {
           type: "button",
           style: button,
-          disabled: busy || form.base_url.trim() === "" || form.model.trim() === "",
+          disabled: busy || form.base_url.trim() === "" || form.api_key.trim() === "",
           onClick: () => void manualLogin()
         }, "\u4FDD\u5B58\u5E76\u8FDE\u63A5"),
         configured ? (0, import_react.createElement)("button", {

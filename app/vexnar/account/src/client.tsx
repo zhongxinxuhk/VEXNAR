@@ -8,23 +8,20 @@ import type { CSSProperties, ReactNode } from 'react'
 /**
  * VEXNAR account section.
  *
- * Login methods come from the NewAPI deployment's own /api/status. Password
- * login runs over NewAPI's API; every other configured method (GitHub, GitCode,
- * LinuxDO, OIDC, WeChat, Telegram, passkey, 2FA) runs in a real Chrome window on
- * the NewAPI origin, so no provider has to be re-implemented here.
- *
- * The browser never sees the desktop token or the API key: this component only
- * calls same-origin /vexnar-account/* routes served by the Host half.
+ * Login methods come from the NewAPI deployment's /api/status. Password login
+ * uses NewAPI's API; every other method runs in a real Chrome window on the
+ * NewAPI origin. After login the host stores the key in dsh's credential store
+ * and configures the pi-ai provider directly — model traffic never touches the
+ * Go gateway.
  */
 
 interface Status {
   configured?: boolean
-  provider?: string
+  base?: string
+  user?: string
+  models?: number
+  keySet?: boolean
   model?: string
-  base_url?: string
-  has_key?: boolean
-  key_set?: boolean
-  format?: string
   error?: string
 }
 
@@ -87,7 +84,7 @@ export function AccountSection(): ReactNode {
   const [busy, setBusy] = useState(false)
   const [browser, setBrowser] = useState<{ state: string; message: string; user?: string }>({ state: 'idle', message: '' })
   const [manual, setManual] = useState(false)
-  const [form, setForm] = useState({ username: '', password: '', base_url: '', api_key: '', model: '', provider: 'openai-responses' })
+  const [form, setForm] = useState({ username: '', password: '', base_url: '', api_key: '' })
 
   const refresh = async (): Promise<void> => {
     try {
@@ -143,12 +140,7 @@ export function AccountSection(): ReactNode {
     try {
       await jsonFetch('/vexnar-account/login', {
         method: 'POST',
-        body: JSON.stringify({
-          base_url: form.base_url.trim(),
-          api_key: form.api_key.trim(),
-          model: form.model.trim(),
-          provider: form.provider
-        })
+        body: JSON.stringify({ base_url: form.base_url.trim(), api_key: form.api_key.trim() })
       })
       await refresh()
       setError('')
@@ -159,7 +151,7 @@ export function AccountSection(): ReactNode {
     }
   }
 
-  const configured = status?.configured === true || status?.key_set === true
+  const configured = status?.configured === true
   const oauth = methods?.oauth ?? []
 
   return h(
@@ -170,19 +162,15 @@ export function AccountSection(): ReactNode {
       { style: box },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
         h('strong', null, 'VEXNAR 账户'),
-        h('span', {
-          style: {
-            ...chip,
-            color: configured ? '#15803d' : '#a16207'
-          }
-        }, configured ? '已连接' : '未登录'),
+        h('span', { style: { ...chip, color: configured ? '#15803d' : '#a16207' } },
+          configured ? '已连接' : '未登录'),
         h('button', { type: 'button', style: { ...button, marginLeft: 'auto' }, onClick: () => void refresh() }, '刷新')
       ),
       h('div', { style: { marginTop: 8, color: 'var(--dsw-alias-label-secondary, #6b7280)' } },
         configured
-          ? `${status?.provider ?? ''} · ${status?.model ?? ''}${status?.base_url ? ` · ${status.base_url}` : ''}`
+          ? `${status?.user || 'NewAPI'} · ${status?.base ?? ''} · ${status?.models ?? 0} 个模型`
           : methods?.base
-            ? `登录到 ${methods.base}`
+            ? `登录到 ${methods.base}，模型直连 NewAPI（不经 Go）`
             : '读取 NewAPI 登录方式…'
       ),
       error ? h('div', { style: { marginTop: 8, color: '#b91c1c' } }, error) : null
@@ -241,13 +229,13 @@ export function AccountSection(): ReactNode {
     h(
       'div',
       { style: box },
-      h('div', { style: { marginBottom: 8, fontWeight: 600 } }, '手动配置 API Key'),
+      h('div', { style: { marginBottom: 8, fontWeight: 600 } }, '手动填写 API Key'),
       h('div', { style: { color: 'var(--dsw-alias-label-secondary, #6b7280)', marginBottom: 8 } },
-        '适用于关闭了网页登录的部署；凭据直接写入 Go 进程。'),
+        'Key 存入 dsh 凭据库，模型目录自动从 /v1/models 读取。'),
       h('label', { style: field }, 'API 根地址',
         h('input', {
           style: input,
-          placeholder: 'https://api.example.com/v1',
+          placeholder: 'https://api.example.com',
           value: form.base_url,
           onChange: (event: { target: { value: string } }) => setForm({ ...form, base_url: event.target.value })
         })),
@@ -258,17 +246,11 @@ export function AccountSection(): ReactNode {
           value: form.api_key,
           onChange: (event: { target: { value: string } }) => setForm({ ...form, api_key: event.target.value })
         })),
-      h('label', { style: field }, '模型 ID',
-        h('input', {
-          style: input,
-          value: form.model,
-          onChange: (event: { target: { value: string } }) => setForm({ ...form, model: event.target.value })
-        })),
       h('div', { style: { display: 'flex', gap: 8 } },
         h('button', {
           type: 'button',
           style: button,
-          disabled: busy || form.base_url.trim() === '' || form.model.trim() === '',
+          disabled: busy || form.base_url.trim() === '' || form.api_key.trim() === '',
           onClick: () => void manualLogin()
         }, '保存并连接'),
         configured
