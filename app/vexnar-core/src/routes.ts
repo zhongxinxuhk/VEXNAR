@@ -489,6 +489,15 @@ api.delete('/api/tasks/:id/goals/:gid', async (c) => {
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.post('/api/tasks/:id/intents/:iid/control', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const result = await operations.controlIntent(c.req.param('id'), c.req.param('iid'), body)
+    store.invalidate?.(['nodes', 'edges'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.get('/api/tasks/:id/goals', async (c) => {
   const taskId = c.req.param('id')
   const task = await store.tasks.get(taskId)

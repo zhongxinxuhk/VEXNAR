@@ -133,6 +133,13 @@ const goalDelete = await ops.deleteGoal(goalTask.id, goal.id)
 const goalGone = !(await ops.writer.readRecord('nodes', goal.id))
 check('goal lifecycle', goal.state === 'open' && goal.payload.text === 'prove goals' && goalEdge?.rel === 'spawns' && goalEdit.payload.text === 'renamed goal' && goalDelete.deleted === Number(goal.id) && goalGone, JSON.stringify({ id: goal.id, edge: goalEdge?.rel, edit: goalEdit.payload, gone: goalGone }))
 
+const intentNode = { id: '2000', exploration_id: Number(second.exploration_id), kind: 'intent', state: 'running', payload: {}, priority: 1, origin: 'w', created_at: 'x' }
+await ops.writer.put({ table: 'nodes', key: '2000', record: intentNode })
+const pausedIntent = await ops.controlIntent(second.id, '2000', { action: 'pause' })
+const resumedIntent = await ops.controlIntent(second.id, '2000', { action: 'resume' })
+const cancelledIntent = await ops.controlIntent(second.id, '2000', { action: 'cancel', reason: 'dup work' })
+check('intent control', pausedIntent.state === 'paused' && resumedIntent.state === 'open' && cancelledIntent.state === 'deleted', JSON.stringify({ pausedIntent, resumedIntent, cancelledIntent }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

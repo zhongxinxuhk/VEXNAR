@@ -715,5 +715,52 @@ export function storeOperations(root: string) {
     return { deleted: Number(goalId) }
   }
 
-  return { writer, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function controlIntent(taskId: string, intentId: string, input: { action?: string; reason?: string; mode?: string }) {
+    const node = await writer.readRecord('nodes', intentId)
+    if (!node || node.kind !== 'intent') throw Object.assign(new Error('intent not found'), { status: 404 })
+    if (String(node.exploration_id) !== String((await writer.readRecord('tasks', taskId))?.exploration_id)) {
+      throw Object.assign(new Error('intent not found'), { status: 404 })
+    }
+    const action = String(input.action ?? '')
+    if (!['pause', 'resume', 'cancel'].includes(action)) throw Object.assign(new Error('action must be pause|resume|cancel'), { status: 400 })
+    if (action === 'pause') {
+      if (node.state !== 'running') throw Object.assign(new Error('仅运行中的意图可以暂停'), { status: 409 })
+      const next = { ...node, state: 'paused' }
+      delete next.rev
+      await writer.commit([{ table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) }])
+      return { id: Number(intentId), state: 'paused' }
+    }
+    if (action === 'resume') {
+      if (node.state !== 'paused') throw Object.assign(new Error('仅已暂停的意图可以恢复'), { status: 409 })
+      const next = { ...node, state: 'open' }
+      delete next.rev
+      await writer.commit([{ table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) }])
+      return { id: Number(intentId), state: 'open' }
+    }
+    const reason = String(input.reason ?? '').trim()
+    if (!reason) throw Object.assign(new Error('请填写删除原因'), { status: 409 })
+    if (!['running', 'paused', 'open'].includes(node.state)) throw Object.assign(new Error('仅待领/运行中/已暂停的意图可以删除'), { status: 409 })
+    const mode = input.mode === 'hard' ? 'hard' : 'soft'
+    if (mode === 'soft') {
+      const payload = { ...(typeof node.payload === 'string' ? JSON.parse(node.payload) : node.payload), delete_reason: reason }
+      const next = { ...node, state: 'deleted', payload }
+      delete next.rev
+      await writer.commit([{ table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) }])
+      return { id: Number(intentId), state: 'deleted' }
+    }
+    await rm(join(root, 'nodes', `${intentId}.json`), { force: true })
+    try {
+      for (const name of await readdir(join(root, 'edges'))) {
+        if (!name.endsWith('.json')) continue
+        const path = join(root, 'edges', name)
+        const edge = JSON.parse(await readFile(path, 'utf8')).record
+        if (String(edge.src) === String(intentId) || String(edge.dst) === String(intentId)) await rm(path, { force: true })
+      }
+    } catch {
+      // no edges
+    }
+    return { id: Number(intentId), state: '', deleted: { intents: 1, facts: 0, findings: 0, activities: 0 } }
+  }
+
+  return { writer, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
