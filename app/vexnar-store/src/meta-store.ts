@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path'
  * which is acceptable at this size and keeps the file inspectable.
  */
 export interface MetaStore {
-  backend: 'json'
+  backend: string
   load(): Promise<Record<string, any[] | Record<string, unknown>>>
   reload(): void
   table<T = any[]>(name: string): Promise<T>
