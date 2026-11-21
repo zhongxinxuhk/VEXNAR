@@ -4,10 +4,12 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { jsonStore } from './json-store.js'
+import { metaStore } from './meta-store.js'
 import { pgStore } from './pg-store.js'
 import type { Store } from './types.js'
 
 export type { Store } from './types.js'
+export { metaStore } from './meta-store.js'
 
 export function storeRoot() {
   return process.env.VEXNAR_STORE_ROOT || join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'vexnar', 'store')
