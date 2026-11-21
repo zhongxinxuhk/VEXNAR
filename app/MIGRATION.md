@@ -265,6 +265,13 @@ mitmproxy sidecar：11/11 通过——状态码、响应体 sha256 三方一致�
 叶证书都能在各自 CA 下校验。附带发现：`openssl s_client` 探针会让 go-mitmproxy
 的下一次握手失败，证书证据需用 `curl -v` 单次请求采集（Node 代理迁移时要对齐或明确不兼容）。
 
+### P1-1 已完成（2026-11-21）
+
+[`app/vexnar-core`](./vexnar-core/README.md)：Hono + Kysely 的只读 API，20 个端点，其中
+12 个与 Go 严格/子集对账 **12/12 PASS**；其余 8 个（tasks/assets/findings/nodes）已实现，
+派生字段待引擎迁移。同时确认了 int8、时间格式、settings 白名单、scope 对象、
+tools.calls、stats.tasks 等契约细节。
+
 ---
 
 ## 10. 验收标准（功能对等）
