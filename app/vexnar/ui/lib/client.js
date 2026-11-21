@@ -348,91 +348,304 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
+/* \u2500\u2500 \u6982\u89C8\u6574\u9875 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   \u53EA\u4FDD\u7559\u53F3\u4E0A\u89D2\u7684\u65E5\u671F\u7B5B\u9009\uFF1B\u5176\u4F59\u5168\u90E8\u662F\u6570\u636E\u533A\u5757\u3002\u5361\u7247 14px \u5706\u89D2 + \u9876\u90E8\u5185\u9AD8\u5149\uFF0C
+   \u7F51\u683C 12 \u5217\uFF0C\u7A84\u7A97\u53E3\u964D\u4E3A\u4E24\u5217 / \u5355\u5217\u3002 */
+.vx-ov-page {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 16px 22px 44px;
+  overflow-y: auto;
+  color: var(--vx-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .vx-ov-page,
 .vx-ov-page * { box-sizing: border-box; }
 
-.vx-ov-kpis {
+/* \u2500\u2500 \u65E5\u671F\u7B5B\u9009 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-toolbar {
+  position: sticky;
+  top: -16px;
+  z-index: 3;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  margin: 0 -22px;
+  padding: 8px 22px 10px;
+  background: linear-gradient(180deg, var(--vx-surface) 55%, transparent);
+  backdrop-filter: blur(6px);
 }
 
-.vx-ov-kpi {
+.vx-ov-seg {
   position: relative;
-  flex: 1 1 116px;
-  min-width: 0;
-  padding: 9px 10px 8px;
+  display: inline-flex;
+  padding: 3px;
   border: 1px solid var(--vx-border);
   border-radius: 12px;
+  background: color-mix(in srgb, var(--vx-text) 5%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 6%, transparent);
+}
+
+.vx-ov-seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--vx-border) 75%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--vx-surface) 92%, var(--vx-chart-1) 8%), var(--vx-surface));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 8px 18px -12px color-mix(in srgb, var(--vx-chart-1) 70%, transparent);
+  transition: transform 0.32s var(--vx-ease);
+  pointer-events: none;
+}
+
+.vx-ov-seg > button {
+  position: relative;
+  z-index: 1;
+  min-width: 58px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--vx-text-dim);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: color 0.18s var(--vx-ease);
+}
+
+.vx-ov-seg > button:hover { color: var(--vx-text); }
+.vx-ov-seg > button[aria-pressed="true"] { color: var(--vx-text); }
+.vx-ov-seg > button:focus-visible { outline: 2px solid var(--vx-accent); outline-offset: 2px; }
+
+/* \u2500\u2500 KPI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vx-ov-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 13px 9px;
+  overflow: hidden;
+  border: 1px solid var(--vx-border);
+  border-radius: 14px;
   background:
-    linear-gradient(160deg, color-mix(in srgb, var(--vx-tone) 11%, transparent), transparent 58%),
-    color-mix(in srgb, var(--vx-surface) 62%, transparent);
-  transition: border-color var(--vx-dur) var(--vx-ease), transform var(--vx-dur) var(--vx-ease),
-    box-shadow var(--vx-dur) var(--vx-ease);
+    linear-gradient(150deg, color-mix(in srgb, var(--vx-tone) 13%, transparent), transparent 56%),
+    color-mix(in srgb, var(--vx-surface) 80%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+  transition: transform 0.2s var(--vx-ease), border-color 0.2s var(--vx-ease), box-shadow 0.2s var(--vx-ease);
 }
 
-.vx-ov-kpi:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--vx-tone) 42%, var(--vx-border));
-  box-shadow: 0 8px 18px -16px color-mix(in srgb, var(--vx-tone) 80%, transparent);
+.vx-ov-stat:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--vx-tone) 40%, var(--vx-border));
+  box-shadow: 0 16px 30px -24px color-mix(in srgb, var(--vx-tone) 95%, transparent);
 }
 
-.vx-ov-kpi-top {
+.vx-ov-stat-top {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--vx-text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.vx-ov-kpi-top svg { color: var(--vx-tone); flex: none; }
-
-.vx-ov-kpi-mid {
-  display: flex;
-  align-items: flex-end;
   gap: 6px;
-  min-height: 28px;
-  margin-top: 3px;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--vx-text-dim);
 }
 
-.vx-ov-num {
-  font-size: 23px;
-  font-weight: 680;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+.vx-ov-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+  color: var(--vx-tone);
+  background: color-mix(in srgb, var(--vx-tone) 15%, transparent);
+}
+
+.vx-ov-stat-label {
+  flex: none;
+  font-weight: 650;
+  letter-spacing: 0.02em;
   color: var(--vx-text);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
-.vx-ov-num em {
-  margin-left: 3px;
+.vx-ov-stat-top .vx-ov-delta { margin-left: auto; }
+
+.vx-ov-stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ov-stat-value em {
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--vx-text-faint);
 }
+
+.vx-ov-stat-foot {
+  min-height: 12px;
+  font-size: 9.5px;
+  color: var(--vx-text-faint);
+}
+
+.vx-ov-stat-band { margin-top: 3px; }
+
+.vx-ov-codebar {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
+}
+
+.vx-ov-codebar i { display: block; height: 100%; min-width: 2px; }
+.vx-ov-codebar i + i { margin-left: 1px; }
+.vx-ov-codebar--empty { opacity: 0.5; }
 
 .vx-ov-spark {
   display: block;
   width: 100%;
-  margin-top: 5px;
-  opacity: 0.8;
+  margin-top: 2px;
+  opacity: 0.82;
   pointer-events: none;
 }
 
-.vx-ov-kpi-foot {
-  margin-top: 2px;
-  min-height: 13px;
-  font-size: 9.5px;
-  color: var(--vx-text-faint);
-  overflow: hidden;
+/* \u2500\u2500 \u73AF\u6BD4\u5FBD\u6807 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.vx-ov-chips { display: inline-flex; flex-wrap: wrap; gap: 2px 7px; }
+.vx-ov-delta em {
+  margin-left: 2px;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--vx-text-faint);
+}
+
+.vx-ov-delta[data-dir="up"] {
+  color: var(--vx-chart-4);
+  border-color: color-mix(in srgb, var(--vx-chart-4) 32%, transparent);
+  background: color-mix(in srgb, var(--vx-chart-4) 10%, transparent);
+}
+
+.vx-ov-delta[data-dir="down"] {
+  color: var(--vx-chart-3);
+  border-color: color-mix(in srgb, var(--vx-chart-3) 32%, transparent);
+  background: color-mix(in srgb, var(--vx-chart-3) 10%, transparent);
+}
+
+.vx-ov-delta[data-dir="flat"] {
+  color: var(--vx-text-dim);
+  border-color: color-mix(in srgb, var(--vx-border) 90%, transparent);
+}
+
+/* \u2500\u2500 \u7F51\u683C\u4E0E\u533A\u5757 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vx-ov-span-4 { grid-column: span 4; }
+.vx-ov-span-6 { grid-column: span 6; }
+.vx-ov-span-8 { grid-column: span 8; }
+.vx-ov-span-12 { grid-column: span 12; }
+
+.vx-ov-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--vx-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vx-surface) 76%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
+}
+
+.vx-ov-card-body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 13px 12px;
+}
+
+.vx-ov-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 13px 0;
+  min-width: 0;
+}
+
+.vx-ov-h > svg { flex: none; color: var(--vx-text-faint); }
+
+.vx-ov-h h3 {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+}
+
+.vx-ov-sub {
+  overflow: hidden;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--vx-text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ov-h-action { margin-left: auto; }
+
+.vx-ov-legend {
+  display: flex;
+  gap: 9px;
+  font-size: 9.5px;
+  color: var(--vx-text-faint);
+}
+
+.vx-ov-legend span { display: inline-flex; align-items: center; white-space: nowrap; }
+
+.vx-ov-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 3px;
+  flex: none;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.vx-ov-chips { display: inline-flex; flex-wrap: wrap; gap: 2px 8px; }
 
 .vx-ov-chip {
   display: inline-flex;
@@ -441,61 +654,80 @@ body[data-ds-dark-theme] {
   white-space: nowrap;
 }
 
-.vx-ov-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-right: 2px;
-  flex: none;
-  border-radius: 50%;
-  vertical-align: middle;
+.vx-ov-chip--muted { color: var(--vx-text-faint); }
+
+/* \u2500\u2500 Token \u533A\u5757 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-token {
+  display: grid;
+  grid-template-columns: minmax(0, 186px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
 }
 
-.vx-ov-card {
-  min-width: 0;
-  padding: 9px 11px 8px;
-  border: 1px solid var(--vx-border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--vx-surface) 68%, transparent);
-}
-
-.vx-ov-card--trend,
-.vx-ov-card--dials { display: flex; flex-direction: column; min-height: 0; }
-
-.vx-ov-card--dials { overflow: hidden; }
-
-.vx-ov-h {
+.vx-ov-token-metrics {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  color: var(--vx-text);
-}
-
-.vx-ov-h > svg { color: var(--vx-text-faint); flex: none; }
-
-.vx-ov-sub {
-  margin-left: auto;
-  font-size: 9.5px;
-  font-weight: 500;
-  color: var(--vx-text-faint);
-  white-space: nowrap;
-}
-
-.vx-ov-legend {
-  margin-left: auto;
-  display: flex;
+  flex-direction: column;
   gap: 9px;
-  font-size: 9.5px;
-  font-weight: 500;
-  color: var(--vx-text-faint);
+  min-width: 0;
 }
 
-.vx-ov-legend span { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.vx-ov-token-total > span { font-size: 10px; color: var(--vx-text-dim); }
 
-.vx-ov-plot { position: relative; width: 100%; min-width: 0; margin-top: 2px; }
+.vx-ov-token-total > strong {
+  display: block;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ov-token-total .vx-ov-delta { margin-top: 4px; }
+
+.vx-ov-meter { display: flex; flex-direction: column; gap: 4px; }
+
+.vx-ov-meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--vx-text-dim);
+}
+
+.vx-ov-meter-top b {
+  font-family: var(--vx-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ov-meter-track {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
+}
+
+.vx-ov-meter-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s var(--vx-ease);
+}
+
+.vx-ov-mini-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: var(--vx-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ov-chart { min-width: 0; }
+
+.vx-ov-plot { position: relative; width: 100%; min-width: 0; }
 
 .vx-ov-axis {
   fill: var(--vx-chart-axis);
@@ -503,22 +735,18 @@ body[data-ds-dark-theme] {
   font-variant-numeric: tabular-nums;
 }
 
-.vx-ov-bar {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: vx-ov-grow 0.55s var(--vx-ease) both;
-}
+.vx-ov-draw { animation: vx-ov-fade 0.6s var(--vx-ease) both; }
 
 .vx-ov-tip {
   position: absolute;
   z-index: 3;
-  min-width: 132px;
+  min-width: 136px;
   padding: 7px 9px;
   transform: translateX(-50%);
   border: 1px solid var(--vx-border-strong);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--vx-glass);
-  box-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   font-size: 10px;
   line-height: 1.5;
@@ -540,13 +768,8 @@ body[data-ds-dark-theme] {
   color: var(--vx-text-dim);
 }
 
-.vx-ov-tip-row > span { display: inline-flex; align-items: center; }
-
-.vx-ov-tip-row b {
-  color: var(--vx-text);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
+.vx-ov-tip-row span { display: inline-flex; align-items: center; }
+.vx-ov-tip-row b { color: var(--vx-text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .vx-ov-tip-total {
   margin-top: 3px;
@@ -554,167 +777,207 @@ body[data-ds-dark-theme] {
   border-top: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
 }
 
-.vx-ov-error {
+/* \u2500\u2500 \u6548\u7387 / \u73AF\u5F62 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-efficiency { display: flex; align-items: center; gap: 16px; }
+
+.vx-ov-ring {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--vx-chart-5) 32%, transparent);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--vx-chart-5) 8%, transparent);
-  font-size: 10.5px;
-  color: var(--vx-text);
-}
-
-.vx-ov-error button {
-  margin-left: auto;
-  padding: 2px 9px;
-  border: 1px solid color-mix(in srgb, var(--vx-chart-5) 38%, transparent);
-  border-radius: 7px;
-  background: transparent;
-  color: var(--vx-text);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.vx-ov-empty {
-  padding: 16px 0;
-  text-align: center;
-  font-size: 11px;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-muted { color: var(--vx-text-faint); }
-
-/* \u2500\u2500 \u6982\u89C8\u6574\u9875 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-.vx-ov-page {
-  position: relative;
-  box-sizing: border-box;
-  display: flex;
-  height: 100%;
+  flex: none;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px 22px 40px;
-  overflow-y: auto;
-  color: var(--vx-text);
-  font-size: 12px;
-  line-height: 1.45;
+  align-items: center;
+  gap: 2px;
 }
 
-.vx-ov-page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+.vx-ov-ring-box { position: relative; display: grid; place-items: center; }
+.vx-ov-ring-box > svg { position: absolute; inset: 0; }
 
-.vx-ov-page-head h1 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 660;
-  letter-spacing: -0.01em;
-}
-
-.vx-ov-page-head p {
-  margin: 3px 0 0;
-  font-size: 11px;
-  color: var(--vx-text-dim);
-}
-
-.vx-ov-page-tools { display: flex; align-items: center; gap: 8px; }
-
-.vx-ov-kpis--page .vx-ov-kpi { flex: 1 1 172px; padding: 11px 13px 10px; }
-.vx-ov-kpis--page .vx-ov-num { font-size: 26px; }
-
-.vx-ov-card--wide { padding: 12px 14px 10px; }
-
-.vx-ov-split {
-  display: grid;
-  grid-template-columns: minmax(0, 216px) minmax(0, 1fr);
-  gap: 18px;
-  margin-top: 8px;
-  align-items: stretch;
-}
-
-.vx-ov-metrics { display: flex; flex-direction: column; gap: 11px; }
-
-.vx-ov-metric-total { display: flex; flex-direction: column; gap: 2px; }
-
-.vx-ov-metric-total span { font-size: 10px; color: var(--vx-text-dim); }
-
-.vx-ov-metric-total strong {
-  font-size: 28px;
+.vx-ov-ring-value {
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.vx-ov-metric-total em {
-  font-style: normal;
-  font-size: 10px;
+.vx-ov-ring-label { font-size: 9.5px; font-weight: 600; color: var(--vx-text-dim); }
+
+.vx-ov-ring-caption {
+  max-width: 108px;
+  overflow: hidden;
+  font-size: 8.5px;
   color: var(--vx-text-faint);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.vx-ov-meter { display: flex; flex-direction: column; gap: 4px; }
+.vx-ov-arc { transition: stroke-dasharray 0.7s var(--vx-ease), stroke-dashoffset 0.7s var(--vx-ease); }
 
-.vx-ov-meter-top {
+.vx-ov-kv-list { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; }
+
+.vx-ov-kv-list > div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 8px;
+  font-size: 9.5px;
+  color: var(--vx-text-dim);
+}
+
+.vx-ov-kv-list b {
+  color: var(--vx-text);
+  font-family: var(--vx-mono);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* \u2500\u2500 \u73AF\u5F62\u56FE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-donut-row { display: flex; align-items: center; gap: 16px; }
+
+.vx-ov-donut {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.vx-ov-donut > svg { position: absolute; inset: 0; }
+
+.vx-ov-donut-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.vx-ov-donut-center b { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.vx-ov-donut-center em { font-style: normal; font-size: 8.5px; color: var(--vx-text-faint); }
+
+.vx-ov-legend-rows {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.vx-ov-legend-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   color: var(--vx-text-dim);
 }
 
-.vx-ov-meter-top b { font-family: var(--vx-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.vx-ov-legend-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vx-ov-legend-row b { color: var(--vx-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.vx-ov-legend-row em { font-style: normal; font-size: 9px; color: var(--vx-text-faint); text-align: right; font-variant-numeric: tabular-nums; }
 
-.vx-ov-meter-track {
-  display: block;
-  height: 5px;
+/* \u2500\u2500 \u5206\u5E03\u6761 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-hbars { display: flex; flex-direction: column; gap: 7px; }
+
+.vx-ov-hbar {
+  display: grid;
+  grid-template-columns: minmax(56px, 84px) minmax(0, 1fr) auto 32px;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.vx-ov-hbar-label { color: var(--vx-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.vx-ov-hbar-track {
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
   background: color-mix(in srgb, var(--vx-text) 8%, transparent);
 }
 
-.vx-ov-meter-track i {
+.vx-ov-hbar-track i {
   display: block;
   height: 100%;
   border-radius: 999px;
   transition: width 0.6s var(--vx-ease);
 }
 
-.vx-ov-hitr {
+.vx-ov-hbar-value { color: var(--vx-text); font-variant-numeric: tabular-nums; }
+.vx-ov-hbar-pct { color: var(--vx-text-faint); font-size: 9px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* \u2500\u2500 \u4EFB\u52A1\u5065\u5EB7\u5EA6 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-health { display: flex; align-items: center; gap: 18px; }
+
+.vx-ov-health-side {
   display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.vx-ov-status-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border: 1px solid var(--vx-border);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--vx-surface) 50%, transparent);
+  gap: 7px;
   font-size: 10px;
   color: var(--vx-text-dim);
 }
 
-.vx-ov-hitr b { font-size: 12px; color: var(--vx-chart-3); font-variant-numeric: tabular-nums; }
+.vx-ov-status-row b { color: var(--vx-text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.vx-ov-chart-tall { min-width: 0; display: flex; flex-direction: column; }
+/* \u2500\u2500 \u70ED\u529B\u56FE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-heat-wrap { display: flex; flex-direction: column; gap: 8px; }
 
-.vx-ov-two,
-.vx-ov-three {
+.vx-ov-heat {
   display: grid;
-  gap: 10px;
-  align-items: start;
+  grid-template-rows: repeat(7, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 3px;
+  height: 124px;
 }
 
-.vx-ov-two { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-.vx-ov-three { grid-template-columns: repeat(auto-fit, minmax(228px, 1fr)); }
+.vx-ov-heat-cell {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--vx-text) 6%, transparent);
+  transition: transform 0.15s var(--vx-ease), background 0.2s var(--vx-ease);
+}
 
+.vx-ov-heat-cell[data-level="pad"] { background: transparent; }
+.vx-ov-heat-cell[data-level="1"] { background: color-mix(in srgb, var(--vx-chart-1) 24%, transparent); }
+.vx-ov-heat-cell[data-level="2"] { background: color-mix(in srgb, var(--vx-chart-1) 44%, transparent); }
+.vx-ov-heat-cell[data-level="3"] { background: color-mix(in srgb, var(--vx-chart-1) 68%, transparent); }
+.vx-ov-heat-cell[data-level="4"] { background: var(--vx-chart-1); }
+.vx-ov-heat-cell:hover { transform: scale(1.22); }
+
+.vx-ov-heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 9px;
+  color: var(--vx-text-faint);
+}
+
+.vx-ov-heat-legend i {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--vx-text) 6%, transparent);
+}
+
+.vx-ov-heat-legend i[data-level="1"] { background: color-mix(in srgb, var(--vx-chart-1) 24%, transparent); }
+.vx-ov-heat-legend i[data-level="2"] { background: color-mix(in srgb, var(--vx-chart-1) 44%, transparent); }
+.vx-ov-heat-legend i[data-level="3"] { background: color-mix(in srgb, var(--vx-chart-1) 68%, transparent); }
+.vx-ov-heat-legend i[data-level="4"] { background: var(--vx-chart-1); }
+
+/* \u2500\u2500 \u6D3B\u52A8\u6D41 / \u53D1\u73B0 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-ov-feed {
   display: flex;
   flex-direction: column;
-  margin: 6px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -728,7 +991,7 @@ body[data-ds-dark-theme] {
   font-size: 10.5px;
 }
 
-.vx-ov-feed li:first-child { border-top: 0; }
+.vx-ov-feed li:first-child { padding-top: 2px; border-top: 0; }
 
 .vx-ov-worker {
   flex: none;
@@ -744,8 +1007,8 @@ body[data-ds-dark-theme] {
 }
 
 .vx-ov-sev {
-  flex: none;
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 2px;
   padding-top: 1px;
@@ -785,9 +1048,8 @@ body[data-ds-dark-theme] {
   font-variant-numeric: tabular-nums;
 }
 
-.vx-ov-card--table { padding: 10px 0 2px; }
-.vx-ov-card--table .vx-ov-h { padding: 0 13px; }
-.vx-ov-table-wrap { margin-top: 6px; overflow-x: auto; }
+/* \u2500\u2500 \u4EFB\u52A1\u8868 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-table-wrap { overflow-x: auto; }
 
 .vx-ov-table {
   width: 100%;
@@ -816,7 +1078,7 @@ body[data-ds-dark-theme] {
 .vx-ov-table tr:last-child td { border-bottom: 0; }
 .vx-ov-table tbody tr:hover { background: color-mix(in srgb, var(--vx-surface-sunken) 70%, transparent); }
 
-.vx-ov-td-task { max-width: 320px; }
+.vx-ov-td-task { max-width: 340px; }
 .vx-ov-td-task b,
 .vx-ov-td-task em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vx-ov-td-task b { font-weight: 600; }
@@ -829,21 +1091,17 @@ body[data-ds-dark-theme] {
   padding: 1px 7px;
   border: 1px solid var(--vx-border);
   border-radius: 999px;
+  color: var(--vx-text-dim);
   font-size: 9px;
   font-weight: 600;
   line-height: 1.6;
-  color: var(--vx-text-dim);
+  white-space: nowrap;
 }
-
-.vx-ov-pill--blue { border-color: color-mix(in srgb, var(--vx-chart-1) 36%, transparent); color: var(--vx-chart-1); background: color-mix(in srgb, var(--vx-chart-1) 9%, transparent); }
-.vx-ov-pill--green { border-color: color-mix(in srgb, var(--vx-chart-3) 36%, transparent); color: var(--vx-chart-3); background: color-mix(in srgb, var(--vx-chart-3) 9%, transparent); }
-.vx-ov-pill--amber { border-color: color-mix(in srgb, var(--vx-chart-4) 36%, transparent); color: var(--vx-chart-4); background: color-mix(in srgb, var(--vx-chart-4) 9%, transparent); }
-.vx-ov-pill--red { border-color: color-mix(in srgb, var(--vx-chart-5) 36%, transparent); color: var(--vx-chart-5); background: color-mix(in srgb, var(--vx-chart-5) 9%, transparent); }
-.vx-ov-pill--muted { color: var(--vx-text-faint); }
 
 .vx-ov-engine { font-family: var(--vx-mono); font-size: 9px; color: var(--vx-text-dim); }
 
 .vx-ov-progress { display: inline-flex; align-items: center; gap: 6px; }
+
 .vx-ov-progress i {
   display: block;
   width: 56px;
@@ -852,97 +1110,112 @@ body[data-ds-dark-theme] {
   border-radius: 999px;
   background: color-mix(in srgb, var(--vx-text) 9%, transparent);
 }
+
 .vx-ov-progress i em { display: block; height: 100%; border-radius: 999px; background: var(--vx-chart-1); }
-.vx-ov-progress span { font-variant-numeric: tabular-nums; color: var(--vx-text-dim); font-size: 9.5px; }
+.vx-ov-progress span { color: var(--vx-text-dim); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 
-.vx-ov-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+/* \u2500\u2500 \u6D41\u91CF / \u7CFB\u7EDF \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-traffic { display: flex; align-items: center; gap: 16px; }
 
-.vx-ov-row { display: flex; align-items: center; gap: 7px; font-size: 10px; }
-
-.vx-ov-row-label {
-  width: 38px;
-  flex: none;
-  text-align: right;
-  color: var(--vx-text-dim);
-  font-size: 9.5px;
-}
-
-.vx-ov-row-track {
-  flex: 1;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
-}
-
-.vx-ov-row-track i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--vx-chart-6), var(--vx-chart-1));
-  transition: width 0.6s var(--vx-ease);
-}
-
-.vx-ov-row-value { width: 22px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
-
-.vx-ov-row-foot {
-  margin-top: 3px;
-  padding-top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--vx-border) 55%, transparent);
-  font-size: 9.5px;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-codes { display: flex; align-items: flex-end; gap: 8px; height: 96px; margin-top: 8px; }
-
-.vx-ov-code { display: flex; flex: 1; height: 100%; flex-direction: column; align-items: center; gap: 3px; }
-
-.vx-ov-code-num { font-size: 9px; color: var(--vx-text-faint); font-variant-numeric: tabular-nums; }
-
-.vx-ov-code-track {
-  display: flex;
-  width: 100%;
-  flex: 1;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.vx-ov-code-track i {
-  display: block;
-  width: 100%;
-  max-width: 26px;
-  border-radius: 3px 3px 0 0;
-  opacity: 0.85;
-  transition: height 0.6s var(--vx-ease);
-}
-
-.vx-ov-code-label { font-family: var(--vx-mono); font-size: 9px; }
-
-.vx-ov-sys { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.vx-ov-sys { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
 
 .vx-ov-sys li {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 5px 9px;
   border: 1px solid var(--vx-border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--vx-surface) 50%, transparent);
+  background: color-mix(in srgb, var(--vx-surface) 52%, transparent);
   font-size: 10px;
   color: var(--vx-text-dim);
 }
 
-.vx-ov-sys li b { font-family: var(--vx-mono); font-size: 10px; color: var(--vx-text); font-weight: 600; }
+.vx-ov-sys li b { font-family: var(--vx-mono); font-size: 10px; font-weight: 600; color: var(--vx-text); }
 .vx-ov-sys li b[data-on="1"] { color: var(--vx-chart-3); }
+.vx-ov-ellipsis { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-@media (max-width: 900px) {
-  .vx-ov-split { grid-template-columns: 1fr; }
+/* \u2500\u2500 \u901A\u7528\u72B6\u6001 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+.vx-ov-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 22px 0;
+  color: var(--vx-text-faint);
+  font-size: 10.5px;
 }
 
+.vx-ov-empty svg { opacity: 0.45; }
+
+.vx-ov-muted { color: var(--vx-text-faint); }
+
+.vx-ov-skeleton {
+  height: 100%;
+  min-height: 140px;
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--vx-text) 4%, transparent) 25%,
+    color-mix(in srgb, var(--vx-text) 9%, transparent) 40%,
+    color-mix(in srgb, var(--vx-text) 4%, transparent) 55%
+  );
+  background-size: 300% 100%;
+  animation: vx-ov-shimmer 1.5s var(--vx-ease) infinite;
+}
+
+.vx-ov-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--vx-chart-5) 32%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--vx-chart-5) 8%, transparent);
+  font-size: 10.5px;
+  color: var(--vx-text);
+}
+
+.vx-ov-error button {
+  margin-left: auto;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--vx-chart-5) 38%, transparent);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--vx-text);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vx-ov-error button:focus-visible { outline: 2px solid var(--vx-accent); outline-offset: 1px; }
+
+@media (max-width: 1180px) {
+  .vx-ov-span-4 { grid-column: span 6; }
+  .vx-ov-span-8 { grid-column: span 12; }
+  .vx-ov-token { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+  .vx-ov-page { padding: 14px 14px 32px; }
+  .vx-ov-toolbar { margin: 0 -14px; padding: 8px 14px 10px; }
+  .vx-ov-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vx-ov-span-4,
+  .vx-ov-span-6,
+  .vx-ov-span-8 { grid-column: span 12; }
+}
 /* \u2500\u2500 motion \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-@keyframes vx-ov-grow {
-  from { transform: scaleY(0.03); opacity: 0.2; }
-  to { transform: scaleY(1); opacity: 1; }
+@keyframes vx-ov-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vx-ov-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -60% 0; }
 }
 
 @keyframes vx-card-in {
@@ -958,12 +1231,15 @@ body[data-ds-dark-theme] {
   .vx-card { animation: none; }
   .vx-loading::before { animation: none; }
   .vx-chip--action,
-  .vx-seg > button { transition: none; }
-  .vx-ov-bar { animation: none; }
-  .vx-ov-icon svg,
+  .vx-seg > button,
+  .vx-ov-seg-thumb,
+  .vx-ov-stat,
+  .vx-ov-arc,
   .vx-ov-meter-track i,
-  .vx-ov-row-track i,
-  .vx-ov-code-track i { transition: none; }
+  .vx-ov-hbar-track i,
+  .vx-ov-heat-cell { transition: none; }
+  .vx-ov-draw,
+  .vx-ov-skeleton { animation: none; }
 }
 `;
 function installStyles(doc = document) {
@@ -1025,11 +1301,11 @@ async function loadOverview(signal) {
   const settled = await Promise.allSettled([
     getJson("/api/tasks", signal),
     getJson("/api/exploration/findings/stats", signal),
-    getJson("/api/exploration/findings?page=1&limit=24", signal),
+    getJson("/api/exploration/findings?page=1&limit=60", signal),
     getJson("/api/assets/counts", signal),
-    getJson("/api/tokens/daily?days=90", signal),
-    getJson("/api/traffic?page=0&size=60", signal),
-    getJson("/api/exploration/activity?limit=12", signal),
+    getJson("/api/tokens/daily?days=365", signal),
+    getJson("/api/traffic?page=0&size=120", signal),
+    getJson("/api/exploration/activity?limit=14", signal),
     getJson("/api/settings", signal),
     getJson("/api/agents", signal),
     getJson("/api/mcp", signal),
@@ -1085,7 +1361,6 @@ function useOverview(intervalMs) {
   const [error, setError] = (0, import_react.useState)("");
   const [nonce, setNonce] = (0, import_react.useState)(0);
   (0, import_react.useEffect)(() => {
-    if (intervalMs <= 0) return;
     const controller = new AbortController();
     let alive = true;
     let busy = false;
@@ -1121,34 +1396,19 @@ function useOverview(intervalMs) {
   return { data, error, reload: () => setNonce((value) => value + 1) };
 }
 var pad2 = (value) => value < 10 ? `0${value}` : String(value);
-function buildTrend(daily, days) {
-  const byDay = /* @__PURE__ */ new Map();
-  for (const row of daily) {
-    const key = String(row.day ?? "");
-    if (key === "") continue;
-    byDay.set(key, {
-      day: key,
-      input: Number(row.input_tokens ?? 0),
-      output: Number(row.output_tokens ?? 0),
-      cache: Number(row.cache_read_tokens ?? 0)
-    });
-  }
-  const out = [];
-  const now = /* @__PURE__ */ new Date();
-  for (let index = days - 1; index >= 0; index -= 1) {
-    const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    cursor.setUTCDate(cursor.getUTCDate() - index);
-    const key = `${cursor.getUTCFullYear()}-${pad2(cursor.getUTCMonth() + 1)}-${pad2(cursor.getUTCDate())}`;
-    out.push(byDay.get(key) ?? { day: key, input: 0, output: 0, cache: 0 });
-  }
-  return out;
-}
 function fmtNum(value) {
   if (!Number.isFinite(value)) return "\u2014";
   const abs = Math.abs(value);
   if (abs >= 1e6) return `${(value / 1e6).toFixed(abs >= 1e7 ? 0 : 1)}M`;
   if (abs >= 1e3) return `${(value / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
   return String(Math.round(value));
+}
+function fmtInt(value) {
+  return Number.isFinite(value) ? Math.round(value).toLocaleString("zh-CN") : "\u2014";
+}
+function fmtPct(value, digits = 1) {
+  if (!Number.isFinite(value)) return "\u2014";
+  return `${value.toFixed(digits)}%`;
 }
 function fmtRel(ts) {
   if (ts === void 0 || ts === null || ts === "") return "\u2014";
@@ -1160,11 +1420,12 @@ function fmtRel(ts) {
   if (minutes < 60) return `${minutes}m \u524D`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h \u524D`;
-  return `${Math.floor(hours / 24)}d \u524D`;
+  const days = Math.floor(hours / 24);
+  return days < 30 ? `${days}d \u524D` : `${Math.floor(days / 30)}mo \u524D`;
 }
-function clockLabel(ms) {
-  if (ms === 0) return "\u540C\u6B65\u4E2D\u2026";
-  return `\u66F4\u65B0\u4E8E ${new Date(ms).toLocaleTimeString("zh-CN", { hour12: false })}`;
+function deltaOf(current, previous) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) return null;
+  return (current - previous) / previous * 100;
 }
 var ASSET_LABELS = {
   root_domain: "\u6839\u57DF\u540D",
@@ -1180,6 +1441,25 @@ var SEVERITY_META = [
   { key: "medium", label: "\u4E2D\u5371", tone: "var(--vx-chart-1)" },
   { key: "low", label: "\u4F4E\u5371", tone: "var(--vx-chart-3)" }
 ];
+var STATUS_LABELS = {
+  pending: "\u5F85\u5904\u7406",
+  in_progress: "\u5904\u7406\u4E2D",
+  confirmed: "\u5DF2\u786E\u8BA4",
+  resolved: "\u5DF2\u89E3\u51B3",
+  fixed: "\u5DF2\u4FEE\u590D",
+  false_positive: "\u8BEF\u62A5",
+  ignored: "\u5FFD\u7565",
+  duplicate: "\u91CD\u590D",
+  risk_accepted: "\u63A5\u53D7\u98CE\u9669"
+};
+var TASK_STATUS = {
+  created: { label: "\u5F85\u542F\u52A8", tone: "var(--vx-text-faint)" },
+  queued: { label: "\u6392\u961F", tone: "var(--vx-chart-2)" },
+  running: { label: "\u8FD0\u884C\u4E2D", tone: "var(--vx-chart-1)" },
+  paused: { label: "\u5DF2\u6682\u505C", tone: "var(--vx-chart-4)" },
+  done: { label: "\u5DF2\u5B8C\u6210", tone: "var(--vx-chart-3)" },
+  failed: { label: "\u5931\u8D25", tone: "var(--vx-chart-5)" }
+};
 function useWidth() {
   const [width, setWidth] = (0, import_react.useState)(0);
   const observer = (0, import_react.useRef)(null);
@@ -1207,214 +1487,25 @@ function niceMax(value) {
   const step = ratio <= 1 ? 1 : ratio <= 2 ? 2 : ratio <= 2.5 ? 2.5 : ratio <= 5 ? 5 : 10;
   return step * magnitude;
 }
-function topRoundedPath(x, top, width, height, radius) {
-  const r = Math.max(0, Math.min(radius, width / 2, height));
-  const bottom = top + height;
-  return [
-    `M${x},${bottom}`,
-    `L${x},${top + r}`,
-    `Q${x},${top} ${x + r},${top}`,
-    `L${x + width - r},${top}`,
-    `Q${x + width},${top} ${x + width},${top + r}`,
-    `L${x + width},${bottom}`,
-    "Z"
-  ].join(" ");
-}
-var trendSeries = [
-  { key: "input", label: "\u8F93\u5165", color: "var(--vx-chart-1)" },
-  { key: "output", label: "\u8F93\u51FA", color: "var(--vx-chart-2)" },
-  { key: "cache", label: "\u7F13\u5B58\u8BFB", color: "var(--vx-chart-3)" }
-];
-function TrendChart({ points, height }) {
-  const [ref, width] = useWidth();
-  const [hover, setHover] = (0, import_react.useState)(null);
-  const uid = (0, import_react.useId)().replace(/:/g, "");
-  const w = Math.max(width, 260);
-  const pad = { top: 10, right: 6, bottom: 16, left: 32 };
-  const plotW = Math.max(w - pad.left - pad.right, 20);
-  const plotH = Math.max(height - pad.top - pad.bottom, 20);
-  const max = niceMax(
-    points.reduce((high, point) => Math.max(high, point.input + point.output + point.cache), 0)
-  );
-  const slot = plotW / Math.max(points.length, 1);
-  const barW = Math.max(2, Math.min(18, slot * 0.58));
-  const baseY = pad.top + plotH;
-  const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
-  const labelStep = Math.max(1, Math.ceil(points.length / 6));
-  const active = hover !== null ? points[hover] : void 0;
-  const tipLeft = hover !== null ? Math.min(Math.max(pad.left + slot * hover + slot / 2, 74), w - 74) : 0;
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-plot", ref, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: w, height, role: "img", "aria-label": "\u6BCF\u65E5 Token \u6D88\u8017\u5806\u53E0\u67F1\u72B6\u56FE", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: trendSeries.map((series) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-${series.key}`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: series.color, stopOpacity: 0.95 } }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: series.color, stopOpacity: 0.42 } })
-      ] }, series.key)) }),
-      ticks.map((ratio) => {
-        const y = pad.top + plotH * (1 - ratio);
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "line",
-            {
-              x1: pad.left,
-              x2: pad.left + plotW,
-              y1: y,
-              y2: y,
-              stroke: "var(--vx-chart-grid)",
-              strokeDasharray: ratio === 0 ? void 0 : "1 4"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: pad.left - 6, y: y + 3, textAnchor: "end", className: "vx-ov-axis", children: fmtNum(max * ratio) })
-        ] }, ratio);
-      }),
-      points.map((point, index) => {
-        const stack = [
-          { key: "input", value: point.input },
-          { key: "output", value: point.output },
-          { key: "cache", value: point.cache }
-        ];
-        let cursor = baseY;
-        const topIndex = stack.reduce((top, item, itemIndex) => item.value > 0 ? itemIndex : top, -1);
-        const x = pad.left + slot * index + (slot - barW) / 2;
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { className: "vx-ov-bar", style: { animationDelay: `${Math.min(index * 12, 220)}ms` }, children: stack.map((item, itemIndex) => {
-          const h2 = max > 0 ? item.value / max * plotH : 0;
-          if (h2 <= 0) return null;
-          cursor -= h2;
-          return itemIndex === topIndex ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "path",
-            {
-              d: topRoundedPath(x, cursor, barW, h2, 3),
-              fill: `url(#${uid}-${item.key})`
-            },
-            item.key
-          ) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-            "rect",
-            {
-              x,
-              y: cursor,
-              width: barW,
-              height: h2,
-              fill: `url(#${uid}-${item.key})`
-            },
-            item.key
-          );
-        }) }, point.day);
-      }),
-      points.map((point, index) => {
-        const last = index === points.length - 1;
-        if (!last && index % labelStep !== 0) return null;
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "text",
-          {
-            x: pad.left + slot * index + (last ? slot - 2 : slot / 2),
-            y: height - 4,
-            textAnchor: last ? "end" : index === 0 ? "start" : "middle",
-            className: "vx-ov-axis",
-            children: point.day.slice(5)
-          },
-          `label-${point.day}`
-        );
-      }),
-      hover !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "line",
-        {
-          x1: pad.left + slot * hover + slot / 2,
-          x2: pad.left + slot * hover + slot / 2,
-          y1: pad.top,
-          y2: baseY,
-          stroke: "var(--vx-chart-1)",
-          strokeOpacity: "0.45",
-          strokeDasharray: "3 3"
-        }
-      ),
-      points.map((point, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "rect",
-        {
-          x: pad.left + slot * index,
-          y: pad.top,
-          width: slot,
-          height: plotH,
-          fill: "transparent",
-          onPointerEnter: () => {
-            setHover(index);
-          },
-          onPointerLeave: () => {
-            setHover((current) => current === index ? null : current);
-          }
-        },
-        `hit-${point.day}`
-      ))
-    ] }),
-    active !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip", style: { left: tipLeft, top: 2 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-tip-day", children: active.day }),
-      trendSeries.map((series) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: series.color } }),
-          series.label
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(active[series.key]) })
-      ] }, series.key)),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip-row vx-ov-tip-total", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5408\u8BA1" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(active.input + active.output + active.cache) })
-      ] })
-    ] })
-  ] });
-}
-function Spark({ values, height = 16 }) {
-  const uid = (0, import_react.useId)().replace(/:/g, "");
-  const w = 74;
-  const h2 = 24;
-  const data = values.length > 1 ? values : [0, 0];
-  const max = Math.max(...data, 1);
-  const step = w / (data.length - 1);
-  const points = data.map((value, index) => [index * step, h2 - 2 - value / max * (h2 - 5)]);
-  const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(" ");
-  const area = `${line} L${w},${h2} L0,${h2} Z`;
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-    "svg",
-    {
-      className: "vx-ov-spark",
-      width: "100%",
-      height,
-      viewBox: `0 0 ${w} ${h2}`,
-      preserveAspectRatio: "none",
-      "aria-hidden": "true",
-      children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-spark`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0.34 } }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0 } })
-        ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: area, fill: `url(#${uid}-spark)` }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: line, fill: "none", stroke: "var(--vx-tone, var(--vx-chart-1))", strokeWidth: "1.4", strokeLinejoin: "round", strokeLinecap: "round" })
-      ]
-    }
-  );
-}
-function AssetRows({ rows, total }) {
-  if (rows.length === 0) return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-empty", children: "\u6682\u65E0\u8D44\u4EA7\u6570\u636E" });
-  const max = rows[0]?.[1] ?? 1;
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-rows", children: [
-    rows.map(([type, count]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-row", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-row-label", children: ASSET_LABELS[type] ?? type }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-row-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${Math.max(count / Math.max(max, 1) * 100, 3)}%` } }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-row-value", children: count })
-    ] }, type)),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-row-foot", children: [
-      "\u5171 ",
-      total,
-      " \u4E2A\u8282\u70B9"
-    ] })
-  ] });
-}
-function StatusBars({ codes }) {
-  if (codes.length === 0) return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-empty", children: "\u6682\u65E0\u6D41\u91CF\u6570\u636E" });
-  const max = Math.max(...codes.map((item) => item.count), 1);
-  const tone = (code) => code < 300 ? "var(--vx-chart-3)" : code < 400 ? "var(--vx-chart-1)" : code < 500 ? "var(--vx-chart-4)" : "var(--vx-chart-5)";
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-codes", children: codes.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-code", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-code-num", children: item.count }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-code-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { height: `${Math.max(item.count / max * 100, 6)}%`, background: tone(item.code) } }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-code-label", style: { color: tone(item.code) }, children: item.code })
-  ] }, item.code)) });
+function smoothPath(points) {
+  if (points.length === 0) return "";
+  const first = points[0];
+  if (first === void 0) return "";
+  if (points.length === 1) return `M${first[0]},${first[1]}`;
+  let d = `M${first[0]},${first[1]}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    if (p1 === void 0 || p2 === void 0) break;
+    const p0 = points[index - 1] ?? p1;
+    const p3 = points[index + 2] ?? p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+  }
+  return d;
 }
 var ICON_PATHS = {
   gauge: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -1448,11 +1539,15 @@ var ICON_PATHS = {
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "8.5" }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 7.5V12l3 2" })
   ] }),
-  chevron: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m6 9 6 6 6-6" }),
-  refresh: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M20 12a8 8 0 1 1-2.6-5.9" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M20 4v4h-4" })
-  ] })
+  calendar: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { x: "3.5", y: "5", width: "17", height: "15.5", rx: "2.4" }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M8 3v4M16 3v4M3.5 10h17" })
+  ] }),
+  arrowUp: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 19V5m0 0-5.5 5.5M12 5l5.5 5.5" }),
+  arrowDown: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 5v14m0 0 5.5-5.5M12 19l-5.5-5.5" }),
+  minus: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M5 12h14" }),
+  layers: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 3 3 7.5l9 4.5 9-4.5L12 3ZM3 12.5 12 17l9-4.5M3 17 12 21.5 21 17" }),
+  flame: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 3c3.5 4 6 6.4 6 10a6 6 0 0 1-12 0c0-2.2 1.2-3.9 3-5.6.4 1.6 1.3 2.4 2.4 2.6C11 8.4 11.2 5.6 12 3Z" })
 };
 function Icon({ name, size = 14 }) {
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -1471,105 +1566,575 @@ function Icon({ name, size = 14 }) {
     }
   );
 }
-function Kpi({
+function Segmented({
+  value,
+  options,
+  onChange
+}) {
+  const index = Math.max(0, options.findIndex((option) => option.key === value));
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-seg", role: "group", "aria-label": "\u7EDF\u8BA1\u8303\u56F4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "span",
+      {
+        className: "vx-ov-seg-thumb",
+        style: { width: `calc((100% - 6px) / ${options.length})`, transform: `translateX(${index * 100}%)` },
+        "aria-hidden": "true"
+      }
+    ),
+    options.map((option) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      "button",
+      {
+        type: "button",
+        "aria-pressed": option.key === value,
+        onClick: () => {
+          onChange(option.key);
+        },
+        children: option.label
+      },
+      option.key
+    ))
+  ] });
+}
+function Delta({ value, suffix }) {
+  if (value === null) return null;
+  const dir = value > 0.05 ? "up" : value < -0.05 ? "down" : "flat";
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-delta", "data-dir": dir, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: dir === "up" ? "arrowUp" : dir === "down" ? "arrowDown" : "minus", size: 11 }),
+    fmtPct(Math.abs(value)),
+    suffix !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: suffix }) : null
+  ] });
+}
+function Spark({ values, height = 16 }) {
+  const uid = (0, import_react.useId)().replace(/:/g, "");
+  const w = 74;
+  const h2 = 24;
+  const data = values.length > 1 ? values : [0, 0];
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1);
+  const points = data.map((value, index) => [index * step, h2 - 2 - value / max * (h2 - 5)]);
+  const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${w},${h2} L0,${h2} Z`;
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "svg",
+    {
+      className: "vx-ov-spark",
+      width: "100%",
+      height,
+      viewBox: `0 0 ${w} ${h2}`,
+      preserveAspectRatio: "none",
+      "aria-hidden": "true",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-spark`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0.32 } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0 } })
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: area, fill: `url(#${uid}-spark)` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "path",
+          {
+            d: line,
+            fill: "none",
+            stroke: "var(--vx-tone, var(--vx-chart-1))",
+            strokeWidth: "1.4",
+            strokeLinejoin: "round",
+            strokeLinecap: "round"
+          }
+        )
+      ]
+    }
+  );
+}
+function AreaChart({ points, height }) {
+  const [ref, width] = useWidth();
+  const [hover, setHover] = (0, import_react.useState)(null);
+  const uid = (0, import_react.useId)().replace(/:/g, "");
+  const w = Math.max(width, 300);
+  const pad = { top: 14, right: 10, bottom: 20, left: 40 };
+  const plotW = Math.max(w - pad.left - pad.right, 40);
+  const plotH = Math.max(height - pad.top - pad.bottom, 40);
+  const max = niceMax(points.reduce((high, point) => Math.max(high, point.total, point.prev), 0));
+  const x = (index) => pad.left + (points.length <= 1 ? plotW / 2 : plotW * index / (points.length - 1));
+  const y = (value) => pad.top + plotH - value / max * plotH;
+  const current = points.map((point, index) => [x(index), y(point.total)]);
+  const previous = points.map((point, index) => [x(index), y(point.prev)]);
+  const line = smoothPath(current);
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${(pad.top + plotH).toFixed(1)} L${pad.left},${(pad.top + plotH).toFixed(1)} Z`;
+  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const labelStep = Math.max(1, Math.ceil(points.length / 6));
+  const active = hover !== null ? points[hover] : void 0;
+  const tipLeft = hover !== null ? Math.min(Math.max(x(hover), 84), w - 84) : 0;
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-plot", ref, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: w, height, role: "img", "aria-label": "\u6BCF\u65E5 Token \u6D88\u8017\u8D8B\u52BF", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("defs", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-fill`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-chart-1)", stopOpacity: 0.32 } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "70%", style: { stopColor: "var(--vx-chart-1)", stopOpacity: 0.06 } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-chart-1)", stopOpacity: 0 } })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-stroke`, x1: "0", y1: "0", x2: "1", y2: "0", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-chart-1)" } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-chart-2)" } })
+        ] })
+      ] }),
+      ticks.map((ratio) => {
+        const ty = pad.top + plotH * (1 - ratio);
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "line",
+            {
+              x1: pad.left,
+              x2: pad.left + plotW,
+              y1: ty,
+              y2: ty,
+              stroke: "var(--vx-chart-grid)",
+              strokeDasharray: ratio === 0 ? void 0 : "1 4"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { x: pad.left - 8, y: ty + 3, textAnchor: "end", className: "vx-ov-axis", children: fmtNum(max * ratio) })
+        ] }, ratio);
+      }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: area, fill: `url(#${uid}-fill)` }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "path",
+        {
+          d: smoothPath(previous),
+          fill: "none",
+          stroke: "var(--vx-chart-6)",
+          strokeWidth: "1.2",
+          strokeDasharray: "4 4",
+          strokeOpacity: "0.55"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "path",
+        {
+          d: line,
+          fill: "none",
+          stroke: `url(#${uid}-stroke)`,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          className: "vx-ov-draw"
+        }
+      ),
+      points.map((point, index) => {
+        const last = index === points.length - 1;
+        if (!last && index % labelStep !== 0) return null;
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "text",
+          {
+            x: x(index),
+            y: height - 5,
+            textAnchor: last ? "end" : index === 0 ? "start" : "middle",
+            className: "vx-ov-axis",
+            children: point.day.slice(5)
+          },
+          `x-${point.day}`
+        );
+      }),
+      hover !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "line",
+          {
+            x1: x(hover),
+            x2: x(hover),
+            y1: pad.top,
+            y2: pad.top + plotH,
+            stroke: "var(--vx-chart-1)",
+            strokeOpacity: "0.4",
+            strokeDasharray: "3 3"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "circle",
+          {
+            cx: x(hover),
+            cy: y(points[hover]?.total ?? 0),
+            r: "3.4",
+            fill: "var(--vx-chart-1)",
+            stroke: "var(--vx-surface)",
+            strokeWidth: "1.6"
+          }
+        )
+      ] }),
+      points.map((point, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "rect",
+        {
+          x: x(index) - plotW / Math.max(points.length, 1) / 2,
+          y: pad.top,
+          width: plotW / Math.max(points.length, 1),
+          height: plotH,
+          fill: "transparent",
+          onPointerEnter: () => {
+            setHover(index);
+          },
+          onPointerLeave: () => {
+            setHover((value) => value === index ? null : value);
+          }
+        },
+        `hit-${point.day}`
+      ))
+    ] }),
+    active !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip", style: { left: tipLeft, top: 2 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-tip-day", children: active.day }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-1)" } }),
+          "\u672C\u671F"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(active.total) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-6)" } }),
+          "\u4E0A\u671F"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(active.prev) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-tip-row vx-ov-tip-total", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-3)" } }),
+          "\u7F13\u5B58"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(active.cache) })
+      ] })
+    ] })
+  ] });
+}
+function Donut({
+  segments,
+  size = 128,
+  thickness = 12,
+  center,
+  caption
+}) {
+  const radius = (size - thickness) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  let offset = 0;
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-donut", style: { width: size, height: size }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: size / 2, cy: size / 2, r: radius, fill: "none", stroke: "var(--vx-chart-grid)", strokeWidth: thickness }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { transform: `rotate(-90 ${size / 2} ${size / 2})`, children: segments.map((segment) => {
+        const length = total > 0 ? segment.value / total * circumference : 0;
+        const drawn = Math.max(length - 2.5, 0);
+        const node = length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "circle",
+          {
+            cx: size / 2,
+            cy: size / 2,
+            r: radius,
+            fill: "none",
+            stroke: segment.tone,
+            strokeWidth: thickness,
+            strokeLinecap: "round",
+            strokeDasharray: `${drawn} ${circumference - drawn}`,
+            strokeDashoffset: -offset,
+            className: "vx-ov-arc"
+          },
+          segment.label
+        ) : null;
+        offset += length;
+        return node;
+      }) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-donut-center", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: center }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: caption })
+    ] })
+  ] });
+}
+function Ring({ value, label, caption, size = 92 }) {
+  const uid = (0, import_react.useId)().replace(/:/g, "");
+  const thickness = 9;
+  const radius = (size - thickness) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const ratio = Math.max(0, Math.min(1, value / 100));
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-ring", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-ring-box", style: { width: size, height: size }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-ring`, x1: "0", y1: "0", x2: "1", y2: "1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-chart-3)" } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-chart-1)" } })
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: size / 2, cy: size / 2, r: radius, fill: "none", stroke: "var(--vx-chart-grid)", strokeWidth: thickness }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "circle",
+          {
+            cx: size / 2,
+            cy: size / 2,
+            r: radius,
+            fill: "none",
+            stroke: `url(#${uid}-ring)`,
+            strokeWidth: thickness,
+            strokeLinecap: "round",
+            strokeDasharray: `${circumference * ratio} ${circumference}`,
+            transform: `rotate(-90 ${size / 2} ${size / 2})`,
+            className: "vx-ov-arc"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-ring-value", children: fmtPct(value, 0) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-ring-label", children: label }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-ring-caption", children: caption })
+  ] });
+}
+function HBars({ rows }) {
+  if (rows.length === 0) return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u6570\u636E" });
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-hbars", children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-hbar", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-hbar-label", children: row.label }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-hbar-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${Math.max(row.value / max * 100, 3)}%`, background: row.tone ?? "var(--vx-chart-6)" } }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-hbar-value", children: fmtInt(row.value) }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-hbar-pct", children: total > 0 ? fmtPct(row.value / total * 100, 0) : "\u2014" })
+  ] }, row.label)) });
+}
+function Heatmap({ days }) {
+  const max = Math.max(...days.map((item) => item.value), 1);
+  const cells = [...days];
+  while (cells.length % 7 !== 0) cells.unshift({ day: "", value: -1 });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-heat-wrap", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-heat", children: cells.map((cell, index) => {
+      const ratio = cell.value < 0 ? -1 : cell.value / max;
+      const level = ratio < 0 ? "pad" : ratio === 0 ? "0" : ratio < 0.25 ? "1" : ratio < 0.5 ? "2" : ratio < 0.75 ? "3" : "4";
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "span",
+        {
+          className: "vx-ov-heat-cell",
+          "data-level": level,
+          title: cell.value < 0 ? "" : `${cell.day} \xB7 ${fmtNum(cell.value)} tokens`
+        },
+        `${cell.day}-${index}`
+      );
+    }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-heat-legend", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5C11" }),
+      ["0", "1", "2", "3", "4"].map((level) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { "data-level": level }, level)),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u591A" })
+    ] })
+  ] });
+}
+function CodeBar({ codes, total }) {
+  if (total <= 0) return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-codebar vx-ov-codebar--empty" });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-codebar", children: codes.map((code) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { flexGrow: Math.max(code.value, 0.01), background: code.tone }, title: `${code.label} \xB7 ${code.value}` }, code.label)) });
+}
+function Empty({ label }) {
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-empty", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "layers", size: 18 }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: label })
+  ] });
+}
+function Section({
+  span = 12,
+  icon,
+  title,
+  caption,
+  action,
+  children
+}) {
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: `vx-ov-card vx-ov-span-${span}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "vx-ov-h", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: icon, size: 13 }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: title }),
+      caption !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-sub", children: caption }) : null,
+      action !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-h-action", children: action }) : null
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-card-body", children })
+  ] });
+}
+function Stat({
   tone,
   icon,
   label,
   value,
   unit,
-  detail,
-  spark
+  delta,
+  spark,
+  band,
+  footer
 }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `vx-ov-kpi vx-ov-tone-${tone}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-kpi-top", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: icon, size: 13 }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: label })
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `vx-ov-stat vx-ov-tone-${tone}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-stat-top", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-stat-icon", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: icon, size: 13 }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-stat-label", children: label }),
+      delta !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Delta, { value: delta, suffix: "\u73AF\u6BD4" }) : null
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-kpi-mid", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-num", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-stat-value", children: [
       value,
-      unit !== void 0 && unit !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: unit }) : null
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-kpi-foot", children: detail }),
-    spark !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spark, { values: spark }) : null
+      unit !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: unit }) : null
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-stat-foot", children: footer }),
+    spark !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spark, { values: spark }) : null,
+    band !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-stat-band", children: band }) : null
   ] });
 }
-function SeverityChips({ counts }) {
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chips", children: SEVERITY_META.map((meta) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: meta.tone }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: meta.tone } }),
-    meta.label,
-    " ",
-    counts[meta.key]
-  ] }, meta.key)) });
+var RANGES = [
+  { key: "7", days: 7, label: "7 \u5929" },
+  { key: "30", days: 30, label: "30 \u5929" },
+  { key: "90", days: 90, label: "90 \u5929" }
+];
+function dateKey(ago) {
+  const now = /* @__PURE__ */ new Date();
+  const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  cursor.setUTCDate(cursor.getUTCDate() - ago);
+  return `${cursor.getUTCFullYear()}-${pad2(cursor.getUTCMonth() + 1)}-${pad2(cursor.getUTCDate())}`;
 }
-function StatusPill({ status }) {
-  const tone = status === "running" ? "blue" : status === "paused" ? "amber" : status === "done" ? "green" : status === "failed" ? "red" : "muted";
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `vx-ov-pill vx-ov-pill--${tone}`, children: status === "" ? "\u2014" : status });
+function buildRange(daily, days) {
+  const map = /* @__PURE__ */ new Map();
+  for (const row of daily) {
+    const key = String(row.day ?? "");
+    if (key !== "") map.set(key, row);
+  }
+  const out = [];
+  for (let ago = days - 1; ago >= 0; ago -= 1) {
+    const day = dateKey(ago);
+    const previous = map.get(dateKey(ago + days));
+    const current = map.get(day);
+    const input = Number(current?.input_tokens ?? 0);
+    const output = Number(current?.output_tokens ?? 0);
+    const cache = Number(current?.cache_read_tokens ?? 0);
+    const prevInput = Number(previous?.input_tokens ?? 0);
+    const prevOutput = Number(previous?.output_tokens ?? 0);
+    out.push({ day, input, output, cache, total: input + output, prev: prevInput + prevOutput });
+  }
+  return out;
 }
-function WorkerChip({ worker }) {
-  const tone = worker === "planner" ? "violet" : worker === "mainagent" ? "blue" : "green";
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `vx-ov-worker vx-ov-tone-${tone}`, children: worker === "" ? "agent" : worker });
+var CODE_TONES = [
+  { bucket: 2, label: "2xx", tone: "var(--vx-chart-3)" },
+  { bucket: 3, label: "3xx", tone: "var(--vx-chart-1)" },
+  { bucket: 4, label: "4xx", tone: "var(--vx-chart-4)" },
+  { bucket: 5, label: "5xx", tone: "var(--vx-chart-5)" }
+];
+function derive(data, days) {
+  const cutoff = Date.now() / 1e3 - days * 86400;
+  const prevCutoff = cutoff - days * 86400;
+  const counts = { created: 0, queued: 0, running: 0, paused: 0, done: 0, failed: 0 };
+  let goalsMet = 0;
+  let goalsTotal = 0;
+  let created = 0;
+  let createdPrev = 0;
+  const throughput = new Array(days).fill(0);
+  for (const task of data.tasks) {
+    const status = task.status ?? "";
+    if (status === "created") counts.created += 1;
+    else if (status === "queued") counts.queued += 1;
+    else if (status === "running") counts.running += 1;
+    else if (status === "paused") counts.paused += 1;
+    else if (status === "done") counts.done += 1;
+    else if (status === "failed") counts.failed += 1;
+    goalsMet += Number(task.goals_met ?? 0);
+    goalsTotal += Number(task.goals_total ?? 0);
+    const createdUnix = Number(task.created_unix ?? 0);
+    if (createdUnix >= cutoff) {
+      created += 1;
+      const index = days - 1 - Math.min(days - 1, Math.floor((Date.now() / 1e3 - createdUnix) / 86400));
+      throughput[index] = (throughput[index] ?? 0) + 1;
+    } else if (createdUnix >= prevCutoff) {
+      createdPrev += 1;
+    }
+  }
+  const trend = buildRange(data.daily, days);
+  const tokens = trend.reduce(
+    (acc, point) => ({
+      input: acc.input + point.input,
+      output: acc.output + point.output,
+      cache: acc.cache + point.cache,
+      total: acc.total + point.total,
+      prev: acc.prev + point.prev
+    }),
+    { input: 0, output: 0, cache: 0, total: 0, prev: 0 }
+  );
+  const cacheRate = tokens.input > 0 ? tokens.cache / tokens.input * 100 : 0;
+  const peak = trend.reduce(
+    (best, point) => point.total > best.value ? { day: point.day, value: point.total } : best,
+    { day: trend[0]?.day ?? "\u2014", value: 0 }
+  );
+  const sevTotal = data.stats.critical + data.stats.high + data.stats.medium + data.stats.low;
+  const vulnCounts = /* @__PURE__ */ new Map();
+  const statusCounts = /* @__PURE__ */ new Map();
+  for (const finding of data.findings) {
+    const vuln = finding.vulnclass ?? "\u672A\u5206\u7C7B";
+    vulnCounts.set(vuln, (vulnCounts.get(vuln) ?? 0) + 1);
+    const status = finding.status ?? "unknown";
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+  }
+  const vulnTop = [...vulnCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 6).map(([label, value]) => ({ label, value, tone: "var(--vx-chart-2)" }));
+  const statusRows = [...statusCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 6).map(([status, value]) => ({
+    label: STATUS_LABELS[status] ?? status,
+    value,
+    tone: status === "confirmed" || status === "resolved" || status === "fixed" ? "var(--vx-chart-3)" : "var(--vx-chart-1)"
+  }));
+  const codeCounts = /* @__PURE__ */ new Map();
+  const methodCounts = /* @__PURE__ */ new Map();
+  const hostCounts = /* @__PURE__ */ new Map();
+  for (const exchange of data.traffic) {
+    const status = Number(exchange.status ?? 0);
+    if (status > 0) {
+      const bucket = Math.floor(status / 100);
+      codeCounts.set(bucket, (codeCounts.get(bucket) ?? 0) + 1);
+    }
+    const method = String(exchange.method ?? "GET");
+    methodCounts.set(method, (methodCounts.get(method) ?? 0) + 1);
+    const host = String(exchange.host ?? "\u2014");
+    hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1);
+  }
+  const codes = CODE_TONES.map((item) => ({ label: item.label, value: codeCounts.get(item.bucket) ?? 0, tone: item.tone }));
+  const trafficTotal = data.traffic.length;
+  const errorRate = trafficTotal > 0 ? ((codeCounts.get(4) ?? 0) + (codeCounts.get(5) ?? 0)) / trafficTotal * 100 : 0;
+  const assetRows = Object.entries(data.assets).filter(([, value]) => Number(value) > 0).map(([type, value]) => ({ label: ASSET_LABELS[type] ?? type, value: Number(value), tone: "var(--vx-chart-6)" })).sort((left, right) => right.value - left.value).slice(0, 6);
+  const assetTotal = Object.values(data.assets).reduce((sum, value) => sum + Number(value), 0);
+  const heat = buildRange(data.daily, 90).map((point) => ({ day: point.day, value: point.total }));
+  const findingsDaily = new Array(days).fill(0);
+  for (const finding of data.findings) {
+    const stamp = Date.parse(finding.ts ?? "");
+    if (!Number.isFinite(stamp)) continue;
+    const ago = Math.floor((Date.now() - stamp) / 864e5);
+    if (ago >= 0 && ago < days) findingsDaily[days - 1 - ago] = (findingsDaily[days - 1 - ago] ?? 0) + 1;
+  }
+  const recentTasks = [...data.tasks].sort((left, right) => Number(right.last_activity_unix ?? right.created_unix ?? 0) - Number(left.last_activity_unix ?? left.created_unix ?? 0)).slice(0, 7);
+  const findings = [...data.findings].sort((left, right) => (Date.parse(right.ts ?? "") || 0) - (Date.parse(left.ts ?? "") || 0));
+  const activity = [...data.activity].sort((left, right) => Number(right.seq ?? 0) - Number(left.seq ?? 0));
+  return {
+    scopeDays: days,
+    counts,
+    completionRate: data.tasks.length > 0 ? counts.done / data.tasks.length * 100 : 0,
+    goalRate: goalsTotal > 0 ? goalsMet / goalsTotal * 100 : 0,
+    created,
+    createdPrev,
+    throughput,
+    tasks: data.tasks,
+    recentTasks,
+    sev: data.stats,
+    sevHighRate: sevTotal > 0 ? (data.stats.critical + data.stats.high) / sevTotal * 100 : 0,
+    findings,
+    findingsDaily,
+    vulnTop,
+    statusRows,
+    trend,
+    tokens: { ...tokens, cacheRate, dailyAvg: days > 0 ? tokens.total / days : 0, peak },
+    heat,
+    codes,
+    methods: [...methodCounts.entries()].sort((l, r) => r[1] - l[1]).slice(0, 4).map(([label, value]) => ({ label, value, tone: "var(--vx-chart-1)" })),
+    hosts: [...hostCounts.entries()].sort((l, r) => r[1] - l[1]).slice(0, 4).map(([label, value]) => ({ label, value, tone: "var(--vx-chart-2)" })),
+    errorRate,
+    assets: { rows: assetRows, total: assetTotal },
+    activity,
+    sys: data.sys,
+    capture: data.capture
+  };
 }
 function kindLabel(row) {
   if (row.kind === "tool_use") return row.tool !== void 0 && row.tool !== "" ? row.tool : "tool_use";
   return row.kind ?? "activity";
 }
-function derive(data, days) {
-  const counts = { running: 0, paused: 0, done: 0, failed: 0 };
-  for (const task of data.tasks) {
-    const status = task.status ?? "";
-    if (status === "running") counts.running += 1;
-    else if (status === "paused") counts.paused += 1;
-    else if (status === "done") counts.done += 1;
-    else if (status === "failed") counts.failed += 1;
-  }
-  const assetRows = Object.entries(data.assets).filter(([, value]) => Number(value) > 0).map(([type, value]) => [type, Number(value)]).sort((left, right) => right[1] - left[1]).slice(0, 6);
-  const totalAssets = Object.values(data.assets).reduce((sum, value) => sum + Number(value), 0);
-  const trend = buildTrend(data.daily, days);
-  const totals = trend.reduce(
-    (acc, point) => ({ input: acc.input + point.input, output: acc.output + point.output, cache: acc.cache + point.cache }),
-    { input: 0, output: 0, cache: 0 }
-  );
-  const hitRate = totals.input > 0 ? totals.cache / totals.input * 100 : 0;
-  const buckets = /* @__PURE__ */ new Map();
-  for (const exchange of data.traffic) {
-    const status = Number(exchange.status ?? 0);
-    if (status <= 0) continue;
-    const bucket = Math.floor(status / 100) * 100;
-    buckets.set(bucket, (buckets.get(bucket) ?? 0) + 1);
-  }
-  const codes = [...buckets.entries()].sort((left, right) => left[0] - right[0]).map(([code, count]) => ({ code, count }));
-  const createdSeries = trend.map((point) => {
-    const dayStart = Date.parse(`${point.day}T00:00:00Z`) / 1e3;
-    const dayEnd = dayStart + 86400;
-    return data.tasks.filter((task) => {
-      const created = Number(task.created_unix ?? 0);
-      return created >= dayStart && created < dayEnd;
-    }).length;
-  });
-  const findings = [...data.findings].sort((left, right) => (Date.parse(right.ts ?? "") || 0) - (Date.parse(left.ts ?? "") || 0));
-  const activity = [...data.activity].sort((left, right) => Number(right.seq ?? 0) - Number(left.seq ?? 0));
-  return {
-    tasks: data.tasks,
-    counts,
-    totalAssets,
-    assetRows,
-    sev: data.stats,
-    trend,
-    totals,
-    hitRate,
-    codes,
-    createdSeries,
-    findings,
-    activity
-  };
+function WorkerChip({ worker }) {
+  const tone = worker === "planner" ? "violet" : worker === "mainagent" ? "blue" : "green";
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `vx-ov-worker vx-ov-tone-${tone}`, children: worker === "" ? "agent" : worker });
 }
-var RANGES = [
-  { key: "7", days: 7, label: "7\u5929" },
-  { key: "30", days: 30, label: "30\u5929" },
-  { key: "90", days: 90, label: "90\u5929" }
-];
-function rangeLabel(key) {
-  return RANGES.find((item) => item.key === key)?.label ?? key;
+function StatusPill({ status }) {
+  const meta = TASK_STATUS[status];
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-pill", style: meta === void 0 ? void 0 : { color: meta.tone, borderColor: `color-mix(in srgb, ${meta.tone} 38%, transparent)`, background: `color-mix(in srgb, ${meta.tone} 10%, transparent)` }, children: meta?.label ?? (status === "" ? "\u2014" : status) });
 }
 function OverviewPanel() {
   const [rangeKey, setRangeKey] = (0, import_react.useState)(() => {
@@ -1579,32 +2144,27 @@ function OverviewPanel() {
   const days = RANGES.find((item) => item.key === rangeKey)?.days ?? 30;
   const { data, error, reload } = useOverview(9e3);
   const view = (0, import_react.useMemo)(() => derive(data, days), [data, days]);
-  const tokenSpark = view.trend.map((point) => point.input + point.output + point.cache);
-  const recentTasks = [...view.tasks].sort((left, right) => Number(right.last_activity_unix ?? right.created_unix ?? 0) - Number(left.last_activity_unix ?? left.created_unix ?? 0)).slice(0, 6);
+  const loading = data.updated === 0;
+  const tokenSpark = view.trend.map((point) => point.total);
+  const tokenShare = view.tokens.total > 0 ? view.tokens.total : 1;
+  const inputUncached = Math.max(view.tokens.input - view.tokens.cache, 0);
+  const shares = [
+    { label: "\u8F93\u5165\uFF08\u672A\u547D\u4E2D\uFF09", value: inputUncached, tone: "var(--vx-chart-1)" },
+    { label: "\u7F13\u5B58\u547D\u4E2D", value: view.tokens.cache, tone: "var(--vx-chart-3)" },
+    { label: "\u8F93\u51FA", value: view.tokens.output, tone: "var(--vx-chart-2)" }
+  ];
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-page", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", { className: "vx-ov-page-head", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", { children: "\u6982\u89C8" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "\u7CFB\u7EDF\u5168\u5C40\u72B6\u6001 \xB7 \u5B9E\u65F6\u5237\u65B0" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-page-tools", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-seg", role: "group", "aria-label": "\u7EDF\u8BA1\u8303\u56F4", children: RANGES.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "button",
-          {
-            type: "button",
-            "aria-pressed": rangeKey === item.key,
-            onClick: () => {
-              setRangeKey(item.key);
-              storeSet("vexnar.overview.range.page", item.key);
-            },
-            children: item.label
-          },
-          item.key
-        )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-updated", children: clockLabel(data.updated) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", className: "vx-ov-icon", onClick: reload, title: "\u7ACB\u5373\u5237\u65B0", "aria-label": "\u7ACB\u5373\u5237\u65B0", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "refresh", size: 14 }) })
-      ] })
-    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-toolbar", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      Segmented,
+      {
+        value: rangeKey,
+        options: RANGES.map((item) => ({ key: item.key, label: item.label })),
+        onChange: (key) => {
+          setRangeKey(key);
+          storeSet("vexnar.overview.range.page", key);
+        }
+      }
+    ) }),
     error !== "" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-error", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
         "\u6982\u89C8\u6570\u636E\u4E0D\u53EF\u7528\uFF1A",
@@ -1612,26 +2172,31 @@ function OverviewPanel() {
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: reload, children: "\u91CD\u8BD5" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-kpis vx-ov-kpis--page", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-stats", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        Kpi,
+        Stat,
         {
           tone: "blue",
           icon: "target",
-          label: "\u6D3B\u8DC3\u4EFB\u52A1",
+          label: "\u4EFB\u52A1",
           value: String(view.counts.running),
           unit: `/ ${view.tasks.length}`,
-          spark: view.createdSeries,
-          detail: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
-            view.counts.paused > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-4)" }, children: [
-              "\u6682\u505C ",
-              view.counts.paused
+          delta: deltaOf(view.created, view.createdPrev),
+          spark: view.throughput,
+          footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
+            view.counts.created > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
+              "\u5F85\u542F\u52A8 ",
+              view.counts.created
             ] }) : null,
-            view.counts.done > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-3)" }, children: [
+            view.counts.done > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
               "\u5B8C\u6210 ",
               view.counts.done
             ] }) : null,
-            view.counts.failed > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-5)" }, children: [
+            view.counts.paused > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
+              "\u6682\u505C ",
+              view.counts.paused
+            ] }) : null,
+            view.counts.failed > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
               "\u5931\u8D25 ",
               view.counts.failed
             ] }) : null,
@@ -1639,243 +2204,303 @@ function OverviewPanel() {
           ] })
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Kpi, { tone: "red", icon: "bug", label: "\u786E\u8BA4\u53D1\u73B0", value: String(view.sev.total), detail: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SeverityChips, { counts: view.sev }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        Kpi,
+        Stat,
         {
-          tone: "violet",
-          icon: "network",
-          label: "\u8D44\u4EA7\u8282\u70B9",
-          value: String(view.totalAssets),
-          detail: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chips", children: view.assetRows.slice(0, 2).map(([type, count]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-            ASSET_LABELS[type] ?? type,
-            " ",
-            count
-          ] }, type)) })
+          tone: "red",
+          icon: "bug",
+          label: "\u786E\u8BA4\u53D1\u73B0",
+          value: fmtInt(view.sev.total),
+          spark: view.findingsDaily,
+          footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
+            SEVERITY_META.map((meta) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: meta.tone }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: meta.tone } }),
+              meta.label,
+              " ",
+              fmtInt(view.sev[meta.key])
+            ] }, meta.key)),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip vx-ov-chip--muted", children: [
+              "\u9AD8\u5371\u5360\u6BD4 ",
+              fmtPct(view.sevHighRate, 0)
+            ] })
+          ] })
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        Kpi,
+        Stat,
+        {
+          tone: "amber",
+          icon: "zap",
+          label: "Token \u6D88\u8017",
+          value: fmtNum(view.tokens.total),
+          delta: deltaOf(view.tokens.total, view.tokens.prev),
+          spark: tokenSpark,
+          footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
+              "\u65E5\u5747 ",
+              fmtNum(view.tokens.dailyAvg)
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
+              "\u5CF0\u503C ",
+              fmtNum(view.tokens.peak.value)
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
+              "\u7F13\u5B58 ",
+              fmtPct(view.tokens.cacheRate, 0)
+            ] })
+          ] })
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        Stat,
         {
           tone: "green",
           icon: "activity",
           label: "\u6D41\u91CF\u4EA4\u4E92",
-          value: String(data.traffic.length),
-          detail: data.capture ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", style: { color: "var(--vx-chart-3)" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-3)" } }),
-            "\u5F55\u5236\u4E2D"
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: "\u6355\u83B7\u672A\u5F00\u542F" })
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        Kpi,
-        {
-          tone: "amber",
-          icon: "zap",
-          label: `Token\uFF08${rangeLabel(rangeKey)}\uFF09`,
-          value: fmtNum(view.totals.input + view.totals.output),
-          spark: tokenSpark,
-          detail: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
+          value: fmtInt(data.traffic.length),
+          band: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CodeBar, { codes: view.codes, total: data.traffic.length }),
+          footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-chip", children: view.capture ? "\u5F55\u5236\u4E2D" : "\u6355\u83B7\u672A\u5F00\u542F" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u5165 ",
-              fmtNum(view.totals.input)
+              "\u9519\u8BEF ",
+              fmtPct(view.errorRate, 0)
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u7F13\u5B58 ",
-              fmtNum(view.totals.cache)
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chip", children: [
-              "\u51FA ",
-              fmtNum(view.totals.output)
+              "\u8D44\u4EA7 ",
+              fmtInt(view.assets.total)
             ] })
           ] })
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card vx-ov-card--wide", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "zap", size: 13 }),
-        "LLM Token \u6D88\u8017",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-legend", children: trendSeries.map((series) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: series.color } }),
-          series.label
-        ] }, series.key)) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-split", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-metrics", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-metric-total", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5408\u8BA1\uFF08\u8F93\u5165+\u8F93\u51FA\uFF09" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: fmtNum(view.totals.input + view.totals.output) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("em", { children: [
-              view.tasks.length,
-              " \u4E2A\u4EFB\u52A1 \xB7 ",
-              rangeLabel(rangeKey)
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        Section,
+        {
+          span: 8,
+          icon: "zap",
+          title: "Token \u6D88\u8017",
+          caption: `\u8FD1 ${days} \u5929 \xB7 \u5BF9\u6BD4\u4E0A\u4E00\u5468\u671F`,
+          action: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-legend", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-1)" } }),
+              "\u672C\u671F"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: "var(--vx-chart-6)" } }),
+              "\u4E0A\u671F"
             ] })
           ] }),
-          [
-            { label: "\u8F93\u5165\uFF08\u672A\u547D\u4E2D\uFF09", value: Math.max(view.totals.input - view.totals.cache, 0), tone: "var(--vx-chart-1)" },
-            { label: "\u7F13\u5B58\u547D\u4E2D", value: view.totals.cache, tone: "var(--vx-chart-3)" },
-            { label: "\u8F93\u51FA", value: view.totals.output, tone: "var(--vx-chart-2)" }
-          ].map((item) => {
-            const total = view.totals.input + view.totals.output;
-            const pct = total > 0 ? item.value / total * 100 : 0;
-            return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-meter", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-meter-top", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.label }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { style: { color: item.tone }, children: fmtNum(item.value) })
+          children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-token", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-token-metrics", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-token-total", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5408\u8BA1\uFF08\u8F93\u5165 + \u8F93\u51FA\uFF09" }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: fmtNum(view.tokens.total) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Delta, { value: deltaOf(view.tokens.total, view.tokens.prev), suffix: "\u73AF\u6BD4" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-meter-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${Math.max(pct, 1)}%`, background: item.tone } }) })
-            ] }, item.label);
-          }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-hitr", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u7F13\u5B58\u547D\u4E2D\u7387" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-              Math.round(view.hitRate),
-              "%"
-            ] })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-chart-tall", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TrendChart, { points: view.trend, height: 228 }) })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-two", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "activity", size: 13 }),
-          "\u6D3B\u52A8\u6D41",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sub", children: [
-            view.activity.length,
-            " \u6761\u4E8B\u4EF6"
-          ] })
-        ] }),
-        view.activity.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-empty", children: "\u6682\u65E0\u6D3B\u52A8\u8BB0\u5F55" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "vx-ov-feed", children: view.activity.slice(0, 6).map((row, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkerChip, { worker: String(row.worker ?? "") }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-feed-main", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: kindLabel(row) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: row.summary ?? "" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-feed-ts", children: fmtRel(row.ts) })
-        ] }, String(row.seq ?? `activity-${index}`))) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "bug", size: 13 }),
-          "\u53D1\u73B0",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sub", children: [
-            "\u5171 ",
-            view.sev.total,
-            " \u6761"
-          ] })
-        ] }),
-        view.findings.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-empty", children: "\u6682\u65E0\u53D1\u73B0" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "vx-ov-feed", children: view.findings.slice(0, 6).map((row, index) => {
-          const sev = SEVERITY_META.find((meta) => meta.key === row.severity) ?? SEVERITY_META[3];
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sev", style: { color: sev?.tone ?? "var(--vx-text-dim)" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: sev?.tone ?? "var(--vx-text-faint)" } }),
-              sev?.label ?? row.severity ?? "\u2014"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-feed-main", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: row.vulnclass ?? "\u672A\u5206\u7C7B" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: row.summary ?? row.task_description ?? "" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-feed-ts", children: fmtRel(row.ts) })
-          ] }, row.finding_id ?? row.id ?? `finding-${index}`);
-        }) })
-      ] })
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card vx-ov-card--table", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "clock", size: 13 }),
-        "\u4EFB\u52A1",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sub", children: [
-          view.tasks.length,
-          " \u4E2A\u4EFB\u52A1"
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "vx-ov-table", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: ["\u4EFB\u52A1", "\u72B6\u6001", "\u5F15\u64CE", "\u76EE\u6807\u8FDB\u5EA6", "\u5728\u9014", "\u6700\u8FD1\u6D3B\u52A8"].map((title) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: title }, title)) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: recentTasks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { colSpan: 6, className: "vx-ov-empty", children: "\u6682\u65E0\u4EFB\u52A1" }) }) : recentTasks.map((task, index) => {
-          const total = Number(task.goals_total ?? 0);
-          const met = Number(task.goals_met ?? 0);
-          const pct = total > 0 ? met / total * 100 : null;
-          return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("td", { className: "vx-ov-td-task", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: task.description ?? task.name ?? "\u672A\u547D\u540D\u4EFB\u52A1" }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: task.id ?? "" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusPill, { status: String(task.status ?? "") }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-engine", children: task.engine_mode ?? "idle" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: pct === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-muted", children: "\u2014" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-progress", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { style: { width: `${pct}%` } }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
-                met,
-                "/",
-                total
+              shares.map((share) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-meter", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-meter-top", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: share.label }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { style: { color: share.tone }, children: fmtNum(share.value) })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-meter-track", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { style: { width: `${Math.max(share.value / tokenShare * 100, 1.5)}%`, background: share.tone } }) })
+              ] }, share.label)),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-mini-row", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  "\u65E5\u5747 ",
+                  fmtNum(view.tokens.dailyAvg)
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  "\u5CF0\u503C ",
+                  fmtNum(view.tokens.peak.value)
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+                  "\u547D\u4E2D\u7387 ",
+                  fmtPct(view.tokens.cacheRate, 0)
+                ] })
               ] })
-            ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: (task.in_flight ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: task.in_flight }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-muted", children: "\u2014" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { className: "vx-ov-muted", children: fmtRel(task.last_activity_unix ?? task.created_unix) })
-          ] }, String(task.id ?? `task-${index}`));
-        }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-chart", children: loading ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-skeleton" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AreaChart, { points: view.trend, height: 218 }) })
+          ] })
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "shield", title: "\u7F13\u5B58\u6548\u7387", caption: `\u8FD1 ${days} \u5929`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-efficiency", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.tokens.cacheRate, label: "\u7F13\u5B58\u547D\u4E2D\u7387", caption: `${fmtNum(view.tokens.cache)} / ${fmtNum(view.tokens.input)}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-kv-list", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8F93\u5165\u603B\u91CF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(view.tokens.input) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u7F13\u5B58\u547D\u4E2D" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(view.tokens.cache) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8F93\u51FA\u603B\u91CF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtNum(view.tokens.output) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8282\u7701\u6BD4\u4F8B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtPct(view.tokens.input > 0 ? view.tokens.cache / view.tokens.input * 100 : 0, 1) })
+          ] })
+        ] })
       ] }) })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-three", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "network", size: 13 }),
-          "\u8D44\u4EA7\u5206\u5E03",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-sub", children: "\u6309\u7C7B\u578B" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AssetRows, { rows: view.assetRows, total: view.totalAssets })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "activity", size: 13 }),
-          "\u6D41\u91CF\u72B6\u6001\u7801",
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sub", children: [
-            "\u8FD1 ",
-            data.traffic.length,
-            " \u6B21"
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusBars, { codes: view.codes })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "vx-ov-card", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-h", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: "shield", size: 13 }),
-          "\u7CFB\u7EDF\u72B6\u6001"
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", { className: "vx-ov-sys", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u6D41\u91CF\u6355\u83B7" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { "data-on": data.capture ? "1" : "0", children: data.capture ? "\u5F00\u542F" : "\u5173\u95ED" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "MCP" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-              data.sys.mcpOn,
-              "/",
-              data.sys.mcp
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5DE5\u5177" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-              data.sys.toolsOn,
-              "/",
-              data.sys.tools
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Agent" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-              data.sys.agentsOn,
-              "/",
-              data.sys.agents
-            ] })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "bug", title: "\u6F0F\u6D1E\u4E25\u91CD\u5EA6", caption: `\u5171 ${fmtInt(view.sev.total)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-donut-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          Donut,
+          {
+            segments: SEVERITY_META.map((meta) => ({ label: meta.label, value: view.sev[meta.key], tone: meta.tone })),
+            center: fmtInt(view.sev.total),
+            caption: "\u786E\u8BA4\u53D1\u73B0"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-legend-rows", children: SEVERITY_META.map((meta) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-legend-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: meta.tone } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: meta.label }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.sev[meta.key]) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: view.sev.total > 0 ? fmtPct(view.sev[meta.key] / view.sev.total * 100, 0) : "\u2014" })
+        ] }, meta.key)) })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "clock", title: "\u5904\u7406\u72B6\u6001", caption: `\u6700\u8FD1 ${data.findings.length} \u6761`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HBars, { rows: view.statusRows }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "layers", title: "Top \u6F0F\u6D1E\u7C7B", caption: `\u6700\u8FD1 ${data.findings.length} \u6761`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HBars, { rows: view.vulnTop }) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "target", title: "\u4EFB\u52A1\u5065\u5EB7\u5EA6", caption: `${view.tasks.length} \u4E2A\u4EFB\u52A1`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-health", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.completionRate, label: "\u5B8C\u6210\u7387", caption: `${view.counts.done} / ${view.tasks.length}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ring, { value: view.goalRate, label: "\u76EE\u6807\u8FBE\u6210", caption: `${fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.goals_met ?? 0), 0))} \u4E2A\u76EE\u6807` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-health-side", children: [
+          Object.entries(TASK_STATUS).map(([key, meta]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-status-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-dot", style: { background: meta.tone } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: meta.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: view.counts[key] })
+          ] }, key)),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-status-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-dot", style: { background: "var(--vx-text-faint)" } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5728\u9014\u610F\u56FE" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.in_flight ?? 0), 0)) })
           ] })
         ] })
-      ] })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "flame", title: "\u6D3B\u8DC3\u70ED\u529B\u56FE", caption: "\u8FD1 90 \u5929 Token", children: loading ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-skeleton" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Heatmap, { days: view.heat }) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "activity", title: "\u6D3B\u52A8\u6D41", caption: `${view.activity.length} \u6761\u4E8B\u4EF6`, children: view.activity.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u6D3B\u52A8\u8BB0\u5F55" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "vx-ov-feed", children: view.activity.slice(0, 7).map((row, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WorkerChip, { worker: String(row.worker ?? "") }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-feed-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: kindLabel(row) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: row.summary ?? "" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-feed-ts", children: fmtRel(row.ts) })
+      ] }, String(row.seq ?? `activity-${index}`))) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 6, icon: "bug", title: "\u6700\u65B0\u53D1\u73B0", caption: `\u5171 ${fmtInt(view.sev.total)} \u6761`, children: view.findings.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u53D1\u73B0" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "vx-ov-feed", children: view.findings.slice(0, 7).map((row, index) => {
+        const sev = SEVERITY_META.find((meta) => meta.key === row.severity) ?? SEVERITY_META[3];
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-sev", style: { color: sev?.tone ?? "var(--vx-text-dim)" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: sev?.tone ?? "var(--vx-text-faint)" } }),
+            sev?.label ?? row.severity ?? "\u2014"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-feed-main", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: row.vulnclass ?? "\u672A\u5206\u7C7B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: row.summary ?? row.task_description ?? "" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-feed-ts", children: fmtRel(row.ts) })
+        ] }, row.finding_id ?? row.id ?? `finding-${index}`);
+      }) }) })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 12, icon: "clock", title: "\u4EFB\u52A1", caption: `${view.tasks.length} \u4E2A\u4EFB\u52A1 \xB7 \u6309\u6700\u8FD1\u6D3B\u52A8\u6392\u5E8F`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "vx-ov-table", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: ["\u4EFB\u52A1", "\u72B6\u6001", "\u5F15\u64CE", "\u76EE\u6807\u8FDB\u5EA6", "\u5728\u9014", "\u6700\u8FD1\u6D3B\u52A8"].map((title) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: title }, title)) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: view.recentTasks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { colSpan: 6, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u4EFB\u52A1" }) }) }) : view.recentTasks.map((task, index) => {
+        const total = Number(task.goals_total ?? 0);
+        const met = Number(task.goals_met ?? 0);
+        const pct = total > 0 ? met / total * 100 : null;
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("td", { className: "vx-ov-td-task", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: task.description ?? task.name ?? "\u672A\u547D\u540D\u4EFB\u52A1" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: task.id ?? "" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatusPill, { status: String(task.status ?? "") }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-engine", children: task.engine_mode ?? "idle" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: pct === null ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-muted", children: "\u2014" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-progress", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { style: { width: `${pct}%` } }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+              met,
+              "/",
+              total
+            ] })
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: (task.in_flight ?? 0) > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: task.in_flight }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-muted", children: "\u2014" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { className: "vx-ov-muted", children: fmtRel(task.last_activity_unix ?? task.created_unix) })
+        ] }, String(task.id ?? `task-${index}`));
+      }) })
+    ] }) }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-grid", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "network", title: "\u8D44\u4EA7\u6784\u6210", caption: `\u5171 ${fmtInt(view.assets.total)} \u8282\u70B9`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HBars, { rows: view.assets.rows }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "activity", title: "\u6D41\u91CF\u5065\u5EB7\u5EA6", caption: `\u6837\u672C ${fmtInt(data.traffic.length)} \u6B21`, children: data.traffic.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Empty, { label: "\u6682\u65E0\u6D41\u91CF\u6570\u636E" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-traffic", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          Donut,
+          {
+            segments: view.codes,
+            size: 104,
+            thickness: 11,
+            center: fmtPct(100 - view.errorRate, 0),
+            caption: "\u6210\u529F\u7387"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-legend-rows", children: [
+          view.codes.map((code) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-legend-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: code.tone } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: code.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(code.value) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: data.traffic.length > 0 ? fmtPct(code.value / data.traffic.length * 100, 0) : "\u2014" })
+          ] }, code.label)),
+          view.methods.map((method) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-legend-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("i", { className: "vx-ov-dot", style: { background: method.tone ?? "var(--vx-chart-1)" } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: method.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(method.value) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: data.traffic.length > 0 ? fmtPct(method.value / data.traffic.length * 100, 0) : "\u2014" })
+          ] }, `m-${method.label}`))
+        ] })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Section, { span: 4, icon: "shield", title: "\u7CFB\u7EDF\u72B6\u6001", caption: view.capture ? "\u6355\u83B7\u5F00\u542F" : "\u6355\u83B7\u5173\u95ED", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", { className: "vx-ov-sys", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u6D41\u91CF\u6355\u83B7" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { "data-on": view.capture ? "1" : "0", children: view.capture ? "\u5F00\u542F" : "\u5173\u95ED" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "MCP \u670D\u52A1" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+            data.sys.mcpOn,
+            "/",
+            data.sys.mcp
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5DE5\u5177" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+            data.sys.toolsOn,
+            "/",
+            data.sys.tools
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Agent" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
+            data.sys.agentsOn,
+            "/",
+            data.sys.agents
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8D44\u4EA7\u8282\u70B9" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.assets.total) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Top \u4E3B\u673A" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { className: "vx-ov-ellipsis", children: view.hosts[0]?.label ?? "\u2014" })
+        ] })
+      ] }) })
     ] })
   ] });
 }
