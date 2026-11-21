@@ -526,6 +526,35 @@ api.delete('/api/tasks/:id/goals/:gid', async (c) => {
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+const constraintDto = (row: any) => ({
+  id: String(row.id), kind: row.kind, text: row.text,
+  ...(row.origin ? { origin: row.origin } : {}),
+  ...(row.created_at ? { ts: row.created_at } : {})
+})
+
+api.get('/api/tasks/:id/constraints', async (c) => {
+  const task = await store.tasks.get(c.req.param('id'))
+  if (!task) return c.json({ error: 'task not found' }, 404)
+  return c.json({ constraints: (await store.constraints.list(c.req.param('id'))).map(constraintDto) })
+})
+
+api.post('/api/tasks/:id/constraints', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const row = await operations.addConstraint(c.req.param('id'), body); return c.json(constraintDto(row)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/tasks/:id/constraints/:cid', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { const row = await operations.editConstraint(c.req.param('id'), c.req.param('cid'), body); return c.json(constraintDto(row)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/tasks/:id/constraints/:cid', async (c) => {
+  try { return c.json(await operations.deleteConstraint(c.req.param('id'), c.req.param('cid'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.post('/api/tasks/:id/intents/:iid/messages', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {

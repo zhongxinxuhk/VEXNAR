@@ -97,6 +97,16 @@ export function jsonStore(root: string): Store {
     companies: {
       list: async () => [...(await load('companies', companyRow))]
     },
+    constraints: {
+      list: async (taskId) => {
+        const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
+        if (!task) return []
+        const rows = await load('constraints', { parse: (value) => value })
+        return rows
+          .filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
+          .sort((a, b) => (a.kind === 'deny' ? 1 : 0) - (b.kind === 'deny' ? 1 : 0) || Number(a.id) - Number(b.id))
+      }
+    },
     activity: {
       history: async ({ taskId, session = '', before = 0, limit = 200 }) => {
         const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))

@@ -83,6 +83,7 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - 目标：`nodes` 中 `kind=goal`，新增时写 `edges` 的 `spawns`；
 - 意图控制：pause/resume 改状态，cancel soft 置 deleted，hard 删节点与边；
 - 意图消息：仅已暂停意图，置 running 并写一条 `kind=message` 活动；
+- 操作约束：`constraints/<id>.json`，读取时 deny 优先；
 - 资产列表：`assets.list({ taskId })` 按 `task_ids` 过滤并 JOIN `task_asset_links` 补来源；
 - seed 覆盖 assets 全字段与 task_asset_links；
 - journal 恢复只重放 `prepared`，`failed` 不重放；

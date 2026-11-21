@@ -40,6 +40,7 @@ const assets = (await pg.pool.query(`SELECT id, type, company_id, task_ids, doma
   url, service_type, service_name, favicon_mmh3, status_code, content_length, page_title, technologies, auth, method, params, extra,
   last_seen::text AS last_seen FROM assets`)).rows.map((row) => ({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id) }))
 const companies = await pg.companies.list()
+const constraints = (await pg.pool.query("SELECT id, exploration_id, kind, text, COALESCE(origin,'') AS origin, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') || ':00' AS created_at FROM task_constraints")).rows
 const assetLinks = (await pg.pool.query('SELECT task_id, asset_id, source, source_summary, source_node_id, created_at::text AS created_at FROM task_asset_links')).rows
 const activity = (await pg.pool.query(`SELECT id::text AS id, exploration_id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata, main_seg, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at, extract(epoch from created_at)::bigint AS created_unix FROM activity`)).rows
 const nodes = (await pg.nodes.page({ taskId: '0', page: 1, size: 1 })).items // shape probe only
@@ -58,6 +59,7 @@ const tables = [
   ['companies', companies, (row, index) => `${String(index).padStart(4, '0')}-${row.id}`],
   ['nodes', allNodes.rows, (row) => String(row.id)],
   ['activity', activity, (row) => String(row.id)],
+  ['constraints', constraints, (row) => String(row.id)],
   ['task_asset_links', assetLinks, (row) => `${row.task_id}-${row.asset_id}`],
   ['edges', allEdges.rows, (row) => `${row.src}-${row.rel}-${row.dst}`]
 ]
