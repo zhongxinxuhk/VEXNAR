@@ -36,6 +36,11 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 
 这样 web 可以先指向 TS core，未迁移的写接口仍由 Go 服务，逐条切换。
 
+## 引擎（E1）
+
+图谱写入原语已落地：`addNode`、`setNodeState`、`claimIntent`、`anchorAsset`，
+全部 journal + `rev`。完整渗透引擎路线见 [ENGINE-MIGRATION.md](../ENGINE-MIGRATION.md)。
+
 ## 存储
 
 - **领域数据**（tasks/findings/assets/nodes）：JSON store 的 per-record 文件；

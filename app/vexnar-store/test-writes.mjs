@@ -155,6 +155,13 @@ const constraintEdit = await ops.editConstraint(goalTask.id, String(constraint.i
 const constraintDelete = await ops.deleteConstraint(goalTask.id, String(constraint.id))
 check('constraint lifecycle', constraint.kind === 'deny' && constraintEdit.kind === 'allow' && constraintDelete.deleted === constraint.id, JSON.stringify({ id: constraint.id, edit: constraintEdit.kind }))
 
+const fact = await ops.addNode(goalTask.id, { kind: 'fact', payload: { text: 'root fact' }, state: 'confirmed', parent_id: '1000', rel: 'yields' })
+const intent = await ops.addNode(goalTask.id, { kind: 'intent', payload: { text: 'probe' }, state: 'open', parent_id: fact.id })
+const claimed = await ops.claimIntent(goalTask.id, 'work#1')
+const anchored = await ops.anchorAsset(goalTask.id, fact.id, '500')
+const doneIntent = await ops.setNodeState(goalTask.id, intent.id, 'done')
+check('engine graph', fact.kind === 'fact' && intent.kind === 'intent' && claimed?.id === intent.id && claimed?.state === 'running' && anchored.asset_id === 500 && doneIntent.state === 'done', JSON.stringify({ fact: fact.id, intent: intent.id, claimed: claimed?.id, anchored }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
