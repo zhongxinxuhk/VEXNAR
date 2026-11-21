@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "VEXNAR MCP 工具面",
+    "description": "把 VEXNAR Go 服务的 MCP 端点注册进 dsh，任务、漏洞、资产与流量工具以 mcp__vexnar__* 出现在同一个 MCP 服务器清单里，由 dsh 统一管理。关闭该插件即撤下该服务器及其工具。",
+    "detail": "docs/DETAIL.zh.md"
+  }
+}
