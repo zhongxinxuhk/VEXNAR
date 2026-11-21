@@ -19,6 +19,28 @@ func TestVexnarPlatformAccountAndGateway(t *testing.T) {
 	var modelCalls atomic.Int32
 	relay := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/api/status":
+			fmt.Fprint(w, `{"success":true,"data":{"password_login_enabled":true}}`)
+		case "/api/user/login":
+			var input map[string]string
+			if json.NewDecoder(r.Body).Decode(&input) != nil || input["username"] != "fixture" || input["password"] != "local-password" {
+				fmt.Fprint(w, `{"success":false}`)
+				return
+			}
+			fmt.Fprint(w, `{"success":true,"data":{"flow_token":"fixture-flow"}}`)
+		case "/api/user/login/verify":
+			var input map[string]string
+			if json.NewDecoder(r.Body).Decode(&input) != nil || input["flow_token"] != "fixture-flow" ||
+				input["method"] != "2fa" || input["code"] != "123456" {
+				fmt.Fprint(w, `{"success":false}`)
+				return
+			}
+			fmt.Fprint(w, `{"success":true,"data":{"user":{"id":42},"access_token":"platform-login"}}`)
+		case "/api/user/token":
+			if r.Header.Get("New-Api-User") != "42" {
+				t.Error("missing verified management identity")
+			}
+			fmt.Fprint(w, `{"success":true,"data":"management-secret"}`)
 		case "/api/user/self":
 			if r.Header.Get("New-Api-User") != "42" ||
 				(r.Header.Get("Cookie") != "session=fixture" && r.Header.Get("Authorization") != "Bearer platform-login") {
@@ -38,6 +60,12 @@ func TestVexnarPlatformAccountAndGateway(t *testing.T) {
 				t.Errorf("unexpected model authorization %q", key)
 			}
 			fmt.Fprint(w, `{"data":[{"id":"fixture-model"}]}`)
+		case "/v1/responses":
+			if r.Header.Get("Authorization") != "Bearer sk-platform-secret" || r.Header.Get(desktopTokenHeader) != "" {
+				t.Error("Responses request did not isolate the model credential")
+			}
+			w.Header().Set("Content-Type", "text/event-stream")
+			fmt.Fprint(w, "event: response.completed\ndata: {}\n\n")
 		case "/v1/chat/completions":
 			if r.Header.Get("Authorization") != "Bearer custom-secret" || r.Header.Get(desktopTokenHeader) != "" {
 				t.Error("the proxy must send only the selected upstream credential")
@@ -80,9 +108,25 @@ func TestVexnarPlatformAccountAndGateway(t *testing.T) {
 	if modelCalls.Load() != 0 {
 		t.Fatal("model requests crossed the unauthenticated boundary")
 	}
-	login := call("POST", "/account", `{"user_id":42,"authorization":"Bearer platform-login"}`, 200)
-	if strings.Contains(login.Body.String(), "secret") || !strings.Contains(login.Body.String(), "fixture-model") {
-		t.Fatalf("invalid login catalog: %s", login.Body.String())
+	call("POST", "/login/password", `{"username":"fixture","password":"wrong"}`, 401)
+	pending := call("POST", "/login/password", `{"username":"fixture","password":"local-password"}`, 202)
+	var challenge struct{ Challenge string }
+	if json.Unmarshal(pending.Body.Bytes(), &challenge) != nil || challenge.Challenge == "" ||
+		strings.Contains(pending.Body.String(), "fixture-flow") {
+		t.Fatal("native login must return only the opaque challenge handle")
+	}
+	call("POST", "/login/verify", `{"challenge":"wrong","code":"123456"}`, 409)
+	call("POST", "/login/verify", fmt.Sprintf(`{"challenge":%q,"code":"000000"}`, challenge.Challenge), 401)
+	login := call("POST", "/login/verify", fmt.Sprintf(`{"challenge":%q,"code":"123456"}`, challenge.Challenge), 200)
+	if body := login.Body.String(); strings.Contains(body, "secret") || !strings.Contains(body, "fixture-model") ||
+		!strings.Contains(body, `"access_token_ready":true`) || !strings.Contains(body, `"format":"openai-responses"`) ||
+		!strings.Contains(body, `"ready":true`) {
+		t.Fatalf("invalid login catalog: %s", body)
+	}
+	call("POST", "/login/verify", fmt.Sprintf(`{"challenge":%q,"code":"123456"}`, challenge.Challenge), 409)
+	call("POST", "/openai/vexnar/v1/chat/completions", "{}", 409)
+	if got := call("POST", "/openai/vexnar/v1/responses", `{"model":"fixture-model","input":"hello"}`, 200); !strings.Contains(got.Body.String(), "response.completed") {
+		t.Fatalf("invalid Responses streaming response: %s", got.Body)
 	}
 	info, err := os.Stat(st.path)
 	if err != nil || info.Mode().Perm() != 0o600 {
@@ -96,6 +140,24 @@ func TestVexnarPlatformAccountAndGateway(t *testing.T) {
 	}
 	if err := json.Unmarshal(result.Body.Bytes(), &status); err != nil || len(status.Providers) != 2 {
 		t.Fatalf("invalid provider catalog: %s", result.Body.String())
+	}
+	stored, err := st.read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored.CredentialVersion = 0
+	stored.AccessToken = ""
+	if err := st.save(stored); err != nil {
+		t.Fatal(err)
+	}
+	if migration := call("GET", "/account", "", 200).Body.String(); !strings.Contains(migration, `"reauth_required":true`) ||
+		!strings.Contains(migration, `"ready":false`) {
+		t.Fatalf("expected the previous binding to require reauthorization: %s", migration)
+	}
+	call("POST", "/openai/vexnar/v1/responses", "{}", 401)
+	reauth := call("POST", "/account", `{"user_id":42,"authorization":"Bearer platform-login"}`, 200)
+	if !strings.Contains(reauth.Body.String(), status.Providers[1].ID) {
+		t.Fatal("reauthorizing the same account must retain its custom model")
 	}
 	// Reopen against the saved state, as after a Go service restart.
 	s.platform = &platformStore{path: st.path, platform: st.platform, models: st.models}

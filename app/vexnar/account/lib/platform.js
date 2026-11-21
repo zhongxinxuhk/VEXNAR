@@ -2,6 +2,9 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { readFile } from 'node:fs/promises'
+import { loginPage, workspaceSessionScript } from './login-page.js'
+
 const namespace = '/api/desktop/vexnar'
 const clientPrefix = '/vexnar-api/platform'
 const adapterRef = 'VEXNAR_LOOPBACK_ADAPTER'
@@ -55,7 +58,7 @@ async function methods() {
   for (const provider of d.custom_oauth_providers ?? []) {
     if (provider.name || provider.slug) names.push(provider.name || provider.slug)
   }
-  return { platform: platform(), methods: [...new Set(names)] }
+  return { methods: [...new Set(names)], password: d.password_login_enabled === true && !d.password_login_encryption_enabled && !d.turnstile_check }
 }
 
 async function readJson(req) {
@@ -80,15 +83,12 @@ async function capturePlatformLogin(context, page, origin, signal) {
   const observe = async (response) => {
     try {
       const url = new URL(response.url())
-      if (url.origin !== origin || !response.ok() || !url.pathname.startsWith('/api/')) return
+      if (url.origin !== origin || !response.ok()) return
       const identityRequest = url.pathname === '/api/user/self'
-      const knownAuthRequest = url.pathname.startsWith('/api/user/auth/') ||
-        url.pathname.startsWith('/api/oauth/') || url.pathname === '/api/user/login'
-      // New platform builds may return the same explicit auth bundle from a new OAuth endpoint.
-      if (!identityRequest && !knownAuthRequest && response.request().method() !== 'POST') return
+      const authResponse = /^\/api\/(?:oauth\/[a-z0-9_-]+|user\/(?:auth\/refresh|login(?:\/verify|\/2fa|\/passkey\/finish)?|passkey\/login\/finish))$/i.test(url.pathname)
+      if (!identityRequest && !authResponse) return
       const body = await response.json()
       const data = body.data
-      if (!identityRequest && !knownAuthRequest && !data?.session?.sid) return
       const userID = data?.user?.id ?? (identityRequest ? data?.id : undefined)
       if (body.success !== true || !Number.isSafeInteger(userID) || userID <= 0) return
       const authorization = data?.access_token
@@ -136,6 +136,15 @@ async function capturePlatformLogin(context, page, origin, signal) {
 
 export function installPlatform(ctx) {
   let catalog = new Map()
+  let ready = false
+  const activeSockets = new Set()
+  const setReady = value => {
+    ready = value
+    if (!ready) {
+      for (const socket of activeSockets) socket.destroy()
+      activeSockets.clear()
+    }
+  }
   let browserState = { state: 'idle', message: '' }
   let browserTask
   let chrome
@@ -148,9 +157,11 @@ export function installPlatform(ctx) {
   }
 
   const syncCatalog = async (status) => {
-    const providers = Object.fromEntries(status.providers.map(provider => [provider.id, {
+    const available = status.ready === true ? status.providers : []
+    if (!status.ready) setReady(false)
+    const providers = Object.fromEntries(available.map(provider => [provider.id, {
       displayName: provider.name,
-      api: 'openai-completions',
+      api: provider.format === 'openai-responses' ? 'openai-responses' : 'openai-completions',
       baseURL: `${goOrigin()}${namespace}/openai/${provider.id}/v1`,
       apiKeyEnv: adapterRef,
       models: provider.models.map(({ id, name }) => ({ id, name: name || id }))
@@ -162,10 +173,11 @@ export function installPlatform(ctx) {
       lastCatalog = fingerprint
     }
     const current = ctx.agentDefaultModel.currentSelection()
-    if (status.providers.length && !catalog.get(current.provider)?.models.some(model => model.id === current.model)) {
-      const first = status.providers[0]
+    if (available.length && !catalog.get(current.provider)?.models.some(model => model.id === current.model)) {
+      const first = available[0]
       await ctx.agentDefaultModel.saveSelection({ provider: first.id, model: first.models[0].id })
     }
+    setReady(status.ready === true)
     return status
   }
   let lastCatalog
@@ -173,10 +185,56 @@ export function installPlatform(ctx) {
     try {
       return await syncCatalog(await go('/account'))
     } catch (error) {
+      setReady(false)
       await syncCatalog({ providers: [] })
       throw error
     }
   }
+  // The pinned carrier routes Workspace RPC and stream upgrades through the
+  // same Host admission. Keep the carrier's origin/cookie checks for every route.
+  const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login', 'login/password', 'login/verify']
+    .map(path => clientPrefix + '/' + path))
+  ctx.effect(() => {
+    const connection = ctx.connection[Symbol.for('cordis.original')] ?? ctx.connection
+    const admit = connection.admit
+    const ownAdmission = Object.getOwnPropertyDescriptor(connection, 'admit')
+    const guarded = function (request) {
+      const result = admit.call(this, request)
+      if ('rejection' in result) return result
+      const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
+      if (!ready && !startupPaths.has(path)) return { rejection: 401 }
+      const socket = request.socket
+      if (request.headers?.upgrade?.toLowerCase() === 'websocket' && socket && !activeSockets.has(socket)) {
+        activeSockets.add(socket)
+        socket.once('close', () => activeSockets.delete(socket))
+      }
+      return result
+    }
+    connection.admit = guarded
+    return () => {
+      setReady(false)
+      if (connection.admit === guarded) {
+        if (ownAdmission) Object.defineProperty(connection, 'admit', ownAdmission)
+        else delete connection.admit
+      }
+    }
+  })
+  ctx.effect(() => ctx.webServer.tapIndex(html => ready
+    ? html.replace('</head>', workspaceSessionScript + '</head>')
+    : loginPage))
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact', path: clientPrefix + '/entry.js',
+    handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req)
+      if (rejection || req.method !== 'GET') {
+        res.writeHead(rejection || 405)
+        return res.end()
+      }
+      res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })
+      res.end(await readFile(new URL('./login-client.js', import.meta.url)))
+    }
+  }))
+
   // Keep ordinary settings available, but route all provider writes and discovery
   // through VEXNAR's Go service. Exact owner-only HTTP routes precede Typert RPC.
   for (const method of ['update', 'replace', 'mutate', 'discoverModels']) {
@@ -216,7 +274,7 @@ export function installPlatform(ctx) {
   // added to requests for the exact Go URL at dispatch time.
   ctx.on('llm-pi-ai/request-headers', (request, headers, next) => {
     const provider = catalog.get(request.provider)
-    if (!provider || provider.baseURL !== request.baseURL || !token()) {
+    if (!ready || !provider || provider.baseURL !== request.baseURL || !token()) {
       throw new Error('请通过 VEXNAR 设置选择已验证的模型')
     }
     headers.set('X-VEXNAR-Desktop-Token', token())
@@ -229,7 +287,7 @@ export function installPlatform(ctx) {
     browserTask = (async () => {
       try {
         const status = await serial(refresh)
-        if (status.signed_in) throw new Error('请先退出当前 VEXNAR 账号')
+        if (status.ready) throw new Error('请先退出当前 VEXNAR 账号')
         const { chromium } = await import('playwright-core')
         chrome = await chromium.launch({
           channel: process.env.VEXNAR_LOGIN_BROWSER || 'chrome',
@@ -239,8 +297,9 @@ export function installPlatform(ctx) {
         const context = await chrome.newContext()
         const page = await context.newPage()
         const proof = await capturePlatformLogin(context, page, platform(), life.signal)
-        await serial(async () => syncCatalog(await go('/account', 'POST', proof)))
-        browserState = { state: 'done', message: '已登录 HXSEC AI Platform' }
+        const account = await serial(async () => syncCatalog(await go('/account', 'POST', proof)))
+        browserState = { state: 'done', message: '已验证 HXSEC AI Platform 身份' }
+        if (account.ready) console.log('vexnar: account-handoff')
       } catch (error) {
         browserState = {
           state: 'error',
@@ -282,6 +341,7 @@ export function installPlatform(ctx) {
     }))
   }
 
+  route('/ready', { GET: () => ({ ready }) })
   route('/methods', { GET: methods })
   route('/account', {
     GET: () => serial(refresh),
@@ -291,6 +351,17 @@ export function installPlatform(ctx) {
     })
   })
   route('/login', { POST: startLogin, GET: () => browserState })
+  for (const method of ['password', 'verify']) {
+    route('/login/' + method, {
+      POST: async req => {
+        const input = await readJson(req)
+        return serial(async () => {
+          const result = await go('/login/' + method, 'POST', input)
+          return result.challenge ? result : syncCatalog(result)
+        })
+      }
+    })
+  }
   route('/providers', {
     POST: async req => {
       const input = await readJson(req)
@@ -316,4 +387,5 @@ export function installPlatform(ctx) {
       void chrome?.close().catch(() => {})
     }
   })
+  return () => ready
 }

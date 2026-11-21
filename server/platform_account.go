@@ -24,6 +24,7 @@ import (
 const platformRoutes = "/api/desktop/vexnar"
 
 const platformSessionDuration = 30 * 24 * time.Hour
+const platformCredentialVersion = 1
 
 type platformModel struct {
 	ID   string `json:"id"`
@@ -39,14 +40,35 @@ type platformProvider struct {
 }
 
 type platformAccount struct {
-	UserID    int64              `json:"user_id"`
-	Username  string             `json:"username"`
-	Expires   time.Time          `json:"expires_at"`
-	Providers []platformProvider `json:"providers"`
+	UserID            int64              `json:"user_id"`
+	Username          string             `json:"username"`
+	DisplayName       string             `json:"display_name,omitempty"`
+	AccessToken       string             `json:"access_token,omitempty"`
+	CredentialVersion int                `json:"credential_version,omitempty"`
+	RequestCount      *int64             `json:"request_count,omitempty"`
+	Expires           time.Time          `json:"expires_at"`
+	Providers         []platformProvider `json:"providers"`
 }
 
 func (account platformAccount) signedIn() bool {
 	return account.UserID > 0 && time.Now().Before(account.Expires)
+}
+
+// Older local bindings cannot mint management credentials without a fresh platform proof.
+func (account platformAccount) needsReauth() bool {
+	return account.signedIn() && account.CredentialVersion < platformCredentialVersion
+}
+
+func (account platformAccount) ready() bool {
+	if !account.signedIn() || account.needsReauth() {
+		return false
+	}
+	for _, provider := range account.Providers {
+		if provider.ID == "vexnar" && provider.Key != "" && len(provider.Models) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 type platformStore struct {
@@ -54,6 +76,7 @@ type platformStore struct {
 	path     string
 	platform string
 	models   string
+	pending  *platformChallenge
 }
 
 func newPlatformStore(dataDir string) *platformStore {
@@ -106,29 +129,40 @@ var platformHTTP = &http.Client{
 }
 
 func platformRequest(ctx context.Context, method, endpoint string, headers http.Header, input, output any) bool {
+	status, _ := platformExchange(ctx, method, endpoint, headers, input, output)
+	return status/100 == 2
+}
+
+func platformExchange(ctx context.Context, method, endpoint string, headers http.Header, input, output any) (int, []*http.Cookie) {
 	var body io.Reader
 	if input != nil {
 		encoded, err := json.Marshal(input)
 		if err != nil {
-			return false
+			return 0, nil
 		}
 		body = bytes.NewReader(encoded)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
-		return false
+		return 0, nil
 	}
-	req.Header = headers.Clone()
+	req.Header = make(http.Header)
+	if headers != nil {
+		req.Header = headers.Clone()
+	}
 	req.Header.Set("Accept", "application/json")
 	if input != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	res, err := platformHTTP.Do(req)
 	if err != nil {
-		return false
+		return 0, nil
 	}
 	defer res.Body.Close()
-	return res.StatusCode/100 == 2 && json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(output) == nil
+	if json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(output) != nil && res.StatusCode/100 == 2 {
+		return 0, nil
+	}
+	return res.StatusCode, res.Cookies()
 }
 
 func readPlatformModels(ctx context.Context, base, key string) []platformModel {
@@ -154,26 +188,59 @@ func platformID() string {
 	return rand.Text()
 }
 
-func (st *platformStore) verifiedProvider(ctx context.Context, cookie, authorization string, userID int64) (platformAccount, int, string) {
+func (st *platformStore) verifiedProvider(ctx context.Context, proof platformProof, previous platformAccount) (platformAccount, int, string) {
 	var result struct {
 		Success bool `json:"success"`
 		Data    struct {
-			ID       int64  `json:"id"`
-			Username string `json:"username"`
+			ID           int64  `json:"id"`
+			Username     string `json:"username"`
+			DisplayName  string `json:"display_name"`
+			RequestCount *int64 `json:"request_count"`
+			AccessToken  string `json:"access_token"`
 		} `json:"data"`
 	}
 	headers := make(http.Header)
-	headers.Set("Cookie", cookie)
-	headers.Set("Authorization", authorization)
-	headers.Set("New-Api-User", strconv.FormatInt(userID, 10))
+	headers.Set("Cookie", proof.Cookie)
+	headers.Set("Authorization", proof.Authorization)
+	headers.Set("New-Api-User", strconv.FormatInt(proof.UserID, 10))
 	call := func(method, path string, input, output any) bool {
 		return platformRequest(ctx, method, st.platform+path, headers, input, output)
 	}
 	if !call(http.MethodGet, "/api/user/self", nil, &result) ||
-		!result.Success || result.Data.ID != userID || result.Data.Username == "" {
+		!result.Success || result.Data.ID != proof.UserID || result.Data.Username == "" {
 		return platformAccount{}, 401, "HXSEC AI Platform 登录尚未完成或已失效"
 	}
-	account := platformAccount{UserID: userID, Username: result.Data.Username, Expires: time.Now().Add(platformSessionDuration)}
+	account := platformAccount{
+		UserID: proof.UserID, Username: result.Data.Username, DisplayName: result.Data.DisplayName,
+		RequestCount: result.Data.RequestCount, Expires: time.Now().Add(platformSessionDuration),
+		CredentialVersion: platformCredentialVersion,
+	}
+	// Reuse an existing platform management token when the platform returns it.
+	// Request one once per sign-in otherwise. It stays separate from the model key.
+	account.AccessToken = result.Data.AccessToken
+	if account.AccessToken == "" && previous.UserID == account.UserID {
+		account.AccessToken = previous.AccessToken
+	}
+	if account.AccessToken == "" {
+		var access struct {
+			Success bool
+			Data    json.RawMessage
+		}
+		if call(http.MethodGet, "/api/user/token", nil, &access) && access.Success {
+			if json.Unmarshal(access.Data, &account.AccessToken) != nil {
+				var token struct {
+					Token       string `json:"token"`
+					AccessToken string `json:"access_token"`
+				}
+				if json.Unmarshal(access.Data, &token) == nil {
+					account.AccessToken = token.AccessToken
+					if account.AccessToken == "" {
+						account.AccessToken = token.Token
+					}
+				}
+			}
+		}
+	}
 	name := "VEXNAR-" + platformID()
 	var created struct{ Success bool }
 	payload := map[string]any{"name": name, "unlimited_quota": true, "remain_quota": 0, "expired_time": account.Expires.Unix()}
@@ -223,30 +290,47 @@ func sendPlatformAccount(w http.ResponseWriter, account platformAccount) {
 		ID     string          `json:"id"`
 		Name   string          `json:"name"`
 		Models []platformModel `json:"models"`
+		Format string          `json:"format"`
 	}
 	providers := []publicProvider{}
 	signedIn := account.signedIn()
-	username := ""
+	username, displayName := "", ""
+	var requestCount *int64
 	if signedIn {
-		username = account.Username
+		username, displayName = account.Username, account.DisplayName
+		requestCount = account.RequestCount
 		for _, provider := range account.Providers {
-			providers = append(providers, publicProvider{provider.ID, provider.Name, provider.Models})
+			format := "openai-completions"
+			if provider.ID == "vexnar" {
+				format = "openai-responses"
+			}
+			providers = append(providers, publicProvider{provider.ID, provider.Name, provider.Models, format})
 		}
 	}
-	writeJSON(w, 200, map[string]any{"signed_in": signedIn, "username": username, "providers": providers})
+	writeJSON(w, 200, map[string]any{
+		"signed_in": signedIn, "ready": account.ready(),
+		"reauth_required": account.needsReauth(), "username": username, "display_name": displayName,
+		"request_count": requestCount, "access_token_ready": signedIn && account.AccessToken != "", "providers": providers,
+	})
+}
+
+type platformProof struct {
+	Cookie        string `json:"cookie"`
+	Authorization string `json:"authorization"`
+	UserID        int64  `json:"user_id"`
 }
 
 func (s *Server) platformLogin(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Cookie        string `json:"cookie"`
-		Authorization string `json:"authorization"`
-		UserID        int64  `json:"user_id"`
-	}
+	var request platformProof
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	if decode(r, &request) != nil || request.UserID <= 0 || (request.Cookie == "" && !strings.HasPrefix(request.Authorization, "Bearer ")) {
 		writeErr(w, 400, "无效的平台登录会话")
 		return
 	}
+	s.completePlatformLogin(w, r, request)
+}
+
+func (s *Server) completePlatformLogin(w http.ResponseWriter, r *http.Request, proof platformProof) {
 	st := s.platform
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -255,11 +339,11 @@ func (s *Server) platformLogin(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "读取 VEXNAR 账号失败")
 		return
 	}
-	if previous.signedIn() {
+	if previous.ready() {
 		writeErr(w, 409, "请先退出当前 VEXNAR 账号")
 		return
 	}
-	account, status, message := st.verifiedProvider(r.Context(), request.Cookie, request.Authorization, request.UserID)
+	account, status, message := st.verifiedProvider(r.Context(), proof, previous)
 	if status != 200 {
 		writeErr(w, status, message)
 		return
@@ -275,6 +359,7 @@ func (s *Server) platformLogin(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "保存 VEXNAR 账号失败")
 		return
 	}
+	st.pending = nil
 	sendPlatformAccount(w, account)
 }
 
@@ -291,6 +376,7 @@ func (s *Server) platformLogout(w http.ResponseWriter, _ *http.Request) {
 	st := s.platform
 	st.mu.Lock()
 	defer st.mu.Unlock()
+	st.pending = nil
 	if err := os.Remove(st.path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		writeErr(w, 500, "退出 VEXNAR 账号失败")
 		return
@@ -305,7 +391,7 @@ func (s *Server) platformAddProvider(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "读取 VEXNAR 账号失败")
 		return
 	}
-	if !previous.signedIn() {
+	if !previous.ready() {
 		writeErr(w, 401, "请先登录 VEXNAR 账号")
 		return
 	}
@@ -352,7 +438,7 @@ func (s *Server) platformAddProvider(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "读取 VEXNAR 账号失败")
 		return
 	}
-	if !account.signedIn() || account.UserID != previous.UserID || !account.Expires.Equal(previous.Expires) {
+	if !account.ready() || account.UserID != previous.UserID || !account.Expires.Equal(previous.Expires) {
 		writeErr(w, 401, "VEXNAR 登录状态已变化，请重试")
 		return
 	}
@@ -379,7 +465,7 @@ func (s *Server) platformRemoveProvider(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, 500, "读取 VEXNAR 账号失败")
 		return
 	}
-	if !account.signedIn() {
+	if !account.ready() {
 		writeErr(w, 401, "请先登录 VEXNAR 账号")
 		return
 	}
@@ -398,7 +484,7 @@ func (s *Server) platformRemoveProvider(w http.ResponseWriter, r *http.Request) 
 	writeErr(w, 404, "模型提供方不可移除或不存在")
 }
 
-func (s *Server) platformChat(w http.ResponseWriter, r *http.Request) {
+func (s *Server) platformProxy(w http.ResponseWriter, r *http.Request) {
 	if s.desktopAccessMode() == "request" && r.Header.Get(desktopApprovalHeader) != "1" {
 		writeErr(w, 403, "当前访问模式要求先批准模型联网请求")
 		return
@@ -408,13 +494,21 @@ func (s *Server) platformChat(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "读取 VEXNAR 账号失败")
 		return
 	}
-	if !account.signedIn() {
+	if !account.ready() {
 		writeErr(w, 401, "请先登录 VEXNAR 账号")
 		return
 	}
 	for _, provider := range account.Providers {
 		if provider.ID == r.PathValue("provider") {
-			proxyDesktopLLM(w, r, provider.Base, provider.Key, llmPathChatCompletions)
+			path := llmPathChatCompletions
+			if provider.ID == "vexnar" {
+				path = llmPathResponses
+			}
+			if !strings.HasSuffix(r.URL.Path, path) {
+				writeErr(w, 409, "此模型提供方使用 "+path)
+				return
+			}
+			proxyDesktopLLM(w, r, provider.Base, provider.Key, path)
 			return
 		}
 	}
@@ -434,8 +528,11 @@ func (s *Server) registerPlatformRoutes(mux *http.ServeMux) {
 	}
 	register("GET "+platformRoutes+"/account", s.platformStatus)
 	register("POST "+platformRoutes+"/account", s.platformLogin)
+	register("POST "+platformRoutes+"/login/password", s.platformPassword)
+	register("POST "+platformRoutes+"/login/verify", s.platformVerify)
 	register("DELETE "+platformRoutes+"/account", s.platformLogout)
 	register("POST "+platformRoutes+"/providers", s.platformAddProvider)
 	register("DELETE "+platformRoutes+"/providers/{provider}", s.platformRemoveProvider)
-	register("POST "+platformRoutes+"/openai/{provider}/v1/chat/completions", s.platformChat)
+	register("POST "+platformRoutes+"/openai/{provider}/v1/chat/completions", s.platformProxy)
+	register("POST "+platformRoutes+"/openai/{provider}/v1/responses", s.platformProxy)
 }

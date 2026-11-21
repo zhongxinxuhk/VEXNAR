@@ -51,6 +51,9 @@ else {
       })
       window.on('closed', () => { window = undefined })
       void window.loadURL(url)
+    }, () => {
+      window?.show()
+      window?.focus()
     })
     host.on('error', error => quit(error.message))
     host.on('exit', code => code === 0 ? app.quit() : quit(`本机客户端服务退出 (${code})`))
