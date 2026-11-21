@@ -182,6 +182,13 @@ func scanInterceptPending(s interface{ Scan(...any) error }, p *InterceptPending
 		&p.ToolName, &p.ToolInput, &p.Status, &p.Reason, &p.DecidedAt, &p.CreatedAt, &p.DecisionSource)
 }
 
+// CountPendingConversationIntercepts provides a payload-free conversation status.
+func (d *DB) CountPendingConversationIntercepts(conversationID int64) (int, error) {
+	var count int
+	err := d.QueryRow(`SELECT count(*) FROM intercept_pending WHERE conversation_id=$1 AND status='pending'`, conversationID).Scan(&count)
+	return count, err
+}
+
 // ListPendingIntercepts returns all unresolved approval requests, newest first.
 func (d *DB) ListPendingIntercepts() ([]InterceptPending, error) {
 	rows, err := d.Query(`SELECT ` + interceptPendingCols + ` FROM intercept_pending WHERE status='pending' ORDER BY created_at DESC`)

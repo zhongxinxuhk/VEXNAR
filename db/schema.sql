@@ -1121,6 +1121,7 @@ CREATE TABLE IF NOT EXISTS intercept_pending (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_intercept_pending_status ON intercept_pending(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intercept_pending_conversation ON intercept_pending(conversation_id) WHERE status='pending';
 CREATE INDEX IF NOT EXISTS idx_intercept_pending_task   ON intercept_pending(task_id, created_at DESC);
 -- 补旧库:reason 列(已发版,加列要带 IF NOT EXISTS)。
 ALTER TABLE intercept_pending ADD COLUMN IF NOT EXISTS reason TEXT NOT NULL DEFAULT '';

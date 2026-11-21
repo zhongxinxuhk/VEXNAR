@@ -148,6 +148,13 @@ contextBridge.exposeInMainWorld('__uiFixture', {
       { seq: ++activitySeq, tool: 'read_file', worker: 'archivist', ts: '2026-11-20T10:09:02Z', kind: 'tool_result', tool_use_id: 'historical', detail: 'archived result' }
     ]
   },
+  seedThinking: () => {
+    resumeDraft = true
+    conversationActivities[2] = [
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:09:55Z', kind: 'user', summary: '显示阶段' },
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:09:56Z', kind: 'thinking', summary: 'PRIVATE_REASONING_FIXTURE', detail: 'PRIVATE_REASONING_FIXTURE' }
+    ]
+  },
   startDraft: () => {
     resumeDraft = true
     conversationActivities[2] = [
@@ -463,7 +470,8 @@ contextBridge.exposeInMainWorld('vexnar', {
             : items,
           cursor: items.at(-1)?.seq ?? (history ? before : since),
           running: id === '2' && resumeDraft,
-          live: id === '2' && resumeDraft && history
+          pending_approvals: id === '2' && resumeDraft && conversationActivities[2].at(-1)?.kind === 'text' ? 1 : 0,
+          live: id === '2' && resumeDraft && history && items.at(-1)?.kind === 'text'
             ? { ...items.at(-1), detail: '你好，正在生成答复' }
             : null,
           hasMore: history && eligible.length > items.length

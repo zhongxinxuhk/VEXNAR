@@ -51,6 +51,7 @@ export type MessagePage = {
   cursor: number
   running: boolean
   hasMore: boolean
+  pending_approvals?: number
   /**
    * The row a running turn is still writing (the answer so far). It keeps the
    * same seq for the whole run and only its text grows, so a client merges it by

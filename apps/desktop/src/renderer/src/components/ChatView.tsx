@@ -17,6 +17,7 @@ import {
   PanelRight,
   Paperclip,
   Plus,
+  ShieldAlert,
   Square,
   X
 } from 'lucide-react'
@@ -631,6 +632,8 @@ export function ChatView(): React.JSX.Element {
   const retryUser = lastMessage?.role === 'assistant'
     ? [...messages].reverse().find((item) => item.role === 'user')
     : undefined
+  const pendingApprovals = useAppStore((state) => state.pendingApprovals)
+  const setView = useAppStore((state) => state.setView)
   const hasOlderMessages = useAppStore((state) => state.hasOlderMessages)
   const loadingOlderMessages = useAppStore((state) => state.loadingOlderMessages)
   const loadOlderMessages = useAppStore((state) => state.loadOlderMessages)
@@ -778,6 +781,19 @@ export function ChatView(): React.JSX.Element {
               >
                 {t(loadingOlderMessages ? 'chat.loadingHistory' : 'chat.loadHistory')}
               </button>
+            ) : null}
+            {pendingApprovals > 0 ? (
+              <aside aria-label={t('chat.pendingApprovals', { count: pendingApprovals })}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/25 bg-warn/7 px-3 py-2 text-xs text-ink">
+                <span role="status" className="flex items-center gap-2 font-medium">
+                  <ShieldAlert className="size-4 text-warn" aria-hidden="true" />
+                  {t('chat.pendingApprovals', { count: pendingApprovals })}
+                </span>
+                <button type="button" onClick={() => setView('approvals')}
+                  className="rounded-md px-2 py-1 text-warn hover:bg-warn/10 focus-visible:outline-2 focus-visible:outline-accent">
+                  {t('chat.viewApprovals')}
+                </button>
+              </aside>
             ) : null}
             {workView ? (
               <section aria-label={t('chat.workView')} className="grid gap-4">

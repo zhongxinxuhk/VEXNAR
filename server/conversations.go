@@ -450,6 +450,16 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	writePage := func(rows []db.Activity, cursor int64, hasMore bool) {
+		page := map[string]any{"items": projectItems(rows), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore}
+		if trace && running {
+			if count, err := pg.CountPendingConversationIntercepts(c.ID); err == nil {
+				page["pending_approvals"] = count
+			}
+		}
+		writeJSON(w, 200, page)
+	}
+
 	// Incremental tail: ?since=N returns steps after id N (ASC) — used by the live
 	// poll and the post-send fetch. Read one extra row to detect a backlog.
 	if sv := q.Get("since"); sv != "" {
@@ -474,7 +484,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 			items = items[:pageSize]
 			cursor = items[pageSize-1].ID
 		}
-		writeJSON(w, 200, map[string]any{"items": projectItems(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
+		writePage(items, cursor, hasMore)
 		return
 	}
 
@@ -500,7 +510,7 @@ func (s *Server) pgConversationMessages(w http.ResponseWriter, r *http.Request) 
 	if n := len(items); n > 0 {
 		cursor = items[n-1].ID
 	}
-	writeJSON(w, 200, map[string]any{"items": projectItems(items), "cursor": cursor, "running": running, "live": live, "hasMore": hasMore})
+	writePage(items, cursor, hasMore)
 }
 
 // pgConversationMsgDetail lazily returns one step's full detail blob.

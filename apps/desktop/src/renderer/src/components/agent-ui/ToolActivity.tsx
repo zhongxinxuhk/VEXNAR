@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useI18n, useT } from '@/lib/i18n'
 import type { ToolCall, ToolTraceEvent } from '@/store/app'
 import { executionCategories, executionGroup, type ExecutionCategory } from '@/lib/execution-groups'
-import { BookOpen, ClipboardList, Globe, Monitor, Plug, SquareTerminal, Unplug, Wrench } from 'lucide-react'
+import { BookOpen, ChevronRight, ClipboardList, Globe, Monitor, Plug, SquareTerminal, Unplug, Wrench } from 'lucide-react'
 import { ExecutionTimeline } from './ExecutionTimeline'
 import { ToolCallRow, type ToolCallStatus } from './ToolCallRow'
 
@@ -122,13 +122,17 @@ export function ToolActivity({
 
   return (
     <details
-      className="mt-2 rounded-xl border border-line-soft bg-panel/45 px-2 py-1"
+      className="group/trace mt-2 rounded-xl border border-line-soft bg-panel/45 px-2 py-1"
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="cursor-pointer px-2 py-1.5 text-xs text-muted">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg px-2 py-2 text-xs text-ink-soft transition-colors hover:bg-panel-2/70">
+        <ChevronRight className="size-3.5 shrink-0 text-muted transition-transform group-open/trace:rotate-90" aria-hidden="true" />
+        <span className="font-semibold text-ink">
         {calls.length > 0
           ? t('chat.toolActivity', { count: calls.length })
           : t('chat.toolEventCount', { count: events.length })}
+        </span>
+        <span className="text-[11px] text-muted">
         {executionStatus !== 'unknown' ? ` · ${activeLabel ?? t(executionStatusLabels[executionStatus])}` : ''}
         {counts.done > 0 ? ` · ${t('chat.toolDoneCount', { count: counts.done })}` : ''}
         {counts.running > 0 ? ` · ${t('chat.toolActiveCount', { count: counts.running })}` : ''}
@@ -137,6 +141,7 @@ export function ToolActivity({
         {elapsedMs !== undefined ? ` · ${new Intl.NumberFormat(locale, {
           style: 'unit', unit: 'second', maximumFractionDigits: 2
         }).format(elapsedMs / 1000)}` : ''}
+        </span>
       </summary>
       {open ? (
         <>
@@ -192,7 +197,7 @@ export function ToolActivity({
               <input
                 type="search"
                 aria-label={t('chat.traceSearch')}
-                placeholder={t('chat.traceSearch')}
+                placeholder={t('chat.traceSearchPlaceholder')}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.currentTarget.value)

@@ -468,3 +468,44 @@ func TestConversationMessagesTraceFindsOlderCallAcrossHistoryPages(t *testing.T)
 		t.Fatalf("ambiguous calls should not be linked: %+v", match)
 	}
 }
+
+func TestConversationMessagesTraceCountsPendingApprovalsWithinConversation(t *testing.T) {
+	s := newLiveTestServer(t)
+	newConversation := func() int64 {
+		t.Helper()
+		conv, err := s.m.pg.CreateConversation("auto", "pending approval fixture", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+		return conv.ID
+	}
+	active, other := newConversation(), newConversation()
+	createPending := func(id int64) int64 {
+		t.Helper()
+		approval, err := s.m.pg.CreateInterceptPending(0, id, "", "assistant", "read_file", []byte(`{"path":"fixture-only"}`), "fixture")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _, _ = s.m.pg.Exec("DELETE FROM intercept_pending WHERE id=$1", approval) })
+		return approval
+	}
+	first := createPending(active)
+	createPending(other)
+	s.chatBusy[s.convBusyKey(active)] = true
+	for _, query := range []string{"trace=1", "trace=1&since=0"} {
+		page := readLivePage(t, s, active, query)
+		if page["pending_approvals"] != float64(1) {
+			t.Fatalf("query %q returned pending count %v", query, page["pending_approvals"])
+		}
+	}
+	if err := s.m.pg.DecideInterceptPending(first, "allowed"); err != nil {
+		t.Fatal(err)
+	}
+	if count := readLivePage(t, s, active, "trace=1&since=0")["pending_approvals"]; count != float64(0) {
+		t.Fatalf("approval count after decision=%v", count)
+	}
+	if count := readLivePage(t, s, active, "since=0")["pending_approvals"]; count != nil {
+		t.Fatalf("legacy transcript includes trace-only approval count %v", count)
+	}
+}

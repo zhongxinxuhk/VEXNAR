@@ -356,9 +356,16 @@ app.whenReady().then(async () => {
     await wait(`(${historicalPanel})?.textContent.includes('archived result')`)
     await run(`[...(${historicalPanel}).querySelectorAll('button')].find(e=>e.textContent==='输入').click()`)
     await wait(`(${historicalPanel})?.textContent.includes('archive.md')`)
+    await run(`window.__uiFixture.seedThinking()`)
+    await run(openHistoryFixture)
+    await wait(`document.querySelector('[data-execution-phase="reasoning"]')?.textContent.includes('正在思考')`)
+    if (await run(`document.body.textContent.includes('PRIVATE_REASONING_FIXTURE')`)) throw Error('Private reasoning entered the chat UI')
+    fs.writeFileSync(path.join(output, 'chat-reasoning.png'), (await w.webContents.capturePage()).toPNG())
     await run(`window.__uiFixture.startDraft()`)
     await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`)
     await wait(`document.body.textContent.includes('你好，正在生成答复')`)
+    await wait(`document.querySelector('aside[aria-label="1 项等待审批"] button')?.textContent==='查看审批'`)
+
     const liveActivity = `[...document.querySelectorAll('summary')].find(e=>e.textContent.includes('工具活动 · 1 项'))`
     await wait(`(${liveActivity})?.textContent.includes('1 项运行中')`)
     await run(`(${liveActivity}).click()`)
@@ -367,12 +374,14 @@ app.whenReady().then(async () => {
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
     await run(`window.__uiFixture.finishDraft()`)
     await wait(`document.body.textContent.includes('你好，已恢复到完整答复。')`)
+    await wait(`!document.querySelector('aside[aria-label="1 项等待审批"]')`)
+
     await wait(`(${liveActivity})?.textContent.includes('1 项失败') && (${liveActivity}).parentElement.textContent.includes('没有符合当前状态的调用')`)
     await selectStatus(liveActivity, 'error')
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, virtual timeline navigation, execution work view and tool status filters, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, chat actions and phases, structured tool details, virtual timeline, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

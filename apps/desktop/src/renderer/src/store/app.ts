@@ -136,6 +136,7 @@ type AppState = {
   refreshBackend: () => Promise<void>
   askAgent: (text: string) => Promise<void>
   selectSession: (id: string) => Promise<void>
+  pendingApprovals: number
   hasOlderMessages: boolean
   loadingOlderMessages: boolean
   loadOlderMessages: () => Promise<void>
@@ -244,13 +245,14 @@ function renderActivities(sessionId: string): ChatMessage[] {
 }
 
 /** Push the activity buffer into the store for the conversation on screen. */
-function publish(id: string, running: boolean): void {
+function publish(id: string, running: boolean, pendingApprovals = 0): void {
   const state = useAppStore.getState()
   if (state.activeSessionId !== id) return
   const usage = lastTurnUsage(activities)
   useAppStore.setState({
     messages: renderActivities(id),
     busy: running,
+    pendingApprovals,
     agentStatus: running ? 'streaming' : 'idle',
     ...(usage
       ? {
@@ -300,7 +302,7 @@ function pollUntilDone(id: string, initialLive?: BackendActivity | null): void {
       if (page.live?.kind === 'text') liveSeq = page.live.seq
       if (page.running) {
         turnActive = true
-        publish(id, true)
+        publish(id, true, page.pending_approvals ?? 0)
         pollTimer = setTimeout(() => void tick(), page.live ? LIVE_POLL_MS : IDLE_POLL_MS)
         return
       }
@@ -390,6 +392,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   taskFocus: null,
   activeSessionId: null,
   messages: [],
+  pendingApprovals: 0,
   hasOlderMessages: false,
   loadingOlderMessages: false,
   agentSessionId: null,
@@ -532,6 +535,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       activeSessionId: id,
       messages: [],
+      pendingApprovals: 0,
       hasOlderMessages: false,
       loadingOlderMessages: false,
       busy: false,
@@ -552,6 +556,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         messages: renderActivities(id),
         hasOlderMessages: page.hasMore,
+        pendingApprovals: page.pending_approvals ?? 0,
         busy: page.running,
         agentStatus: page.running ? 'streaming' : 'idle',
         ...(usage
@@ -644,6 +649,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         sessions: [session, ...state.sessions],
         activeSessionId: session.id,
         messages: [],
+        pendingApprovals: 0,
         hasOlderMessages: false,
         loadingOlderMessages: false,
         agentSessionId: null,
