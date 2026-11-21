@@ -714,6 +714,25 @@ api.post('/api/engine/work', async (c) => {
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
 
+api.get('/api/schedules', async (c) => c.json({ schedules: await store.schedules.list() }))
+
+api.post('/api/schedules', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.createSchedule(body), 201) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/schedules/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.updateSchedule(c.req.param('id'), body)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/schedules/:id', async (c) => {
+  try { return c.json(await operations.deleteSchedule(c.req.param('id'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.get('/api/tasks/:id/coverage', async (c) => {
   const task = await store.tasks.get(c.req.param('id'))
   if (!task) return c.json({ error: 'task not found' }, 404)

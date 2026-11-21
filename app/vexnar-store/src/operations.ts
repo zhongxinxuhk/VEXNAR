@@ -1180,5 +1180,69 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  function nextFire(frequency: string, timeOfDay: string, from = new Date()) {
+    const [hour, minute] = String(timeOfDay || '09:00').split(':').map(Number)
+    const next = new Date(from)
+    next.setSeconds(0, 0)
+    next.setHours(Number.isFinite(hour) ? hour : 9, Number.isFinite(minute) ? minute : 0, 0, 0)
+    const stepDays = frequency === 'weekly' ? 7 : frequency === 'monthly' ? 30 : 1
+    if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + stepDays)
+    return next.toISOString()
+  }
+
+  async function createSchedule(input: any) {
+    const name = String(input.name ?? '').trim()
+    const prompt = String(input.prompt ?? '').trim()
+    const frequency = String(input.frequency ?? 'daily')
+    if (!name) throw Object.assign(new Error('name 不能为空'), { status: 400 })
+    if (!prompt) throw Object.assign(new Error('prompt 不能为空'), { status: 400 })
+    if (!['daily', 'weekly', 'monthly'].includes(frequency)) throw Object.assign(new Error('frequency 需为 daily/weekly/monthly'), { status: 400 })
+    const rows = []
+    try {
+      for (const file of await readdir(join(root, 'schedules'))) {
+        if (!file.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'schedules', file), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const now = new Date()
+    const record = {
+      id, name, prompt, frequency,
+      time_of_day: String(input.time_of_day ?? '09:00'),
+      run_on_device: Boolean(input.run_on_device ?? false),
+      notify: Boolean(input.notify ?? true),
+      new_chat_each_run: Boolean(input.new_chat_each_run ?? true),
+      model: String(input.model ?? ''), effort: String(input.effort ?? ''),
+      agent_key: String(input.agent_key ?? 'mainagent'), enabled: input.enabled ?? true,
+      created_at: rfc3339(now), last_fired_at: '', next_fire_at: nextFire(frequency, String(input.time_of_day ?? '09:00'), now)
+    }
+    await writer.commit([{ table: 'schedules', key: String(id), record }])
+    return record
+  }
+
+  async function updateSchedule(id: string, input: any) {
+    const current = await writer.readRecord('schedules', id)
+    if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
+    const next = { ...current }
+    for (const field of ['name', 'prompt', 'frequency', 'time_of_day', 'run_on_device', 'notify', 'new_chat_each_run', 'model', 'effort', 'agent_key', 'enabled']) {
+      if (input[field] !== undefined) next[field] = input[field]
+    }
+    if (input.frequency !== undefined || input.time_of_day !== undefined || input.enabled) {
+      next.next_fire_at = nextFire(String(next.frequency), String(next.time_of_day))
+    }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'schedules', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return written
+  }
+
+  async function deleteSchedule(id: string) {
+    const current = await writer.readRecord('schedules', id)
+    if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
+    await rm(join(root, 'schedules', `${id}.json`), { force: true })
+    return { deleted: Number(id) }
+  }
+
+  return { writer, createSchedule, updateSchedule, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
