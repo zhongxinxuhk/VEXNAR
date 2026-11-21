@@ -1072,8 +1072,14 @@ export function storeOperations(root: string) {
     } catch {
       // none
     }
-    const identity = input.domain || input.ip || input.url || ''
-    const existing = identity ? rows.find((row) => row.type === type && (row.domain === input.domain || row.ip === input.ip || row.url === input.url)) : null
+    const sameAsset = (row: any) => {
+      if (row.type !== type) return false
+      if (input.url) return row.url === input.url
+      if (input.domain) return row.domain === input.domain && (input.port == null || Number(row.port) === Number(input.port))
+      if (input.ip) return row.ip === input.ip && (type !== 'service' || Number(row.port) === Number(input.port))
+      return false
+    }
+    const existing = rows.find(sameAsset)
     if (existing) {
       if (!Array.isArray(existing.task_ids) || !existing.task_ids.map(Number).includes(Number(task.id))) {
         const next = { ...existing, task_ids: [...(existing.task_ids ?? []).map(Number), Number(task.id)] }
@@ -1094,6 +1100,8 @@ export function storeOperations(root: string) {
       ...(input.page_title ? { page_title: String(input.page_title) } : {}),
       ...(input.method ? { method: String(input.method) } : {}),
       ...(input.technologies ? { technologies: input.technologies } : {}),
+      ...(input.service_name ? { service_name: String(input.service_name) } : {}),
+      ...(input.status_code == null ? {} : { status_code: Number(input.status_code) }),
       last_seen: rfc3339(new Date())
     }
     await writer.commit([{ table: 'assets', key: String(id), record }])
