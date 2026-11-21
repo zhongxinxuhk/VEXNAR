@@ -18,7 +18,7 @@
     "test:traffic-index": "tsx traffic-index.test.mjs",
     "test:egress": "tsx egress.test.mjs && tsx egress-routes.test.mjs",
     "test:bridge": "tsx proxy-bridge.test.mjs",
-    "fetch:mihomo": "node ../scripts/fetch-mihomo.mjs"
+    "fetch:mihomo": "tsx ../scripts/fetch-mihomo.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",

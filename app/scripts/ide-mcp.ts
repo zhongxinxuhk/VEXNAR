@@ -10,19 +10,28 @@
  * call a tool. Use it for IDE-side work (build, run configurations, inspections)
  * when the gateway has no matching server.
  *
- *   node app/scripts/ide-mcp.mjs tools
- *   node app/scripts/ide-mcp.mjs call <toolName> '<jsonArgs>'
+ *   tsx app/scripts/ide-mcp.ts tools
+ *   tsx app/scripts/ide-mcp.ts call <toolName> '<jsonArgs>'
  */
 const URL = process.env.IJ_MCP_URL || 'http://127.0.0.1:64343/stream'
 const PROJECT =
   process.env.IJ_MCP_SERVER_PROJECT_PATH || process.cwd()
-const HEADERS = {
+/** JSON-RPC 信封：只声明我们真正读的字段，其余保持未解释。 */
+type RpcMessage = {
+  result?: {
+    tools?: { name: string; description?: string }[]
+    content?: { type: string; text?: string }[]
+  }
+  error?: unknown
+}
+
+const HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
   Accept: 'application/json, text/event-stream',
   'IJ_MCP_SERVER_PROJECT_PATH': PROJECT
 }
 
-async function rpc(payload, sessionId) {
+async function rpc(payload: unknown, sessionId?: string): Promise<{ message: RpcMessage; sessionId: string | undefined }> {
   const headers = { ...HEADERS }
   if (sessionId) headers['Mcp-Session-Id'] = sessionId
   const res = await fetch(URL, { method: 'POST', headers, body: JSON.stringify(payload) })
@@ -31,7 +40,7 @@ async function rpc(payload, sessionId) {
   const dataLine = body.split('\n').find((line) => line.startsWith('data:'))
   if (dataLine) body = dataLine.slice(5).trim()
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${body.slice(0, 300)}`)
-  return { message: JSON.parse(body), sessionId: sid }
+  return { message: JSON.parse(body) as RpcMessage, sessionId: sid }
 }
 
 const { message: init, sessionId } = await rpc({
@@ -60,10 +69,10 @@ if (cmd === 'tools') {
   )
   if (message.error) throw new Error(JSON.stringify(message.error))
   for (const part of message.result?.content ?? []) {
-    if (part.type === 'text') console.log(part.text)
+    if (part.type === 'text') console.log(part.text ?? '')
     else console.log(JSON.stringify(part))
   }
 } else {
-  console.error('usage: ide-mcp.mjs tools | call <tool> <json>')
+  console.error('usage: ide-mcp.ts tools | call <tool> <json>')
   process.exit(2)
 }

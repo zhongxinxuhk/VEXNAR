@@ -23,11 +23,24 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { createServer } from 'node:net'
+import { createServer, type AddressInfo } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { appDir, runtimeEnv } from './vexnar-runtime.mjs'
+import { appDir, runtimeEnv } from './vexnar-runtime.ts'
+
+/** `/api/health` 里客户端真正会读的字段。 */
+export type GoHealth = { service: string; ok?: boolean; version?: string }
+
+/** 内置 Go 后端；`VEXNAR_GO` 未开时 url 为空、child 不存在，stop 是空操作。 */
+export type GoService = {
+  url: string
+  version: string
+  child?: import('node:child_process').ChildProcess
+  stop: (signal?: NodeJS.Signals) => void
+}
+
+type Log = (line: string) => void
 
 /** Go 源码所在的仓库根；打包后没有它时只认 VEXNAR_GO_BIN。 */
 const repoRoot = resolve(appDir, '..')
@@ -39,7 +52,7 @@ const defaultPort = 8787
 /** 内置后端的端口；测试与多实例用 VEXNAR_GO_PORT 改。 */
 const goPort = () => Number(process.env.VEXNAR_GO_PORT || defaultPort)
 
-const git = (args) => {
+const git = (args: string[]): string => {
   const result = spawnSync('git', args, { cwd: repoRoot, encoding: 'utf8' })
   return result.status === 0 ? result.stdout.trim() : ''
 }
@@ -69,7 +82,7 @@ export function goSourceStamp() {
 /** 没有 git 时的退路：用 Go 源码最新修改时间兜底，宁多重编也不要跑旧码。 */
 function mtimeStamp() {
   let newest = 0
-  const walk = (dir) => {
+  const walk = (dir: string): void => {
     let entries
     try {
       entries = readdirSync(dir, { withFileTypes: true })
@@ -86,7 +99,7 @@ function mtimeStamp() {
   return newest === 0 ? '' : `go-m${Math.floor(newest)}`
 }
 
-export function goBinaryPath(stamp) {
+export function goBinaryPath(stamp: string): string {
   return join(appDir, '.vexnar-bin', `vexnar-${stamp || 'local'}`)
 }
 
@@ -94,7 +107,7 @@ export function goBinaryPath(stamp) {
  * 桌面令牌：客户端与 Go 必须用同一个值。仓库里已有就沿用，没有就生成一份 0600 的
  * `data/desktop.token`——否则 Go 会以"未配置令牌"启动，域数据接口全部 503。
  */
-function ensureDesktopToken() {
+function ensureDesktopToken(): string {
   const file = join(repoRoot, 'data', 'desktop.token')
   try {
     const existing = readFileSync(file, 'utf8').trim()
@@ -108,8 +121,8 @@ function ensureDesktopToken() {
   return token
 }
 
-async function canBind(port) {
-  return new Promise((done) => {
+async function canBind(port: number): Promise<boolean> {
+  return new Promise<boolean>((done) => {
     const probe = createServer()
     probe.once('error', () => done(false))
     probe.once('listening', () => probe.close(() => done(true)))
@@ -117,36 +130,36 @@ async function canBind(port) {
   })
 }
 
-async function freePort() {
-  return new Promise((done, fail) => {
+async function freePort(): Promise<number> {
+  return new Promise<number>((done, fail) => {
     const probe = createServer()
     probe.once('error', fail)
     probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address()
+      const { port } = probe.address() as AddressInfo
       probe.close(() => done(port))
     })
   })
 }
 
 /** `/api/health` 的 JSON；连不上返回 undefined。 */
-export async function probeHealth(origin) {
+export async function probeHealth(origin: string): Promise<GoHealth | undefined> {
   try {
     const response = await fetch(`${origin}/api/health`, { signal: AbortSignal.timeout(1_500) })
     if (!response.ok) return undefined
-    const body = await response.json()
+    const body = await response.json() as GoHealth | undefined
     return body?.service === 'vexnar' ? body : undefined
   } catch {
     return undefined
   }
 }
 
-async function waitForHealth(origin, signal, timeoutMs = 45_000) {
+async function waitForHealth(origin: string, signal?: AbortSignal, timeoutMs = 45_000): Promise<GoHealth> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     if (signal?.aborted) throw new Error('启动已取消')
     const health = await probeHealth(origin)
     if (health?.ok === true) return health
-    await new Promise((done) => setTimeout(done, 250))
+    await new Promise<void>((done) => setTimeout(done, 250))
   }
   throw new Error(`Go 服务在 ${timeoutMs / 1000}s 内没有就绪（${origin}/api/health）`)
 }
@@ -156,7 +169,7 @@ async function waitForHealth(origin, signal, timeoutMs = 45_000) {
  *
  * `log` 接一行行输出，CLI 直接打到终端，桌面版进主进程日志。
  */
-export function ensureGoBinary(stamp, log = console.log) {
+export function ensureGoBinary(stamp: string, log: Log = console.log): string {
   const binary = goBinaryPath(stamp)
   const prepared = join(dirname(binary), `${stamp}.ready`)
   if (existsSync(binary) && existsSync(prepared) && readFileSync(prepared, 'utf8').trim() === stamp) {
@@ -182,7 +195,7 @@ export function ensureGoBinary(stamp, log = console.log) {
 }
 
 /** 目标端口上那个进程如果是同版本就复用；是别的版本就停下来说明清楚。 */
-async function reuseOrRefuse(stamp, log) {
+async function reuseOrRefuse(stamp: string, log: Log): Promise<string | undefined> {
   const port = goPort()
   const origin = `http://127.0.0.1:${port}`
   if (await canBind(port)) return undefined
@@ -206,7 +219,7 @@ async function reuseOrRefuse(stamp, log) {
  *
  * 返回 `{ url, version, child, stop }`；`stop()` 只杀本次自己起的进程。
  */
-export async function startGoService(options = {}) {
+export async function startGoService(options: { log?: Log } = {}): Promise<GoService> {
   const log = options.log ?? console.log
   const env = runtimeEnv()
   const explicit = process.env.VEXNAR_GO_URL?.trim()
@@ -250,10 +263,10 @@ export async function startGoService(options = {}) {
     for (const line of chunk.split('\n')) if (line.trim() !== '') log(`[go] ${line}`)
   })
   const url = `http://127.0.0.1:${port}`
-  const stop = (signal = 'SIGTERM') => {
+  const stop = (signal: NodeJS.Signals = 'SIGTERM'): void => {
     if (child.exitCode === null) child.kill(signal)
   }
-  child.once('exit', (code, signal) => {
+  child.once('exit', (code: number | null, signal: NodeJS.Signals | null) => {
     if (code !== 0 && code !== null) log(`[vexnar] Go 后端退出 (code=${code}${signal ? `, ${signal}` : ''})`)
   })
 
@@ -285,7 +298,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       console.log(`go: ${go.url}`)
     }
   } catch (error) {
-    console.error(`[vexnar] ${error.message}`)
+    console.error(`[vexnar] ${(error as Error).message}`)
     process.exitCode = 1
   }
 }

@@ -127,7 +127,7 @@ pnpm run go:build            # 需要 Go 时：只编译，不启动
 pnpm run go:stamp            # 打印当前 Go 源码指纹
 ```
 
-`node scripts/vexnar.mjs --help` 查看 VEXNAR CLI 命令。Web 默认绑定
+`pnpm run vexnar --help` 查看 VEXNAR CLI 命令。Web 默认绑定
 `127.0.0.1:3099`，桌面通过独立 Electron 进程启动本机页面。
 VEXNAR 使用 `app/.vexnar-home`（可用 `VEXNAR_HOME` 指定独立目录）和
 `profiles/vexnar`。默认工作区也建在该目录内，Electron 用户数据位于其下的 `electron/`。运行时由工作区的
@@ -178,7 +178,7 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 ## IDE MCP
 
 WebStorm 的 MCP 端点（`127.0.0.1:64542/stream`，项目路径 `app`）不在 Docker MCP
-网关的 catalog 里，无法注册成会话工具；用 `scripts/ide-mcp.mjs` 直连，支持
+网关的 catalog 里，无法注册成会话工具；用 `scripts/ide-mcp.ts` 直连，支持
 `tools` / `call`，以及 IDE 的 `execute_tool` 命令（`get_run_configurations`、
 `execute_run_configuration --configurationName "UI cards build"` 等）。
 

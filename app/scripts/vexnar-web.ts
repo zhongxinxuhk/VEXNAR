@@ -2,13 +2,20 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
-import { appDir, ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.mjs'
-import { startGoService } from './vexnar-go.mjs'
+import { appDir, ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.ts'
+import { startGoService, type GoService } from './vexnar-go.ts'
+
+/** 一个在跑的客户端：dsh web 子进程 + 它用的 Go 后端（默认是空壳）。 */
+export type WebHost = {
+  child: ChildProcess
+  go: GoService
+  stop: (signal?: NodeJS.Signals) => void
+}
 
 /**
  * 与 Go 服务读同一份 `config.json`：把 `database` 段落折成 `VEXNAR_PG_DSN`。
@@ -16,7 +23,7 @@ import { startGoService } from './vexnar-go.mjs'
  * 客户端的领域数据由 TypeScript core 自己读写，但库必须是同一个——否则同一个任务
  * 在客户端和 `web/` 控制台里会变成两行。环境里已经给了 DSN 就尊重环境。
  */
-function databaseEnv() {
+function databaseEnv(): Record<string, string> {
   if (process.env.VEXNAR_PG_DSN || process.env.VEXNAR_PG_URL || process.env.VEXNAR_STORE) return {}
   try {
     const config = JSON.parse(readFileSync(join(appDir, '..', 'config.json'), 'utf8'))
@@ -39,23 +46,27 @@ function databaseEnv() {
  * PostgreSQL。Go 后端默认不启动；`VEXNAR_GO=on` 才会编译并拉起它做对照验证。
  * 返回 `{ child, go, stop }`，`stop()` 一起收掉这两个进程。
  */
-export async function startWeb(port, onReady, onAccountHandoff) {
+export async function startWeb(
+  port: number,
+  onReady: (url: string) => void,
+  onAccountHandoff?: () => void
+): Promise<WebHost> {
   ensureProfile()
   const go = await startGoService()
-  const env = { ...runtimeEnv(), ...databaseEnv(), ...(go.url ? { VEXNAR_GO_URL: go.url } : {}) }
+  const env: Record<string, string> = { ...runtimeEnv(), ...databaseEnv(), ...(go.url ? { VEXNAR_GO_URL: go.url } : {}) }
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {
     stdio: ['ignore', 'pipe', 'inherit'], env
   })
-  const lines = createInterface({ input: child.stdout })
-  lines.on('line', line => {
+  const lines = createInterface({ input: child.stdout! })
+  lines.on('line', (line: string) => {
     const ready = /^dsh web: (http:\/\/127\.0\.0\.1:\d+\/\S*)$/.exec(line)
     if (line === 'vexnar: account-handoff') onAccountHandoff?.()
-    else if (ready) onReady(ready[1])
+    else if (ready) onReady(ready[1]!)
     else console.log(line.replace(/^dsh(?=[:\s])/, 'vexnar'))
   })
-  const stop = (signal = 'SIGTERM') => {
+  const stop = (signal: NodeJS.Signals = 'SIGTERM'): void => {
     if (child.exitCode === null) child.kill(signal)
     go.stop(signal)
   }
@@ -63,20 +74,21 @@ export async function startWeb(port, onReady, onAccountHandoff) {
   return { child, go, stop }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const port = Number(process.argv[2] || 3099)
-  let host
+  let host: WebHost | undefined
   try {
     host = await startWeb(port, url => console.log(`vexnar web: ${url}`))
   } catch (error) {
-    console.error(`[vexnar] ${error.message}`)
+    console.error(`[vexnar] ${(error as Error).message}`)
     process.exitCode = 1
   }
   if (host) {
-    for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => host.stop(signal))
-    host.child.on('error', error => { console.error(error.message); process.exitCode = 1 })
-    host.child.on('exit', code => {
-      host.go.stop()
+    const running = host
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => running.stop(signal))
+    running.child.on('error', (error: Error) => { console.error(error.message); process.exitCode = 1 })
+    running.child.on('exit', (code: number | null) => {
+      running.go.stop()
       process.exitCode = code ?? 1
     })
   }

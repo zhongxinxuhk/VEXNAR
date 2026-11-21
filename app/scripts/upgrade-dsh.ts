@@ -8,11 +8,11 @@
  *
  * Refuses to run when app/dsh has local modifications: the upstream tree is
  * read-only, so any edit there is either a mistake or work that belongs in
- * app/vexnar. After checkout it runs check-upstream.mjs; on failure it restores
+ * app/vexnar. After checkout it runs check-upstream.ts; on failure it restores
  * the previous commit and leaves upstream.lock.json untouched.
  *
- *   node scripts/upgrade-dsh.mjs --tag dsh-v0.2.3
- *   node scripts/upgrade-dsh.mjs --rollback
+ *   tsx scripts/upgrade-dsh.ts --tag dsh-v0.2.3
+ *   tsx scripts/upgrade-dsh.ts --rollback
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -26,12 +26,12 @@ const lockPath = join(app, 'upstream.lock.json')
 const lock = JSON.parse(readFileSync(lockPath, 'utf8'))
 
 const args = process.argv.slice(2)
-const flag = (name) => {
+const flag = (name: string): string | undefined => {
   const i = args.indexOf(name)
   return i >= 0 ? args[i + 1] : undefined
 }
 
-function git(gitArgs) {
+function git(gitArgs: string[]): string {
   return execFileSync('git', ['-C', dsh, ...gitArgs], { encoding: 'utf8' }).trim()
 }
 
@@ -51,7 +51,7 @@ if (args.includes('--rollback')) {
 
 const tag = flag('--tag')
 if (!tag) {
-  console.error('usage: upgrade-dsh.mjs --tag <upstream-tag> | --rollback')
+  console.error('usage: upgrade-dsh.ts --tag <upstream-tag> | --rollback')
   process.exit(2)
 }
 
@@ -62,7 +62,7 @@ const commit = git(['rev-parse', 'HEAD'])
 console.log(`checked out ${tag} (${commit.slice(0, 8)})`)
 
 try {
-  execFileSync(process.execPath, [join(here, 'check-upstream.mjs')], { stdio: 'inherit' })
+  execFileSync(process.execPath, ['--import', 'tsx', join(here, 'check-upstream.ts')], { stdio: 'inherit' })
 } catch {
   console.error('surface check failed — restoring previous checkout')
   git(['checkout', '-q', previous])

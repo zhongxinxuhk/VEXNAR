@@ -5,8 +5,8 @@
 /**
  * Keep the bundled Craft Anything CLI current.
  *
- *   node scripts/craft-update.mjs --check    report only
- *   node scripts/craft-update.mjs            download, verify SHA256, replace
+ *   tsx scripts/craft-update.ts --check    report only
+ *   tsx scripts/craft-update.ts            download, verify SHA256, replace
  *
  * The binary lives outside the repo (dsh plugin data), so an update never
  * dirties the working tree. CRAFT_ANYTHING_CLI overrides the target path.
@@ -15,18 +15,18 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { craftBinary } from './vexnar-runtime.mjs'
+import { craftBinary } from './vexnar-runtime.ts'
 
 const checkOnly = process.argv.includes('--check')
 const target = craftBinary()
 
-function currentVersion() {
+function currentVersion(): string {
   if (!existsSync(target)) return ''
   const result = spawnSync(target, ['--version'], { encoding: 'utf8' })
   return (result.stdout || '').trim().split(' ').pop() ?? ''
 }
 
-async function latestTag() {
+async function latestTag(): Promise<string> {
   const response = await fetch('https://github.com/storytold/craft-anything/releases/latest', { redirect: 'manual' })
   const location = response.headers.get('location') || ''
   const match = location.match(/\/tag\/v?([0-9][^/]*)$/)
@@ -34,7 +34,7 @@ async function latestTag() {
   return match[1]
 }
 
-async function download(url, file) {
+async function download(url: string, file: string): Promise<void> {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`download failed ${response.status}: ${url}`)
   writeFileSync(file, Buffer.from(await response.arrayBuffer()))
@@ -55,7 +55,7 @@ try {
   await download(`${base}/${asset}`, zip)
   await download(`${base}/SHA256SUMS.txt`, join(work, 'SHA256SUMS.txt'))
   const sums = readFileSync(join(work, 'SHA256SUMS.txt'), 'utf8')
-  const line = sums.split('\n').find((row) => row.endsWith(asset))
+  const line = sums.split('\n').find((row: string) => row.endsWith(asset))
   if (!line) throw new Error(`checksum missing for ${asset}`)
   const expected = line.split(/\s+/)[0]
   const actual = spawnSync('shasum', ['-a', '256', zip], { encoding: 'utf8' }).stdout.split(/\s+/)[0]

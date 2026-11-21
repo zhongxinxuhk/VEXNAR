@@ -7,11 +7,11 @@ import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { appDir, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.mjs'
+import { appDir, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
 const require = createRequire(await realpath(bin))
-const runtimeModule = name => import(pathToFileURL(require.resolve(name)).href)
+const runtimeModule = (name: string): Promise<Record<string, any>> => import(pathToFileURL(require.resolve(name)).href)
 const [{ initProfile }, { PROFILE_TEMPLATES }] = await Promise.all([
   runtimeModule('@deepseek-ai/dsh-app-boot'),
   runtimeModule('@deepseek-ai/dsh-official-bundles')
@@ -25,7 +25,7 @@ const manifestPath = join(profile, 'package.json')
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
 manifest.name = 'vexnar-profile'
 manifest.dsh.profile.bundles = [
-  ...manifest.dsh.profile.bundles.filter(name => name !== bundle && name !== 'dsh-claude-style'),
+  ...manifest.dsh.profile.bundles.filter((name: string) => name !== bundle && name !== 'dsh-claude-style'),
   ...theme.map(() => 'dsh-claude-style'),
   bundle
 ]

@@ -25,7 +25,7 @@
 | 控制面 API | **TS** `/api/proxy/*` | 与 web 现有契约一致，页面无需改动 |
 
 **没有 Go 源码参与编译。** 协议引擎是"应用自带的固定二进制"，和 Electron 应用带 ffmpeg 同理：
-`node scripts/fetch-mihomo.mjs` 下载 → sha256 校验 → 放到 `app/.vexnar-bin/mihomo`；
+`tsx scripts/fetch-mihomo.ts` 下载 → sha256 校验 → 放到 `app/.vexnar-bin/mihomo`；
 运行时 `resolveEngineBinary()` 依次找 `VEXNAR_MIHOMO_BIN`、仓库/app 的 `.vexnar-bin`。
 
 ---
@@ -97,7 +97,7 @@ src/egress/
 
 ```bash
 # 1) 协议引擎（可选；没有也能用 socks5/http 节点）
-cd app && node scripts/fetch-mihomo.mjs
+cd app && pnpm run fetch:mihomo
 export VEXNAR_MIHOMO_BIN="$PWD/.vexnar-bin/mihomo"
 
 # 2) 启动 core（TS 原生代理池随首次请求初始化）

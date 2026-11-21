@@ -10,7 +10,7 @@
  * 绑定到指定 proxy。实测 mihomo v1.19.34 的 `listeners + IN-NAME` 可用（见
  * app/docs/EGRESS-TS.md 的验证记录）。
  *
- * 二进制由 `app/scripts/fetch-mihomo.mjs` 下载并校验；没有二进制时引擎不可用，
+ * 二进制由 `app/scripts/fetch-mihomo.ts` 下载并校验；没有二进制时引擎不可用，
  * 只有 socks5/http 节点能走原生拨号（dialer.ts），其它协议显式报错。
  */
 

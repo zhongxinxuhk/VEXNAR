@@ -5,13 +5,13 @@
 /**
  * Update dsh-plugin-shop in the app profile.
  *
- *   node scripts/shop-update.mjs          install the latest version
- *   node scripts/shop-update.mjs --check  print the installed version
+ *   tsx scripts/shop-update.ts          install the latest version
+ *   tsx scripts/shop-update.ts --check  print the installed version
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.mjs'
+import { profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
 const manifestPath = join(vexnarHome(), 'profiles', profileName, 'package.json')

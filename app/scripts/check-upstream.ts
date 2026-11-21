@@ -25,15 +25,15 @@ const app = join(here, '..')
 const dsh = join(app, 'dsh')
 const lock = JSON.parse(readFileSync(join(app, 'upstream.lock.json'), 'utf8'))
 
-const failures = []
-const passes = []
+const failures: string[] = []
+const passes: string[] = []
 
-function ok(label, condition, detail = '') {
+function ok(label: string, condition: boolean, detail = ''): void {
   if (condition) passes.push(label)
   else failures.push(detail === '' ? label : `${label}: ${detail}`)
 }
 
-function git(args) {
+function git(args: string[]): string {
   return execFileSync('git', ['-C', dsh, ...args], { encoding: 'utf8' }).trim()
 }
 
@@ -50,7 +50,7 @@ if (existsSync(join(dsh, '.git'))) {
 }
 
 // ── 2. upstream surface VEXNAR depends on ──────────────────────────────────
-function contains(rel, needle, label) {
+function contains(rel: string, needle: string, label: string): void {
   const file = join(dsh, rel)
   if (!existsSync(file)) return ok(label, false, `${rel} missing`)
   const text = readFileSync(file, 'utf8')
@@ -111,8 +111,8 @@ if (existsSync(bundle)) {
 // app/ 只认 pnpm：一个根 workspace、一个根 lockfile，子包不许自带包管理器状态。
 const SKIP_DIRS = new Set(['node_modules', 'dsh', '.dsh-home', '.vexnar-home', '.git', '.idea', 'lib'])
 
-function walk(rel = '') {
-  const found = []
+function walk(rel = ''): string[] {
+  const found: string[] = []
   for (const entry of readdirSync(join(app, rel), { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (!SKIP_DIRS.has(entry.name)) found.push(...walk(rel === '' ? entry.name : `${rel}/${entry.name}`))
@@ -124,13 +124,13 @@ function walk(rel = '') {
 }
 
 const files = walk()
-const foreignLocks = files.filter((f) => f.endsWith('package-lock.json') || f.endsWith('yarn.lock'))
+const foreignLocks = files.filter((f: string) => f.endsWith('package-lock.json') || f.endsWith('yarn.lock'))
 ok('no npm/yarn lockfiles under app/', foreignLocks.length === 0, `found ${foreignLocks.join(', ')}`)
 
-const pnpmLocks = files.filter((f) => f.endsWith('pnpm-lock.yaml'))
+const pnpmLocks = files.filter((f: string) => f.endsWith('pnpm-lock.yaml'))
 ok('exactly one pnpm lockfile (app/pnpm-lock.yaml)', pnpmLocks.length === 1 && pnpmLocks[0] === 'pnpm-lock.yaml', `found ${pnpmLocks.join(', ') || 'none'}`)
 
-const nestedWorkspaces = files.filter((f) => f.endsWith('pnpm-workspace.yaml') && f !== 'pnpm-workspace.yaml')
+const nestedWorkspaces = files.filter((f: string) => f.endsWith('pnpm-workspace.yaml') && f !== 'pnpm-workspace.yaml')
 ok('workspace defined only at app/pnpm-workspace.yaml', nestedWorkspaces.length === 0, `found ${nestedWorkspaces.join(', ')}`)
 
 const rootPkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))

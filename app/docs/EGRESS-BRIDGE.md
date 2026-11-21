@@ -27,7 +27,7 @@ bash/WebFetch"都发生在 Go 进程里。把这些搬到 TS 等于重写协议�
 
 - **Go**：唯一的数据面与 `egress.db` 持有者；
 - **TS core**：按契约暴露 `/api/proxy/*`，做端点清单校验、SSE 直通、错误语义，再受控转发；
-- **app 启动器**：按源码 stamp 独立编译并启动 Go 引擎（`app/scripts/vexnar-go.mjs`），
+- **app 启动器**：按源码 stamp 独立编译并启动 Go 引擎（`app/scripts/vexnar-go.ts`），
   客户端退出时回收；
 - **web**：只消费 TS 侧的同一组接口，契约与 Go 保持一一对应。
 
@@ -58,7 +58,7 @@ bash/WebFetch"都发生在 Go 进程里。把这些搬到 TS 等于重写协议�
 | 控制面契约 | 两侧 | `proxy-contract.ts` ↔ Go DTO；只加字段，不改语义 |
 | 控制面网关 | TS `proxy-bridge.ts` | 本机来源校验、端点清单、桌面令牌、SSE、超时、错误映射 |
 | 展示 | `web/` | 已有的代理池/订阅页面，不变 |
-| 编译与载入 | `app/scripts/vexnar-go.mjs` | 源码 stamp → 编译 → 启动 → 健康检查 → 退出回收 |
+| 编译与载入 | `app/scripts/vexnar-go.ts` | 源码 stamp → 编译 → 启动 → 健康检查 → 退出回收 |
 
 **单写原则**：`data/egress/egress.db` 只允许一个 Go 进程打开写入。app 启动器在端口上发现
 另一个构建的 Go 时会直接报错，不会悄悄连接（见 `reuseOrRefuse`）。
@@ -110,7 +110,7 @@ bash/WebFetch"都发生在 Go 进程里。把这些搬到 TS 等于重写协议�
 
 ## 5. 独立编译与载入
 
-`app/scripts/vexnar-go.mjs` 已负责：
+`app/scripts/vexnar-go.ts` 已负责：
 
 - 用 `git HEAD` + 未提交 `.go` 内容算 stamp，构建到 `app/.vexnar-bin/vexnar-<stamp>`；
 - `goSourceDirs` 已包含 **`egress`**，因此本特性的改动会触发重编，不会复用旧二进制；

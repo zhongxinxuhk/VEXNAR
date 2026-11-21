@@ -21,8 +21,8 @@
  * and prints a per-table count comparison. `--dry-run` prints the plan only.
  *
  * Usage:
- *   node scripts/migrate-store.mjs --from <store-root> [--to <sqlite>] [--meta <meta.json>] [--dry-run]
- *   node scripts/migrate-store.mjs --help
+ *   tsx scripts/migrate-store.ts --from <store-root> [--to <sqlite>] [--meta <meta.json>] [--dry-run]
+ *   tsx scripts/migrate-store.ts --help
  */
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -30,8 +30,8 @@ import { DatabaseSync } from 'node:sqlite'
 
 const SKIP_TABLES = new Set(['journal', 'logs', 'traffic_evidence_snapshots'])
 
-function usage() {
-  console.log(`Usage: node scripts/migrate-store.mjs --from <store-root> [options]
+function usage(): never {
+  console.log(`Usage: tsx scripts/migrate-store.ts --from <store-root> [options]
 
   --from <dir>     JSON store root (contains tasks/, findings/, meta.json).
   --to <file>      Target SQLite file. Default: <from>/vexnar.sqlite
@@ -41,8 +41,10 @@ function usage() {
   process.exit(0)
 }
 
-function parseArgs(argv) {
-  const out = { from: '', to: '', meta: '', dryRun: false }
+type Options = { from: string; to: string; meta: string; dryRun: boolean }
+
+function parseArgs(argv: string[]): Options {
+  const out: Options = { from: '', to: '', meta: '', dryRun: false }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === '--help' || arg === '-h') usage()
@@ -57,8 +59,8 @@ function parseArgs(argv) {
 }
 
 /** Every `{version,record}` document under one table directory. */
-function readTableRecords(directory) {
-  const rows = []
+function readTableRecords(directory: string): { key: string; record: string }[] {
+  const rows: { key: string; record: string }[] = []
   for (const name of readdirSync(directory).sort()) {
     if (!name.endsWith('.json') || name.endsWith('.tmp')) continue
     const key = name.slice(0, -'.json'.length)
@@ -68,13 +70,13 @@ function readTableRecords(directory) {
       rows.push({ key, record: JSON.stringify(record) })
     } catch (error) {
       // One unreadable record must not abort the import; the source stays intact.
-      console.warn(`[skip] ${name}: ${error.message}`)
+      console.warn(`[skip] ${name}: ${(error as Error).message}`)
     }
   }
   return rows
 }
 
-function backup(target) {
+function backup(target: string): void {
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
   for (const suffix of ['', '-wal', '-shm']) {
     const source = `${target}${suffix}`
@@ -85,7 +87,7 @@ function backup(target) {
   }
 }
 
-function main() {
+function main(): void {
   const args = parseArgs(process.argv.slice(2))
   const from = resolve(args.from)
   if (!existsSync(from) || !statSync(from).isDirectory()) throw new Error(`--from is not a directory: ${from}`)
@@ -136,12 +138,12 @@ function main() {
   let mismatches = 0
   const countKv = db.prepare('SELECT count(*) AS n FROM kv WHERE tbl = ?')
   for (const entry of planned) {
-    const actual = Number(countKv.get(entry.table).n)
+    const actual = Number((countKv.get(entry.table) as { n: number }).n)
     const flag = actual === entry.rows.length ? 'ok' : 'MISMATCH'
     if (flag !== 'ok') mismatches += 1
     console.log(`${entry.table.padEnd(28)} json=${String(entry.rows.length).padEnd(6)} sqlite=${String(actual).padEnd(6)} ${flag}`)
   }
-  const metaCount = Number(db.prepare('SELECT count(*) AS n FROM meta').get().n)
+  const metaCount = Number((db.prepare('SELECT count(*) AS n FROM meta').get() as { n: number }).n)
   console.log(`meta tables                  json=${String(metaTables.length).padEnd(6)} sqlite=${String(metaCount).padEnd(6)} ${metaCount >= metaTables.length ? 'ok' : 'MISMATCH'}`)
   db.close()
   if (mismatches > 0) throw new Error(`${mismatches} table(s) did not match after import`)
@@ -151,6 +153,6 @@ function main() {
 try {
   main()
 } catch (error) {
-  console.error(`[error] ${error.message}`)
+  console.error(`[error] ${(error as Error).message}`)
   process.exit(1)
 }

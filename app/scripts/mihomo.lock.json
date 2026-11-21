@@ -1,6 +1,6 @@
 {
   "version": "v1.19.34",
-  "notes": "协议引擎（mihomo）固定版本与各平台压缩包 sha256；由 app/scripts/fetch-mihomo.mjs 校验。",
+  "notes": "协议引擎（mihomo）固定版本与各平台压缩包 sha256；由 app/scripts/fetch-mihomo.ts 校验。",
   "assets": {
     "darwin-arm64": {
       "file": "mihomo-darwin-arm64-v1.19.34.gz",

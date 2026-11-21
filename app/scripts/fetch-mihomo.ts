@@ -10,9 +10,9 @@
  * - 只负责“把二进制放到开发机/打包环境”，应用运行时通过 VEXNAR_MIHOMO_BIN
  *   或默认路径发现它（见 app/vexnar-core/src/egress/engine.ts）。
  *
- *   node scripts/fetch-mihomo.mjs            # 下载当前平台
- *   node scripts/fetch-mihomo.mjs --force    # 强制重下
- *   node scripts/fetch-mihomo.mjs --print-env
+ *   tsx scripts/fetch-mihomo.ts            # 下载当前平台
+ *   tsx scripts/fetch-mihomo.ts --force    # 强制重下
+ *   tsx scripts/fetch-mihomo.ts --print-env
  */
 
 import { createHash } from 'node:crypto'
@@ -41,25 +41,25 @@ if (!asset) {
   process.exit(1)
 }
 
-async function sha256(path) {
+async function sha256(path: string): Promise<string> {
   const hash = createHash('sha256')
   hash.update(await readFile(path))
   return hash.digest('hex')
 }
 
-async function download(url, dest) {
+async function download(url: string, dest: string): Promise<void> {
   const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(300_000) })
   if (!response.ok || !response.body) throw new Error(`下载失败 HTTP ${response.status}`)
   await pipeline(response.body, createWriteStream(dest))
 }
 
-function gunzip(src, dest) {
+function gunzip(src: string, dest: string): void {
   const result = spawnSync('gunzip', ['-c', src], { maxBuffer: 200 * 1024 * 1024 })
   if (result.status !== 0) throw new Error(`gunzip 失败：${result.stderr?.toString() ?? ''}`)
   writeFileSync(dest, result.stdout, { mode: 0o755 })
 }
 
-function unzip(src, dest) {
+function unzip(src: string, dest: string): void {
   const dir = dirname(dest)
   const result = spawnSync('unzip', ['-o', src, '-d', dir], { encoding: 'utf8' })
   if (result.status !== 0) throw new Error(`unzip 失败：${result.stderr}`)
@@ -68,7 +68,7 @@ function unzip(src, dest) {
   renameSync(produced, dest)
 }
 
-async function main() {
+async function main(): Promise<void> {
   mkdirSync(binDir, { recursive: true })
   if (existsSync(target) && !force) {
     const meta = join(binDir, 'mihomo.version')
@@ -102,7 +102,7 @@ async function main() {
   if (printEnv) console.log(`export VEXNAR_MIHOMO_BIN="${target}"`)
 }
 
-main().catch((error) => {
-  console.error(`[mihomo] ${error.message}`)
+main().catch((error: unknown) => {
+  console.error(`[mihomo] ${(error as Error).message}`)
   process.exit(1)
 })
