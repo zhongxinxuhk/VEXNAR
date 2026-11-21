@@ -1135,7 +1135,22 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, out)
 }
 
+// taskPageMaxSize bounds one ?size= window; the task list is polled by every
+// client, so an unbounded size would be a self-inflicted stampede.
+const taskPageMaxSize = 200
+
+// listTasks serves the task inventory.
+//
+// Two shapes, the same way findings/intents already behave:
+//   - no ?page/?size → the full list (web console, overview cards, MCP callers)
+//   - ?page/?size    → {tasks,total,page,size} for a windowed listing
+//
+// ?status= and ?q= narrow the set before the window is taken, so total always
+// describes the filtered set, not the page on screen.
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	status := strings.TrimSpace(q.Get("status"))
+	needle := strings.ToLower(strings.TrimSpace(q.Get("q")))
 	active := ""
 	if t := s.m.ActiveTask(); t != nil {
 		active = t.ID
@@ -1146,6 +1161,12 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	dtos := make([]TaskDTO, 0, len(list))
 	for _, t := range list {
 		dto := taskDTO(t, s.resolvedTaskStatus(t))
+		if status != "" && dto.Status != status {
+			continue
+		}
+		if needle != "" && !taskMatchesQuery(dto, needle) {
+			continue
+		}
 		applyTaskArchiveBlocker(&dto, archiveBlockers)
 		metric := metrics[t.ExpID]
 		dto.Tokens = tokenTotalDTO(metric.Tokens)
@@ -1166,7 +1187,54 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		}
 		dtos = append(dtos, dto)
 	}
-	writeJSON(w, 200, map[string]any{"tasks": dtos, "active": active})
+	total := len(dtos)
+	page, size, paged := taskPageParams(q)
+	if !paged {
+		writeJSON(w, 200, map[string]any{"tasks": dtos, "active": active})
+		return
+	}
+	start := (page - 1) * size
+	if start > total {
+		start = total
+	}
+	end := start + size
+	if end > total {
+		end = total
+	}
+	writeJSON(w, 200, map[string]any{
+		"tasks": dtos[start:end], "active": active, "total": total, "page": page, "size": size,
+	})
+}
+
+// taskPageParams reads the optional window. Both keys absent keeps the legacy
+// full-list response, so existing callers are untouched.
+func taskPageParams(q url.Values) (page, size int, paged bool) {
+	if q.Get("page") == "" && q.Get("size") == "" {
+		return 1, 0, false
+	}
+	page = atoiDefault(q.Get("page"), 1)
+	if page < 1 {
+		page = 1
+	}
+	size = atoiDefault(q.Get("size"), 50)
+	if size <= 0 {
+		size = 50
+	}
+	if size > taskPageMaxSize {
+		size = taskPageMaxSize
+	}
+	return page, size, true
+}
+
+// taskMatchesQuery is the case-insensitive substring match the task panel's
+// search box and the web console's filter share: id, name, description, goal.
+func taskMatchesQuery(dto TaskDTO, needle string) bool {
+	for _, field := range []string{dto.ID, dto.Name, dto.Description, dto.Goal} {
+		if strings.Contains(strings.ToLower(field), needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) resolvedTaskStatus(t *Task) string {

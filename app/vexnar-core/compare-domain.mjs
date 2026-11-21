@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken'
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = join(here, '..', '..')
 const token = jwt.sign({}, readFileSync(join(repo, 'jwt.key')), { algorithm: 'HS256', subject: 'VEXNAR', expiresIn: '1h' })
-const GO = 'http://127.0.0.1:8787'
+const GO = process.env.P0_GO_API || 'http://127.0.0.1:8787'
 const TS = 'http://127.0.0.1:8790'
 const headers = { Authorization: `Bearer ${token}` }
 const get = async (base, path) => (await fetch(base + path, { headers })).json()
@@ -39,6 +39,31 @@ const tsTasks = (await get(TS, '/api/tasks')).tasks
 const taskFields = ['id', 'exploration_id', 'name', 'description', 'goal', 'paused', 'queued', 'created_unix', 'completed_unix', 'coverage_enabled', 'tokens', 'goals_total', 'goals_met', 'in_flight', 'findings']
 const pick = (row) => Object.fromEntries(taskFields.map((k) => [k, row[k]]))
 check('tasks core fields', same(goTasks.map(pick), tsTasks.map(pick)), JSON.stringify(diff(canon(goTasks.map(pick)), canon(tsTasks.map(pick))).slice(0,2)))
+
+// 任务面板的清单：窗口化清单（page/size）与筛选（status/q）在 Go 与 core 必须逐页相等，
+// 否则"第 2 页是谁"在两边就对不上。
+for (const query of ['page=1&size=5', 'page=2&size=5', 'page=1&size=9999', 'status=done&page=1&size=5']) {
+  const goPage = await get(GO, `/api/tasks?${query}`)
+  const tsPage = await get(TS, `/api/tasks?${query}`)
+  check(`tasks page ${query}`,
+    goPage.total === tsPage.total && goPage.page === tsPage.page && goPage.size === tsPage.size &&
+      same(goPage.tasks.map((row) => row.id), tsPage.tasks.map((row) => row.id)),
+    `total ${goPage.total}/${tsPage.total} · size ${goPage.size}/${tsPage.size}`)
+}
+const goSearchMarker = (goTasks[0]?.id ?? '').slice(0, 2)
+if (goSearchMarker) {
+  const query = `q=${encodeURIComponent(goSearchMarker)}&page=1&size=5`
+  const goSearch = await get(GO, `/api/tasks?${query}`)
+  const tsSearch = await get(TS, `/api/tasks?${query}`)
+  check('tasks search q',
+    goSearch.total === tsSearch.total && same(goSearch.tasks.map((row) => row.id), tsSearch.tasks.map((row) => row.id)),
+    `${goSearch.total}/${tsSearch.total}`)
+}
+// 工具目录：runner 自己列的 10 个工具，core 直接透出，客户端不再硬编码。
+const tools = await get(TS, '/api/engine/tools')
+check('engine tool catalog', Array.isArray(tools.tools) && tools.tools.length >= 4 &&
+  tools.tools.every((tool) => typeof tool.name === 'string' && typeof tool.description === 'string'),
+  `${tools.tools?.length ?? 0} tools`)
 
 const goAssets = await get(GO, '/api/assets?type=root_domain&limit=200')
 const tsAssets = await get(TS, '/api/assets?type=root_domain&limit=200')

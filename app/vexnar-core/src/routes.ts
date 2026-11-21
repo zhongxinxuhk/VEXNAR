@@ -4,7 +4,7 @@
 import { Hono } from 'hono'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { blobStore, buildReport, buildReportHtml, createNotifier, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue } from './context.ts'
+import { blobStore, buildReport, buildReportHtml, createNotifier, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
 import { register as registerExploration } from './routes/exploration.ts'
 
 export const api = new Hono()
@@ -94,10 +94,31 @@ const taskDto = (row: any, metrics?: any) => ({
   coverage_enabled: row.coverage_enabled
 })
 
+// 任务清单：无 page/size → 全量（web 控制台、概览卡、MCP 调用方照旧）；带 page/size →
+// {tasks,total,page,size} 窗口。status/q 先收窄集合再取窗口，所以 total 描述的是筛选后的
+// 全集而不是当前页 —— 与 Go 的 listTasks 同一套语义。
+const TASK_PAGE_MAX_SIZE = 200
+
 api.get('/api/tasks', async (c) => {
+  const status = (c.req.query('status') ?? '').trim()
+  const needle = (c.req.query('q') ?? '').trim().toLowerCase()
   const rows = await store.tasks.list()
   const metrics = await store.taskMetrics()
-  return c.json({ tasks: rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))) })
+  const all = rows
+    .map((row) => taskDto(row, metrics.get(Number(row.exploration_id))))
+    .filter((task) => status === '' || String(task.status) === status)
+    .filter((task) => needle === '' || [task.id, task.name, task.description, task.goal]
+      .some((field) => String(field ?? '').toLowerCase().includes(needle)))
+  const paged = c.req.query('page') != null || c.req.query('size') != null
+  if (!paged) return c.json({ tasks: all })
+  const page = Math.max(Number(c.req.query('page') ?? 1) || 1, 1)
+  const size = Math.min(Math.max(Number(c.req.query('size') ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE)
+  return c.json({
+    tasks: all.slice((page - 1) * size, (page - 1) * size + size),
+    total: all.length,
+    page,
+    size
+  })
 })
 
 api.get('/api/tasks/:id', async (c) => {
@@ -684,6 +705,10 @@ api.get('/api/exploration/findings/:id/traffic', async (c) => {
   const bindings = out.bindings.map((binding: any) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }))
   return c.json({ ...out, bindings })
 })
+
+// 工具目录：内置侦察工具的名字与说明由 runner 自己提供（tools.ts 的 templates），
+// 客户端不再硬编码一份 —— 加工具只需要改 runner，面板自动跟上。
+api.get('/api/engine/tools', async (c) => c.json({ tools: toolSpecs() }))
 
 api.post('/api/engine/tools/run', async (c) => {
   const body = await c.req.json().catch(() => ({}))

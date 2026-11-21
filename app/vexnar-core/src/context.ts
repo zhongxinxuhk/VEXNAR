@@ -1,7 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot, toolSpecs } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -70,4 +70,4 @@ const releaseStoreLock = await operations.writer.lock()
 process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
 process.once('SIGTERM', () => { void releaseStoreLock(); process.exit(0) })
 
-export { storeRoot, gatewayComplete, queryDSL, createNotifier, blobStore, buildReport, buildReportHtml, listReports, saveReport, persistToolResult, runTool }
+export { storeRoot, gatewayComplete, queryDSL, createNotifier, blobStore, buildReport, buildReportHtml, listReports, saveReport, persistToolResult, runTool, toolSpecs }
