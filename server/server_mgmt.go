@@ -152,6 +152,8 @@ func (s *Server) pgDeleteTask(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if !deleted {
 			s.abortTaskDelete(id)
+		} else if n, err := strconv.ParseInt(id, 10, 64); err == nil {
+			s.revokeTaskEgress(n)
 		}
 	}()
 
