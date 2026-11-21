@@ -41,6 +41,10 @@ app/                          # WebStorm 工程根（项目名 app）
 - commit：`9c2670d3bce5275e0d1610272958121af87787bb`
 - 许可：MIT（见 `dsh/LICENSE`），上游文件一律不加本仓库的 AGPL 头。
 
+## 迁移评估
+
+Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [MIGRATION.md](./MIGRATION.md)。
+
 ## 上游保护
 
 上游/下游的边界、升级流程与冲突处理见 [UPSTREAM.md](./UPSTREAM.md)。核心约束：
