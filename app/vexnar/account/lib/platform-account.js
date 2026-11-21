@@ -89,13 +89,36 @@ function normalizeModel(model) {
   return name && name !== id ? { id, name } : { id }
 }
 
+/**
+ * 重试策略只有两档：normal（仅临时错误，dsh 的默认值）与 always（所有错误）。
+ * 存 'normal' 时不往 llm-pi-ai 写 retryPolicy，让适配器的默认策略继续生效。
+ */
+function normalizeRetry(value) {
+  return value === 'always' ? 'always' : 'normal'
+}
+
 function normalizeProvider(provider) {
   const id = text(provider?.id)
   const key = text(provider?.key)
   if (!id || !key) return undefined
   const models = Array.isArray(provider?.models) ? provider.models.map(normalizeModel).filter(Boolean) : []
   if (models.length === 0) return undefined
-  return { id, name: text(provider?.name) || id, base: text(provider?.base), key, models }
+  return {
+    id, name: text(provider?.name) || id, base: text(provider?.base), key, models,
+    retry: normalizeRetry(provider?.retry)
+  }
+}
+
+/** 模型目录去重：同一个模型 ID 只留第一次出现的那条。 */
+function uniqueModels(models) {
+  const seen = new Set()
+  const kept = []
+  for (const model of models) {
+    if (!model || seen.has(model.id)) continue
+    seen.add(model.id)
+    kept.push(model)
+  }
+  return kept
 }
 
 function normalizeAccount(raw) {
@@ -132,7 +155,12 @@ export function ready(account) {
   return account.providers.some((provider) => provider.key !== '' && provider.models.length > 0)
 }
 
-/** 给浏览器的视图：没有密钥，字段名与旧 Go 接口保持一致。 */
+/**
+ * 给浏览器的视图：没有密钥，字段名与旧 Go 接口保持一致。
+ *
+ * 设置页的提供方编辑器要显示 API 地址、重试策略与「密钥是否已存」——地址不是
+ * 秘密，密钥只暴露一个布尔；`key` 永远不出宿主。
+ */
 export function publicView(account) {
   const active = signedIn(account)
   return {
@@ -147,7 +175,10 @@ export function publicView(account) {
       ? account.providers.map((provider) => ({
         id: provider.id,
         name: provider.name,
+        base: provider.base,
         models: provider.models,
+        retry: normalizeRetry(provider.retry),
+        key_configured: provider.key !== '',
         format: provider.id === 'vexnar' ? 'openai-responses' : 'openai-completions'
       }))
       : []
@@ -164,7 +195,8 @@ export function catalog(account) {
       name: provider.name,
       base: provider.base,
       key: provider.key,
-      models: provider.models
+      models: provider.models,
+      retry: normalizeRetry(provider.retry)
     }))
 }
 
@@ -494,7 +526,7 @@ export function createPlatformAccount(options = {}) {
     const current = await read()
     if (!gateOpen(current)) throw fail(401, '请先登录 VEXNAR 账号')
 
-    const provider = { id: '', name: '', base: '', key, models: [] }
+    const provider = { id: '', name: '', base: '', key, models: [], retry: normalizeRetry(input.retry) }
     switch (input.kind) {
       case 'platform':
         provider.id = 'vexnar'
@@ -517,15 +549,59 @@ export function createPlatformAccount(options = {}) {
         throw fail(400, '未知的模型提供方')
     }
 
-    provider.models = await readModels(provider.base, key)
+    provider.models = uniqueModels(await readModels(provider.base, key))
     if (provider.models.length === 0) throw fail(422, '无法读取模型列表，请检查 API 地址和 API Key')
 
     const account = await read()
     if (!gateOpen(account) || account.user_id !== current.user_id) {
       throw fail(401, 'VEXNAR 登录状态已变化，请重试')
     }
+    // 同一个 id 重新添加（例如更新 DeepSeek 的 key）时，用户先前选的重试策略不该被冲掉。
+    const previous = account.providers.find((item) => item.id === provider.id)
+    if (previous !== undefined && text(input.retry) === '') provider.retry = normalizeRetry(previous.retry)
     account.providers = account.providers.filter((item) => item.id !== provider.id)
     account.providers.push(provider)
+    await save(account)
+    return publicView(account)
+  }
+
+  /**
+   * 编辑一个已存在的提供方：密钥可留空（留空即保持已存的 key），地址、显示名称、
+   * 模型目录与重试策略都可改。
+   *
+   * 模型目录以编辑器提交的那份为准——用户在界面上删掉/改名的模型不该被下一次
+   * 「读取上游模型列表」悄悄加回来。只有密钥或地址变了才向上游验证一次：
+   * 那是唯一能证明这组凭据仍然可用的手段，验证失败就整笔拒绝，不留半套状态。
+   */
+  async function updateProvider(input = {}) {
+    const id = text(input.id)
+    if (!/^[a-z0-9-]+$/.test(id)) throw fail(400, '无效的模型提供方')
+    const account = await read()
+    if (!gateOpen(account)) throw fail(401, '请先登录 VEXNAR 账号')
+    const current = account.providers.find((provider) => provider.id === id)
+    if (current === undefined) throw fail(404, '模型提供方不存在')
+
+    const key = text(input.api_key)
+    const base = text(input.base_url) === '' ? current.base : sameOriginURL(input.base_url, 'API 地址')
+    const name = text(input.name) || current.name
+    const retry = normalizeRetry(input.retry)
+    if (id === 'vexnar') {
+      if (key !== '') throw fail(400, '平台访问密钥由平台签发，不能在这里修改')
+      if (base !== current.base) throw fail(400, '平台 API 地址由平台配置，不能在这里修改')
+    }
+
+    let models = Array.isArray(input.models) ? uniqueModels(input.models.map(normalizeModel).filter(Boolean)) : []
+    if (key !== '' || base !== current.base) {
+      const discovered = await readModels(base, key === '' ? current.key : key)
+      if (discovered.length === 0) throw fail(422, '无法读取模型列表，请检查 API 地址和 API Key')
+      if (models.length === 0) models = uniqueModels(discovered)
+    }
+    if (models.length === 0) models = current.models
+    if (models.length === 0) throw fail(422, '模型目录不能为空')
+
+    account.providers = account.providers.map((provider) => provider.id !== id ? provider : {
+      id, name, base, key: key === '' ? current.key : key, models, retry
+    })
     await save(account)
     return publicView(account)
   }
@@ -562,6 +638,7 @@ export function createPlatformAccount(options = {}) {
     password: (username, secret) => serial(() => password(username, secret)),
     verify: (challenge, code) => serial(() => verify(challenge, code)),
     addProvider: (input) => serial(() => addProvider(input)),
+    updateProvider: (input) => serial(() => updateProvider(input)),
     removeProvider: (id) => serial(() => removeProvider(id)),
     logout: () => serial(logout)
   }
