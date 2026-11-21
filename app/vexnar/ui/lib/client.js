@@ -189,9 +189,29 @@ function TrafficViewer({ phase, block }) {
     )
   );
 }
+function BrandMark({ size }) {
+  const px = size ?? 24;
+  return (0, import_react.createElement)(
+    "svg",
+    { width: px, height: px, viewBox: "0 0 24 24", "aria-label": "VEXNAR", role: "img" },
+    (0, import_react.createElement)("path", {
+      d: "M3 4h4.2l4.8 11.2L16.8 4H21l-7.2 16h-3.6L3 4z",
+      fill: "currentColor"
+    })
+  );
+}
+function BrandName() {
+  return (0, import_react.createElement)(
+    "span",
+    { style: { fontWeight: 700, letterSpacing: "0.08em", fontSize: 13 } },
+    "VEXNAR"
+  );
+}
 function apply(ctx) {
   ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
+  ctx.slots.inject("sidebar.brand.mark", () => ctx.slots.register({ name: "sidebar.brand.mark" }, BrandMark));
+  ctx.slots.inject("sidebar.brand.name", () => ctx.slots.register({ name: "sidebar.brand.name" }, BrandName));
 }
 var inject = ["slots"];
 var client_default = { name: "@vexnar/dsh-ui", inject, apply };

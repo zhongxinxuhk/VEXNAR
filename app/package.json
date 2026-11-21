@@ -10,6 +10,8 @@
     "setup": "node scripts/setup-app-profile.mjs",
     "web": "node scripts/dsh-web.mjs --no-open --port 3099",
     "desktop": "node scripts/dsh-desktop.mjs",
-    "ui:build": "npm --prefix vexnar/ui run build"
+    "ui:build": "npm --prefix vexnar/ui run build",
+    "upstream:check": "node scripts/check-upstream.mjs",
+    "upstream:upgrade": "node scripts/upgrade-dsh.mjs"
   }
 }

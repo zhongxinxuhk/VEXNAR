@@ -205,16 +205,42 @@ export function TrafficViewer({ phase, block }: ToolViewProps): ReactNode {
   )
 }
 
+function BrandMark({ size }: { size?: number }): ReactNode {
+  const px = size ?? 24
+  return h(
+    'svg',
+    { width: px, height: px, viewBox: '0 0 24 24', 'aria-label': 'VEXNAR', role: 'img' },
+    h('path', {
+      d: 'M3 4h4.2l4.8 11.2L16.8 4H21l-7.2 16h-3.6L3 4z',
+      fill: 'currentColor'
+    })
+  )
+}
+
+function BrandName(): ReactNode {
+  return h(
+    'span',
+    { style: { fontWeight: 700, letterSpacing: '0.08em', fontSize: 13 } },
+    'VEXNAR'
+  )
+}
+
 export function apply(ctx: {
   slots: {
     inject: (name: string, register: () => unknown) => void
-    register: (options: { name: string; key: string }, component: unknown) => unknown
+    register: (options: { name: string; key?: string }, component: unknown) => unknown
   }
 }): void {
   ctx.slots.inject('tool.call.toolview', () =>
     ctx.slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   ctx.slots.inject('tool.call.toolview', () =>
     ctx.slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
+  // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
+  // profile patch disables. Occupying the slot is the supported override route.
+  ctx.slots.inject('sidebar.brand.mark', () =>
+    ctx.slots.register({ name: 'sidebar.brand.mark' }, BrandMark))
+  ctx.slots.inject('sidebar.brand.name', () =>
+    ctx.slots.register({ name: 'sidebar.brand.name' }, BrandName))
 }
 
 export const inject = ['slots']
