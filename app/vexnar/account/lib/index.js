@@ -229,6 +229,41 @@ async function runBrowserLogin(ctx) {
 }
 
 
+
+const BRAND_SCRIPT = `
+(() => {
+  const swap = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.nodeValue && node.nodeValue.includes('DeepSeek Harness')) {
+        node.nodeValue = node.nodeValue.replaceAll('DeepSeek Harness', 'VEXNAR');
+      }
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+    node.childNodes.forEach(swap);
+  };
+  swap(document.body || document.documentElement);
+  new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.type === 'characterData') swap(record.target);
+      for (const node of record.addedNodes) swap(node);
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+})();
+`
+
+const BRAND_HEAD = [
+  '<title>VEXNAR</title>',
+  '<meta name="application-name" content="VEXNAR">',
+  '<meta name="apple-mobile-web-app-title" content="VEXNAR">',
+  '<meta name="description" content="VEXNAR — AI 自主渗透测试系统">',
+  '<meta property="og:title" content="VEXNAR">',
+  '<meta property="og:description" content="VEXNAR — AI 自主渗透测试系统">',
+  '<link rel="apple-touch-icon" sizes="512x512" href="/vexnar-brand/favicon.png">',
+  '<link rel="manifest" href="/vexnar-brand/manifest.webmanifest">'
+].join('')
+
 const FAVICON_SCRIPT = `
 (() => {
   const link = document.createElement('link');
@@ -300,14 +335,37 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 export function apply(ctx) {
   ctx.effect(() => ctx.on('webserver/index-inject', (table) => {
     table.push({ kind: 'style', text: PERMISSION_WARNING_CSS })
-    table.push({ kind: 'html', placement: 'head', html: '<link rel="icon" type="image/png" href="/vexnar-brand/favicon.png">' })
+    table.push({ kind: 'html', placement: 'head', html: BRAND_HEAD + '<link rel="icon" type="image/png" href="/vexnar-brand/favicon.png">' })
     table.push({ kind: 'script', placement: 'body', text: FAVICON_SCRIPT })
+    table.push({ kind: 'script', placement: 'body', text: BRAND_SCRIPT })
     table.push({ kind: 'script', placement: 'body', text: PERMISSION_WARNING_SCRIPT })
   }))
 
   // Restore runs in the background: settings settles after every entry mounts,
   // so awaiting it inside apply would deadlock startup.
   void restore(ctx).catch((error) => console.warn('[vexnar-account] restore failed:', String(error?.message || error)))
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/vexnar-brand/manifest.webmanifest',
+      handler: async (_req, res) => {
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8')
+        res.setHeader('Cache-Control', 'public, max-age=86400')
+        res.end(JSON.stringify({
+          name: 'VEXNAR',
+          short_name: 'VEXNAR',
+          description: 'VEXNAR — AI 自主渗透测试系统',
+          start_url: '/',
+          display: 'standalone',
+          background_color: '#ffffff',
+          theme_color: '#111827',
+          icons: [{ src: '/vexnar-brand/favicon.png', sizes: '512x512', type: 'image/png' }]
+        }))
+      }
+    })
+  )
 
   ctx.effect(() =>
     ctx.webServer.register({
