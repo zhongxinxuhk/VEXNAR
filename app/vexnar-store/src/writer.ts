@@ -111,7 +111,8 @@ export function storeWriter(root: string) {
         let stale = false
         try {
           const pid = Number((await readFile(path, 'utf8')).trim())
-          if (pid > 0) process.kill(pid, 0)
+          if (!Number.isFinite(pid) || pid <= 0) stale = true
+          else process.kill(pid, 0)
         } catch (error: any) {
           stale = error?.code === 'ESRCH'
         }

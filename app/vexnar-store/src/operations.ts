@@ -89,5 +89,88 @@ export function storeOperations(root: string) {
     return written
   }
 
-  return { writer, createTask, patchFinding }
+  async function reportFinding(input: {
+    task_id: string | number
+    intent_id?: string | number
+    vulnclass?: string
+    name?: string
+    severity?: string
+    summary?: string
+    evidence?: string
+    worker?: string
+    asset_ids?: number[]
+  }) {
+    const task = await writer.readRecord('tasks', String(input.task_id))
+    if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const vulnclass = String(input.vulnclass ?? '').trim()
+    const severity = String(input.severity ?? '').trim()
+    const summary = String(input.summary ?? '').trim()
+    const evidence = String(input.evidence ?? '').trim()
+    if (!vulnclass) throw Object.assign(new Error('vulnclass 不能为空'), { status: 400 })
+    if (!SEVERITIES.has(severity)) throw Object.assign(new Error(`非法严重度: ${severity}`), { status: 400 })
+    if (!summary) throw Object.assign(new Error('summary 不能为空'), { status: 400 })
+    if (!evidence) throw Object.assign(new Error('evidence 不能为空'), { status: 400 })
+
+    const explorationId = Number(task.exploration_id)
+    let intentKey: string | null = null
+    if (input.intent_id !== undefined && String(input.intent_id) !== '') {
+      const intent = await writer.readRecord('nodes', String(input.intent_id))
+      if (!intent || Number(intent.exploration_id) !== explorationId || intent.kind !== 'intent') {
+        throw Object.assign(new Error('intent_id 必须是本任务的意图'), { status: 400 })
+      }
+      intentKey = String(input.intent_id)
+    }
+
+    const nodeId = (await maxNumericKey(join(root, 'nodes'))) + 1
+    const findingId = (await maxNumericKey(join(root, 'findings'))) + 1
+    const now = new Date()
+    const worker = String(input.worker ?? '')
+    const node = {
+      id: String(nodeId),
+      exploration_id: explorationId,
+      kind: 'finding',
+      state: 'confirmed',
+      priority: 9,
+      origin: worker,
+      payload: {
+        vulnclass,
+        name: String(input.name ?? ''),
+        severity,
+        summary,
+        evidence: { by: worker, poc: evidence }
+      },
+      created_at: rfc3339(now)
+    }
+    const finding = {
+      id: String(findingId),
+      task_id: String(task.id),
+      node_id: String(nodeId),
+      vulnclass,
+      name: String(input.name ?? ''),
+      severity,
+      status: 'pending',
+      summary,
+      evidence,
+      worker,
+      asset_ids: input.asset_ids ?? [],
+      created_at_text: rfc3339(now)
+    }
+
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown> }> = [
+      { table: 'nodes', key: String(nodeId), record: node }
+    ]
+    if (intentKey) {
+      ops.push({ table: 'edges', key: `${intentKey}-yields-${nodeId}`, record: { exploration_id: explorationId, src: intentKey, dst: String(nodeId), rel: 'yields' } })
+    }
+    ops.push({ table: 'findings', key: String(findingId), record: finding })
+    const written = await writer.commit(ops)
+    return {
+      finding_id: String(findingId),
+      finding_node_id: String(nodeId),
+      traffic: null,
+      record: written[written.length - 1]
+    }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding }
 }

@@ -30,6 +30,17 @@ try {
 }
 check('stale revision conflicts', conflict instanceof StoreConflict, String(conflict))
 
+await ops.writer.put({ table: 'nodes', key: '100', record: { id: '100', exploration_id: Number(task.exploration_id), kind: 'intent', state: 'running', payload: {}, priority: 1, origin: 'test', created_at: 'x' } })
+const reported = await ops.reportFinding({ task_id: task.id, intent_id: '100', vulnclass: 'SQL注入', severity: 'high', summary: 'union based', evidence: 'id=1 UNION SELECT ...', worker: 'tester' })
+const node = await ops.writer.readRecord('nodes', reported.finding_node_id)
+const edge = await ops.writer.readRecord('edges', `100-yields-${reported.finding_node_id}`)
+const finding = await ops.writer.readRecord('findings', reported.finding_id)
+check('report finding commits graph', node?.kind === 'finding' && node?.state === 'confirmed' && edge?.rel === 'yields' && finding?.node_id === reported.finding_node_id, JSON.stringify({ node: node?.id, edge: edge?.rel, finding: finding?.id }))
+
+let invalidTask = null
+try { await ops.reportFinding({ task_id: '99999', vulnclass: 'X', severity: 'low', summary: 's', evidence: 'e' }) } catch (error) { invalidTask = error }
+check('report rejects unknown task', invalidTask?.status === 404, String(invalidTask))
+
 // Crash recovery: a prepared journal is replayed.
 await writeFile(join(root, 'journal', 'manual.json'), JSON.stringify({
   state: 'prepared',

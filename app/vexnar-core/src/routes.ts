@@ -127,6 +127,17 @@ api.post('/api/tasks', async (c) => {
   }
 })
 
+api.post('/api/exploration/findings', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const result = await operations.reportFinding(body)
+    store.invalidate?.(['nodes', 'findings', 'edges'])
+    return c.json(result, 201)
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
+  }
+})
+
 api.patch('/api/exploration/findings/:id', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
