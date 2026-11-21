@@ -160,7 +160,8 @@ export function register(api: Hono) {
     } catch (e: any) {
       return c.json({ error: '解析上传失败或超出大小限制：' + String(e?.message ?? e) }, 400)
     }
-    const files = form.getAll('file').filter((f: any) => f && typeof f === 'object' && typeof f.arrayBuffer === 'function')
+    // getAll 的静态类型是 FormDataEntryValue[]（string | File）；过滤后按 File 使用。
+    const files = form.getAll('file').filter((f): f is File => f != null && typeof f === 'object' && typeof f.arrayBuffer === 'function')
     if (!files.length) return c.json({ error: '缺少上传文件(表单字段 file)' }, 400)
     let saved = 0
     let totalBytes = 0

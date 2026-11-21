@@ -349,7 +349,7 @@ export function register(api: Hono) {
         rows = rows.filter((r) => nonemptyIds.has(String(r.id)))
       }
       rows = sortConversations(rows)
-      const items = rows.map((r) => convDto(r, busy.has(convKey(r.id))))
+      const items = rows.map((r) => convDto(r, busy.has(convKey(String(r.id)))))
       return c.json({ conversations: items })
     } catch (e) {
       return err(c, e)
@@ -552,7 +552,7 @@ export function register(api: Hono) {
       if (!Number.isFinite(seq) || seq <= 0) throw httpError(400, 'bad seq')
       const act = (await listActivities(conv.id)).find((a) => Number(a.id) === seq)
       if (c.req.query('trace') === '1') {
-        if (!act || !['tool_use', 'tool_result'].includes(act.kind)) throw httpError(404, 'tool activity not found')
+        if (!act || !['tool_use', 'tool_result'].includes(String(act.kind))) throw httpError(404, 'tool activity not found')
         return c.json({ detail: redactTraceText(String(act.detail || act.summary || '')) })
       }
       return c.json({ detail: String(act?.detail ?? '') })

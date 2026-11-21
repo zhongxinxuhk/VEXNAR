@@ -15,7 +15,7 @@
     "web": "node scripts/vexnar.mjs web",
     "desktop": "node scripts/vexnar.mjs desktop",
     "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run build",
-    "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run typecheck",
+    "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/core run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
     "upstream:check": "node scripts/check-upstream.mjs",

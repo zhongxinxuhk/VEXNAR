@@ -606,8 +606,7 @@ export function register(api: Hono) {
       const apiKeyHint = existing && apiKey === '' ? existing.api_key_hint ?? '' : apiKey.length >= 4 ? '…' + apiKey.slice(-4) : ''
       const streaming = body.streaming == null ? true : Boolean(body.streaming)
 
-      let baseURL = normalizeBaseURL(format, body.base_url)
-      if (baseURL === '') baseURL = null
+      let baseURL: string | null = normalizeBaseURL(body.base_url) || null
       const proxy = String(body.proxy ?? '').trim() || null
       let maxTokens = Number(body.max_tokens ?? 0)
       if (!Number.isFinite(maxTokens) || maxTokens < 0) maxTokens = 0
@@ -743,7 +742,7 @@ export function register(api: Hono) {
       const apiKeyHint = apiKey.length >= 4 ? '…' + apiKey.slice(-4) : active?.api_key_hint ?? ''
       let contextWindowK = Number(body.context_window_k ?? 0)
       if (contextWindowK > 0) contextWindowK = Math.min(contextWindowK, 1000)
-      const baseURL = normalizeBaseURL(format, body.base_url)
+      const baseURL = normalizeBaseURL(body.base_url)
       const model = String(body.model ?? '').trim() || (format === 'openai' ? 'gpt-4o' : format === 'openai-responses' ? 'gpt-5' : 'claude-opus-4-8')
       const proxy = String(body.proxy ?? '').trim()
 
@@ -901,7 +900,7 @@ export function register(api: Hono) {
     if (!apiKey) return c.json({ ok: false, error: '未提供 API Key' })
     const provider = String(body.provider ?? '').trim()
     const model = String(body.model ?? '').trim()
-    const baseURL = normalizeBaseURL(provider, body.base_url)
+    const baseURL = normalizeBaseURL(body.base_url)
     const started = Date.now()
     try {
       const reply = await minimalCompletion({ provider, baseURL, apiKey, model })

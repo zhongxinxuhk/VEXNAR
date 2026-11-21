@@ -84,7 +84,9 @@ export function register(api: Hono) {
       if (['answered', 'cancelled'].includes(String(row.status))) return c.json({ id: Number(row.id), status: row.status })
       const next = { ...row, status: 'cancelled', updated_at: rfc(new Date()) }
       delete next.rev
-      const written = await operations.writer.put({ table: 'side_questions', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) })
+      // put 的返回值是 Record<string, unknown> | { rev }（记录被清空时只有 rev），
+      // 这里读的是自己刚写进去的实体，按实体形状标注即可。
+      const written = (await operations.writer.put({ table: 'side_questions', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) })) as Record<string, unknown>
       return c.json({ id: Number(written.id), status: written.status })
     } catch (e: any) { return errResponse(c, e) }
   })

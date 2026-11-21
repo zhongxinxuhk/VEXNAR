@@ -4,7 +4,7 @@
 import { Hono } from 'hono'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { blobStore, buildReport, buildReportHtml, createNotifier, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
+import { blobStore, buildReport, buildReportHtml, createNotifier, createRunner, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
 import { register as registerExploration } from './routes/exploration.ts'
 
 export const api = new Hono()
@@ -654,10 +654,12 @@ api.get('/api/exploration/findings/:id/traffic/:bindingId/body', async (c) => {
   let buffer: Buffer
   try { buffer = await blobs.read(hash) } catch { return c.json({ error: '正文不存在' }, 404) }
   if (c.req.query('download') === '1') {
-    return new Response(buffer, { headers: {
+    // BodyInit 只接受 ArrayBuffer-backed 视图；Buffer 的底层可能是 SharedArrayBuffer。
+    const body = new Uint8Array(buffer)
+    return new Response(body, { headers: {
       'content-type': 'application/octet-stream',
       'content-disposition': `attachment; filename="evidence-${binding.id}-${side}.bin"`,
-      'content-length': String(buffer.length),
+      'content-length': String(body.length),
       'x-content-type-options': 'nosniff'
     } })
   }

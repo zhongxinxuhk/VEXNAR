@@ -72,4 +72,4 @@ const releaseStoreLock = await operations.writer.lock()
 process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
 process.once('SIGTERM', () => { void releaseStoreLock(); process.exit(0) })
 
-export { storeRoot, gatewayComplete, queryDSL, createNotifier, blobStore, buildReport, buildReportHtml, listReports, saveReport, persistToolResult, runTool, toolSpecs }
+export { storeRoot, gatewayComplete, queryDSL, createNotifier, blobStore, buildReport, buildReportHtml, listReports, saveReport, persistToolResult, runTool, toolSpecs, createRunner }
