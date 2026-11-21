@@ -1,0 +1,65 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { storeOperations } from './src/operations.ts'
+import { persistToolResult, runTool } from './src/tools.ts'
+import { createRunner } from './src/exec.ts'
+
+const root = await mkdtemp(join(tmpdir(), 'vexnar-tools-'))
+const ops = storeOperations(root)
+const results = []
+const check = (name, ok, detail = '') => results.push({ name, ok, detail })
+
+const nmap = `Nmap scan report for example.com (93.184.216.34)
+PORT    STATE SERVICE VERSION
+80/tcp  open  http    nginx 1.25
+443/tcp open  https  nginx 1.25`
+const parsedNmap = (await import('./src/tools.ts')).toolSpecs().length && (await import('./src/tools.ts'))
+const nmapSpec = (await import('./src/tools.ts'))
+const nmapOut = JSON.parse(JSON.stringify({ hosts: [] }))
+void parsedNmap; void nmapSpec; void nmapOut
+const nmapParsed = (await import('./src/tools.ts')).runTool ? null : null
+void nmapParsed
+
+// Direct parser checks via a fake runner.
+const fake = {
+  async run(command, args) {
+    const output = command === 'nmap' ? nmap
+      : command === 'httpx' ? JSON.stringify({ url: 'https://example.com', status_code: 200, title: 'Example', tech: ['nginx'], host: 'example.com' })
+      : command === 'ffuf' ? '/admin [Status: 200, Size: 1234]'
+      : 'Parameter: id (GET)\n    Type: boolean-based blind\n    Title: AND boolean-based blind\n    Payload: id=1 AND 1=1\n[INFO] GET parameter \'id\' is vulnerable'
+    return { command, args, code: 0, signal: null, stdout: output, stderr: '', truncated: false, timed_out: false, duration_ms: 1 }
+  }
+}
+
+const nmapRun = await runTool(fake, 'nmap', 'example.com')
+check('nmap parses host/ports', nmapRun.parsed.hosts[0]?.ip === '93.184.216.34' && nmapRun.parsed.hosts[0].ports.length === 2, JSON.stringify(nmapRun.parsed.hosts[0]))
+
+const task = await ops.createTask({ description: 'tools', goal: 'scan' })
+const intent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'scan' }, state: 'running' })
+const nmapPersist = await persistToolResult(ops, task.id, String(intent.id), 'nmap', nmapRun.parsed, nmapRun.stdout)
+check('nmap persists assets', nmapPersist.filter((item) => item.kind === 'asset').length >= 3, JSON.stringify(nmapPersist))
+
+const httpxRun = await runTool(fake, 'httpx', 'example.com')
+const httpxPersist = await persistToolResult(ops, task.id, String(intent.id), 'httpx', httpxRun.parsed, httpxRun.stdout)
+check('httpx persists endpoint', httpxPersist.length === 1, JSON.stringify(httpxPersist))
+
+const ffufRun = await runTool(fake, 'ffuf', 'https://example.com')
+const ffufPersist = await persistToolResult(ops, task.id, String(intent.id), 'ffuf', ffufRun.parsed, 'https://example.com/FUZZ\n' + ffufRun.stdout)
+check('ffuf persists endpoint', ffufPersist.length === 1, JSON.stringify(ffufPersist))
+
+const sqlmapRun = await runTool(fake, 'sqlmap', 'https://example.com/?id=1')
+const sqlmapPersist = await persistToolResult(ops, task.id, String(intent.id), 'sqlmap', sqlmapRun.parsed, sqlmapRun.stdout)
+const finding = await ops.writer.readRecord('findings', String(sqlmapPersist.find((item) => item.kind === 'finding')?.id))
+check('sqlmap reports finding', sqlmapRun.parsed.vulnerable === true && finding?.vulnclass === 'SQL注入' && finding?.severity === 'high', JSON.stringify({ vulnerable: sqlmapRun.parsed.vulnerable, finding: finding?.id }))
+
+const realRunner = createRunner({ timeoutMs: 10000 })
+check('runner allow-list exposed', realRunner.allowed().includes('nmap'))
+
+let failed = false
+for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
+console.log(`root: ${root}`)
+process.exit(failed ? 1 : 0)

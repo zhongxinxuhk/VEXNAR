@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Store } from './types.js'
 import type { storeOperations } from './operations.js'
+import { persistToolResult, runTool } from './tools.js'
 
 export type Complete = (messages: Array<{ role: 'system' | 'user'; content: string }>) => Promise<string>
 
@@ -83,7 +84,8 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
 - list_assets {"type"?,"limit"?}
 - graph_overview {}
 - report_finding {"vulnclass","severity","summary","evidence"}
-- run_command {"command","args":[...]}（仅限允许列表：nmap/httpx/ffuf/sqlmap/nuclei/curl/dig/whois 等）
+- run_command {"command","args":[...]}（仅限允许列表）
+- run_tool {"name":"nmap|httpx|ffuf|sqlmap","target":"...","extra":{}}（结果自动落资产/发现）
 - finish {"summary"}
 只输出 {"tool":"...","args":{...}}，不要解释。` },
           { role: 'user', content: `任务：${task?.goal}\n当前意图：${intent?.text}\n已得事实：${facts.join(' | ') || '无'}` }
@@ -126,6 +128,16 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
           if (!ids.length) throw new Error('link_assets 缺少 asset_ids')
           const linked = await ops.linkAssets(taskId, String(claimed.id), ids)
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'link_assets', node_id: String(claimed.id), summary: `linked ${linked.linked}` })
+          continue
+        }
+        if (action.tool === 'run_tool') {
+          if (!options.runner) throw new Error('run_tool 未启用')
+          const name = String(action.args?.name ?? '')
+          const target = String(action.args?.target ?? '')
+          const result = await runTool(options.runner, name as any, target, action.args?.extra ?? {})
+          const created = await persistToolResult(ops, taskId, String(claimed.id), name as any, result.parsed, result.stdout)
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: `run_tool:${name}`, node_id: String(claimed.id), summary: `created ${created.length}` })
+          facts.push(`${name} ${target} → ${created.length} records`)
           continue
         }
         if (action.tool === 'run_command') {

@@ -54,6 +54,14 @@
 - `retryBlocked`：重开 blocked 意图后按重开数量并发重跑；
 - 引擎测试 6/6。
 
+## E4 完成
+
+- 工具模板：nmap / httpx / ffuf / sqlmap（参数构建 + 输出解析）；
+- 解析结果自动落库：nmap→ip/service 资产、httpx→endpoint、ffuf→endpoint、
+  sqlmap 注入信号→finding（SQL注入/high），全部复用 journal 写；
+- worker `run_tool` 一步完成“执行 + 解析 + 落资产/发现”；
+- 测试：runner 5/5、tools 6/6、engine 6/6、store 写 37/37。
+
 ## E4 首段
 
 - `createRunner`：命令允许列表（nmap/httpx/ffuf/sqlmap/nuclei/curl/dig/whois…）、
