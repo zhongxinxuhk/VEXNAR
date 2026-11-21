@@ -31,7 +31,7 @@ import { appDir, runtimeEnv } from './vexnar-runtime.mjs'
 
 /** Go 源码所在的仓库根；打包后没有它时只认 VEXNAR_GO_BIN。 */
 const repoRoot = resolve(appDir, '..')
-const goSourceDirs = ['cmd', 'server', 'agent', 'traffic', 'db', 'intercept', 'notify', 'selfupdate',
+const goSourceDirs = ['cmd', 'server', 'agent', 'traffic', 'egress', 'db', 'intercept', 'notify', 'selfupdate',
   'sidequestion', 'mcphttp', 'mcpserver', 'llmrec', 'llmpool', 'evidence', 'report', 'enrich',
   'vulnclass', 'capability', 'guard', 'config']
 const defaultPort = 8787
