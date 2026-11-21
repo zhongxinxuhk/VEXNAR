@@ -661,8 +661,70 @@ function InterceptPage() {
 }
 
 function ApprovalsPage() {
-  return h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
-    '审批记录：Go 侧暂无独立 REST 接口（web 控制台也没有该页），迁移时随拦截规则一起落地。')
+  const { data, error, loading } = useApi('/api/intercept/pending')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要 VEXNAR_GO_FALLBACK 代理 Go 拦截接口）`)
+  const rows = data?.pending ?? []
+  const decide = async (row: any, decision: 'allowed' | 'denied') => {
+    try { await callApi(`/api/intercept/pending/${row.id}/decide`, 'POST', { decision }); setVersion(version + 1) }
+    catch (e: any) { window.alert(String(e?.message ?? e)) }
+  }
+  return h('div', { key: version, fontSize: 13 },
+    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `待处理 ${rows.length} 条`),
+    rows.length === 0 ? h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, color: 'var(--vx-muted, #6b7280)' } }, '当前没有待审批的工具调用。')
+      : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
+          h('thead', null, h('tr', null, ['ID', '任务', 'Agent', '工具', '状态', '原因', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+          h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+            h('td', { style: { padding: '6px 8px' } }, row.id),
+            h('td', { style: { padding: '6px 8px' } }, row.task_id ?? ''),
+            h('td', { style: { padding: '6px 8px' } }, row.agent_name ?? ''),
+            h('td', { style: { padding: '6px 8px' } }, row.tool_name ?? ''),
+            h('td', { style: { padding: '6px 8px' } }, row.status),
+            h('td', { style: { padding: '6px 8px', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.reason ?? ''),
+            h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
+              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'allowed'), style: { cursor: 'pointer' } }, '允许') : null,
+              row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'denied'), style: { cursor: 'pointer' } }, '拒绝') : null))))))
+}
+
+function AssetSyncSettings() {
+  return h(PanelShell, { title: '资产同步', desc: '外部资产源同步' },
+    h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
+      '资产同步后端尚未迁移（Go 侧无独立 REST 契约）。接入时复用资产的 journal 写路径，并在此提供同步源配置与最近一次结果。'))
+}
+
+function LogsPanel() {
+  const tasks = useApi('/api/tasks')
+  const [taskId, setTaskId] = useState('')
+  const [session, setSession] = useState('plan')
+  const [rows, setRows] = useState<any[]>([])
+  const [error, setError] = useState('')
+  const load = async (id: string, sess: string) => {
+    setError('')
+    try {
+      const data = await callApi(`/api/exploration/activity/history?task=${id}&session=${sess}&limit=100`)
+      setRows(data.items ?? [])
+    } catch (e: any) { setError(String(e?.message ?? e)); setRows([]) }
+  }
+  useEffect(() => {
+    if (!taskId && tasks.data?.tasks?.[0]) { const id = String(tasks.data.tasks[0].id); setTaskId(id); void load(id, session) }
+  }, [tasks.data])
+  return h(PanelShell, { title: '日志', desc: '任务活动流（planner / main / intent）' },
+    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
+      h('select', { value: taskId, onChange: (event: any) => { setTaskId(event.target.value); void load(event.target.value, session) } },
+        (tasks.data?.tasks ?? []).slice(0, 50).map((task: any) => h('option', { key: task.id, value: task.id }, `${task.id} · ${task.name || '未命名'}`))),
+      h('select', { value: session, onChange: (event: any) => { setSession(event.target.value); if (taskId) void load(taskId, event.target.value) } },
+        ['plan', 'main'].map((item) => h('option', { key: item, value: item }, item))),
+      h('button', { type: 'button', onClick: () => taskId && load(taskId, session), style: { cursor: 'pointer' } }, '刷新')),
+    error ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, error) : null,
+    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
+      h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
+      h('tbody', null, rows.slice().reverse().map((row: any) => h('tr', { key: row.seq },
+        h('td', { style: { padding: '4px 6px' } }, row.seq),
+        h('td', { style: { padding: '4px 6px' } }, row.ts),
+        h('td', { style: { padding: '4px 6px' } }, row.worker ?? ''),
+        h('td', { style: { padding: '4px 6px' } }, row.kind ?? ''),
+        h('td', { style: { padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary ?? ''))))))
 }
 
 function PanelShell({ title, desc, children }: { title: string; desc?: string; children: ReactNode }) {
@@ -679,6 +741,57 @@ function PanelShell({ title, desc, children }: { title: string; desc?: string; c
       h('button', { type: 'button', onClick: connect, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 } }, '连接 core')),
     desc ? h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 18px' } }, desc) : h('div', { style: { height: 12 } }),
     children)
+}
+
+function FindingList({ onSelect }: { onSelect?: (id: string) => void }) {
+  const { data, error, loading } = useApi('/api/exploration/findings?page=1&limit=30')
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.items ?? []
+  return h('div', null,
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.total ?? 0} 条`),
+    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+      h('thead', null, h('tr', null, ['ID', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.finding_id, onClick: () => onSelect?.(String(row.finding_id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
+        h('td', { style: { padding: '6px 8px' } }, row.finding_id),
+        h('td', { style: { padding: '6px 8px' } }, row.vulnclass),
+        h('td', { style: { padding: '6px 8px' } }, row.severity),
+        h('td', { style: { padding: '6px 8px' } }, row.status),
+        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary))))))
+}
+
+function FindingDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const finding = useApi(`/api/exploration/findings/${id}`)
+  const traffic = useApi(`/api/exploration/findings/${id}/traffic`)
+  const [body, setBody] = useState<{ title: string; text: string; error: string }>({ title: '', text: '', error: '' })
+  const loadBody = async (bindingId: string, side: string) => {
+    try {
+      const data = await callApi(`/api/exploration/findings/${id}/traffic/${bindingId}/body?side=${side}&length=8192`)
+      setBody({ title: `${bindingId} · ${side} · ${data.offset}-${data.next_offset}/${data.total}`, text: data.content, error: '' })
+    } catch (error: any) { setBody({ title: `${bindingId} · ${side}`, text: '', error: String(error?.message ?? error) }) }
+  }
+  if (finding.loading) return h('div', null, '加载中…')
+  if (finding.error) return h('div', { style: { color: '#dc2626' } }, finding.error)
+  const row = finding.data ?? {}
+  const bindings = traffic.data?.bindings ?? []
+  return h('div', null,
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 } },
+      h('button', { type: 'button', onClick: onBack, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' } }, '← 返回'),
+      h('span', { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} · ${row.vulnclass ?? ''}`),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, `${row.severity} / ${row.status}`)),
+    h('div', { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
+    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 220, overflow: 'auto' } }, row.evidence || ''),
+    h('div', { style: { fontSize: 13, fontWeight: 600, margin: '14px 0 6px' } }, `流量绑定（${bindings.length}）`),
+    ...bindings.map((binding: any) => h('div', { key: binding.id, style: { border: '1px solid var(--vx-border, #e5e7eb)', borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
+      h('div', null, `#${binding.id} · ${binding.snapshot?.method ?? ''} ${binding.snapshot?.url ?? ''} · ${binding.role}`),
+      h('div', { style: { marginTop: 6, display: 'flex', gap: 8 } },
+        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'response'), style: { cursor: 'pointer' } }, '响应正文'),
+        h('button', { type: 'button', onClick: () => loadBody(String(binding.id), 'request'), style: { cursor: 'pointer' } }, '请求正文')))),
+    body.title ? h('div', null,
+      h('div', { style: { fontSize: 12, margin: '8px 0 4px', color: 'var(--vx-muted, #6b7280)' } }, body.title),
+      body.error
+        ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, body.error)
+        : h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 280, overflow: 'auto' } }, body.text)) : null)
 }
 
 function TasksPanel() {
@@ -732,52 +845,12 @@ function NotifySettings() {
   return h(PanelShell, { title: '通知推送', desc: '渠道与投递' }, h(NotifyPage))
 }
 
-function LogsPanel() {
-  const tasks = useApi('/api/tasks')
-  const [taskId, setTaskId] = useState('')
-  const [session, setSession] = useState('plan')
-  const [rows, setRows] = useState<any[]>([])
-  const [error, setError] = useState('')
-  const load = async (id: string, sess: string) => {
-    setError('')
-    try {
-      const data = await callApi(`/api/exploration/activity/history?task=${id}&session=${sess}&limit=100`)
-      setRows(data.items ?? [])
-    } catch (e: any) { setError(String(e?.message ?? e)); setRows([]) }
-  }
-  useEffect(() => {
-    if (!taskId && tasks.data?.tasks?.[0]) { const id = String(tasks.data.tasks[0].id); setTaskId(id); void load(id, session) }
-  }, [tasks.data])
-  return h(PanelShell, { title: '日志', desc: '任务活动流（planner / main / intent）' },
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('select', { value: taskId, onChange: (event: any) => { setTaskId(event.target.value); void load(event.target.value, session) } },
-        (tasks.data?.tasks ?? []).slice(0, 50).map((task: any) => h('option', { key: task.id, value: task.id }, `${task.id} · ${task.name || '未命名'}`))),
-      h('select', { value: session, onChange: (event: any) => { setSession(event.target.value); if (taskId) void load(taskId, event.target.value) } },
-        ['plan', 'main'].map((item) => h('option', { key: item, value: item }, item))),
-      h('button', { type: 'button', onClick: () => taskId && load(taskId, session), style: { cursor: 'pointer' } }, '刷新')),
-    error ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, error) : null,
-    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
-      h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
-      h('tbody', null, rows.slice().reverse().map((row: any) => h('tr', { key: row.seq },
-        h('td', { style: { padding: '4px 6px' } }, row.seq),
-        h('td', { style: { padding: '4px 6px' } }, row.ts),
-        h('td', { style: { padding: '4px 6px' } }, row.worker ?? ''),
-        h('td', { style: { padding: '4px 6px' } }, row.kind ?? ''),
-        h('td', { style: { padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary ?? ''))))))
-}
-
 function InterceptSettings() {
   return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
 }
 
 function ApprovalsSettings() {
   return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
-}
-
-function AssetSyncSettings() {
-  return h(PanelShell, { title: '资产同步', desc: '外部资产源同步' },
-    h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
-      '资产同步后端尚未迁移（Go 侧无独立 REST 契约）。接入时复用资产的 journal 写路径，并在此提供同步源配置与最近一次结果。'))
 }
 
 const PANELS = [

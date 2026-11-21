@@ -44,7 +44,7 @@ npm run dev --prefix website
 ## React 源码
 
 - `src/App.jsx`：站点外壳、导航、路由切换、页脚与快捷搜索入口。
-- `src/components/Home.jsx`：首页编排，客户端区域使用真实客户端截图；`ConsolePage.jsx` 是只有应用外壳的客户端页面；`ArchitecturePage.jsx` 是架构专页。
+- `src/components/Home.jsx`：首页编排，客户端区域使用真实客户端截图；`ConsolePage.jsx` 是只有应用外壳的客户端页面；`ArchitecturePage.jsx` 是架构专页；`DshCredits.jsx` 是开源致谢页顶部的 DSH 与内置组件清单。
 - `src/console/Console.jsx`：客户端外壳（窗口标题栏、侧边栏、顶栏、命令面板、新建任务、Toast）；`mode="client"` 与官网预览共用同一套组件。
 - `src/console/Chat.jsx`：Agent 首页。会话列表、思考折叠、工具调用展开、审批分支、待办、Composer 与脚本化流式回复。
 - `src/console/Dashboard.jsx`、`Work.jsx`、`Systems.jsx`：仪表盘、任务 / 发现 / 流量 / 资产 / 同步 / 工作空间，以及 LLM / Agent / MCP / Skill / 工具 / 通知 / 拦截 / 审批 / 日志 / 配置。
@@ -52,7 +52,7 @@ npm run dev --prefix website
 - `src/architecture/Arch3D.jsx`：可拖拽旋转、展开、逐层剖析的 CSS 3D 分层视图；节点可直接跳转到源码行。
 - `src/architecture/layers.js`：六层结构、30 个节点、层间契约、生命周期与设计取舍。
 - `src/architecture.js`：系统、缓存、工具调用、双图四套节点级图与源码引用。
-- `src/styles/`：`home.css`、`console.css`、`architecture.css` 分别承载站点版式、控制台与 3D 视图；`style.css` 保留项目数据页样式。
+- `src/styles/`：`home.css`、`console.css`、`architecture.css`、`credits.css` 分别承载站点版式、客户端、3D 视图与 DSH 致谢；`style.css` 保留项目数据页样式。
 - `scripts/prerender.mjs`：从相同 React 组件生成可抓取的页面，再由浏览器 hydrate。
 
 ## 客户端展示
@@ -65,6 +65,17 @@ npm run dev --prefix website
 - `assets/client/console-chat-mobile.jpg`：窄屏会话列表（390×844）
 
 截图由 `console.html` 在 1440×900 / 390×844、2 倍像素密度下抓取后缩放，界面来自同一份 React 代码。更新客户端 UI 后需要重新生成这两张图。
+
+## 开源致谢与 DSH 内置清单
+
+`credits.html` 的顺序是：DSH 与其内置组件 → 主题与外观 → 其他第三方项目 → 许可证与感谢。`credits.json` 的 `dsh` 字段保存 DSH 元数据、6 项主题外观和 **198 个内置插件/组件**；条目来自实际组合：
+
+- `app/dsh/packages/bundle/base/cordis.patch.yml`
+- `app/dsh/packages/bundle/web-app/cordis.patch.yml`
+- `app/vexnar/cordis.patch.yml`（VEXNAR 停用的行、自有行）
+- `app/dsh/packages/client/ui-theme`（浅色 / 深色 / 跟随系统、Montserrat、Shiki）
+
+每条包含包名、行 ID、分组、来源 bundle、状态（启用 / 停用 / 条件启用）、许可证和 `dsh-v0.2.2-rc.5` 源码目录。`DshCredits.jsx` 提供分组筛选与包名/行 ID 搜索；移动端会隐藏行 ID 与分组列。DSH 自有插件（`@vexnar/dsh-ui`、`@vexnar/dsh-account`）不计入第三方致谢。升级 DSH 后需要按新的 profile 重新生成 `dsh.builtins`。
 
 ## 客户端演示的边界
 
@@ -86,7 +97,7 @@ npm run dev --prefix website
 
 ## 检查覆盖
 
-`npm run check` 检查旧链接、站点子路径与 404、Darwin / Windows 平台匹配、预发布排除、致谢组合筛选、四套节点级图与六层 3D 数据的源码引用完整性、客户端演示数据（工具、审批、图的边）与文案标记、客户端页面不含站点外壳、首页不嵌入客户端、静态预渲染内容、资源存在性及公开快照的字段边界。
+`npm run check` 检查旧链接、站点子路径与 404、Darwin / Windows 平台匹配、预发布排除、致谢组合筛选、四套节点级图与六层 3D 数据的源码引用完整性、客户端演示数据（工具、审批、图的边）与文案标记、客户端页面不含站点外壳、首页不嵌入客户端、DSH 内置清单（198 条唯一 ID、源码链接、主题、DSH 在致谢页置顶）、静态预渲染内容、资源存在性及公开快照的字段边界。
 
 浏览器验收还需检查：hydration 无警告、3D 拖拽与键盘旋转、逐层剖析、生命周期定位、客户端 21 个页面切换、工具卡片展开、审批同意/拒绝与角标联动、新建对话的空状态与脚本化回复、⌘J 命令面板、深色外观、站内进入客户端与返回官网、移动端抽屉导航与横向溢出。
 
