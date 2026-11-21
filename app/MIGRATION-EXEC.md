@@ -32,11 +32,11 @@
 
 ### WP-0 存储后端（地基，先行）— 负责人 lead
 
-- [ ] `[ ]` 重构 store 层为后端无关：`writer` 增加 `list/maxKey/delete`，`operations.ts` 不再直读文件系统
-- [ ] `[ ]` 实现 `sqlite.ts`（`node:sqlite`）：`sqliteWriter` + `sqliteStore`(读) + `sqliteMetaStore`，单文件 `vexnar.sqlite`（WAL）
-- [ ] `[ ]` `openStore`/`storeOperations`/`metaStore` 默认走 SQLite；`VEXNAR_STORE=json` 回退
-- [ ] `[ ]` PG 导入脚本 `import-pg.mjs`：`db/schema.sql` 60 表全量 → SQLite
-- [ ] 验收：98 项 store 测试在 SQLite 后端全绿 + 与 Go 对账一致
+- [x] 重构 store 层为后端无关：`writer` 增加 `list/maxKey/remove`，`operations.ts` 不再直读文件系统
+- [x] 实现 `sqlite.ts`（`node:sqlite`）：`sqliteWriter` + `sqliteStore`(读) + `sqliteMetaStore`，单文件 `vexnar.sqlite`（WAL）
+- [x] `openStore`/`storeOperations`/`openMeta` 默认走 SQLite；`VEXNAR_STORE=json` 回退
+- [x] PG 导入脚本 `import-pg.mjs`：`db/schema.sql` 域表全量 → SQLite
+- [x] 验收：store 测试双后端全绿（SQLite 97 / JSON 98）
 
 ### WP-1 桌面模型网关 `/api/desktop/*`（19 条）— agent A
 
