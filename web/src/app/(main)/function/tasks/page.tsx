@@ -38,6 +38,7 @@ import {
   SlidersHorizontalIcon,
   StarIcon,
   TagsIcon,
+  TerminalIcon,
   Trash2Icon,
   Undo2Icon,
   XIcon,
@@ -118,6 +119,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { WorkbenchTabs } from "@/components/workbench-tabs";
 import { api } from "@/lib/api";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage.client";
 import { type SortDirection, useStoredSortPreference } from "@/lib/sort-preference";
@@ -135,6 +137,7 @@ import type {
   TaskStatus,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useWorkbenchScope, workbenchHref } from "@/lib/workbench-scope";
 
 // fmtBytes renders a human file size for the upload manifest.
 function fmtBytes(n: number): string {
@@ -309,6 +312,8 @@ export default function TasksPage() {
   const [categoriesLoaded, setCategoriesLoaded] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<TaskStatus | "all">("all");
+  // 任务范围与 发现/工具执行 共用 URL 上的 ?task=,三个页签看到同一个任务。
+  const [scope, setScope] = useWorkbenchScope();
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [filtersHydrated, setFiltersHydrated] = React.useState(false);
   const [sortPreference, setSortPreference] = useStoredSortPreference(
@@ -353,9 +358,17 @@ export default function TasksPage() {
     );
   }, [categoryFilter, filtersHydrated, statusFilter]);
 
+  // 被范围锁定的任务名,给顶部页签条用;取不到(已删除/在归档页)就退回 #id。
+  const scopeTaskLabel = React.useMemo(() => {
+    if (!scope) return undefined;
+    const hit = tasks.find((t) => t.id === scope);
+    return hit ? hit.name?.trim() || hit.description || `任务 #${scope}` : undefined;
+  }, [scope, tasks]);
+
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return tasks.filter((t) => {
+      if (scope && t.id !== scope) return false;
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
       if (categoryFilter === UNCATEGORIZED_VALUE && t.category_id != null) return false;
       if (
@@ -373,7 +386,7 @@ export default function TasksPage() {
         t.id.toLowerCase().includes(q)
       );
     });
-  }, [tasks, query, statusFilter, categoryFilter]);
+  }, [tasks, query, statusFilter, categoryFilter, scope]);
 
   const sortNowSec = sortField === "duration" ? nowSec : 0;
   const ordered = React.useMemo(() => {
@@ -778,7 +791,15 @@ export default function TasksPage() {
   );
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
+    <div className="flex flex-1 flex-col gap-4">
+      <WorkbenchTabs
+        active="tasks"
+        scope={scope}
+        scopeLabel={scopeTaskLabel}
+        onClearScope={() => setScope("")}
+        className="mx-4 lg:mx-6"
+      />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
       <TabsList className="mx-4 lg:mx-6">
         <TabsTrigger value="current">当前任务</TabsTrigger>
         <TabsTrigger value="archived">已归档</TabsTrigger>
@@ -1012,7 +1033,8 @@ export default function TasksPage() {
       <TabsContent value="archived">
         <TaskArchivesPanel onChanged={load} />
       </TabsContent>
-    </Tabs>
+      </Tabs>
+    </div>
   );
 }
 
@@ -1227,7 +1249,12 @@ const TaskRow = React.memo(function TaskRow({
             <span className={n > 0 ? cls : "text-muted-foreground"}>{n}</span>
           );
           return (
-            <span className="font-medium whitespace-nowrap" title="严重 / 高 / 中 / 低">
+            <Link
+              href={workbenchHref("findings", task.id)}
+              prefetch={false}
+              className="rounded-sm font-medium whitespace-nowrap hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title={`查看该任务的 ${total} 条发现`}
+            >
               {seg(f.critical, "text-rose-600 dark:text-rose-400")}
               <span className="text-muted-foreground">/</span>
               {seg(f.high, "text-red-600 dark:text-red-400")}
@@ -1235,7 +1262,7 @@ const TaskRow = React.memo(function TaskRow({
               {seg(f.medium, "text-amber-600 dark:text-amber-400")}
               <span className="text-muted-foreground">/</span>
               {seg(f.low, "text-slate-600 dark:text-slate-400")}
-            </span>
+            </Link>
           );
         })()}
       </TableCell>
@@ -1285,6 +1312,11 @@ const TaskRow = React.memo(function TaskRow({
           <Button size="icon" variant="ghost" asChild aria-label="查看任务详情" title="查看任务详情">
             <Link href={`/function/tasks/detail?id=${encodeURIComponent(task.id)}`}>
               <EyeIcon />
+            </Link>
+          </Button>
+          <Button size="icon" variant="ghost" asChild aria-label="查看该任务的工具执行" title="工具执行">
+            <Link href={workbenchHref("commands", task.id)} prefetch={false}>
+              <TerminalIcon />
             </Link>
           </Button>
           <TaskControlButton task={task} onControl={onControl} />

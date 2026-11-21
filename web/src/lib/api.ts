@@ -1281,18 +1281,22 @@ export const api = {
   interceptJudgeUsage: (days = 30) => get<JudgeUsage>(`/intercept/judge/usage?days=${days}`),
 
   // ---- commands (tool execution history, any tool) ----
-  commands: (params?: { task?: string; q?: string; page?: number; size?: number }) => {
+  // task_id 是任务 id（任务/发现/执行台共用同一个身份），后端会换成 activity 表用的
+  // exploration_id；task 保留为历史写法（exploration id）。
+  commands: (params?: { task?: string; task_id?: string; q?: string; page?: number; size?: number }) => {
     const sp = new URLSearchParams();
     if (params?.task) sp.set("task", params.task);
+    if (params?.task_id) sp.set("task_id", params.task_id);
     if (params?.q) sp.set("q", params.q);
     sp.set("page", String(params?.page ?? 0));
     sp.set("size", String(params?.size ?? 50));
     return get<{ commands: CommandRecord[]; total: number }>(`/commands?${sp}`);
   },
-  // 各工具调用次数；沿用列表的 task/q 筛选，统计的是整个结果集而非当前页。
-  commandStats: (params?: { task?: string; q?: string }) => {
+  // 各工具调用次数；沿用列表的 task_id/task/q 筛选，统计的是整个结果集而非当前页。
+  commandStats: (params?: { task?: string; task_id?: string; q?: string }) => {
     const sp = new URLSearchParams();
     if (params?.task) sp.set("task", params.task);
+    if (params?.task_id) sp.set("task_id", params.task_id);
     if (params?.q) sp.set("q", params.q);
     return get<{ stats: ToolStat[] }>(`/commands/stats?${sp}`);
   },
