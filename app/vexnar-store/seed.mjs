@@ -14,7 +14,7 @@ import { pgStore } from './src/pg-store.ts'
 import { jsonStore } from './src/json-store.ts'
 import { metaStore } from './src/meta-store.ts'
 import { clearPerRecord, writePerRecord } from './src/per-record.ts'
-import { rm } from 'node:fs/promises'
+import { cp, rm } from 'node:fs/promises'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = join(here, '..', '..')
@@ -78,6 +78,13 @@ for (const [name, rows, keyOf] of tables) {
   await rm(`${root}/${name}.json`, { force: true })
   await writePerRecord(root, name, rows.map((row, index) => ({ key: keyOf(row, index), record: row })))
   console.log(`${name}: ${rows.length} (per-record)`)
+}
+
+try {
+  await cp(join(repo, 'data', 'evidence', 'blobs'), join(root, 'evidence', 'blobs'), { recursive: true })
+  console.log('evidence blobs copied')
+} catch {
+  console.log('evidence blobs: none in fixture')
 }
 
 console.log(`store: ${root}`)

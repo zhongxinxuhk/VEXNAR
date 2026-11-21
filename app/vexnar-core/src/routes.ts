@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -135,6 +135,10 @@ api.post('/api/exploration/findings', async (c) => {
   try {
     const result = await operations.reportFinding(body)
     store.invalidate?.(['nodes', 'findings', 'edges'])
+    void createNotifier(await meta.table('notify')).dispatch({
+      kind: 'finding_created', title: String(body.vulnclass ?? 'finding'),
+      text: String(body.summary ?? ''), task_id: String(body.task_id ?? ''), finding_id: String(result.finding_id)
+    }).catch(() => {})
     return c.json(result, 201)
   } catch (error: any) {
     return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
