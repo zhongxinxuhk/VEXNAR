@@ -40,3 +40,21 @@
           Authorization: !!js "'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '')"
         timeoutMs: 60000
         enabled: true
+
+# ── Brand: VEXNAR replaces the official artwork ─────────────────────────────
+# @vexnar/dsh-ui occupies sidebar.brand.mark / sidebar.brand.name, so the
+# official occupant must be off: two occupants of a single slot throw at load.
+- id: ui-brand-official
+  disabled: true
+
+# ── Account: VEXNAR owns sign-in ────────────────────────────────────────────
+# Model access goes through the Go gateway, so the upstream DeepSeek account
+# rows stay disabled. Turn them back on only if the Go gateway is retired.
+- id: deepseek-account
+  disabled: true
+- id: llm-deepseek-account
+  disabled: true
+- id: ui-settings-account
+  disabled: true
+- id: ui-account-notifications
+  disabled: true
