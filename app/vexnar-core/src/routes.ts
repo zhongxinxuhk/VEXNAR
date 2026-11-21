@@ -902,3 +902,16 @@ api.get('/api/exploration/nodes', async (c) => {
     refs: {}
   })
 })
+
+// ── 领域路由模块（各 agent 并行迁移，统一在此挂载）─────────────────
+const routeModules: Array<{ file: string; scope: string }> = [
+  { file: './routes/conversations.ts', scope: 'conversations/chat' }
+]
+for (const { file, scope } of routeModules) {
+  try {
+    const mod = await import(file)
+    mod.register?.(api)
+  } catch (error) {
+    console.error(`[vexnar] failed to load route module ${scope} (${file}):`, error)
+  }
+}
