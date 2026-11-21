@@ -70,6 +70,10 @@ workspace 的 `allowBuilds`，esbuild 的 postinstall 会被拦下。要装子�
 - commit：`9c2670d3bce5275e0d1610272958121af87787bb`
 - 许可：MIT（见 `dsh/LICENSE`），上游文件一律不加本仓库的 AGPL 头。
 
+## 侧边栏融入 dsh
+
+Web 控制台的导航如何映射到 dsh 面板、哪些复用 dsh 原生能力，见 [SIDEBAR-INTEGRATION.md](./SIDEBAR-INTEGRATION.md)。
+
 ## 存储架构
 
 域划分、读写路径、性能预算、冲突规则与迁移阶段见 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。

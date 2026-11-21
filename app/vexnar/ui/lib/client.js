@@ -592,6 +592,92 @@ function installPermissionWarning() {
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   return () => observer.disconnect();
 }
+var PANEL_ID = "vexnar-console";
+var NAV_GROUPS = [
+  { title: "\u529F\u80FD", items: [
+    { id: "dashboard", label: "\u4EEA\u8868\u76D8", desc: "\u4EFB\u52A1\u3001\u53D1\u73B0\u3001\u8D44\u4EA7\u4E0E Token \u603B\u89C8" },
+    { id: "chat", label: "\u5BF9\u8BDD", desc: "\u4E3B Agent \u4F1A\u8BDD\u4E0E\u4E0A\u4E0B\u6587" },
+    { id: "tasks", label: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u5217\u8868\u3001\u610F\u56FE\u4E0E\u76EE\u6807" },
+    { id: "findings", label: "\u53D1\u73B0", desc: "\u6F0F\u6D1E\u5217\u8868\u3001\u5206\u7EC4\u4E0E\u8BE6\u60C5" },
+    { id: "traffic", label: "\u6D41\u91CF", desc: "\u6293\u5305\u3001\u8BC1\u636E\u7ED1\u5B9A\u4E0E\u6B63\u6587" },
+    { id: "tools-run", label: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" },
+    { id: "llm-record", label: "LLM \u5F55\u5236", desc: "\u8BF7\u6C42\u4E0E\u54CD\u5E94\u8BB0\u5F55" },
+    { id: "assets", label: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
+    { id: "assets-sync", label: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
+    { id: "workspace", label: "\u5DE5\u4F5C\u7A7A\u95F4", desc: "\u6587\u4EF6\u4E0E\u4EA7\u7269" }
+  ] },
+  { title: "\u7CFB\u7EDF", items: [
+    { id: "llm", label: "LLM", desc: "\u6A21\u578B\u914D\u7F6E\u4E0E\u7F51\u5173" },
+    { id: "agents", label: "Agent", desc: "\u89C4\u5212\u8005 / \u6267\u884C\u8005 / \u89E6\u53D1" },
+    { id: "mcp", label: "MCP", desc: "MCP server \u4E0E\u5DE5\u5177\u76EE\u5F55" },
+    { id: "skill", label: "Skill", desc: "\u6280\u80FD\u5305\u4E0E\u53EF\u89C1\u6027" },
+    { id: "tools", label: "\u5DE5\u5177", desc: "\u5185\u7F6E\u4E0E\u81EA\u5B9A\u4E49\u5DE5\u5177" },
+    { id: "notify", label: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012\u8BB0\u5F55" },
+    { id: "intercept", label: "\u62E6\u622A\u89C4\u5219", desc: "\u8BF7\u6C42\u62E6\u622A\u4E0E\u6539\u5199" },
+    { id: "asset-intercept", label: "\u8D44\u4EA7\u62E6\u622A", desc: "\u8D44\u4EA7\u8303\u56F4\u4E0E\u81EA\u52A8\u8BA4\u9886" },
+    { id: "approvals", label: "\u5BA1\u6279\u8BB0\u5F55", desc: "\u4EBA\u5DE5\u5BA1\u6279\u4E0E\u64CD\u4F5C\u65E5\u5FD7", badge: 2 },
+    { id: "logs", label: "\u65E5\u5FD7", desc: "\u5F15\u64CE\u4E0E\u5DE5\u5177\u65E5\u5FD7" },
+    { id: "settings", label: "\u7CFB\u7EDF\u914D\u7F6E", desc: "\u8FD0\u884C\u53C2\u6570\u4E0E\u504F\u597D" }
+  ] }
+];
+function ConsoleIcon({ size }) {
+  return (0, import_react.createElement)(
+    "svg",
+    { width: size ?? 16, height: size ?? 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" },
+    (0, import_react.createElement)("path", { d: "M12 3 3 7l9 4 9-4-9-4Z" }),
+    (0, import_react.createElement)("path", { d: "m3 12 9 4 9-4" }),
+    (0, import_react.createElement)("path", { d: "m3 17 9 4 9-4" })
+  );
+}
+function VexnarConsole() {
+  const [active, setActive] = (0, import_react.useState)("dashboard");
+  const items = NAV_GROUPS.flatMap((group) => group.items);
+  const current = items.find((item) => item.id === active) ?? items[0];
+  return (0, import_react.createElement)(
+    "div",
+    { style: { display: "flex", height: "100%", minHeight: 0, background: "var(--vx-bg, #fff)" } },
+    (0, import_react.createElement)(
+      "aside",
+      { style: { width: 240, flex: "0 0 240px", borderRight: "1px solid var(--vx-border, #e5e7eb)", overflowY: "auto", padding: "12px 8px" } },
+      NAV_GROUPS.map((group) => (0, import_react.createElement)(
+        "div",
+        { key: group.title, style: { marginBottom: 14 } },
+        (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", padding: "6px 10px" } }, group.title),
+        group.items.map((item) => (0, import_react.createElement)("button", {
+          key: item.id,
+          type: "button",
+          onClick: () => setActive(item.id),
+          style: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+            padding: "8px 10px",
+            border: 0,
+            borderRadius: 8,
+            cursor: "pointer",
+            textAlign: "left",
+            background: item.id === active ? "var(--vx-active, #eef2ff)" : "transparent",
+            color: "var(--vx-fg, #111827)",
+            fontSize: 14
+          }
+        }, (0, import_react.createElement)("span", null, item.label), item.badge ? (0, import_react.createElement)("span", { style: { minWidth: 18, height: 18, borderRadius: 9, background: "#f59e0b", color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center" } }, String(item.badge)) : null))
+      )),
+      (0, import_react.createElement)("div", { style: { fontSize: 11, color: "var(--vx-muted, #9ca3af)", padding: "8px 10px" } }, "\u6570\u636E\u6E90\uFF1Avexnar-core")
+    ),
+    (0, import_react.createElement)(
+      "section",
+      { style: { flex: 1, minWidth: 0, overflowY: "auto", padding: 24 } },
+      (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: "0 0 6px" } }, current.label),
+      (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
+      (0, import_react.createElement)(
+        "div",
+        { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
+        "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"
+      )
+    )
+  );
+}
 function apply(ctx) {
   const { slots } = ctx;
   if (slots === void 0) {
@@ -601,6 +687,8 @@ function apply(ctx) {
   installStyles();
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
+  slots.inject("main", () => slots.register({ name: "main", key: PANEL_ID }, VexnarConsole));
+  slots.inject("sidebar.panellist", () => slots.register({ name: "sidebar.panellist", id: PANEL_ID, order: 50, label: () => "VEXNAR" }, ConsoleIcon));
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));
   slots.inject("conversation.hero.brand.mark", () => slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
