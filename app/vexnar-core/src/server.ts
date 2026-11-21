@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { auth } from './auth.js'
 import { api } from './routes.js'
 
@@ -17,6 +18,7 @@ const fallbackMethods = (process.env.VEXNAR_FALLBACK_METHODS || '')
   .map((method) => method.trim().toUpperCase())
   .filter(Boolean)
 
+app.use('/api/*', cors({ origin: (origin) => origin ?? '*', allowHeaders: ['authorization', 'content-type', 'x-vexnar-token'], allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'] }))
 app.use('/api/*', auth)
 app.route('/', api)
 

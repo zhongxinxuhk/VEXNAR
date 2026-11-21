@@ -389,6 +389,72 @@ function ConsoleIcon({ size }: { size?: number }): ReactNode {
     h('path', { d: 'm3 17 9 4 9-4' }))
 }
 
+function useApi(path: string, deps: unknown[] = []): { data: any; error: string; loading: boolean } {
+  const [state, setState] = useState<{ data: any; error: string; loading: boolean }>({ data: null, error: '', loading: true })
+  useEffect(() => {
+    let alive = true
+    const base = (localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790').replace(/\/$/, '')
+    const token = localStorage.getItem('vexnar.coreToken') || ''
+    if (!token) { setState({ data: null, error: '未配置 vexnar.coreToken', loading: false }); return }
+    fetch(base + path, { headers: { 'x-vexnar-token': token } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
+      .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
+    return () => { alive = false }
+  }, deps)
+  return state
+}
+
+function Dashboard() {
+  const tasks = useApi('/api/tasks')
+  const findings = useApi('/api/exploration/findings/stats')
+  const assets = useApi('/api/assets/counts')
+  const tokens = useApi('/api/tokens/daily?days=1')
+  const cards = [
+    ['任务', tasks.data?.tasks?.length ?? '—'],
+    ['发现', findings.data?.total ?? '—'],
+    ['资产', assets.data ? Object.values(assets.data).reduce((sum: number, value: any) => sum + Number(value), 0) : '—'],
+    ['今日 Token', Array.isArray(tokens.data) ? tokens.data.reduce((sum: number, row: any) => sum + Number(row.input_tokens ?? 0) + Number(row.output_tokens ?? 0), 0) : '—']
+  ]
+  return h('div', null,
+    h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 12, marginBottom: 20 } },
+      cards.map(([label, value]) => h('div', { key: String(label), style: { border: '1px solid var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 16 } },
+        h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, String(label)),
+        h('div', { style: { fontSize: 24, fontWeight: 600 } }, String(value))))),
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自 vexnar-core'))
+}
+
+function TaskList() {
+  const { data, error, loading } = useApi('/api/tasks')
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = (data?.tasks ?? []).slice(0, 30)
+  return h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+    h('thead', null, h('tr', null, ['ID', '名称', '状态', '目标'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
+    h('tbody', null, rows.map((task: any) => h('tr', { key: task.id },
+      h('td', { style: { padding: '6px 8px' } }, task.id),
+      h('td', { style: { padding: '6px 8px' } }, task.name || '—'),
+      h('td', { style: { padding: '6px 8px' } }, task.status),
+      h('td', { style: { padding: '6px 8px', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, task.goal)))))
+}
+
+function FindingList() {
+  const { data, error, loading } = useApi('/api/exploration/findings?page=1&limit=30')
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.items ?? []
+  return h('div', null,
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.total ?? 0} 条`),
+    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+      h('thead', null, h('tr', null, ['ID', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.finding_id },
+        h('td', { style: { padding: '6px 8px' } }, row.finding_id),
+        h('td', { style: { padding: '6px 8px' } }, row.vulnclass),
+        h('td', { style: { padding: '6px 8px' } }, row.severity),
+        h('td', { style: { padding: '6px 8px' } }, row.status),
+        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary))))))
+}
+
 function VexnarConsole(): ReactNode {
   const [active, setActive] = useState('dashboard')
   const items = NAV_GROUPS.flatMap((group) => group.items)
@@ -410,10 +476,25 @@ function VexnarConsole(): ReactNode {
         }, h('span', null, item.label), item.badge ? h('span', { style: { minWidth: 18, height: 18, borderRadius: 9, background: '#f59e0b', color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center' } }, String(item.badge)) : null)))),
       h('div', { style: { fontSize: 11, color: 'var(--vx-muted, #9ca3af)', padding: '8px 10px' } }, '数据源：vexnar-core')),
     h('section', { style: { flex: 1, minWidth: 0, overflowY: 'auto', padding: 24 } },
-      h('h1', { style: { fontSize: 22, margin: '0 0 6px' } }, current.label),
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 } },
+        h('h1', { style: { fontSize: 22, margin: 0 } }, current.label),
+        h('button', {
+          type: 'button',
+          onClick: () => {
+            const url = window.prompt('vexnar-core 地址', localStorage.getItem('vexnar.coreUrl') || 'http://127.0.0.1:8790')
+            if (url) localStorage.setItem('vexnar.coreUrl', url.replace(/\/$/, ''))
+            const token = window.prompt('core 访问 token（VEXNAR_API_TOKEN）', localStorage.getItem('vexnar.coreToken') || '')
+            if (token) localStorage.setItem('vexnar.coreToken', token)
+            window.location.reload()
+          },
+          style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }
+        }, '连接 core')),
       h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 20px' } }, current.desc),
-      h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
-        '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
+      current.id === 'dashboard' ? h(Dashboard)
+        : current.id === 'tasks' ? h(TaskList)
+        : current.id === 'findings' ? h(FindingList)
+        : h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
+            '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
 }
 
 export function apply(ctx: {

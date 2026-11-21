@@ -44,6 +44,15 @@ dsh 侧边栏
 | 审批记录 | 面板内列表 | 待迁 | 规划 |
 | 日志 | 面板内日志 | `/api/exploration/activity/history` | 骨架 |
 
+## 已实现的数据视图
+
+- 仪表盘：任务数、发现数、资产数、今日 Token；
+- 任务：最近 30 条任务（id/名称/状态/目标）；
+- 发现：最近 30 条发现（id/漏洞类/严重度/状态/摘要）。
+
+连接方式：面板右上「连接 core」写入 `vexnar.coreUrl` 与 `vexnar.coreToken`；
+core 需设置 `VEXNAR_API_TOKEN`，并已开放 CORS 与 `x-vexnar-token` 头。
+
 ## 已实现的骨架
 
 - `app/vexnar/ui/src/client.tsx`：注册 `main` 面板 `vexnar-console` 与
