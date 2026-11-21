@@ -21,7 +21,7 @@ export function createNotifier(channels: any[], send?: Send, record?: RecordResu
       if (channel.enabled === false) continue
       const filter = channel.filter ?? {}
       if (Array.isArray(filter.events) && filter.events.length && !filter.events.includes(event.kind)) continue
-      let result = { ok: false, detail: 'not attempted' }
+      let result: Awaited<ReturnType<Send>> = { ok: false, detail: 'not attempted' }
       let attempts = 0
       for (; attempts < maxAttempts; attempts++) {
         try {

@@ -223,7 +223,7 @@ export function storeOperations(_root?: string) {
     // Detach tasks that referenced the category.
     for (const task of await writer.list('tasks')) {
       if (String(task.category_id ?? '') !== String(id)) continue
-      const next = { ...task, category_id: null }
+      const next: Record<string, unknown> = { ...task, category_id: null }
       delete next.rev
       await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
     }
@@ -318,7 +318,7 @@ export function storeOperations(_root?: string) {
   async function detachAsset(taskId: string, assetId: string) {
     const asset = await writer.readRecord('assets', assetId)
     if (!asset) throw Object.assign(new Error('asset 不存在'), { status: 404 })
-    const ids = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
+    const ids: number[] = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
     if (!ids.includes(Number(taskId))) throw Object.assign(new Error('asset 未关联该任务'), { status: 404 })
     const next = { ...asset, task_ids: ids.filter((id) => id !== Number(taskId)) }
     delete next.rev
@@ -693,7 +693,7 @@ export function storeOperations(_root?: string) {
     const rows = await writer.list('nodes')
     const blocked = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'blocked')
     for (const row of blocked) {
-      const next = { ...row, state: 'open' }
+      const next: Record<string, unknown> = { ...row, state: 'open' }
       delete next.rev
       await writer.commit([{ table: 'nodes', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) }])
     }
@@ -840,7 +840,7 @@ export function storeOperations(_root?: string) {
       .sort((a, b) => Number(b.priority) - Number(a.priority) || Number(a.id) - Number(b.id))[0]
     if (!next) return null
     const leaseUntil = Math.floor(Date.now() / 1000) + Math.max(Number(leaseSeconds) || 600, 1)
-    const record = { ...next, state: 'running', payload: { ...(typeof next.payload === 'string' ? JSON.parse(next.payload) : next.payload), worker, lease_until: leaseUntil } }
+    const record: Record<string, unknown> = { ...next, state: 'running', payload: { ...(typeof next.payload === 'string' ? JSON.parse(next.payload) : next.payload), worker, lease_until: leaseUntil } }
     delete record.rev
     const [written] = await writer.commit([{ table: 'nodes', key: String(next.id), record, expectedRev: Number(next.rev ?? 0) }])
     return written
@@ -857,7 +857,7 @@ export function storeOperations(_root?: string) {
       return Number(payload?.lease_until ?? 0) > 0 && Number(payload.lease_until) < now
     })
     for (const row of expired) {
-      const next = { ...row, state: 'open', payload: { ...(typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload), worker: '', lease_until: 0 } }
+      const next: Record<string, unknown> = { ...row, state: 'open', payload: { ...(typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload), worker: '', lease_until: 0 } }
       delete next.rev
       await writer.commit([{ table: 'nodes', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) }])
     }
@@ -889,8 +889,10 @@ export function storeOperations(_root?: string) {
     const byKind: Record<string, number> = {}
     const byState: Record<string, number> = {}
     for (const node of scoped) {
-      byKind[node.kind] = (byKind[node.kind] ?? 0) + 1
-      byState[node.state] = (byState[node.state] ?? 0) + 1
+      const kind = String(node.kind)
+      const state = String(node.state)
+      byKind[kind] = (byKind[kind] ?? 0) + 1
+      byState[state] = (byState[state] ?? 0) + 1
     }
     const edges = (await writer.list('edges')).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length
     const anchors = (await (async () => {
@@ -946,13 +948,16 @@ export function storeOperations(_root?: string) {
     }
     const existing = rows.find(sameAsset)
     if (existing) {
-      if (!Array.isArray(existing.task_ids) || !existing.task_ids.map(Number).includes(Number(task.id))) {
-        const next = { ...existing, task_ids: [...(existing.task_ids ?? []).map(Number), Number(task.id)] }
+      const id = existing.id
+      if (typeof id !== 'string' && typeof id !== 'number') throw new Error('stored asset is missing a valid ID')
+      const taskIds = Array.isArray(existing.task_ids) ? existing.task_ids.map(Number) : []
+      if (!taskIds.includes(Number(task.id))) {
+        const next: Record<string, unknown> & { id: string | number } = { ...existing, id, task_ids: [...taskIds, Number(task.id)] }
         delete next.rev
         await writer.commit([{ table: 'assets', key: String(existing.id), record: next, expectedRev: Number(existing.rev ?? 0) }])
         return next
       }
-      return existing
+      return { ...existing, id }
     }
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const record = {
