@@ -29,7 +29,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// app/vexnar/ui/src/client.tsx
+// src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
@@ -40,7 +40,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react4 = require("react");
 
-// app/vexnar/ui/src/styles.ts
+// src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -2014,7 +2014,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// app/vexnar/ui/src/overview.tsx
+// src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -3259,14 +3259,14 @@ function OverviewPanel() {
   ] });
 }
 
-// app/vexnar/ui/src/yak-history.tsx
+// src/yak-history.tsx
 var import_react3 = require("react");
 
-// ../../app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var React = __toESM(require("react"), 1);
 var import_react_dom = require("react-dom");
 
-// ../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
 function getMeasurementKey(item) {
   return typeof item === "object" ? item.key : item;
 }
@@ -3301,7 +3301,7 @@ function createLazyMeasurementsView(cache, flat) {
   });
 }
 
-// ../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
 function memo(getDeps, fn, opts) {
   let deps = opts.initialDeps ?? [];
   let result;
@@ -3380,7 +3380,7 @@ var debounce = (targetWindow, fn, ms) => {
   );
 };
 
-// ../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
 function classifyScrollEvent({
   offset,
   isScrolling,
@@ -3459,7 +3459,7 @@ function flingCaught(samples) {
   return Math.abs(last.offset - from.offset) / (last.t - from.t) >= 0.05;
 }
 
-// ../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
 var _isIOSResult;
 var isIOSWebKit = () => {
   if (_isIOSResult !== void 0) return _isIOSResult;
@@ -3580,7 +3580,7 @@ var IosGesture = class {
   }
 };
 
-// ../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
 var getRect = (element) => {
   const { clientWidth, clientHeight } = element;
   return { width: clientWidth, height: clientHeight };
@@ -5213,7 +5213,7 @@ function calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, flat) 
   return { startIndex, endIndex };
 }
 
-// ../../app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../../../../app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var useIsomorphicLayoutEffect = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
 function useVirtualizerBase({
   useFlushSync = true,
@@ -5345,7 +5345,7 @@ function useVirtualizer(options) {
   });
 }
 
-// ../../app/node_modules/.pnpm/react-resizable-panels@2.1.9/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
+// ../../../../../app/node_modules/.pnpm/react-resizable-panels@2.1.9/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
 var React2 = __toESM(require("react"));
 var import_react2 = require("react");
 var PanelGroupContext = (0, import_react2.createContext)(null);
@@ -7458,7 +7458,7 @@ function PanelResizeHandle({
 }
 PanelResizeHandle.displayName = "PanelResizeHandle";
 
-// app/vexnar/ui/src/http-packet.ts
+// src/http-packet.ts
 var BINARY_PREFIXES = [
   "image/",
   "audio/",
@@ -7850,7 +7850,7 @@ function methodClass(method) {
   }
 }
 
-// app/vexnar/ui/src/yak-history.tsx
+// src/yak-history.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function useHistory(body, revision = 0) {
   const [result, setResult] = (0, import_react3.useState)();
@@ -8372,7 +8372,7 @@ function SessionTrafficAction({ sessionId }) {
   ] });
 }
 
-// app/vexnar/ui/src/client.tsx
+// src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
@@ -9077,77 +9077,66 @@ function AgentsPage() {
     )))
   ));
 }
-function McpPage() {
-  const { data, error, loading } = useApi("/api/mcp");
-  const [version, setVersion] = (0, import_react4.useState)(0);
-  if (loading) return (0, import_react4.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react4.createElement)("div", { style: { color: "#dc2626" } }, error);
-  const rows = data?.servers ?? [];
-  const toggle = async (row) => {
-    try {
-      await callApi(`/api/mcp/${row.id}/enabled`, "PUT", { enabled: !row.enabled });
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  const remove = async (row) => {
-    if (!window.confirm(`\u5220\u9664 ${row.name}?`)) return;
-    try {
-      await callApi(`/api/mcp/${row.id}`, "DELETE");
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  return (0, import_react4.createElement)("div", { key: version }, (0, import_react4.createElement)(
-    "table",
-    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-    (0, import_react4.createElement)("thead", null, (0, import_react4.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u4F20\u8F93", "\u542F\u7528", ""].map((t) => (0, import_react4.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-    (0, import_react4.createElement)("tbody", null, rows.map((row) => (0, import_react4.createElement)(
-      "tr",
-      { key: row.id },
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.name),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.transport),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
-      (0, import_react4.createElement)(
-        "td",
-        { style: { padding: "6px 8px", display: "flex", gap: 8 } },
-        (0, import_react4.createElement)("button", { type: "button", onClick: () => toggle(row), style: { cursor: "pointer" } }, row.enabled ? "\u505C\u7528" : "\u542F\u7528"),
-        (0, import_react4.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664")
-      )
-    )))
-  ));
+function CapabilityNote({ children }) {
+  return (0, import_react4.createElement)("p", { style: { fontSize: 12, lineHeight: 1.6, color: "var(--vx-text-dim)", margin: "0 0 12px" } }, children);
 }
-function ToolsPage() {
-  const { data, error, loading } = useApi("/api/tools");
-  const [version, setVersion] = (0, import_react4.useState)(0);
+var CELL = { padding: "6px 8px" };
+var HEAD = { textAlign: "left", padding: "6px 8px" };
+function McpTab() {
+  const { data, error, loading } = useApi("/api/mcp");
   if (loading) return (0, import_react4.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react4.createElement)("div", { style: { color: "#dc2626" } }, error);
+  if (error) return (0, import_react4.createElement)("div", { style: { color: "var(--vx-negative)" } }, error);
+  const rows = data?.servers ?? [];
+  return (0, import_react4.createElement)(
+    "div",
+    null,
+    (0, import_react4.createElement)(
+      CapabilityNote,
+      null,
+      "\u5E73\u53F0\u6CE8\u518C\u7684 MCP server\u3002\u542F\u505C\u4E0E\u8C03\u7528\u6743\u9650\u7531 dsh \u7EDF\u4E00\u7BA1\u7406\uFF1A\u5728\u63D2\u4EF6\u9875\u505C\u7528\u63D0\u4F9B\u65B9\u63D2\u4EF6\uFF0C\u5728\u6743\u9650\u9884\u8BBE\u91CC\u51B3\u5B9A agent \u80FD\u8C03\u7528\u54EA\u4E9B\u5DE5\u5177\uFF1B\u8FD9\u91CC\u53EA\u5448\u73B0\u6CE8\u518C\u7ED3\u679C\u3002"
+    ),
+    rows.length === 0 ? (0, import_react4.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u5E73\u53F0\u8FD8\u6CA1\u6709\u6CE8\u518C MCP server\u3002") : (0, import_react4.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react4.createElement)("thead", null, (0, import_react4.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u4F20\u8F93", "\u72B6\u6001"].map((t) => (0, import_react4.createElement)("th", { key: t, style: HEAD }, t)))),
+      (0, import_react4.createElement)("tbody", null, rows.map((row) => (0, import_react4.createElement)(
+        "tr",
+        { key: row.id },
+        (0, import_react4.createElement)("td", { style: CELL }, row.id),
+        (0, import_react4.createElement)("td", { style: CELL }, row.name),
+        (0, import_react4.createElement)("td", { style: CELL }, row.transport),
+        (0, import_react4.createElement)("td", { style: CELL }, row.enabled ? "\u5DF2\u6CE8\u518C" : "\u5DF2\u505C\u7528")
+      )))
+    )
+  );
+}
+function ToolsTab() {
+  const { data, error, loading } = useApi("/api/tools");
+  if (loading) return (0, import_react4.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react4.createElement)("div", { style: { color: "var(--vx-negative)" } }, error);
   const rows = data?.tools ?? [];
-  const toggle = async (row) => {
-    try {
-      await callApi(`/api/tools/${row.key}`, "PUT", { enabled: !row.enabled });
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  return (0, import_react4.createElement)("div", { key: version }, (0, import_react4.createElement)(
-    "table",
-    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-    (0, import_react4.createElement)("thead", null, (0, import_react4.createElement)("tr", null, ["Key", "\u7C7B\u578B", "\u542F\u7528", "\u8C03\u7528", ""].map((t) => (0, import_react4.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-    (0, import_react4.createElement)("tbody", null, rows.map((row) => (0, import_react4.createElement)(
-      "tr",
-      { key: row.key },
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.key),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.kind),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, row.calls ?? 0),
-      (0, import_react4.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react4.createElement)("button", { type: "button", onClick: () => toggle(row), style: { cursor: "pointer" } }, row.enabled ? "\u505C\u7528" : "\u542F\u7528"))
-    )))
-  ));
+  return (0, import_react4.createElement)(
+    "div",
+    null,
+    (0, import_react4.createElement)(
+      CapabilityNote,
+      null,
+      "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\u3002\u662F\u5426\u5BF9 agent \u5F00\u653E\u7531 dsh \u7EDF\u4E00\u7BA1\u7406\uFF1A\u63D2\u4EF6\u9875\u51B3\u5B9A\u5DE5\u5177\u9762\u5728\u4E0D\u5728\uFF0C\u6743\u9650\u9884\u8BBE\u4E0E\u5BA1\u6279\u51B3\u5B9A\u5355\u6B21\u8C03\u7528\u653E\u4E0D\u653E\u884C\uFF1B\u8FD9\u91CC\u53EA\u5448\u73B0\u6CE8\u518C\u7ED3\u679C\u4E0E\u8C03\u7528\u6B21\u6570\u3002"
+    ),
+    rows.length === 0 ? (0, import_react4.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u5E73\u53F0\u8FD8\u6CA1\u6709\u6CE8\u518C\u5DE5\u5177\u3002") : (0, import_react4.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react4.createElement)("thead", null, (0, import_react4.createElement)("tr", null, ["Key", "\u7C7B\u578B", "\u72B6\u6001", "\u8C03\u7528"].map((t) => (0, import_react4.createElement)("th", { key: t, style: HEAD }, t)))),
+      (0, import_react4.createElement)("tbody", null, rows.map((row) => (0, import_react4.createElement)(
+        "tr",
+        { key: row.key },
+        (0, import_react4.createElement)("td", { style: CELL }, row.key),
+        (0, import_react4.createElement)("td", { style: CELL }, row.kind),
+        (0, import_react4.createElement)("td", { style: CELL }, row.enabled ? "\u5DF2\u6CE8\u518C" : "\u5DF2\u505C\u7528"),
+        (0, import_react4.createElement)("td", { style: CELL }, row.calls ?? 0)
+      )))
+    )
+  );
 }
 function NotifyPage() {
   const { data, error, loading } = useApi("/api/notify/channels");
@@ -9670,21 +9659,6 @@ function TrafficPanel() {
 function AgentSettings() {
   return (0, import_react4.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react4.createElement)(AgentsPage));
 }
-function ToolsMcpSettings() {
-  const [tab, setTab] = (0, import_react4.useState)("tools");
-  const tabButton = (id, label) => (0, import_react4.createElement)("button", { key: id, type: "button", "aria-pressed": tab === id, onClick: () => setTab(id) }, label);
-  return (0, import_react4.createElement)(
-    PanelShell,
-    { title: "\u5DE5\u5177\u4E0E MCP", desc: "\u5185\u7F6E/\u81EA\u5B9A\u4E49\u5DE5\u5177\uFF0C\u4EE5\u53CA\u63D0\u4F9B\u5DE5\u5177\u7684 MCP server" },
-    (0, import_react4.createElement)(
-      "div",
-      { className: "vx-seg", role: "group", "aria-label": "\u5DE5\u5177\u4E0E MCP \u89C6\u56FE", style: { marginBottom: 12 } },
-      tabButton("tools", "\u5DE5\u5177"),
-      tabButton("mcp", "MCP server")
-    ),
-    tab === "tools" ? (0, import_react4.createElement)(ToolsPage) : (0, import_react4.createElement)(McpPage)
-  );
-}
 function NotifySettings() {
   return (0, import_react4.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react4.createElement)(NotifyPage));
 }
@@ -9698,9 +9672,12 @@ var PANELS = [
 ];
 var SETTINGS = [
   { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
-  { id: "vexnar-tools-mcp", label: "\u5DE5\u5177\u4E0E MCP", order: 41, component: ToolsMcpSettings },
   { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings },
   { id: "vexnar-intercept", label: "\u62E6\u622A\u89C4\u5219", order: 44, component: InterceptSettings }
+];
+var PLUGIN_TABS = [
+  { id: "vexnar-plugin-tools", label: "\u5DE5\u5177", order: 20, component: ToolsTab },
+  { id: "vexnar-plugin-mcp", label: "MCP server", order: 30, component: McpTab }
 ];
 function apply(ctx) {
   const { slots } = ctx;
@@ -9719,6 +9696,9 @@ function apply(ctx) {
   }
   for (const section of SETTINGS) {
     slots.inject("settings.section", () => slots.register({ name: "settings.section", id: section.id, label: () => section.label, order: section.order }, section.component));
+  }
+  for (const tab of PLUGIN_TABS) {
+    slots.inject("settings.plugins.tab", () => slots.register({ name: "settings.plugins.tab", id: tab.id, label: () => tab.label, order: tab.order }, tab.component));
   }
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));

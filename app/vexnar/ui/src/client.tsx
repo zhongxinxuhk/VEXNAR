@@ -750,41 +750,58 @@ function AgentsPage() {
       h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => edit(agent), style: { cursor: 'pointer' } }, '编辑')))))))
 }
 
-function McpPage() {
-  const { data, error, loading } = useApi('/api/mcp')
-  const [version, setVersion] = useState(0)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = data?.servers ?? []
-  const toggle = async (row: any) => { try { await callApi(`/api/mcp/${row.id}/enabled`, 'PUT', { enabled: !row.enabled }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
-  const remove = async (row: any) => { if (!window.confirm(`删除 ${row.name}?`)) return; try { await callApi(`/api/mcp/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
-  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-    h('thead', null, h('tr', null, ['ID', '名称', '传输', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-    h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-      h('td', { style: { padding: '6px 8px' } }, row.id),
-      h('td', { style: { padding: '6px 8px' } }, row.name),
-      h('td', { style: { padding: '6px 8px' } }, row.transport),
-      h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
-      h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
-        h('button', { type: 'button', onClick: () => toggle(row), style: { cursor: 'pointer' } }, row.enabled ? '停用' : '启用'),
-        h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
+/** 能力清单的一行说明：谁是这里的权威，写清楚比多一个开关有用。 */
+function CapabilityNote({ children }: { children: ReactNode }) {
+  return h('p', { style: { fontSize: 12, lineHeight: 1.6, color: 'var(--vx-text-dim)', margin: '0 0 12px' } }, children)
 }
 
-function ToolsPage() {
-  const { data, error, loading } = useApi('/api/tools')
-  const [version, setVersion] = useState(0)
+const CELL = { padding: '6px 8px' } as const
+const HEAD = { textAlign: 'left', padding: '6px 8px' } as const
+
+/**
+ * MCP server 清单（只读）。
+ *
+ * 启停与删除移交 dsh：谁能被 agent 调用是权限问题，dsh 的插件页与权限预设在同一个
+ * 地方回答它，这里再放一份开关只会让两处状态打架。平台侧清单留着，是因为用户需要
+ * 知道「这些东西是谁提供的」。
+ */
+function McpTab() {
+  const { data, error, loading } = useApi('/api/mcp')
   if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = data?.tools ?? []
-  const toggle = async (row: any) => { try { await callApi(`/api/tools/${row.key}`, 'PUT', { enabled: !row.enabled }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
-  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-    h('thead', null, h('tr', null, ['Key', '类型', '启用', '调用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-    h('tbody', null, rows.map((row: any) => h('tr', { key: row.key },
-      h('td', { style: { padding: '6px 8px' } }, row.key),
-      h('td', { style: { padding: '6px 8px' } }, row.kind),
-      h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
-      h('td', { style: { padding: '6px 8px' } }, row.calls ?? 0),
-      h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => toggle(row), style: { cursor: 'pointer' } }, row.enabled ? '停用' : '启用')))))))
+  if (error) return h('div', { style: { color: 'var(--vx-negative)' } }, error)
+  const rows: any[] = data?.servers ?? []
+  return h('div', null,
+    h(CapabilityNote, null,
+      '平台注册的 MCP server。启停与调用权限由 dsh 统一管理：在插件页停用提供方插件，在权限预设里决定 agent 能调用哪些工具；这里只呈现注册结果。'),
+    rows.length === 0
+      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '平台还没有注册 MCP server。')
+      : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+        h('thead', null, h('tr', null, ['ID', '名称', '传输', '状态'].map((t) => h('th', { key: t, style: HEAD }, t)))),
+        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+          h('td', { style: CELL }, row.id),
+          h('td', { style: CELL }, row.name),
+          h('td', { style: CELL }, row.transport),
+          h('td', { style: CELL }, row.enabled ? '已注册' : '已停用'))))))
+}
+
+/** 工具清单（只读）：内置工具与自定义工具，来源记在 Key 里（mcp__<server>__<tool>）。 */
+function ToolsTab() {
+  const { data, error, loading } = useApi('/api/tools')
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: 'var(--vx-negative)' } }, error)
+  const rows: any[] = data?.tools ?? []
+  return h('div', null,
+    h(CapabilityNote, null,
+      '平台注册的工具。是否对 agent 开放由 dsh 统一管理：插件页决定工具面在不在，权限预设与审批决定单次调用放不放行；这里只呈现注册结果与调用次数。'),
+    rows.length === 0
+      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '平台还没有注册工具。')
+      : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+        h('thead', null, h('tr', null, ['Key', '类型', '状态', '调用'].map((t) => h('th', { key: t, style: HEAD }, t)))),
+        h('tbody', null, rows.map((row: any) => h('tr', { key: row.key },
+          h('td', { style: CELL }, row.key),
+          h('td', { style: CELL }, row.kind),
+          h('td', { style: CELL }, row.enabled ? '已注册' : '已停用'),
+          h('td', { style: CELL }, row.calls ?? 0))))))
 }
 
 function NotifyPage() {
@@ -1202,21 +1219,6 @@ function AgentSettings() {
   return h(PanelShell, { title: 'Agent 管理', desc: '名称、描述与触发配置' }, h(AgentsPage))
 }
 
-/**
- * 工具与 MCP：两者是同一件事的两半——内置/自定义工具，加上提供外部工具的 MCP
- * server。分成两个设置节时，用户要为"这个工具到底从哪来"来回切。
- */
-function ToolsMcpSettings() {
-  const [tab, setTab] = useState<'tools' | 'mcp'>('tools')
-  const tabButton = (id: 'tools' | 'mcp', label: string): ReactNode =>
-    h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
-  return h(PanelShell, { title: '工具与 MCP', desc: '内置/自定义工具，以及提供工具的 MCP server' },
-    h('div', { className: 'vx-seg', role: 'group', 'aria-label': '工具与 MCP 视图', style: { marginBottom: 12 } },
-      tabButton('tools', '工具'),
-      tabButton('mcp', 'MCP server')),
-    tab === 'tools' ? h(ToolsPage) : h(McpPage))
-}
-
 function NotifySettings() {
   return h(PanelShell, { title: '通知推送', desc: '渠道与投递' }, h(NotifyPage))
 }
@@ -1232,12 +1234,23 @@ const PANELS = [
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel }
 ]
 
-// 工具与 MCP 共用设置面板。
 const SETTINGS = [
   { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
-  { id: 'vexnar-tools-mcp', label: '工具与 MCP', order: 41, component: ToolsMcpSettings },
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
   { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings }
+]
+
+/**
+ * 工具与 MCP 是「内置插件」分区的标签页，不是并列的一节设置。
+ *
+ * 两者回答的是同一个问题——「这个工具从哪来」：内置工具由插件提供，MCP server 由
+ * 插件挂载。dsh 已经把插件、它的配置和它的启停收在同一个分区里，另开一节只会让
+ * 用户在两个页面之间对照来源，而权限又是第三处（dsh 的权限预设）。所以这里只贡献
+ * 标签页，清单只读，启停与调用权限留给 dsh 统一管理。
+ */
+const PLUGIN_TABS = [
+  { id: 'vexnar-plugin-tools', label: '工具', order: 20, component: ToolsTab },
+  { id: 'vexnar-plugin-mcp', label: 'MCP server', order: 30, component: McpTab }
 ]
 
 export function apply(ctx: {
@@ -1274,6 +1287,10 @@ export function apply(ctx: {
   }
   for (const section of SETTINGS) {
     slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: section.id, label: () => section.label, order: section.order }, section.component))
+  }
+  // 工具与 MCP 归入 dsh 的「内置插件」分区：清单是标签页，权限归 dsh。
+  for (const tab of PLUGIN_TABS) {
+    slots.inject('settings.plugins.tab', () => slots.register({ name: 'settings.plugins.tab', id: tab.id, label: () => tab.label, order: tab.order }, tab.component))
   }
   // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
   // profile patch disables. Occupying the slot is the supported override route.
