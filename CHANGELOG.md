@@ -57,6 +57,18 @@
   （JSON / HTML / XML / JS / CSS / 表单 / multipart / 二进制 hexdump）各一套颜色，JSON 默认美化；方法与
   状态改成彩色胶囊，筛选条、表格、详情分栏一并重排。切词逻辑在 `app/vexnar/ui/src/http-packet.ts`。
 
+- **流量页跟着 dsh 的主题走，并支持报文内搜索**：颜色不再写死 hex，全部映射到 dsh 的
+  `--dsw-static-*` / `--dsw-alias-*`，深色由 `body[data-ds-dark-theme]` 切换；面板自己铺
+  `--vx-surface` 底色，宿主容器不换背景时也不会透出白底。请求/响应每栏一个搜索框，命中全部
+  高亮、显示 `当前/总数`，↑↓ 或 Enter/Shift+Enter 在命中之间跳转（自动滚到视野中央），Esc 清空。
+
+- **流量列表按网络分析器的形态重排**：引入 `@tanstack/react-virtual`（行虚拟化，固定 30px 行高）
+  与 `react-resizable-panels`（请求/响应可拖拽分栏，布局记忆），列表改成自绘网格：粘性表头、
+  行悬浮/选中态、响应大小用对数刻度色条表达（按状态码上色）、站点侧栏带计数、分页条带本页统计。
+  选型上比过 HTTP Toolkit / Thorclient UI / network-viewer 这类现成检视器，它们要么绑定自家
+  主题与状态管理，要么带 HAR 解析器；这里只取无头原语（两个依赖均 MIT，合计约 30 KB 打包），
+  配色仍走 dsh 主题 token。
+
 ### Web 控制台（执行台）
 
 #### 新增的功能

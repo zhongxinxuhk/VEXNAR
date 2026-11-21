@@ -33,6 +33,10 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test test/*.test.mjs"
   },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.14.26",
+    "react-resizable-panels": "^2.1.9"
+  },
   "devDependencies": {
     "@types/react": "^18.3.31",
     "esbuild": "^0.25.0",
