@@ -2502,14 +2502,6 @@ function OverviewPanel() {
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Agent" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("b", { children: [
-            data.sys.agentsOn,
-            "/",
-            data.sys.agents
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u8D44\u4EA7\u8282\u70B9" }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("b", { children: fmtInt(view.assets.total) })
         ] }),
