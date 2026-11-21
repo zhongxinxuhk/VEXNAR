@@ -32,7 +32,7 @@ export function jsonStore(root: string): Store {
       for (const key of tables) delete cache[key]
     },
     tasks: {
-      list: async () => [...(await load('tasks', taskRow))].filter((row) => !row.deleted_at_text).sort((a, b) => Number(b.id) - Number(a.id)),
+      list: async () => [...(await load('tasks', taskRow))].filter((row) => !row.deleted_at_text && !row.archived_at_text).sort((a, b) => Number(b.id) - Number(a.id)),
       get: async (id) => (await load('tasks', taskRow)).find((row) => String(row.id) === String(id) && !row.deleted_at_text)
     },
     findings: {

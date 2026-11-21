@@ -579,5 +579,82 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function archiveTask(id: string) {
+    const task = await writer.readRecord('tasks', id)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    if (task.archived_at_text) throw Object.assign(new Error('task 已归档'), { status: 409 })
+    const now = new Date()
+    const existing = []
+    try {
+      for (const name of await readdir(join(root, 'archives'))) {
+        if (!name.endsWith('.json')) continue
+        existing.push(JSON.parse(await readFile(join(root, 'archives', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1
+    const archive = {
+      id: archiveId,
+      task_id: Number(task.id),
+      state: 'done', phase: 'done', progress: 100,
+      warnings: [], format_version: 1,
+      task_name: task.name, task_description: task.description, task_goal: task.goal,
+      original_status: task.status,
+      category_id: task.category_id ?? null,
+      source_task_ids: [], remaining_timeout_seconds: 0,
+      data_counts: {}, aggregate_stats: {},
+      archived_at: rfc3339(now), requested_at: rfc3339(now),
+      created_at: rfc3339(now), updated_at: rfc3339(now)
+    }
+    const nextTask = { ...task, archived_at_text: archive.archived_at }
+    delete nextTask.rev
+    await writer.commit([
+      { table: 'archives', key: String(archiveId), record: archive },
+      { table: 'tasks', key: id, record: nextTask, expectedRev: Number(task.rev ?? 0) }
+    ])
+    return archive
+  }
+
+  async function listArchives() {
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'archives'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'archives', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    return rows.sort((a, b) => Number(b.id) - Number(a.id))
+  }
+
+  async function restoreArchive(archiveId: string) {
+    const archive = await writer.readRecord('archives', archiveId)
+    if (!archive) throw Object.assign(new Error('归档不存在'), { status: 404 })
+    const task = await writer.readRecord('tasks', String(archive.task_id))
+    if (task) {
+      const next = { ...task, archived_at_text: null }
+      delete next.rev
+      await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
+    }
+    await rm(join(root, 'archives', `${archiveId}.json`), { force: true })
+    return archive
+  }
+
+  async function deleteArchive(archiveId: string) {
+    const archive = await writer.readRecord('archives', archiveId)
+    if (!archive) throw Object.assign(new Error('归档不存在'), { status: 404 })
+    const task = await writer.readRecord('tasks', String(archive.task_id))
+    if (task) {
+      const now = new Date()
+      const next = { ...task, status: 'deleted', deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1000) }
+      delete next.rev
+      await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
+    }
+    await rm(join(root, 'archives', `${archiveId}.json`), { force: true })
+    return archive
+  }
+
+  return { writer, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
