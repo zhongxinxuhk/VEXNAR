@@ -252,9 +252,11 @@ function RulesTab(): ReactNode {
   const [editing, setEditing] = useState<InterceptRule | null>(null)
   const [removing, setRemoving] = useState<InterceptRule | null>(null)
   const [busy, setBusy] = useState(0)
+  const [bulk, setBulk] = useState(false)
   const [error, setError] = useState('')
 
   const rows = rules.data ?? []
+  const enabledCount = rows.filter((rule) => rule.enabled).length
 
   const toggle = async (rule: InterceptRule) => {
     setError('')
@@ -266,6 +268,22 @@ function RulesTab(): ReactNode {
       setError(errText(reason))
     } finally {
       setBusy(0)
+    }
+  }
+
+  /** 一次性把停用的规则全部打开：20 条内置规则逐条点开关太费手。 */
+  const enableAll = async () => {
+    const pending = rows.filter((rule) => !rule.enabled)
+    if (pending.length === 0) return
+    setError('')
+    setBulk(true)
+    try {
+      await Promise.all(pending.map((rule) => interceptApi.toggleRule(rule.id, true)))
+      rules.reload()
+    } catch (reason) {
+      setError(errText(reason))
+    } finally {
+      setBulk(false)
     }
   }
 
@@ -287,7 +305,14 @@ function RulesTab(): ReactNode {
     <div className="vx-int-stack">
       <div className="vx-int-head">
         <span className="vx-int-hint">按优先级（数字越大越先）逐条匹配，首条命中的规则生效</span>
-        <span className="vx-int-count">共 {rows.length} 条规则</span>
+        <span className="vx-int-count">
+          共 {rows.length} 条规则 · {enabledCount} 条启用
+        </span>
+        {enabledCount < rows.length ? (
+          <Button tone="ghost" disabled={bulk} onClick={() => void enableAll()}>
+            {bulk ? '启用中…' : '全部启用'}
+          </Button>
+        ) : null}
         <Button tone="primary" onClick={() => setCreating(true)}>
           <PlusIcon />
           新建规则

@@ -3,8 +3,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { api } from './routes.ts'
 import { goData } from './go-data.ts'
+import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
 
 export { isGoDataRequest } from './go-data.ts'
+
+/**
+ * 拦截规则的一次性迁移只跑一次：成功或失败都记住这次尝试，之后的请求不再重试，
+ * 迁移源（PostgreSQL）不可用也不会把每个请求都拖慢。
+ */
+let migration: Promise<unknown> | null = null
+
+function migrateOnce(): Promise<unknown> {
+  migration ??= ensureInterceptRulesSeeded().then(
+    (outcome) => {
+      if (outcome.seeded > 0) console.log(`[vexnar] 拦截规则迁移：${outcome.seeded} 条（来源 ${outcome.source}）`)
+    },
+    (error) => console.error('[vexnar] 拦截规则迁移失败（不影响其它接口）', error)
+  )
+  return migration
+}
 
 /**
  * In-process entry for the dsh host: the same Hono app the standalone server
@@ -12,5 +29,6 @@ export { isGoDataRequest } from './go-data.ts'
  * webserver prefix and forwards Fetch requests directly.
  */
 export async function handle(request: Request, localPeer: boolean) {
+  await migrateOnce()
   return await goData(request, localPeer) ?? api.fetch(request)
 }
