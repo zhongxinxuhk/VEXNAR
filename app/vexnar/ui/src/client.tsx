@@ -21,6 +21,14 @@ import { installStyles } from './styles.js'
  * cards follow the shell's theme, font-size setting and dark mode.
  */
 
+/**
+ * Required client services. dsh only puts a service on the plugin context when
+ * the package declares it here: without this line `ctx.slots` is undefined and
+ * every registration throws, so the shell silently falls back to its own brand
+ * artwork instead of showing VEXNAR. Keep it at module scope, not inside apply().
+ */
+export const inject = ['slots']
+
 const FINDING_TOOL = 'mcp__vexnar__report_finding'
 const TRAFFIC_TOOL = 'mcp__vexnar__traffic_get'
 
@@ -304,30 +312,39 @@ function installPermissionWarning(): () => void {
 }
 
 export function apply(ctx: {
-  slots: {
+  slots?: {
     inject: (name: string, register: () => unknown) => void
     register: (options: { name: string; key?: string }, component: unknown) => unknown
   }
   effect?: (fn: () => () => void) => void
 }): void {
+  // A missing service must degrade to "no cards", never to a dead plugin: the
+  // shell would then fall back to its own artwork with no visible error.
+  // Bind once: narrowing on ctx.slots is lost after the first call below.
+  const { slots } = ctx
+  if (slots === undefined) {
+    console.warn('[vexnar] client slots service missing; check `export const inject`')
+    return
+  }
+
   // Stylesheet first and once: cards may mount before the plugin's own effects
   // run, and the injection is idempotent, so it is not wired to disposal.
   installStyles()
 
-  ctx.slots.inject('tool.call.toolview', () =>
-    ctx.slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
-  ctx.slots.inject('tool.call.toolview', () =>
-    ctx.slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
+  slots.inject('tool.call.toolview', () =>
+    slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
+  slots.inject('tool.call.toolview', () =>
+    slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
   // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
   // profile patch disables. Occupying the slot is the supported override route.
-  ctx.slots.inject('sidebar.brand.mark', () =>
-    ctx.slots.register({ name: 'sidebar.brand.mark' }, BrandMark))
-  ctx.slots.inject('sidebar.brand.name', () =>
-    ctx.slots.register({ name: 'sidebar.brand.name' }, BrandName))
+  slots.inject('sidebar.brand.mark', () =>
+    slots.register({ name: 'sidebar.brand.mark' }, BrandMark))
+  slots.inject('sidebar.brand.name', () =>
+    slots.register({ name: 'sidebar.brand.name' }, BrandName))
   // Chat hero: logo occupies the brand-mark slot; the slogan is rewritten in
   // place because the headline has no slot of its own.
-  ctx.slots.inject('conversation.hero.brand.mark', () =>
-    ctx.slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
+  slots.inject('conversation.hero.brand.mark', () =>
+    slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())
 }

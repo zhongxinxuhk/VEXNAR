@@ -30,7 +30,8 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",
