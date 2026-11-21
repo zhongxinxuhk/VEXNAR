@@ -32650,7 +32650,8 @@ var routes = /* @__PURE__ */ new Set([
   "POST /api/traffic/promote",
   "GET /api/assets",
   "GET /api/assets/counts",
-  "POST /api/assets"
+  "POST /api/assets",
+  "POST /api/yakit/open"
 ]);
 function isGoDataRequest(method, path) {
   return routes.has(`${method} ${path}`);

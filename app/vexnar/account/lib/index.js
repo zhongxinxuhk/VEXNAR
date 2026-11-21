@@ -31,7 +31,7 @@ let logoBytes = null
 
 export const name = '@vexnar/dsh-account'
 
-export const inject = ['webServer', 'credentials', 'settings', 'connection']
+export const inject = ['webServer', 'credentials', 'settings', 'connection', 'sessions']
 
 const KEY_REF = 'VEXNAR_NEWAPI_KEY'
 const PROVIDER = 'vexnar'
@@ -352,13 +352,15 @@ export function apply(ctx) {
               return
             }
           }
+          const openingYakit = req.method === 'POST' && url.pathname === '/api/yakit/open'
+          const limit = openingYakit ? 8192 : url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
           const chunks = []
           let size = 0
           for await (const chunk of req) {
             size += chunk.length
-            if (url.pathname === '/api/traffic/import/yakit' && size > 16 * 1024 * 1024) {
+            if (size > limit) {
               res.writeHead(413, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: 'HAR 不可超过 16 MiB' }))
+              res.end(JSON.stringify({ error: '请求正文过大' }))
               return
             }
             chunks.push(chunk)
@@ -368,11 +370,28 @@ export function apply(ctx) {
             if (Array.isArray(value)) for (const item of value) headers.append(key, item)
             else if (value !== undefined) headers.set(key, value)
           }
-          const request = new Request(url, {
-            method: req.method,
-            headers,
-            body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
-          })
+          let body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
+          if (openingYakit) {
+            let input
+            try { input = JSON.parse(body.toString('utf8')) } catch {}
+            if (!input || Array.isArray(input) || typeof input !== 'object' ||
+                Object.keys(input).some(key => key !== 'session_id') ||
+                (input.session_id !== undefined && (typeof input.session_id !== 'string' || !input.session_id))) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: '无效的 Yakit 会话请求' }))
+              return
+            }
+            // The Session header owns the original project. An Agent changing
+            // its effective working directory does not change the project.
+            const workspace = input.session_id ? ctx.sessions.get(input.session_id)?.header.cwd : undefined
+            if (input.session_id && !workspace) {
+              res.writeHead(409, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: '当前会话没有可用的本地项目' }))
+              return
+            }
+            body = Buffer.from(JSON.stringify({ workspace }))
+          }
+          const request = new Request(url, { method: req.method, headers, body })
           const localPeer = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)
           const response = await handle(request, localPeer)
           const responseHeaders = {}

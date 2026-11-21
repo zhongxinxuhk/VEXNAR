@@ -41,6 +41,7 @@ const react = {
   createElement: (type, props, ...kids) => ({ type, props, kids }),
   useState: (v) => [v, () => {}],
   useEffect: () => {},
+  useRef: (v) => ({ current: v }),
   Fragment: Symbol('fragment')
 }
 const requireShim = (name) => {
@@ -76,14 +77,15 @@ test('apply registers every surface it owns', () => {
     },
     effect: (fn) => fn()
   })
-  // 侧边栏：概览 + 执行台（任务/发现/工具执行 合并）+ 流量 + 资产；日志已并入执行台。
+  // 项目流量由会话动作和全局流量入口打开。
   const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
-    ...['overview', 'workbench', 'traffic', 'assets']
+    'conversation.session.header.actions:vexnar-yakit',
+    'conversation.hero.options:vexnar-yakit',
+    ...['overview', 'workbench', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
-    // 设置：MCP 与工具合并成「工具与 MCP」，资产同步并进资产面板。
-    ...['agents', 'tools-mcp', 'notify', 'intercept', 'approvals']
+    ...['agents', 'tools-mcp', 'notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
@@ -93,7 +95,7 @@ test('apply registers every surface it owns', () => {
   assert.deepEqual(registered, expected)
 })
 
-test('the fused surfaces replace their独立 entries', () => {
+test('obsolete sidebar and settings entries are absent', () => {
   const plugin = loadPlugin()
   const ids = []
   plugin.apply({
@@ -104,9 +106,9 @@ test('the fused surfaces replace their独立 entries', () => {
     effect: (fn) => fn()
   })
   for (const gone of ['vexnar-tasks', 'vexnar-findings', 'vexnar-tool-run', 'vexnar-logs',
-    'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync']) {
+    'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync', 'vexnar-assets', 'vexnar-approvals']) {
     assert.equal(ids.some((id) => id.endsWith(`:${gone}`)), false,
-      `${gone} must be gone: its content lives in the workbench / 工具与 MCP / 资产 panel now`)
+      `${gone} must no longer register a panel or settings section`)
   }
   assert.ok(ids.includes('sidebar.panellist:vexnar-workbench'), 'the workbench must own the sidebar entry')
   assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')

@@ -6,6 +6,9 @@
 
 # Yakit 历史流量与 VEXNAR 资产对接
 
+
+当前 dsh 流量入口采用[官方 Yakit 联动](YAKIT-NATIVE-INTEGRATION.md)。下文记录此前的 HAR 导入链路及仍可调用的 Go API。
+
 ## 设计
 
 ```mermaid
