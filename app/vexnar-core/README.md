@@ -66,6 +66,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/assets` | 🟡 已实现核心字段，DSL/图查询未迁 |
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
+| `GET /api/tasks/:id/goals` | ✅ 目标列表（id/text/vulnclass/state/origin/ts） |
 | `GET /api/exploration/intents` | ✅ 意图列表，支持 `limit` / `before` / 分页形状 |
 | `GET /api/exploration/activity/history` | ✅ 活动历史，`session=main/plan/main:N/intent:ID`，`before` 游标 |
 | `GET /api/exploration/tokens` | ✅ workers / sessions / total 全部对账 |
