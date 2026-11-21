@@ -28,6 +28,8 @@ await ops.addNode(task.id, { kind: 'fact', state: 'origin', payload: { text: 'ro
 const replies = [
   JSON.stringify({ intents: [{ text: 'probe web', priority: 5 }] }),
   JSON.stringify({ tool: 'add_fact', args: { text: 'server is nginx' } }),
+  JSON.stringify({ tool: 'add_asset', args: { type: 'root_domain', domain: 'engine.example' } }),
+  JSON.stringify({ tool: 'link_assets', args: {} }),
   JSON.stringify({ tool: 'finish', args: { summary: 'done' } })
 ]
 const complete = async () => replies.shift() ?? JSON.stringify({ tool: 'finish', args: {} })
@@ -40,6 +42,8 @@ const work = await engine.work(task.id, complete, 'work#1')
 check('worker finishes intent', work?.state === 'done', JSON.stringify(work))
 const fact = (await ops.writer.readRecord('nodes', String(Number(work.intent) + 1)))
 check('worker fact written', fact?.kind === 'fact' && fact?.payload.text === 'server is nginx', JSON.stringify(fact?.payload))
+const anchored = await ops.writer.readRecord('anchors', `${work.intent}-1`)
+check('worker asset linked', anchored?.asset_id === 1, JSON.stringify(anchored))
 
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }

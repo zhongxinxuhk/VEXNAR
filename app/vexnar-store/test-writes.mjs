@@ -178,6 +178,9 @@ check('state machine rejects', transitionError?.status === 409, String(transitio
 const activityRecord = await ops.appendActivity(goalTask.id, { kind: 'event', summary: 'engine test', worker: 'work#1' })
 check('activity append', activityRecord.kind === 'event' && activityRecord.summary === 'engine test', JSON.stringify(activityRecord))
 
+const overview = await ops.graphOverview(goalTask.id)
+check('graph overview', overview.by_kind.intent >= 1 && overview.by_kind.fact >= 1 && overview.edges >= 1, JSON.stringify({ kinds: overview.by_kind, edges: overview.edges }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
