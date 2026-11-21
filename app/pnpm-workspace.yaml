@@ -17,6 +17,7 @@ packages:
   - vexnar
   - vexnar/ui
   - vexnar/account
+  - vexnar/craft
   # TypeScript 核心与存储
   - vexnar-core
   - vexnar-store
