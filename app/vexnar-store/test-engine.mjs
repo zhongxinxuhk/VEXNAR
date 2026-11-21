@@ -78,6 +78,11 @@ const retried = await engine.retryBlocked(task.id, async () => JSON.stringify({ 
 const reopenedNode = await ops.writer.readRecord('nodes', String(blockedIntent.id))
 check('blocked retry', blocked?.state === 'blocked' && retried.reopened >= 1 && reopenedNode?.state === 'done', JSON.stringify({ blocked, retried, node: reopenedNode?.state }))
 
+let cancelChecks = 0
+const cancelIntent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'cancel me' }, state: 'open' })
+const cancelledWork = await engine.work(task.id, async () => JSON.stringify({ tool: 'add_fact', args: { text: 'x' } }), 'work#c', 4, { isCancelled: () => { cancelChecks++; return cancelChecks > 1 } })
+check('work observes cancellation', cancelledWork?.state === 'stopped', JSON.stringify(cancelledWork))
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 console.log(`root: ${root}`)
