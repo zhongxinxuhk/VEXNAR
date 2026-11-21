@@ -194,12 +194,25 @@ export function ToolsTab(): ReactNode {
   const [nonce, setNonce] = useState(0)
   const [view, setView] = useState<ToolsView>({ kind: 'list' })
   const [query, setQuery] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
   const tools = useApi('/api/tools', [nonce])
   const agents = useApi('/api/agents', [])
   const rows: ToolRow[] = tools.data?.tools ?? []
   const agentRows: AgentRow[] = agents.data?.agents ?? []
 
   const refresh = (): void => { setNonce(nonce + 1) }
+
+  // 默认目录写在 core 的 catalog/defaults.ts 里；这里只是让它「重新灌一遍缺的」，
+  // 已有的行不动——不是重置。
+  const registerDefaults = async (): Promise<void> => {
+    setBusy(true); setNotice('')
+    try {
+      const result = await callApi('/api/tools/register', 'POST', {})
+      setNotice(`已重新注册：新增 ${result.toolsAdded ?? 0} 个，共 ${result.toolsTotal ?? 0} 个工具`)
+      refresh()
+    } catch (cause) { setNotice(`注册失败：${errorText(cause)}`) } finally { setBusy(false) }
+  }
 
   if (view.kind === 'edit') {
     return <ToolDetail tool={view.tool} agents={agentRows} onBack={() => { setView({ kind: 'list' }) }} onSaved={() => { refresh(); setView({ kind: 'list' }) }} />
@@ -237,13 +250,16 @@ export function ToolsTab(): ReactNode {
   return (
     <div className="vx-cat">
       <p className="vx-cat-lead">
-        平台注册的工具：系统工具由 Go 代码定义（结构固定，可改描述、参数说明与默认值、绑定 Agent、启停），
-        自定义工具可整条增删改。agent 能不能真正调用，仍由 dsh 的插件挂载与权限预设决定。
+        平台注册的工具：系统工具来自 TS core 的默认目录（结构固定，可改描述、参数说明与默认值、绑定 Agent、启停），
+        自定义工具可整条增删改。删掉或用坏了的默认项可以「重新注册默认」补回来；agent 能不能真正调用，
+        仍由 dsh 的插件挂载与权限预设决定。
       </p>
       <div className="vx-cat-toolbar">
         <input className="vx-cat-input vx-cat-search" placeholder="搜索 key / 描述" value={query} onChange={(event) => { setQuery(event.target.value) }} />
+        <button type="button" className="vx-cat-btn" disabled={busy} onClick={() => { void registerDefaults() }}>重新注册默认</button>
         <button type="button" className="vx-cat-btn vx-cat-btn--primary" onClick={() => { setView({ kind: 'new' }) }}>+ 新建工具</button>
       </div>
+      {notice ? <div className="vx-cat-notice">{notice}</div> : null}
       <div className="vx-cat-section">
         <div className="vx-cat-section-head"><span>系统工具</span><span className="vx-cat-count">{system.length}</span></div>
         {system.length === 0
@@ -408,9 +424,20 @@ const TRANSPORTS = ['stdio', 'streamable-http', 'http', 'sse']
 export function McpTab(): ReactNode {
   const [nonce, setNonce] = useState(0)
   const [view, setView] = useState<McpView>({ kind: 'list' })
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
   const servers = useApi('/api/mcp', [nonce])
   const rows: ServerRow[] = servers.data?.servers ?? []
   const refresh = (): void => { setNonce(nonce + 1) }
+
+  const registerDefaults = async (): Promise<void> => {
+    setBusy(true); setNotice('')
+    try {
+      const result = await callApi('/api/mcp/register', 'POST', {})
+      setNotice(`已重新注册：新增 ${result.serversAdded ?? 0} 个，共 ${result.serversTotal ?? 0} 个 server`)
+      refresh()
+    } catch (cause) { setNotice(`注册失败：${errorText(cause)}`) } finally { setBusy(false) }
+  }
 
   if (view.kind === 'edit') {
     return <ServerDetail server={view.server} onBack={() => { setView({ kind: 'list' }) }} onSaved={() => { refresh(); setView({ kind: 'list' }) }} />
@@ -428,14 +455,17 @@ export function McpTab(): ReactNode {
   return (
     <div className="vx-cat">
       <p className="vx-cat-lead">
-        平台注册的 MCP server。这里的增删改只动 Go 侧注册表；dsh 自己那座 MCP 舰队在插件页管理，
-        两边是不同层，别把同名 server 当成同一份配置。
+        平台注册的 MCP server，注册表在 TS core 里（存储、增删改、工具发现都在这一侧）。
+        默认的三个 server 只在首次启动时灌入；删掉就是删掉，要恢复点「重新注册默认」。
+        dsh 自己那座 MCP 舰队在插件页管理，两边是不同层，别把同名 server 当成同一份配置。
       </p>
       <div className="vx-cat-toolbar">
         <span className="vx-cat-count">{rows.length} 个 server</span>
         <span className="vx-cat-spacer" />
+        <button type="button" className="vx-cat-btn" disabled={busy} onClick={() => { void registerDefaults() }}>重新注册默认</button>
         <button type="button" className="vx-cat-btn vx-cat-btn--primary" onClick={() => { setView({ kind: 'new' }) }}>+ 新建 server</button>
       </div>
+      {notice ? <div className="vx-cat-notice">{notice}</div> : null}
       {rows.length === 0
         ? <div className="vx-cat-hint">还没有 MCP server。</div>
         : (

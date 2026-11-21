@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import { execFile, spawnSync } from 'node:child_process'
 import { store, meta, operations, parseJson, storeRoot } from '../context.ts'
 import { activityDto } from './exploration.ts'
+import { defaultTool } from '../catalog/register.ts'
 
 /**
  * Remaining single-file routes that did not warrant their own module: flat
@@ -203,12 +204,23 @@ export function register(api: Hono) {
       const tables = await meta.load()
       const rows = (tables.tools as any[]) ?? []
       const row = rows.find((r) => r.key === key)
-      if (!row) return c.json({ error: '非内置工具或不存在: ' + key }, 404)
-      if (!row.system) return c.json({ error: '非内置工具或不存在: ' + key }, 404)
-      row.enabled = true
+      if (!row || !row.system) return c.json({ error: '非内置工具或不存在: ' + key }, 404)
+      // 恢复的是出厂定义：描述、参数、绑定 Agent、执行器与启停，全部回到
+      // catalog/defaults.ts 的那一份，而不只是把开关拨回打开。
+      const seed = defaultTool(key)
+      if (seed) {
+        row.description = seed.description
+        row.schema = seed.schema
+        row.agents = [...seed.agents]
+        row.kind = seed.kind
+        row.deferred = seed.deferred
+        if (seed.exec === undefined) delete row.exec
+        else row.exec = seed.exec
+      }
+      row.enabled = seed ? seed.enabled : true
       await meta.save(tables)
       meta.reload()
-      return c.json({ ok: true })
+      return c.json({ ok: true, restored: seed !== undefined })
     } catch (e: any) { return errResponse(c, e) }
   })
 

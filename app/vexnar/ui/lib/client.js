@@ -29,7 +29,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// src/client.tsx
+// vexnar/ui/src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   Dashboard: () => Dashboard,
@@ -43,7 +43,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react11 = require("react");
 
-// src/styles.ts
+// vexnar/ui/src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -3055,7 +3055,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// src/overview.tsx
+// vexnar/ui/src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -4372,14 +4372,14 @@ function OverviewPanel() {
   ] });
 }
 
-// src/yak-history.tsx
+// vexnar/ui/src/yak-history.tsx
 var import_react3 = require("react");
 
-// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var React = __toESM(require("react"), 1);
 var import_react_dom = require("react-dom");
 
-// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
+// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
 function getMeasurementKey(item) {
   return typeof item === "object" ? item.key : item;
 }
@@ -4414,7 +4414,7 @@ function createLazyMeasurementsView(cache, flat) {
   });
 }
 
-// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
+// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
 function memo(getDeps, fn, opts) {
   let deps = opts.initialDeps ?? [];
   let result;
@@ -4493,7 +4493,7 @@ var debounce = (targetWindow, fn, ms) => {
   );
 };
 
-// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
+// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
 function classifyScrollEvent({
   offset,
   isScrolling,
@@ -4572,7 +4572,7 @@ function flingCaught(samples) {
   return Math.abs(last.offset - from.offset) / (last.t - from.t) >= 0.05;
 }
 
-// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
+// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
 var _isIOSResult;
 var isIOSWebKit = () => {
   if (_isIOSResult !== void 0) return _isIOSResult;
@@ -4693,7 +4693,7 @@ var IosGesture = class {
   }
 };
 
-// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
+// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
 var getRect = (element) => {
   const { clientWidth, clientHeight } = element;
   return { width: clientWidth, height: clientHeight };
@@ -6326,7 +6326,7 @@ function calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, flat) 
   return { startIndex, endIndex };
 }
 
-// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var useIsomorphicLayoutEffect = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
 function useVirtualizerBase({
   useFlushSync = true,
@@ -6458,7 +6458,7 @@ function useVirtualizer(options) {
   });
 }
 
-// ../../node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
+// node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
 var React2 = __toESM(require("react"));
 var import_react2 = require("react");
 var PanelGroupContext = (0, import_react2.createContext)(null);
@@ -8571,7 +8571,7 @@ function PanelResizeHandle({
 }
 PanelResizeHandle.displayName = "PanelResizeHandle";
 
-// src/http-packet.ts
+// vexnar/ui/src/http-packet.ts
 var BINARY_PREFIXES = [
   "image/",
   "audio/",
@@ -8963,7 +8963,7 @@ function methodClass(method) {
   }
 }
 
-// src/yak-history.tsx
+// vexnar/ui/src/yak-history.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function useHistory(body, revision = 0) {
   const [result, setResult] = (0, import_react3.useState)();
@@ -9485,7 +9485,7 @@ function SessionTrafficAction({ sessionId }) {
   ] });
 }
 
-// src/capture-action.tsx
+// vexnar/ui/src/capture-action.tsx
 var import_react4 = require("react");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var CORE_BASE = "/vexnar-api";
@@ -9560,7 +9560,7 @@ function SessionCaptureAction({ sessionId }) {
   ] });
 }
 
-// src/api.ts
+// vexnar/ui/src/api.ts
 var import_react5 = require("react");
 var CORE_BASE2 = "/vexnar-api";
 async function responseError(response) {
@@ -9593,7 +9593,7 @@ function useApi(path, deps = []) {
   return state;
 }
 
-// src/catalog.tsx
+// vexnar/ui/src/catalog.tsx
 var import_react6 = require("react");
 var import_jsx_runtime4 = require("react/jsx-runtime");
 function errorText(error) {
@@ -9728,12 +9728,27 @@ function ToolsTab() {
   const [nonce2, setNonce] = (0, import_react6.useState)(0);
   const [view, setView] = (0, import_react6.useState)({ kind: "list" });
   const [query2, setQuery] = (0, import_react6.useState)("");
+  const [notice, setNotice] = (0, import_react6.useState)("");
+  const [busy, setBusy] = (0, import_react6.useState)(false);
   const tools = useApi("/api/tools", [nonce2]);
   const agents = useApi("/api/agents", []);
   const rows = tools.data?.tools ?? [];
   const agentRows = agents.data?.agents ?? [];
   const refresh = () => {
     setNonce(nonce2 + 1);
+  };
+  const registerDefaults = async () => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await callApi("/api/tools/register", "POST", {});
+      setNotice(`\u5DF2\u91CD\u65B0\u6CE8\u518C\uFF1A\u65B0\u589E ${result.toolsAdded ?? 0} \u4E2A\uFF0C\u5171 ${result.toolsTotal ?? 0} \u4E2A\u5DE5\u5177`);
+      refresh();
+    } catch (cause) {
+      setNotice(`\u6CE8\u518C\u5931\u8D25\uFF1A${errorText(cause)}`);
+    } finally {
+      setBusy(false);
+    }
   };
   if (view.kind === "edit") {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ToolDetail, { tool: view.tool, agents: agentRows, onBack: () => {
@@ -9776,15 +9791,19 @@ function ToolsTab() {
     ] })
   ] }, row.key);
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u7531 Go \u4EE3\u7801\u5B9A\u4E49\uFF08\u7ED3\u6784\u56FA\u5B9A\uFF0C\u53EF\u6539\u63CF\u8FF0\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u9ED8\u8BA4\u503C\u3001\u7ED1\u5B9A Agent\u3001\u542F\u505C\uFF09\uFF0C \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002agent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C\u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u6765\u81EA TS core \u7684\u9ED8\u8BA4\u76EE\u5F55\uFF08\u7ED3\u6784\u56FA\u5B9A\uFF0C\u53EF\u6539\u63CF\u8FF0\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u9ED8\u8BA4\u503C\u3001\u7ED1\u5B9A Agent\u3001\u542F\u505C\uFF09\uFF0C \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002\u5220\u6389\u6216\u7528\u574F\u4E86\u7684\u9ED8\u8BA4\u9879\u53EF\u4EE5\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u8865\u56DE\u6765\uFF1Bagent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C \u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-toolbar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { className: "vx-cat-input vx-cat-search", placeholder: "\u641C\u7D22 key / \u63CF\u8FF0", value: query2, onChange: (event) => {
         setQuery(event.target.value);
       } }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn", disabled: busy, onClick: () => {
+        void registerDefaults();
+      }, children: "\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--primary", onClick: () => {
         setView({ kind: "new" });
       }, children: "+ \u65B0\u5EFA\u5DE5\u5177" })
     ] }),
+    notice ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-notice", children: notice }) : null,
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-section", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-section-head", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: "\u7CFB\u7EDF\u5DE5\u5177" }),
@@ -9963,10 +9982,25 @@ var TRANSPORTS = ["stdio", "streamable-http", "http", "sse"];
 function McpTab() {
   const [nonce2, setNonce] = (0, import_react6.useState)(0);
   const [view, setView] = (0, import_react6.useState)({ kind: "list" });
+  const [notice, setNotice] = (0, import_react6.useState)("");
+  const [busy, setBusy] = (0, import_react6.useState)(false);
   const servers = useApi("/api/mcp", [nonce2]);
   const rows = servers.data?.servers ?? [];
   const refresh = () => {
     setNonce(nonce2 + 1);
+  };
+  const registerDefaults = async () => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await callApi("/api/mcp/register", "POST", {});
+      setNotice(`\u5DF2\u91CD\u65B0\u6CE8\u518C\uFF1A\u65B0\u589E ${result.serversAdded ?? 0} \u4E2A\uFF0C\u5171 ${result.serversTotal ?? 0} \u4E2A server`);
+      refresh();
+    } catch (cause) {
+      setNotice(`\u6CE8\u518C\u5931\u8D25\uFF1A${errorText(cause)}`);
+    } finally {
+      setBusy(false);
+    }
   };
   if (view.kind === "edit") {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ServerDetail, { server: view.server, onBack: () => {
@@ -9995,17 +10029,21 @@ function McpTab() {
     }
   };
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684 MCP server\u3002\u8FD9\u91CC\u7684\u589E\u5220\u6539\u53EA\u52A8 Go \u4FA7\u6CE8\u518C\u8868\uFF1Bdsh \u81EA\u5DF1\u90A3\u5EA7 MCP \u8230\u961F\u5728\u63D2\u4EF6\u9875\u7BA1\u7406\uFF0C \u4E24\u8FB9\u662F\u4E0D\u540C\u5C42\uFF0C\u522B\u628A\u540C\u540D server \u5F53\u6210\u540C\u4E00\u4EFD\u914D\u7F6E\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684 MCP server\uFF0C\u6CE8\u518C\u8868\u5728 TS core \u91CC\uFF08\u5B58\u50A8\u3001\u589E\u5220\u6539\u3001\u5DE5\u5177\u53D1\u73B0\u90FD\u5728\u8FD9\u4E00\u4FA7\uFF09\u3002 \u9ED8\u8BA4\u7684\u4E09\u4E2A server \u53EA\u5728\u9996\u6B21\u542F\u52A8\u65F6\u704C\u5165\uFF1B\u5220\u6389\u5C31\u662F\u5220\u6389\uFF0C\u8981\u6062\u590D\u70B9\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u3002 dsh \u81EA\u5DF1\u90A3\u5EA7 MCP \u8230\u961F\u5728\u63D2\u4EF6\u9875\u7BA1\u7406\uFF0C\u4E24\u8FB9\u662F\u4E0D\u540C\u5C42\uFF0C\u522B\u628A\u540C\u540D server \u5F53\u6210\u540C\u4E00\u4EFD\u914D\u7F6E\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-toolbar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "vx-cat-count", children: [
         rows.length,
         " \u4E2A server"
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "vx-cat-spacer" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn", disabled: busy, onClick: () => {
+        void registerDefaults();
+      }, children: "\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--primary", onClick: () => {
         setView({ kind: "new" });
       }, children: "+ \u65B0\u5EFA server" })
     ] }),
+    notice ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-notice", children: notice }) : null,
     rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-hint", children: "\u8FD8\u6CA1\u6709 MCP server\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-grid", children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-card vx-cat-card--row", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("button", { type: "button", className: "vx-cat-card-main", onClick: () => {
         setView({ kind: "edit", server: row });
@@ -10139,10 +10177,10 @@ function ServerDetail({ server, onBack, onSaved }) {
   ] });
 }
 
-// src/tasks/workspace.tsx
+// vexnar/ui/src/tasks/workspace.tsx
 var import_react9 = require("react");
 
-// src/tasks/api.ts
+// vexnar/ui/src/tasks/api.ts
 var BASE = "/vexnar-api/api";
 async function request(path, init) {
   const response = await fetch(`${BASE}${path}`, {
@@ -10249,7 +10287,7 @@ async function reportText(id) {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-// src/tasks/hooks.ts
+// vexnar/ui/src/tasks/hooks.ts
 var import_react7 = require("react");
 function useResource(key, load, enabled2 = true) {
   const [state, setState] = (0, import_react7.useState)();
@@ -10273,10 +10311,10 @@ function useResource(key, load, enabled2 = true) {
   };
 }
 
-// src/tasks/sections.tsx
+// vexnar/ui/src/tasks/sections.tsx
 var import_react8 = require("react");
 
-// src/tasks/ui.tsx
+// vexnar/ui/src/tasks/ui.tsx
 var import_jsx_runtime5 = require("react/jsx-runtime");
 function relTime(input) {
   if (!input) return "\u2014";
@@ -10394,7 +10432,7 @@ function KeyValue({ label, children }) {
   ] });
 }
 
-// src/tasks/sections.tsx
+// vexnar/ui/src/tasks/sections.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
 var FINDING_STATUS = [
   ["pending", "\u5F85\u5904\u7406"],
@@ -11104,7 +11142,7 @@ function ReportSection({ task }) {
   ) });
 }
 
-// src/tasks/workspace.tsx
+// vexnar/ui/src/tasks/workspace.tsx
 var import_jsx_runtime7 = require("react/jsx-runtime");
 var CHIP_TONE = {
   muted: "muted",
@@ -11315,11 +11353,11 @@ function TaskDetailPage({ id, onBack }) {
   ] });
 }
 
-// src/intercept/page.tsx
+// vexnar/ui/src/intercept/page.tsx
 var import_react10 = require("react");
 var reactDom = __toESM(require("react-dom"), 1);
 
-// src/intercept/api.ts
+// vexnar/ui/src/intercept/api.ts
 var listOf2 = (value, key) => {
   const inner = value?.[key];
   return Array.isArray(inner) ? inner : [];
@@ -11423,7 +11461,7 @@ var interceptApi = {
 };
 var errText = (error) => error instanceof Error ? error.message : String(error);
 
-// src/intercept/page.tsx
+// vexnar/ui/src/intercept/page.tsx
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var createPortal2 = reactDom.createPortal;
 var TABS2 = [
@@ -11583,8 +11621,10 @@ function RulesTab() {
   const [editing, setEditing] = (0, import_react10.useState)(null);
   const [removing, setRemoving] = (0, import_react10.useState)(null);
   const [busy, setBusy] = (0, import_react10.useState)(0);
+  const [bulk, setBulk] = (0, import_react10.useState)(false);
   const [error, setError] = (0, import_react10.useState)("");
   const rows = rules.data ?? [];
+  const enabledCount = rows.filter((rule) => rule.enabled).length;
   const toggle = async (rule) => {
     setError("");
     setBusy(rule.id);
@@ -11595,6 +11635,20 @@ function RulesTab() {
       setError(errText(reason));
     } finally {
       setBusy(0);
+    }
+  };
+  const enableAll = async () => {
+    const pending = rows.filter((rule) => !rule.enabled);
+    if (pending.length === 0) return;
+    setError("");
+    setBulk(true);
+    try {
+      await Promise.all(pending.map((rule) => interceptApi.toggleRule(rule.id, true)));
+      rules.reload();
+    } catch (reason) {
+      setError(errText(reason));
+    } finally {
+      setBulk(false);
     }
   };
   const remove = async (rule) => {
@@ -11616,8 +11670,11 @@ function RulesTab() {
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "vx-int-count", children: [
         "\u5171 ",
         rows.length,
-        " \u6761\u89C4\u5219"
+        " \u6761\u89C4\u5219 \xB7 ",
+        enabledCount,
+        " \u6761\u542F\u7528"
       ] }),
+      enabledCount < rows.length ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { tone: "ghost", disabled: bulk, onClick: () => void enableAll(), children: bulk ? "\u542F\u7528\u4E2D\u2026" : "\u5168\u90E8\u542F\u7528" }) : null,
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Button, { tone: "primary", onClick: () => setCreating(true), children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(PlusIcon, {}),
         "\u65B0\u5EFA\u89C4\u5219"
@@ -12313,7 +12370,7 @@ function InterceptSettings() {
   ] });
 }
 
-// src/client.tsx
+// vexnar/ui/src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
