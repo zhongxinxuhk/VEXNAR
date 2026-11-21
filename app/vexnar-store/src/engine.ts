@@ -76,10 +76,11 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
     return created
   }
 
-  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4, options: { isCancelled?: () => boolean; continueOnLimit?: boolean } = {}) {
+  async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4, options: { isCancelled?: () => boolean; continueOnLimit?: boolean; maxAttempts?: number } = {}) {
     const claimed = await serialized(taskId, () => ops.claimIntent(taskId, worker))
     if (!claimed) return null
-    const intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
+    let intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
+    const memory: string[] = Array.isArray(intent?.memory) ? [...intent.memory] : []
     const task = await store.tasks.get(taskId)
     const facts: string[] = []
     let lastAsset: number | null = null
@@ -102,10 +103,12 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
 - run_tool {"name":"nmap|httpx|ffuf|sqlmap","target":"...","extra":{}}（结果自动落资产/发现）
 - finish {"summary"}
 只输出 {"tool":"...","args":{...}}，不要解释。` },
-          { role: 'user', content: `任务：${compact([String(task?.goal ?? '')], 1000)}\n当前意图：${compact([String(intent?.text ?? '')], 1000)}\n已得事实：${compact(facts) || '无'}` }
+          { role: 'user', content: `任务：${compact([String(task?.goal ?? '')], 1000)}\n当前意图：${compact([String(intent?.text ?? '')], 1000)}\n已得事实：${compact(facts) || '无'}\n历史记忆：${compact(memory, 2000) || '无'}` }
         ])
         const action = parseJson(reply)
         if (action.tool === 'finish') {
+          memory.push(`done: ${String(action.args?.summary ?? '')}`)
+          await ops.updateNodePayload(taskId, String(claimed.id), { memory: memory.slice(-5), attempts: 0, worker })
           await ops.setNodeState(taskId, String(claimed.id), 'done')
           await ops.appendActivity(taskId, { kind: 'intent_done', worker, node_id: String(claimed.id), summary: String(action.args?.summary ?? '') })
           return { intent: Number(claimed.id), state: 'done', summary: String(action.args?.summary ?? '') }
@@ -175,13 +178,21 @@ export function createEngine(store: Store, ops: Ops, options: { runner?: import(
         await ops.appendActivity(taskId, { kind: 'intent_blocked', worker, node_id: String(claimed.id), summary: '达到回合上限' })
         return { intent: Number(claimed.id), state: 'blocked' }
       }
+      memory.push(`yielded after ${maxTurns} turns`)
+      await ops.updateNodePayload(taskId, String(claimed.id), { memory: memory.slice(-5), worker })
       await ops.setNodeState(taskId, String(claimed.id), 'open').catch(() => {})
       await ops.appendActivity(taskId, { kind: 'intent_yielded', worker, node_id: String(claimed.id), summary: '回合上限，交回队列续跑' })
       return { intent: Number(claimed.id), state: 'open', yielded: true }
     } catch (error: any) {
-      await ops.setNodeState(taskId, String(claimed.id), 'blocked').catch(() => {})
-      await ops.appendActivity(taskId, { kind: 'intent_blocked', worker, node_id: String(claimed.id), is_error: true, summary: String(error?.message ?? error) })
-      return { intent: Number(claimed.id), state: 'blocked', error: String(error?.message ?? error) }
+      const attempts = Number(intent?.attempts ?? 0) + 1
+      const maxAttempts = Math.max(Number(options.maxAttempts ?? 3), 1)
+      const message = String(error?.message ?? error)
+      memory.push(`error(${attempts}/${maxAttempts}): ${message}`)
+      await ops.updateNodePayload(taskId, String(claimed.id), { memory: memory.slice(-5), attempts, worker }).catch(() => {})
+      const retry = attempts < maxAttempts
+      await ops.setNodeState(taskId, String(claimed.id), retry ? 'open' : 'blocked').catch(() => {})
+      await ops.appendActivity(taskId, { kind: retry ? 'intent_retry' : 'intent_blocked', worker, node_id: String(claimed.id), is_error: true, summary: message })
+      return { intent: Number(claimed.id), state: retry ? 'open' : 'blocked', attempts, error: message }
     }
   }
 
