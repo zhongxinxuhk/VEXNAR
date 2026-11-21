@@ -931,9 +931,4 @@ export function register(api: Hono) {
     }
     return c.json(await tokenStats(taskId))
   })
-
-  api.get('/api/commands/stats', async (c) => {
-    const stats = await toolStats(c.req.query('task') || undefined, c.req.query('q') ?? '')
-    return c.json({ stats })
-  })
 }
