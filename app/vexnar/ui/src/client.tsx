@@ -5,6 +5,7 @@
 import { createElement as h, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
+import { HeroOverviewLayer, OverviewPanel } from './overview.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -387,6 +388,14 @@ function ConsoleIcon({ size }: { size?: number }): ReactNode {
     h('path', { d: 'M12 3 3 7l9 4 9-4-9-4Z' }),
     h('path', { d: 'm3 12 9 4 9-4' }),
     h('path', { d: 'm3 17 9 4 9-4' }))
+}
+
+/** 概览面板的图标：仪表盘弧 + 指针，与「任务」等列表图标区分开。 */
+function OverviewIcon({ size }: { size?: number }): ReactNode {
+  return h('svg', { width: size ?? 16, height: size ?? 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' },
+    h('path', { d: 'M5.5 19a8.5 8.5 0 1 1 13 0' }),
+    h('path', { d: 'M12 14 16 9' }),
+    h('circle', { cx: 12, cy: 14, r: 1.4 }))
 }
 
 async function callApi(path: string, method = 'GET', body?: unknown) {
@@ -888,13 +897,25 @@ function ApprovalsSettings() {
   return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
 }
 
+function CraftPanel() {
+  const { data, error, loading } = useApi('/api/craft/status')
+  return h(PanelShell, { title: 'Craft Anything', desc: '内置 MCP 引擎（Essentials 工具集）' },
+    loading ? h('p', null, '读取中…') : error ? h('p', null, `错误：${error}`) : h('div', null,
+      h('p', null, `版本：${data?.version || '未安装'} · 工具：${data?.tools?.length ?? 0}`),
+      h('p', { style: { opacity: 0.7 } }, data?.path ?? ''),
+      h('ul', null, (data?.tools ?? []).map((tool: string) => h('li', { key: tool }, h('code', null, tool))))
+    ))
+}
+
 const PANELS = [
+  { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
   { id: 'vexnar-findings', label: '发现', order: 101, component: FindingsPanel },
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
   { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel },
   { id: 'vexnar-tool-run', label: '工具执行', order: 104, component: ToolRunPanel },
-  { id: 'vexnar-logs', label: '日志', order: 105, component: LogsPanel }
+  { id: 'vexnar-logs', label: '日志', order: 105, component: LogsPanel },
+  { id: 'vexnar-craft', label: 'Craft', order: 106, component: CraftPanel }
 ]
 
 const SETTINGS = [
@@ -933,7 +954,7 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
   for (const panel of PANELS) {
     slots.inject('main', () => slots.register({ name: 'main', key: panel.id }, panel.component))
-    slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, ConsoleIcon))
+    slots.inject('sidebar.panellist', () => slots.register({ name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.label }, panel.icon ?? ConsoleIcon))
   }
   for (const section of SETTINGS) {
     slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: section.id, label: section.label, order: section.order }, section.component))
@@ -948,6 +969,10 @@ export function apply(ctx: {
   // place because the headline has no slot of its own.
   slots.inject('conversation.hero.brand.mark', () =>
     slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
+  // 概览：hero 层在空白新会话首屏的最上方渲染仪表盘卡片，进入正常对话后只透传
+  // children，不占任何高度。
+  slots.inject('conversation.hero.frame', () =>
+    slots.register({ name: 'conversation.hero.frame', id: 'vexnar-overview', order: 20 }, HeroOverviewLayer))
   ctx.effect?.(() => installSkinBrandGuard())
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())
