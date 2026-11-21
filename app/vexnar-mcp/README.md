@@ -60,13 +60,35 @@ Go 服务重启换 token 后，`restart` 该服务器或重启 Host 即生效。
 改成**一条** `mcp-manager` 行 + `config.servers` 五项（键即 `serverName`，工具名不变），
 和本包的 `vexnar` 注册项一起落进同一份舰队。
 
-要留意的两点：
+### 4.1 掐掉回写源：CC Switch 的 dsh MCP 开关
 
-- cc-switch 是外部写手，它再跑一次可能把这些 `cc-switch-mcp-*` 行加回来；加回来就是
-  重名服务器（Manager 会拒绝注册同名项，不会出现两套工具）。收敛后建议让 cc-switch
-  只管模型侧，MCP 侧交给 Settings 或这份 patch。
+只改 patch 不够——这 5 行是 CC Switch 的"同步"写出来的，它下一次同步会把它们再插回去，
+与舰队里的同名服务器撞车。写入源是它自己的库 `~/.cc-switch/cc-switch.db` 的
+`mcp_servers.enabled_dsh`：当时正好 5 个服务器（`Clionmcp` / `MCP_DOCKER` / `ideamcp` /
+`node_repl` / `rustrovermcp`）是 `1`，其余为 `0`。服务条目本身留着，只关 dsh 这一个目标，
+Claude/Codex 的启用状态不动：
+
+```bash
+# 先在 CC Switch 里退出应用（运行中改库会被它内存状态覆盖），再备份库
+cp ~/.cc-switch/cc-switch.db ~/.cc-switch/backups/db_backup_mcp-dsh-$(date +%Y%m%d_%H%M%S).db
+sqlite3 ~/.cc-switch/cc-switch.db "update mcp_servers set enabled_dsh=0 where enabled_dsh=1;"
+# 重新打开 CC Switch，确认 enabled_dsh 全为 0，且 profile patch 没被改写
+open -a "CC Switch"
+sqlite3 ~/.cc-switch/cc-switch.db "select name, enabled_dsh from mcp_servers where enabled_dsh=1;"
+```
+
+`settings.json` 里的 `visibleApps.dsh` 早已是 `false`（UI 里看不到 dsh 这一栏），所以这些
+`enabled_dsh=1` 是没人管的残留开关值，关掉不会影响任何界面操作。
+
+复现验证（2026-11-21 23:14）：关库 → 5 行 `enabled_dsh` 归 0 → 重开 app（新 PID）→
+`enabled_dsh=1` 查询为空、profile patch mtime 与 `cc-switch-mcp` 计数都不变。
+
+### 4.2 一条纪律
+
 - `mcp-manager` 的 `config.servers` 是整份替换：手工加服务器要一次写全，日常增删用
   Settings 更安全。
+- 以后再加 MCP 服务器，入口只有两个：Settings，或这份 patch 的 `servers`。别在 CC Switch
+  里给 dsh 重新打开 MCP 同步——那是第二个写手，和"一份舰队"直接冲突。
 
 ## 5. 边界
 
