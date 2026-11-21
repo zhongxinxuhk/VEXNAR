@@ -46,6 +46,14 @@
   `VEXNAR_GATEWAY_URL` + `VEXNAR_GATEWAY_TOKEN` 走 Go 回环网关；
 - 假模型测试 3/3；未配置 token 时返回 503，不会静默本地推理。
 
+## E2 续 + E3 注入
+
+- worker prompt 注入工具清单与 JSON 参数（add_fact/add_asset/link_assets/
+  list_assets/graph_overview/report_finding/finish）；
+- `workMany` 并发抢占（同任务 claim 串行化，避免并发写同一节点）；
+- `retryBlocked`：重开 blocked 意图后按重开数量并发重跑；
+- 引擎测试 6/6。
+
 ## E3 首段
 
 - worker 工具循环新增 `add_asset`、`link_assets`（写资产并锚定到当前意图节点）；

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
@@ -9,41 +9,72 @@ import { createEngine } from './src/engine.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-engine-'))
 const ops = storeOperations(root)
-const engine = createEngine({
-  tasks: { get: async (id) => (await ops.writer.readRecord('tasks', id)) },
-  nodes: { page: async ({ taskId, kinds = [] }) => {
-    const task = await ops.writer.readRecord('tasks', taskId)
-    const rows = []
-    for (const name of await (await import('node:fs/promises')).readdir(join(root, 'nodes')).catch(() => [])) {
-      if (name.endsWith('.json')) rows.push(JSON.parse(await (await import('node:fs/promises')).readFile(join(root, 'nodes', name), 'utf8')).record)
+
+async function records(table) {
+  const rows = []
+  try {
+    for (const name of await readdir(join(root, table))) {
+      if (name.endsWith('.json')) rows.push(JSON.parse(await readFile(join(root, table, name), 'utf8')).record)
     }
-    const items = rows.filter((row) => Number(row.exploration_id) === Number(task?.exploration_id)).filter((row) => !kinds.length || kinds.includes(row.kind))
-    return { items, total: items.length, edges: [] }
-  } }
-}, ops)
+  } catch {
+    // empty
+  }
+  return rows
+}
+
+const store = {
+  tasks: { get: async (id) => ops.writer.readRecord('tasks', id) },
+  nodes: {
+    page: async ({ taskId, kinds = [] }) => {
+      const task = await ops.writer.readRecord('tasks', taskId)
+      const rows = (await records('nodes')).filter((row) => Number(row.exploration_id) === Number(task?.exploration_id)).filter((row) => !kinds.length || kinds.includes(row.kind))
+      return { items: rows, total: rows.length, edges: [] }
+    }
+  },
+  assets: {
+    list: async ({ taskId, type, limit = 20, offset = 0 }) => {
+      let rows = (await records('assets')).filter((row) => (row.task_ids ?? []).map(Number).includes(Number(taskId)))
+      if (type) rows = rows.filter((row) => row.type === type)
+      return { rows: rows.slice(offset, offset + limit), total: rows.length }
+    }
+  }
+}
+const engine = createEngine(store, ops)
+const results = []
+const check = (name, ok, detail = '') => results.push({ name, ok, detail })
 
 const task = await ops.createTask({ description: 'engine test', goal: 'find web issues' })
 await ops.addNode(task.id, { kind: 'fact', state: 'origin', payload: { text: 'root' } })
 
-const replies = [
-  JSON.stringify({ intents: [{ text: 'probe web', priority: 5 }] }),
+const planReplies = [JSON.stringify({ intents: [{ text: 'probe web', priority: 5 }] })]
+const plan = await engine.plan(task.id, async () => planReplies.shift() ?? '{}')
+check('planner creates intent', plan.length === 1 && plan[0].state === 'open', JSON.stringify(plan.map((intent) => intent.id)))
+
+const workReplies = [
   JSON.stringify({ tool: 'add_fact', args: { text: 'server is nginx' } }),
   JSON.stringify({ tool: 'add_asset', args: { type: 'root_domain', domain: 'engine.example' } }),
   JSON.stringify({ tool: 'link_assets', args: {} }),
+  JSON.stringify({ tool: 'list_assets', args: { limit: 5 } }),
+  JSON.stringify({ tool: 'graph_overview', args: {} }),
   JSON.stringify({ tool: 'finish', args: { summary: 'done' } })
 ]
-const complete = async () => replies.shift() ?? JSON.stringify({ tool: 'finish', args: {} })
-
-const results = []
-const check = (name, ok, detail = '') => results.push({ name, ok, detail })
-const intents = await engine.plan(task.id, complete)
-check('planner creates intent', intents.length === 1 && intents[0].state === 'open', JSON.stringify(intents.map((intent) => intent.id)))
-const work = await engine.work(task.id, complete, 'work#1')
+const work = await engine.work(task.id, async () => workReplies.shift() ?? JSON.stringify({ tool: 'finish', args: {} }), 'work#1', 8)
 check('worker finishes intent', work?.state === 'done', JSON.stringify(work))
-const fact = (await ops.writer.readRecord('nodes', String(Number(work.intent) + 1)))
+const fact = await ops.writer.readRecord('nodes', String(Number(work.intent) + 1))
 check('worker fact written', fact?.kind === 'fact' && fact?.payload.text === 'server is nginx', JSON.stringify(fact?.payload))
 const anchored = await ops.writer.readRecord('anchors', `${work.intent}-1`)
 check('worker asset linked', anchored?.asset_id === 1, JSON.stringify(anchored))
+
+await ops.addNode(task.id, { kind: 'intent', payload: { text: 'second' }, state: 'open' })
+await ops.addNode(task.id, { kind: 'intent', payload: { text: 'third' }, state: 'open' })
+const many = await engine.workMany(task.id, async () => JSON.stringify({ tool: 'finish', args: { summary: 'parallel' } }), 2)
+check('workMany runs workers', many.filter((item) => item?.state === 'done').length >= 1, JSON.stringify(many))
+
+const blockedIntent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'blocked' }, state: 'open' })
+const blocked = await engine.work(task.id, async () => JSON.stringify({ tool: 'nope', args: {} }), 'work#9')
+const retried = await engine.retryBlocked(task.id, async () => JSON.stringify({ tool: 'finish', args: { summary: 'retry' } }))
+const reopenedNode = await ops.writer.readRecord('nodes', String(blockedIntent.id))
+check('blocked retry', blocked?.state === 'blocked' && retried.reopened >= 1 && reopenedNode?.state === 'done', JSON.stringify({ blocked, retried, node: reopenedNode?.state }))
 
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }

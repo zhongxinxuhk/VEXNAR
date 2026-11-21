@@ -25,6 +25,15 @@ function parseJson(text: string): any {
  * intent and executes a bounded tool loop. The model is injected, so the
  * transport (Go loopback gateway) stays outside the engine and tests use a fake.
  */
+const claimChains = new Map<string, Promise<unknown>>()
+
+function serialized<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const previous = claimChains.get(key) ?? Promise.resolve()
+  const run = previous.then(task, task)
+  claimChains.set(key, run.catch(() => {}))
+  return run
+}
+
 export function createEngine(store: Store, ops: Ops) {
   async function plan(taskId: string, complete: Complete, maxIntents = 5) {
     const task = await store.tasks.get(taskId)
@@ -58,7 +67,7 @@ export function createEngine(store: Store, ops: Ops) {
   }
 
   async function work(taskId: string, complete: Complete, worker = 'work#1', maxTurns = 4) {
-    const claimed = await ops.claimIntent(taskId, worker)
+    const claimed = await serialized(taskId, () => ops.claimIntent(taskId, worker))
     if (!claimed) return null
     const intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
     const task = await store.tasks.get(taskId)
@@ -67,7 +76,15 @@ export function createEngine(store: Store, ops: Ops) {
     try {
       for (let turn = 0; turn < maxTurns; turn++) {
         const reply = await complete([
-          { role: 'system', content: '你是渗透测试执行者。每回合只输出一个 JSON 动作：add_fact、add_asset、link_assets、report_finding 或 finish。add_asset 参数含 type/domain/ip/url/port；link_assets 参数含 asset_ids。' },
+          { role: 'system', content: `你是渗透测试执行者。每回合只输出一个 JSON 动作，可用工具：
+- add_fact {"text"}
+- add_asset {"type","domain","ip","url","port"}
+- link_assets {"asset_ids":[...]}
+- list_assets {"type"?,"limit"?}
+- graph_overview {}
+- report_finding {"vulnclass","severity","summary","evidence"}
+- finish {"summary"}
+只输出 {"tool":"...","args":{...}}，不要解释。` },
           { role: 'user', content: `任务：${task?.goal}\n当前意图：${intent?.text}\n已得事实：${facts.join(' | ') || '无'}` }
         ])
         const action = parseJson(reply)
@@ -82,6 +99,19 @@ export function createEngine(store: Store, ops: Ops) {
           await ops.addNode(taskId, { kind: 'fact', payload: { text }, state: 'confirmed', origin: worker, parent_id: String(claimed.id), rel: 'yields' })
           facts.push(text)
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'add_fact', node_id: String(claimed.id), summary: text })
+          continue
+        }
+        if (action.tool === 'list_assets') {
+          const page = await store.assets.list({ taskId, type: action.args?.type, limit: Math.min(Number(action.args?.limit ?? 20) || 20, 100), offset: 0 })
+          const summary = page.rows.map((asset: any) => `${asset.type}:${asset.domain ?? asset.ip ?? asset.url ?? asset.id}`).join(', ')
+          facts.push(summary || 'no assets')
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'list_assets', node_id: String(claimed.id), summary: `${page.total} assets` })
+          continue
+        }
+        if (action.tool === 'graph_overview') {
+          const overview = await ops.graphOverview(taskId)
+          facts.push(`graph ${JSON.stringify(overview.by_kind)} edges=${overview.edges}`)
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'graph_overview', node_id: String(claimed.id), summary: JSON.stringify(overview.by_kind) })
           continue
         }
         if (action.tool === 'add_asset') {
@@ -114,5 +144,17 @@ export function createEngine(store: Store, ops: Ops) {
     }
   }
 
-  return { plan, work }
+  async function workMany(taskId: string, complete: Complete, workers = 3, maxTurns = 4) {
+    const results = await Promise.allSettled(Array.from({ length: Math.max(Number(workers) || 1, 1) }, (_, index) => work(taskId, complete, `work#${index + 1}`, maxTurns)))
+    return results.map((result) => result.status === 'fulfilled' ? result.value : { state: 'error', error: String(result.reason) })
+  }
+
+  async function retryBlocked(taskId: string, complete: Complete, maxTurns = 4) {
+    const reopened = await ops.rerunBlocked(taskId)
+    if (!reopened.reopened) return { reopened: 0, results: [] }
+    const results = await workMany(taskId, complete, reopened.reopened, maxTurns)
+    return { reopened: reopened.reopened, results }
+  }
+
+  return { plan, work, workMany, retryBlocked }
 }
