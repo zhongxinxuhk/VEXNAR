@@ -85,8 +85,11 @@ test('apply registers every surface it owns', () => {
     'conversation.hero.options:vexnar-yak-history',
     ...['overview', 'tasks', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
-    ...['agents', 'tools-mcp', 'notify', 'intercept']
+    ...['agents', 'notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
+    // 工具与 MCP 是「内置插件」分区的标签页，不再单独占一节设置。
+    ...['tools', 'mcp']
+      .map((tab) => `settings.plugins.tab:vexnar-plugin-${tab}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
     'conversation.hero.brand.mark'
@@ -111,7 +114,10 @@ test('obsolete sidebar and settings entries are absent', () => {
       `${gone} must no longer register a panel or settings section: 发现 is a tab of 任务, 工具执行 lives in the task detail`)
   }
   assert.ok(ids.includes('sidebar.panellist:vexnar-tasks'), 'the task panel owns the sidebar entry')
-  assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')
+  assert.equal(ids.includes('settings.section:vexnar-tools-mcp'), false,
+    'tools and MCP no longer own a settings section: they are tabs of 内置插件')
+  assert.ok(ids.includes('settings.plugins.tab:vexnar-plugin-tools'), 'the tools list is a tab of the plugins section')
+  assert.ok(ids.includes('settings.plugins.tab:vexnar-plugin-mcp'), 'the MCP server list is a tab of the plugins section')
 })
 
 test('a missing slots service degrades instead of throwing', () => {
