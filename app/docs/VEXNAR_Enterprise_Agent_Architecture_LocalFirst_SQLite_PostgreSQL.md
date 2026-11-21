@@ -278,10 +278,12 @@ flowchart TB
 位置与选择：
 
 ```text
-$DSH_HOME/vexnar/store/            # 默认 JSON
-   ├─ tasks.json  findings.json  assets.json  nodes.json  edges.json
-   ├─ meta.json                    # agents/tools/mcp/notify/llmProfiles/…/settings
-   └─ companies.json
+$DSH_HOME/vexnar/store/            # 默认 JSON（VEXNAR_STORE_ROOT 可覆盖）
+   ├─ meta.json                    # agents/tools/mcp/notify/llmProfiles/…/settings（single）
+   ├─ tasks/<id>.json  findings/<id>.json  nodes/<id>.json  assets/<id>.json
+   ├─ activity/<id>.json
+   ├─ companies/<ordinal>-<id>.json
+   └─ edges/<src>-<rel>-<dst>.json
 VEXNAR_STORE=postgres + VEXNAR_PG_URL → 整体切到 PG 适配器（当前只读）
 ```
 
