@@ -129,6 +129,19 @@ export function pgStore(connection: {
           to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at
           FROM activity WHERE ${filters.join(' AND ')} ORDER BY id DESC LIMIT $2`, values)
         return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit }
+      },
+      tokenStats: async (taskId) => {
+        const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
+        if (!task) return { workers: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
+        const workers = await q(`SELECT COALESCE(worker,'') AS worker,
+          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
+          COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+          FROM activity WHERE exploration_id = $1 AND kind = 'result' GROUP BY worker ORDER BY worker`, [task.exploration_id])
+        const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
+        for (const row of workers) for (const key of Object.keys(total) as (keyof typeof total)[]) total[key] += Number(row[key])
+        return { workers: workers.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), total }
       }
     },
     async taskMetrics() {

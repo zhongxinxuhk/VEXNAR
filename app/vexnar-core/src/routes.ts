@@ -451,6 +451,13 @@ api.get('/api/exploration/findings/:id', async (c) => {
   })
 })
 
+api.get('/api/exploration/tokens', async (c) => {
+  const taskId = c.req.query('task') ?? ''
+  if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } })
+  const result = await store.activity.tokenStats(taskId)
+  return c.json({ workers: result.workers, sessions: [], total: result.total })
+})
+
 api.get('/api/exploration/activity/history', async (c) => {
   const taskId = c.req.query('task') ?? ''
   const before = Number(c.req.query('before') ?? 0) || 0
