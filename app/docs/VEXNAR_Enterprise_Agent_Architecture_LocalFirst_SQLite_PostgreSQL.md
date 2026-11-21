@@ -652,6 +652,9 @@ flowchart LR
 ## 11. Desktop UI 结构
 
 > **本版未改动**：本节按用户要求原样保留 v1.0 的 ZCode + dsh 融合 UI 内容，不随本版现状对齐修改。
+>
+> 具体融合方案（三层分工、令牌桥、组件规格、实施阶段）见
+> [ZCode_DSH_UI_融合设计.md](./ZCode_DSH_UI_融合设计.md)。
 
 主导航：
 
