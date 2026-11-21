@@ -31,7 +31,7 @@ let logoBytes = null
 
 export const name = '@vexnar/dsh-account'
 
-export const inject = ['webServer', 'credentials', 'settings']
+export const inject = ['webServer', 'credentials', 'settings', 'connection']
 
 const KEY_REF = 'VEXNAR_NEWAPI_KEY'
 const PROVIDER = 'vexnar'
@@ -335,16 +335,34 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx) {
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
-    const app = import('./core-embedded.js').then((module) => module.handle)
+    const app = import('./core-embedded.js')
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/vexnar-api',
       handler: async (req, res) => {
         try {
-          const chunks = []
-          for await (const chunk of req) chunks.push(chunk)
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
+          const { handle, isGoDataRequest } = await app
+          if (isGoDataRequest(req.method, url.pathname)) {
+            const rejection = ctx.connection.requestRejection(req)
+            if (rejection) {
+              res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+              res.end(JSON.stringify({ error: '请从已登录的 VEXNAR 客户端访问' }))
+              return
+            }
+          }
+          const chunks = []
+          let size = 0
+          for await (const chunk of req) {
+            size += chunk.length
+            if (url.pathname === '/api/traffic/import/yakit' && size > 16 * 1024 * 1024) {
+              res.writeHead(413, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'HAR 不可超过 16 MiB' }))
+              return
+            }
+            chunks.push(chunk)
+          }
           const headers = new Headers()
           for (const [key, value] of Object.entries(req.headers)) {
             if (Array.isArray(value)) for (const item of value) headers.append(key, item)
@@ -355,7 +373,8 @@ export function apply(ctx) {
             headers,
             body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
           })
-          const response = await (await app)(request)
+          const localPeer = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)
+          const response = await handle(request, localPeer)
           const responseHeaders = {}
           for (const [key, value] of response.headers.entries()) responseHeaders[key] = value
           res.writeHead(response.status, responseHeaders)

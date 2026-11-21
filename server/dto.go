@@ -151,6 +151,7 @@ func completedRFC(unix int64) string {
 
 // ---- TrafficExchange (frontend "TrafficExchange") ---- ts as RFC3339.
 type TrafficExchangeDTO struct {
+	Source      string `json:"source"`
 	ID          string `json:"id"`
 	TS          string `json:"ts"`
 	Host        string `json:"host"`
@@ -166,6 +167,7 @@ func trafficDTOs(ex []traffic.ExchangeMeta) []TrafficExchangeDTO {
 	for _, e := range ex {
 		out = append(out, TrafficExchangeDTO{
 			ID:          e.ID,
+			Source:      traffic.ExchangeSource(e.ID),
 			TS:          rfc3339(time.Unix(e.TS, 0)),
 			Host:        e.Host,
 			Method:      e.Method,

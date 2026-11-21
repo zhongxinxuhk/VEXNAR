@@ -73,7 +73,7 @@ dsh 设置页
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
 - 工具执行：选择 nmap/httpx/ffuf/sqlmap，填 target 与可选 task_id，结果解析并落库；
 - 任务详情：暂停/恢复/归档按钮；
-- 流量页：抓包列表（经 core 回退代理 Go `/api/traffic`）；
+- 流量页：通过内嵌 core 读取 Go 流量，支持导入 Yakit HAR 和登记资产。详见 [Yakit 对接设计](docs/YAKIT-TRAFFIC-ASSETS.md)；
 - 拦截规则：规则列表与删除（同样代理 Go）；
 - 审批记录：Go 无独立接口，占位说明。
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。

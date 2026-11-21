@@ -872,6 +872,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/traffic/hosts", s.deleteTrafficHosts)
 	mux.HandleFunc("DELETE /api/traffic/all", s.deleteAllTraffic)
 	mux.HandleFunc("GET /api/traffic/exchange", s.getTrafficExchange)
+	mux.HandleFunc("POST /api/traffic/import/yakit", s.importYakitHAR)
+	mux.HandleFunc("POST /api/traffic/promote", s.promoteTrafficAssets)
 	mux.HandleFunc("GET /api/traffic/blob", s.getTrafficBlob)
 	mux.HandleFunc("GET /api/commands", s.pgListCommands)
 	mux.HandleFunc("GET /api/commands/stats", s.pgToolStats) // 按工具聚合调用次数
@@ -3202,14 +3204,15 @@ func taskActivityDetail(t *Task, seq int64) (string, error) {
 func (s *Server) getTraffic(w http.ResponseWriter, r *http.Request) {
 	tr := s.m.Traffic()
 	if tr == nil {
-		writeJSON(w, 200, map[string]any{"enabled": false, "exchanges": []any{}})
+		writeJSON(w, 200, map[string]any{"enabled": false, "storage_available": false, "exchanges": []any{}})
 		return
 	}
 	q := r.URL.Query()
 	page := atoiDefault(q.Get("page"), 0)
 	size := atoiDefault(q.Get("size"), 100)
-	ex, matched, _ := tr.Page(traffic.PageQuery{
+	ex, matched, err := tr.Page(traffic.PageQuery{
 		Host:    q.Get("host"),
+		Source:  q.Get("source"),
 		Method:  q.Get("method"),
 		Query:   q.Get("q"),
 		Body:    q.Get("body"),
@@ -3220,15 +3223,24 @@ func (s *Server) getTraffic(w http.ResponseWriter, r *http.Request) {
 		Sort:    q.Get("sort"),
 		Order:   q.Get("order"),
 	}, page, size)
-	count, _ := tr.Count() // global total, for the stat card
+	if err != nil {
+		writeErr(w, 500, "读取流量列表失败")
+		return
+	}
+	count, err := tr.Count()
+	if err != nil {
+		writeErr(w, 500, "读取流量总数失败")
+		return
+	}
 	writeJSON(w, 200, map[string]any{
-		"enabled":   s.m.TrafficEnabled(), // reflect the capture toggle
-		"proxy":     s.m.ProxyAddr(),
-		"count":     count,   // total recorded (unfiltered)
-		"total":     matched, // rows matching the current filter (for pagination)
-		"page":      page,
-		"size":      size,
-		"exchanges": trafficDTOs(ex),
+		"enabled":           s.m.TrafficEnabled(), // reflect the capture toggle
+		"proxy":             s.m.ProxyAddr(),
+		"storage_available": true,
+		"count":             count,   // total recorded (unfiltered)
+		"total":             matched, // rows matching the current filter (for pagination)
+		"page":              page,
+		"size":              size,
+		"exchanges":         trafficDTOs(ex),
 	})
 }
 

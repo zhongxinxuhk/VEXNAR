@@ -434,34 +434,43 @@ func proxyCausedErr(err error) bool {
 	return false
 }
 
-// record persists one exchange entirely in SQLite: metadata, bodies and the
-// full-text index. Nothing is written to a per-request directory — only bodies
-// above maxInlineBody spill to the content-addressed blob store.
+type exchangeRecord struct {
+	ExchangeMeta
+	requestHead, responseHead string
+	requestBody, responseBody []byte
+	requestContentType        string
+}
+
 func (t *Traffic) record(f *mproxy.Flow) {
-	// The write lock covers blob + index writes, so DeleteHost (and its blob GC)
-	// can run under the same lock without racing a concurrent record.
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
-	host := f.Request.URL.Hostname()
-	method := f.Request.Method
-	tmpl := db.TemplatePath(f.Request.URL.EscapedPath())
-	n := t.seq.Add(1)
-	now := time.Now()
-	id := fmt.Sprintf("%d-%04d", now.Unix(), n%10000)
+	u := f.Request.URL
+	now := time.Now().Unix()
+	e := exchangeRecord{
+		ExchangeMeta: ExchangeMeta{
+			ID: fmt.Sprintf("%d-%04d", now, t.seq.Add(1)%10000), TS: now,
+			Host: u.Hostname(), Method: f.Request.Method, URLTemplate: db.TemplatePath(u.EscapedPath()),
+			URL: u.String(), Status: f.Response.StatusCode, ContentType: f.Response.Header.Get("Content-Type"),
+		},
+		requestHead:  fmt.Sprintf("%s %s %s\n%s", f.Request.Method, u.RequestURI(), f.Request.Proto, requestHeaderLines(f.Request)),
+		responseHead: fmt.Sprintf("HTTP %d\n%s", f.Response.StatusCode, headerLines(f.Response.Header)),
+		requestBody:  f.Request.Body, responseBody: f.Response.Body,
+		requestContentType: f.Request.Header.Get("Content-Type"),
+	}
+	if err := t.persistExchange(e); err != nil {
+		log.Printf("[traffic] 记录 %s 失败：%v", e.URL, err)
+	}
+}
 
-	ct := f.Response.Header.Get("Content-Type")
-	url := f.Request.URL.String()
-	reqHead := fmt.Sprintf("%s %s %s\n%s", method, f.Request.URL.RequestURI(), f.Request.Proto, requestHeaderLines(f.Request))
-	respHead := fmt.Sprintf("HTTP %d\n%s", f.Response.StatusCode, headerLines(f.Response.Header))
-	// Bodies are spilled before the transaction opens: blob writes are filesystem
-	// work and must not sit inside the SQLite write lock.
-	reqB := t.spill(f.Request.Body, f.Request.Header.Get("Content-Type"))
-	respB := t.spill(f.Response.Body, ct)
+// persistExchange writes the index, bodies and blob references together.
+// Callers hold wmu so blob garbage collection cannot race these writes.
+func (t *Traffic) persistExchange(e exchangeRecord) error {
+	reqB := t.spill(e.requestBody, e.requestContentType)
+	respB := t.spill(e.responseBody, e.ContentType)
 
 	tx, err := t.db.Begin()
 	if err != nil {
-		log.Printf("[traffic] 记录 %s 失败（开启事务）：%v", url, err)
-		return
+		return fmt.Errorf("开启事务: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op once committed
 
@@ -469,48 +478,41 @@ func (t *Traffic) record(f *mproxy.Flow) {
 	// row whose bodies still live in the old on-disk tree (see Get).
 	res, err := tx.Exec(`INSERT OR REPLACE INTO exchanges(id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path)
 VALUES(?,?,?,?,?,?,?,?,?,?,'')`,
-		id, now.Unix(), host, method, tmpl, url, f.Response.StatusCode, ct,
-		len(f.Request.Body), len(f.Response.Body))
+		e.ID, e.TS, e.Host, e.Method, e.URLTemplate, e.URL, e.Status, e.ContentType,
+		len(e.requestBody), len(e.responseBody))
 	if err != nil {
-		log.Printf("[traffic] 记录 %s 失败（写索引）：%v", url, err)
-		return
+		return fmt.Errorf("写索引: %w", err)
 	}
 	rowid, err := res.LastInsertId()
 	if err != nil {
-		log.Printf("[traffic] 记录 %s 失败（取 rowid）：%v", url, err)
-		return
+		return fmt.Errorf("取 rowid: %w", err)
 	}
 
 	if _, err := tx.Exec(`INSERT OR REPLACE INTO exchange_bodies(id,req_head,req_body,req_blob,resp_head,resp_body,resp_blob)
 VALUES(?,?,?,?,?,?,?)`,
-		id, reqHead, reqB.inline, nullIfEmpty(reqB.hash), respHead, respB.inline, nullIfEmpty(respB.hash)); err != nil {
-		log.Printf("[traffic] 记录 %s 失败（写正文）：%v", url, err)
-		return
+		e.ID, e.requestHead, reqB.inline, nullIfEmpty(reqB.hash), e.responseHead, respB.inline, nullIfEmpty(respB.hash)); err != nil {
+		return fmt.Errorf("写正文: %w", err)
 	}
 
 	for _, h := range []string{reqB.hash, respB.hash} {
 		if h == "" {
 			continue
 		}
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO blob_refs(hash,exchange_id) VALUES(?,?)`, h, id); err != nil {
-			log.Printf("[traffic] 记录 %s 失败（登记 blob 引用）：%v", url, err)
-			return
+		if _, err := tx.Exec(`INSERT OR IGNORE INTO blob_refs(hash,exchange_id) VALUES(?,?)`, h, e.ID); err != nil {
+			return fmt.Errorf("登记 blob 引用: %w", err)
 		}
 	}
 
 	if t.fts {
 		// The index is fed from memory, so a body that spilled to _blobs is still
 		// fully searchable even though only its preview is stored inline.
-		idx := strings.Join([]string{url, reqHead, reqB.index, respHead, respB.index}, "\n")
+		idx := strings.Join([]string{e.URL, e.requestHead, reqB.index, e.responseHead, respB.index}, "\n")
 		if _, err := tx.Exec(`INSERT INTO ex_fts(rowid,content) VALUES(?,?)`, rowid, idx); err != nil {
-			log.Printf("[traffic] 记录 %s 失败（写全文索引）：%v", url, err)
-			return
+			return fmt.Errorf("写全文索引: %w", err)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		log.Printf("[traffic] 记录 %s 失败（提交）：%v", url, err)
-	}
+	return tx.Commit()
 }
 
 // storedBody is one body after the inline/spill decision: inline is what goes in
@@ -819,6 +821,7 @@ func ftsQuote(s string) string {
 // of -1 skip the response-size bounds. An empty Sort/Order defaults to
 // newest-first by timestamp.
 type PageQuery struct {
+	Source  string // yakit or vexnar; blank includes both
 	Host    string // host substring
 	Method  string // exact method (case-insensitive)
 	Query   string // broad search box: metadata columns OR captured text
@@ -877,6 +880,12 @@ func (t *Traffic) Page(f PageQuery, page, size int) (rows []ExchangeMeta, total 
 		}
 		where += cond
 		args = append(args, vs...)
+	}
+	switch f.Source {
+	case "yakit":
+		add("id GLOB ?", yakitIDPrefix+"*")
+	case "vexnar":
+		add("id NOT GLOB ?", yakitIDPrefix+"*")
 	}
 	if h := strings.TrimSpace(f.Host); h != "" {
 		add("host LIKE ?", "%"+h+"%")
