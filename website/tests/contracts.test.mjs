@@ -171,6 +171,10 @@ test('credits put DSH first and enumerate its built-in plugins and themes', asyn
   for (const pkg of ['@deepseek-ai/dsh-client-ui-theme', '@deepseek-ai/dsh-plugin-manager', '@deepseek-ai/dsh-mcp-manager', '@deepseek-ai/dsh-skill-office']) {
     assert.ok(dsh.builtins.some(row => row.package === pkg), pkg);
   }
+  const groups = new Set(dsh.builtins.map(row => row.group));
+  for (const group of groups) assert.ok(['Agent 能力', '工具与文件', '会话与数据', '插件与设置', '模型与网络', '客户端界面', '平台与传输', '安全与审批', '主题与外观'].includes(group), group);
+  assert.ok(!groups.has('其他'));
+  for (const state of ['启用', '停用', '条件启用']) assert.ok(dsh.builtins.some(row => row.state === state), state);
   for (const name of ['浅色主题', '深色主题', '跟随系统', 'Montserrat', 'Shiki']) assert.ok(dsh.themes.some(theme => theme.name === name), name);
   assert.ok(!catalog.projects.some(project => project.name === 'DeepSeek Harness'));
   const rendered = await read('../dist/credits.html');
