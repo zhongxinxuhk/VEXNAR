@@ -3609,39 +3609,6 @@ function fmtAgo(unix) {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h \u524D`;
   return `${Math.floor(seconds / 86400)}d \u524D`;
 }
-function AgentsPage() {
-  const { data, error, loading } = useApi("/api/agents");
-  const [version, setVersion] = (0, import_react3.useState)(0);
-  if (loading) return (0, import_react3.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react3.createElement)("div", { style: { color: "#dc2626" } }, error);
-  const rows = data?.agents ?? [];
-  const edit = async (agent) => {
-    const name = window.prompt("Agent \u540D\u79F0", agent.name);
-    if (name == null) return;
-    const description = window.prompt("\u63CF\u8FF0", agent.description ?? "");
-    if (description == null) return;
-    try {
-      await callApi(`/api/agents/${agent.key}`, "PATCH", { name, description });
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  return (0, import_react3.createElement)("div", { key: version }, (0, import_react3.createElement)(
-    "table",
-    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-    (0, import_react3.createElement)("thead", null, (0, import_react3.createElement)("tr", null, ["Key", "\u540D\u79F0", "\u89D2\u8272", "\u542F\u7528", ""].map((t) => (0, import_react3.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-    (0, import_react3.createElement)("tbody", null, rows.map((agent) => (0, import_react3.createElement)(
-      "tr",
-      { key: agent.key },
-      (0, import_react3.createElement)("td", { style: { padding: "6px 8px" } }, agent.key),
-      (0, import_react3.createElement)("td", { style: { padding: "6px 8px" } }, agent.name),
-      (0, import_react3.createElement)("td", { style: { padding: "6px 8px" } }, agent.role),
-      (0, import_react3.createElement)("td", { style: { padding: "6px 8px" } }, agent.enabled ? "\u662F" : "\u5426"),
-      (0, import_react3.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react3.createElement)("button", { type: "button", onClick: () => edit(agent), style: { cursor: "pointer" } }, "\u7F16\u8F91"))
-    )))
-  ));
-}
 function McpPage() {
   const { data, error, loading } = useApi("/api/mcp");
   const [version, setVersion] = (0, import_react3.useState)(0);
@@ -4232,9 +4199,6 @@ function TasksPanel() {
 function TrafficPanel() {
   return (0, import_react3.createElement)(PanelShell, { title: "\u6D41\u91CF History" }, (0, import_react3.createElement)(YakHistory));
 }
-function AgentSettings() {
-  return (0, import_react3.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react3.createElement)(AgentsPage));
-}
 function ToolsMcpSettings() {
   const [tab, setTab] = (0, import_react3.useState)("tools");
   const tabButton = (id, label) => (0, import_react3.createElement)("button", { key: id, type: "button", "aria-pressed": tab === id, onClick: () => setTab(id) }, label);
@@ -4262,7 +4226,6 @@ var PANELS = [
   { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel }
 ];
 var SETTINGS = [
-  { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
   { id: "vexnar-tools-mcp", label: "\u5DE5\u5177\u4E0E MCP", order: 41, component: ToolsMcpSettings },
   { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings },
   { id: "vexnar-intercept", label: "\u62E6\u622A\u89C4\u5219", order: 44, component: InterceptSettings }

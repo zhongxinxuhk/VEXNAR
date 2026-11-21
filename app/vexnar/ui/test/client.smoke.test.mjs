@@ -85,7 +85,7 @@ test('apply registers every surface it owns', () => {
     'conversation.hero.options:vexnar-yak-history',
     ...['overview', 'tasks', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
-    ...['agents', 'tools-mcp', 'notify', 'intercept']
+    ...['tools-mcp', 'notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
@@ -112,6 +112,24 @@ test('obsolete sidebar and settings entries are absent', () => {
   }
   assert.ok(ids.includes('sidebar.panellist:vexnar-tasks'), 'the task panel owns the sidebar entry')
   assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')
+})
+
+test('the agent roster lives in dsh, not in a VEXNAR settings section', () => {
+  const plugin = loadPlugin()
+  const ids = []
+  plugin.apply({
+    slots: {
+      inject: (name, cb) => cb(),
+      register: (options) => { ids.push(`${options.name}:${options.key ?? options.id}`) }
+    },
+    effect: (fn) => fn()
+  })
+  // 引擎角色是 cordis.patch.yml 里的 @deepseek-ai/dsh-agent-preset 行，名册与编辑
+  // 只留在 dsh 自己的设置 → Agent 预设；VEXNAR 不再注册第二个 agent 设置节。
+  assert.equal(ids.some((id) => id === 'settings.section:vexnar-agents'), false,
+    'vexnar-agents must not register: 设置 → Agent 预设 is the single roster')
+  assert.equal(bundle.includes("'/api/agents'"), false,
+    'the client keeps no agent roster page, so it must not read /api/agents')
 })
 
 test('a missing slots service degrades instead of throwing', () => {

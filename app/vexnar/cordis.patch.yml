@@ -47,10 +47,18 @@
   disabled: true
 
 # ── Agent presets: the engine's roles, registered as built-in dsh agents ────
-# The Go engine seeds six roles (goals / planner / main / worker / auto /
-# pentest). They are copied here as ordinary @deepseek-ai/dsh-agent-preset
-# rows, so the roster, the default and every edit live in dsh's own Agent
-# management — 设置 → Agent — instead of a parallel VEXNAR panel.
+# The engine seeds eight named roles (goals / planner / main / worker / auto /
+# pentest / reporter / retester). They are copied here as ordinary
+# @deepseek-ai/dsh-agent-preset rows, so the roster, the names, the
+# descriptions and every capability composition live in dsh's own 设置 →
+# Agent 预设. VEXNAR ships no agent settings section of its own: a second panel
+# listing the same rows made two truths out of one roster and left the
+# question "which one is actually in effect" unanswerable.
+#
+# Renaming or disabling a role is therefore a patch/bundle edit (dsh 创造模式),
+# not a PATCH request. Per-run agents the engine spawns on demand
+# (lock_agent_<id> / write_lock_agent_<id>) are run artifacts, not roster
+# entries, and deliberately do not appear here.
 - insert:
     # 目标拆解：只读地把目标拆成可验证子目标。
     - id: preset-vexnar-goals
@@ -393,6 +401,123 @@
               allowParallelInProgress: true
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 报告撰写：漏洞被登记即触发，读证据、写 Markdown 报告并回写。
+    - id: preset-vexnar-reporter
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-reporter
+        name: 报告撰写
+        description: 漏洞详细报告撰写：发现漏洞时触发，读证据与执行过程后写报告并回写。
+        order: 26
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的报告撰写 agent（role=reporter）。触发时先读这条漏洞的证据清单与执行过程，
+                再写 Markdown 报告并回写：影响与危害、复现步骤、证据/PoC、修复建议，一段不缺。
+                只写证据支持得住的内容：证据为空就照实写"无流量证据"，不补想象出来的请求响应，
+                也不为了报告好看去发起新的攻击请求。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 漏洞复测：读原始证据，做最小验证，回写复测结论。
+    - id: preset-vexnar-retester
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-retester
+        name: 漏洞复测
+        description: 读漏洞原始证据与约束，做最小化复测验证，把结论回写为该漏洞的复测记录。
+        order: 27
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的漏洞复测 agent（role=retester）。先取这条漏洞的原始证据与约束，
+                再用**最小**的验证请求/命令确认它现在是否还成立；失败就如实写"未复现"并说明差异，
+                不为了复现去打不该打的接口、不走量、不扩大范围。结论与证据一起回写。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
           - id: compaction
             name: cordis:group
             group: true
