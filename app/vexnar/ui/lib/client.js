@@ -3659,7 +3659,7 @@ function OverviewPanel() {
         {
           tone: "green",
           icon: "activity",
-          label: "\u6D41\u91CF\u4EA4\u4E92",
+          label: "\u6293\u5305\u6D41\u91CF",
           value: fmtInt(view.trafficTotal),
           band: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CodeBar, { codes: view.codes, total: data.traffic.length }),
           footer: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-chips", children: [
@@ -3911,11 +3911,11 @@ function OverviewPanel() {
 // src/yak-history.tsx
 var import_react3 = require("react");
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var React = __toESM(require("react"), 1);
 var import_react_dom = require("react-dom");
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
 function getMeasurementKey(item) {
   return typeof item === "object" ? item.key : item;
 }
@@ -3950,7 +3950,7 @@ function createLazyMeasurementsView(cache, flat) {
   });
 }
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
 function memo(getDeps, fn, opts) {
   let deps = opts.initialDeps ?? [];
   let result;
@@ -4029,7 +4029,7 @@ var debounce = (targetWindow, fn, ms) => {
   );
 };
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
 function classifyScrollEvent({
   offset,
   isScrolling,
@@ -4108,7 +4108,7 @@ function flingCaught(samples) {
   return Math.abs(last.offset - from.offset) / (last.t - from.t) >= 0.05;
 }
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
 var _isIOSResult;
 var isIOSWebKit = () => {
   if (_isIOSResult !== void 0) return _isIOSResult;
@@ -4229,7 +4229,7 @@ var IosGesture = class {
   }
 };
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
 var getRect = (element) => {
   const { clientWidth, clientHeight } = element;
   return { width: clientWidth, height: clientHeight };
@@ -5862,7 +5862,7 @@ function calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, flat) 
   return { startIndex, endIndex };
 }
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var useIsomorphicLayoutEffect = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
 function useVirtualizerBase({
   useFlushSync = true,
@@ -5994,7 +5994,7 @@ function useVirtualizer(options) {
   });
 }
 
-// ../../../.worktrees/vexnar-platform/app/node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
+// ../../node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
 var React2 = __toESM(require("react"));
 var import_react2 = require("react");
 var PanelGroupContext = (0, import_react2.createContext)(null);

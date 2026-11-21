@@ -23,7 +23,19 @@ const prefixes = [
   '/api/yak/history'
 ]
 
+/**
+ * 必须留在进程内的流量路由：会话抓包的控制面与采集面由 core 自己实现，Go 没有
+ * 对应处理器。`/api/traffic` 前缀整体转发的规则会把它们一起送走并得到 404，所以
+ * 先在这里排除。
+ */
+const coreTraffic = ['/api/traffic/capture', '/api/traffic/ingest']
+
+function isCoreTraffic(path: string) {
+  return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+}
+
 export function isGoDataRequest(method: string, path: string) {
+  if (isCoreTraffic(path)) return false
   if (routes.has(`${method} ${path}`)) return true
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
