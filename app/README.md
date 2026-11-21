@@ -4,15 +4,14 @@
   SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# app — dsh 客户端工作区
+# VEXNAR 客户端工作区
 
-这里放 **app 端**：DeepSeek Harness（dsh）的本地源码树，加上 VEXNAR 自己的
-bundle 层。Go 服务仍是产品本体，app 只通过两个接口消费它：
+VEXNAR Web 和桌面客户端共用隔离的运行时和本机 Go 服务。
 
 | 方向 | 走哪条链路 | 说明 |
 |---|---|---|
-| 模型推理 | **TS 直连 NewAPI** | 登录后由账户插件写入 dsh 凭据库与 `llm-pi-ai` 设置 |
-| 模型目录 | `GET {api}/v1/models` | 登录时自动拉取，写入 provider 的 models |
+| 账户登录 | HXSEC AI Platform | 在平台页面完成验证，由 Go 绑定 VEXNAR 账号 |
+| 模型目录与推理 | Go 回环网关 | Go 验证上游密钥并提供模型目录 |
 | 领域工具 | Go `POST /mcp`（过渡） | 任务/漏洞/流量工具尚未迁移到 TS |
 
 ## 目录
@@ -24,10 +23,11 @@ app/                          # WebStorm 工程根（项目名 app）
 ├─ dsh/                       # 上游源码（gitignored，fetch-dsh.sh 拉取）
 ├─ scripts/
 │  ├─ fetch-dsh.sh            # 固定 tag 拉取/校验上游
-│  ├─ dsh-runtime.mjs         # 解析 dsh runtime + 读取 token
-│  ├─ dsh-web.mjs             # web 启动器（隔离 home / 端口 3099）
-│  ├─ dsh-desktop.mjs         # 桌面启动器
-│  ├─ setup-app-profile.mjs   # 安装 UI/账户插件 + Claude 皮肤，写 profile patch
+│  ├─ vexnar.mjs              # VEXNAR CLI
+│  ├─ vexnar-runtime.mjs      # 解析独立运行时与设置
+│  ├─ vexnar-web.mjs             # web 启动器（隔离 home / 端口 3099）
+│  ├─ vexnar-desktop.mjs         # 桌面启动器
+│  ├─ setup-app-profile.mjs   # 安装 VEXNAR bundle 和客户端插件
 │  └─ ide-mcp.mjs             # JetBrains IDE MCP 直连客户端
 └─ vexnar/
    ├─ cordis.patch.yml        # provider + MCP + 品牌/账户的 profile 覆盖层
@@ -43,7 +43,7 @@ app/                          # WebStorm 工程根（项目名 app）
 cd app
 pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、core、store、spike
 pnpm run build               # @vexnar/dsh-ui + @vexnar/dsh-account 出 bundle
-pnpm run setup               # 安装插件并写隔离 profile
+pnpm run setup               # 初始化 VEXNAR profile
 pnpm run upstream:check      # 上游边界 + 包管理器边界
 pnpm --filter @vexnar/core start
 ```
@@ -91,14 +91,26 @@ Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [
 上游/下游的边界、升级流程与冲突处理见 [UPSTREAM.md](./UPSTREAM.md)。核心约束：
 `app/dsh` 只读、tag 锁定、`pnpm run upstream:check` 36 项断言、升级失败自动回滚。
 
-## 隔离：不碰正在使用的 dsh
+## 启动和本机数据
 
-`app/.dsh-home` 是本工程专用 home，与安装版 `~/.dsh`、`~/.dsh/profiles` 完全分离：
+```sh
+# 在两个启动终端中使用相同的一次性随机令牌
+export VEXNAR_DESKTOP_TOKEN="<本机随机令牌>"
 
-- 启动器只认 `VEXNAR_DSH_HOME`，缺省 `app/.dsh-home`，**不继承**外部 `DSH_HOME`；
-- web 固定 `127.0.0.1:3099`，与安装版的 3080/62698 不冲突；
-- 插件只装进 `app/.dsh-home/profiles/web`，不写安装包目录；
-- 唯一的共享是 dsh runtime 二进制（只读使用）。
+# 仓库根目录。按部署配置 VEXNAR_PG_DSN
+go run ./cmd/vexnar -addr 127.0.0.1:8787
+
+# 客户端终端，执行一次 pnpm install、pnpm run build、pnpm run setup
+cd app
+pnpm run web                 # 或 pnpm run desktop
+```
+
+`node scripts/vexnar.mjs --help` 查看 VEXNAR CLI 命令。Web 默认绑定
+`127.0.0.1:3099`，桌面通过独立 Electron 进程启动本机页面。
+VEXNAR 使用 `app/.vexnar-home`（可用 `VEXNAR_HOME` 指定独立目录）和
+`profiles/vexnar`。Electron 用户数据位于其下的 `electron/`，运行时由工作区的
+pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续保留。
+账户配置见 [账户和模型](./vexnar/account/README.md)。
 
 ## 皮肤：内嵌 dsh-claude-style
 
@@ -129,8 +141,8 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 | 配置 | 位置 | script | 说明 |
 |---|---|---|---|
 | `pnpm install` | `app/` | — | 全 workspace 一次装完，先跑这个 |
-| `dsh web (isolated)` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_DSH_HOME=app/.dsh-home` |
-| `dsh desktop (isolated)` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
+| `VEXNAR Web` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_HOME=app/.vexnar-home` |
+| `VEXNAR Desktop` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
 | `Plugin bundles build` | `app/package.json` | `build` | 产出 ui + account 两个 `lib/client.js` |
 | `UI cards build` | `app/package.json` | `ui:build` | 只重建卡片 bundle |
 | `Setup app profile` | `app/package.json` | `setup` | 安装 UI/账户插件并写 profile patch |
@@ -139,7 +151,7 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 启动器自动注入：`data/mcp.token` → `VEXNAR_MCP_TOKEN`，`data/desktop.token`（缺省
 `devtoken`）→ `VEXNAR_DESKTOP_TOKEN`。
 
-首次顺序：`Setup app profile` → 启 Go（`VEXNAR_DESKTOP_TOKEN=devtoken`）→ `dsh web (isolated)`。
+首次顺序：`Setup app profile` → 启 Go（`VEXNAR_DESKTOP_TOKEN=devtoken`）→ `VEXNAR Web`。
 
 ## IDE MCP
 

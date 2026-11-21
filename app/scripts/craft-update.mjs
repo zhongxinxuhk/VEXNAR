@@ -15,9 +15,10 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { craftBinary } from './vexnar-runtime.mjs'
 
 const checkOnly = process.argv.includes('--check')
-const target = process.env.CRAFT_ANYTHING_CLI || join(process.env.HOME || '', '.dsh', 'plugins-data', 'craft-anything', 'craft-anything-cli')
+const target = craftBinary()
 
 function currentVersion() {
   if (!existsSync(target)) return ''

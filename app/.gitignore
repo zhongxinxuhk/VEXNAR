@@ -6,7 +6,8 @@
 # fetched and pinned by scripts/fetch-dsh.sh and never committed (245 MB, MIT).
 dsh/
 
-# Local dsh home used by the GoLand run configurations (profile + sessions).
+# VEXNAR profile, sessions, and Electron data. Keep legacy client data ignored.
+.vexnar-home/
 .dsh-home/
 
 # pnpm workspace install state: every node_modules under app/ is reproducible

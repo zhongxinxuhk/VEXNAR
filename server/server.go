@@ -51,6 +51,7 @@ type Server struct {
 	jwtKey       []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
 	desktopToken string // loopback-only bearer token for the Electron sidecar gateway
 	mcpToken     string // bearer token for the MCP endpoint; empty disables it
+	platform     *platformStore
 
 	// concMu serializes concurrency-cap decisions (admission + reconcile) so a
 	// scheduler tick and an HTTP settings change / task creation can't both count
@@ -156,7 +157,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 	if err != nil {
 		log.Fatalf("[auth] JWT key: %v", err)
 	}
-	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, jwtKey: key, desktopToken: strings.TrimSpace(os.Getenv("VEXNAR_DESKTOP_TOKEN")), mcpToken: newMCPToken(dataDir), chatBusy: map[string]bool{},
+	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, jwtKey: key, desktopToken: strings.TrimSpace(os.Getenv("VEXNAR_DESKTOP_TOKEN")), mcpToken: newMCPToken(dataDir), platform: newPlatformStore(dataDir), chatBusy: map[string]bool{},
 		chatCancel: map[string]context.CancelCauseFunc{}, chatLive: map[string]*convLiveText{}, triggerQ: map[string][]triggeredRun{},
 		triggerActive: map[string]int{}, triggerCfg: map[string]triggerBehavior{},
 		profChatAgents: map[int64]*agent.ChatAgent{},
@@ -811,6 +812,7 @@ func (s *Server) Handler() http.Handler {
 	// Project ownership: the app reads this list; conversations reference
 	// project_id instead of inferring a project from the open directory.
 	s.registerDesktopProjects(mux)
+	s.registerPlatformRoutes(mux)
 	mux.HandleFunc("GET /api/desktop/llm", s.desktopGetLLM)
 	mux.HandleFunc("POST /api/desktop/llm/configure", s.desktopConfigureLLM)
 	mux.HandleFunc("GET /api/desktop/llm/models", s.desktopListModels)

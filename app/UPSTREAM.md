@@ -23,7 +23,7 @@
 │     app/vexnar/ui/                客户端插件（卡片 + 品牌槽位） │
 │     app/scripts/                  setup / 启动 / 升级 / 校验    │
 ├─────────────────────────────────────────────────────────────┤
-│ L3  dsh Profile（可写，但只在 app/.dsh-home）                 │
+│ L3  dsh Profile（可写，但只在 app/.vexnar-home）                 │
 │     profiles/web/cordis.patch.yml 由 setup 生成，不作事实源     │
 ├─────────────────────────────────────────────────────────────┤
 │ L2  dsh 官方 bundle（只读）                                   │
@@ -152,5 +152,5 @@ pnpm run upstream:upgrade -- --rollback
 - [x] 品牌：官方行 disabled，VEXNAR 占据 `sidebar.brand.*`
 - [x] 账户：四行 disabled，模型只走 Go 网关
 - [x] 升级脚本失败自动回滚
-- [x] 账户插件：`@vexnar/dsh-account`（设置页「账户」，登录后 TS 直连 NewAPI）
+- [x] 账户插件：`@vexnar/dsh-account`（设置页「账户」，Go 校验 HXSEC AI Platform 登录并代理模型）
 - [ ] 首次真实升级演练（等下一个 tag）

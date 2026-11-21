@@ -2,7 +2,7 @@
   "name": "vexnar-app",
   "private": true,
   "version": "0.1.0",
-  "description": "VEXNAR app workspace: dsh web/desktop launchers and client UI",
+  "description": "VEXNAR client workspace and isolated runtime",
   "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
@@ -11,9 +11,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "setup": "node scripts/setup-app-profile.mjs",
-    "web": "node scripts/dsh-web.mjs --no-open --port 3099",
-    "desktop": "node scripts/dsh-desktop.mjs",
+    "setup": "node scripts/vexnar.mjs setup",
+    "web": "node scripts/vexnar.mjs web",
+    "desktop": "node scripts/vexnar.mjs desktop",
     "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run build",
     "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
@@ -23,6 +23,14 @@
     "craft:check": "node scripts/craft-update.mjs --check",
     "craft:update": "node scripts/craft-update.mjs",
     "shop:check": "node scripts/shop-update.mjs --check",
-    "shop:update": "node scripts/shop-update.mjs"
+    "shop:update": "node scripts/shop-update.mjs",
+    "vexnar": "node scripts/vexnar.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "0.2.2-rc.5",
+    "electron": "44.7.0"
+  },
+  "bin": {
+    "vexnar": "./scripts/vexnar.mjs"
   }
 }

@@ -4,59 +4,39 @@
   SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# @vexnar/dsh-account
+# VEXNAR 账户与模型
 
-VEXNAR 在 dsh 设置面板里的「账户」页。上游 DeepSeek 账户组件由 profile patch 禁用，
-本插件接管登录与状态展示。
+「设置 → 账户」打开独立的浏览器会话，在 [HXSEC AI Platform](https://platform.sec.hn.cn/login)
+完成登录。登录方式随平台配置更新，密码、Passkey、OAuth 和二次验证都在平台页面完成。
+本机 Go 服务重新校验平台身份，记录最长 30 天的 VEXNAR 登录状态，并尝试创建同期有效的模型令牌。
+若平台要求进一步授权或账号没有可用模型，登录后可以在「设置 → 模型」关联平台 API Key。
 
-## 登录方式 = NewAPI 上启用的全部方式
+「设置 → 模型」提供 DeepSeek API Key 预设和自定义 OpenAI 兼容接口导入。
+所有模型提供方的添加、移除和访问都依赖已验证的 VEXNAR 会话。退出登录清除本机 Go 账号和模型凭据。
+已签发的平台令牌可以在平台的 API 令牌页面提前撤销，到期后由平台停用。
 
-不重复实现 provider，而是读 NewAPI 自己的配置再决定怎么登：
+## 接口
 
-- **发现**：`GET {api}/api/status` → `password_login_enabled`、`github_oauth`、
-  `custom_oauth_providers`、`linuxdo_oauth`、`oidc_enabled`、`wechat_login`、
-  `telegram_oauth`、`passkey_login`、`email_verification`、`turnstile_check`。
-- **密码**：走 NewAPI `POST {api}/api/user/login`，用会话 cookie 创建 API Key。
-- **其它全部方式**（GitHub / GitLab / Gitee / Modelscope / GitCode / LinuxDO /
-  OIDC / 微信 / Telegram / Discord / Passkey / 2FA）：打开一个真正的 Chrome 窗口到
-  `{platform}/login`，用户用任意方式完成登录，Host 读取会话 cookie、创建 API Key、关闭窗口。
-  这是唯一能覆盖"所有已配置方式"且不用逐个实现 provider 的做法。
-- **手动**：API 根地址 + Key，适配关闭网页登录的部署。
-
-登录成功后：
-
-1. `ctx.credentials.set('VEXNAR_NEWAPI_KEY', key)` 写入 dsh 凭据库；
-2. `ctx.settings.update('llm-pi-ai', { providers: { vexnar: { baseURL, apiKeyEnv, models } } })`
-   注册 provider 路由；
-3. 账户信息写入 `$DSH_HOME/vexnar-account.json`（0600），重启后自动恢复。
-
-**模型请求由 dsh 的 pi-ai 适配器直连 NewAPI，不经过 Go 网关。** 浏览器只拿到
-`/vexnar-account/*` 的同源结果，key 只在 Host 的凭据库里。
-
-## 路由（Host 半）
-
-| 路由 | 作用 |
+| 接口 | 作用 |
 |---|---|
-| `GET  /vexnar-account/methods` | 发现 NewAPI 登录方式 |
-| `POST /vexnar-account/login/password` | 用户名密码登录 + 建 Key + 配 Go |
-| `POST /vexnar-account/login/browser` | 启动浏览器登录（异步） |
-| `GET  /vexnar-account/login/browser/status` | 轮询登录状态 |
-| `POST /vexnar-account/login` | 手动 base_url/key/model |
-| `GET  /vexnar-account/status` | Go 侧当前配置 |
-| `POST /vexnar-account/logout` | 清除 Go 侧凭据 |
+| `GET /vexnar-api/platform/methods` | 读取平台启用的登录方式 |
+| `POST /vexnar-api/platform/login` | 启动平台登录窗口 |
+| `GET /vexnar-api/platform/login` | 查询浏览器登录进度 |
+| `GET /vexnar-api/platform/account` | 读取已验证账号与模型目录 |
+| `DELETE /vexnar-api/platform/account` | 退出 VEXNAR |
+| `POST /vexnar-api/platform/providers` | 验证并保存模型提供方 |
+| `DELETE /vexnar-api/platform/providers` | 移除请求中指定的提供方 |
 
-## 环境变量
+模型请求走 `/api/desktop/vexnar/openai/{provider}/v1/chat/completions`。
+Go 服务使用本机启动令牌验证请求，并在转发时加入上游模型凭据。
+账号凭据保存在 Go 数据目录的 `vexnar-platform.json`，权限为 `0600`。网页和客户端模型目录只含提供方和模型信息。
 
-| 变量 | 默认 | 用途 |
-|---|---|---|
-| `VEXNAR_NEWAPI_API` | `https://api.sec.hn.cn` | API 与 `/v1`（模型请求） |
-| `VEXNAR_NEWAPI_PLATFORM` | `https://platform.sec.hn.cn` | 登录页（浏览器登录打开这里） |
+| 环境变量 | 默认值或含义 |
+|---|---|
+| `VEXNAR_DESKTOP_TOKEN` | Go 服务与两个客户端启动器使用的相同随机令牌 |
+| `VEXNAR_GO_URL` | Host 连接的 Go 服务，默认 `http://127.0.0.1:8787` |
+| `VEXNAR_NEWAPI_PLATFORM` | Go 与客户端共同的登录域名，默认 `https://platform.sec.hn.cn` |
+| `VEXNAR_NEWAPI_API` | Go 使用的模型 API 域名，默认 `https://api.sec.hn.cn` |
+| `VEXNAR_LOGIN_BROWSER` | Playwright 浏览器通道，默认 `chrome` |
 
-
-| `VEXNAR_BROWSER_PROFILE` | `app/.dsh-home/browser` | 浏览器登录的持久化 profile |
-
-## 边界
-
-- 不改 dsh 上游账户组件，只禁用其 profile 行；
-- API Key 不落浏览器存储，浏览器只拿到登录结果；
-- 浏览器窗口只访问 NewAPI 站点，登录完成后立即关闭。
+平台接口见 [HXSEC AI Platform API 文档](https://docs.sec.hn.cn/)。

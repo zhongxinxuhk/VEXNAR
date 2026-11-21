@@ -286,7 +286,11 @@ func (s *Server) desktopProtocolProxy(w http.ResponseWriter, r *http.Request, up
 		writeErr(w, 409, "当前激活配置的协议是 "+got+"，请改用对应的网关端点")
 		return
 	}
-	base := strings.TrimRight(cfg.BaseURL, "/")
+	proxyDesktopLLM(w, r, cfg.BaseURL, cfg.APIKey, upstreamPath)
+}
+
+func proxyDesktopLLM(w http.ResponseWriter, r *http.Request, baseURL, apiKey, upstreamPath string) {
+	base := strings.TrimRight(baseURL, "/")
 	target, err := url.Parse(base + upstreamPath)
 	if err != nil {
 		writeErr(w, 500, err.Error())
@@ -301,7 +305,7 @@ func (s *Server) desktopProtocolProxy(w http.ResponseWriter, r *http.Request, up
 		req.URL.Path = target.Path
 		req.URL.RawQuery = target.RawQuery
 		req.Host = target.Host
-		req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 		req.Header.Del(desktopTokenHeader)
 		req.Header.Del(desktopApprovalHeader)
 	}

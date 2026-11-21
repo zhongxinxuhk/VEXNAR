@@ -1,3 +1,7 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # VEXNAR app bundle patch over the dsh web profile.
 #
 # Layering rule: this file only targets dsh rows by id. VEXNAR's own code is
@@ -10,10 +14,13 @@
     - id: vexnar-account
       name: '@vexnar/dsh-account'
 
-# ── Model access: TypeScript → NewAPI directly ─────────────────────────────
-# The provider route is written at login by @vexnar/dsh-account into the
-# llm-pi-ai settings namespace (baseURL + apiKeyEnv + model catalog). Nothing
-# here points at the Go gateway; the key lives in dsh's credential store.
+# The Go service owns platform identity, model providers and credentials.
+- id: agent-default-model
+  config:
+    provider: vexnar
+    model: ''
+- id: ui-settings-models
+  disabled: true
 
 # ── Domain tools (transitional) ────────────────────────────────────────────
 # Task/finding/traffic tools still live in the Go service while the TS
@@ -35,8 +42,7 @@
   disabled: true
 
 # ── Account: VEXNAR owns sign-in ────────────────────────────────────────────
-# Upstream DeepSeek account rows stay disabled; VEXNAR signs in to NewAPI and
-# routes model traffic itself.
+# DeepSeek is available as a key-only manufacturer preset under Settings → Models.
 - id: deepseek-account
   disabled: true
 - id: llm-deepseek-account
@@ -44,4 +50,12 @@
 - id: ui-settings-account
   disabled: true
 - id: ui-account-notifications
+  disabled: true
+- id: llm-deepseek
+  disabled: true
+- id: web-deepseek-api
+  disabled: true
+- id: web-search-deepseek
+  disabled: true
+- id: ui-settings-web-search
   disabled: true
