@@ -904,6 +904,7 @@ func (s *Server) Handler() http.Handler {
 	// Agents
 	// conversations (chat page)
 	mux.HandleFunc("GET /api/conversations", s.pgListConversations)
+	mux.HandleFunc("GET /api/conversations/digest", s.pgConversationDigest)
 	mux.HandleFunc("POST /api/conversations", s.pgCreateConversation)
 	mux.HandleFunc("POST /api/conversations/delete/batch", s.pgDeleteConversationsBatch)
 	mux.HandleFunc("PATCH /api/conversations/{id}", s.pgRenameConversation)

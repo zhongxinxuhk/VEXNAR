@@ -509,3 +509,49 @@ func TestConversationMessagesTraceCountsPendingApprovalsWithinConversation(t *te
 		t.Fatalf("legacy transcript includes trace-only approval count %v", count)
 	}
 }
+
+func TestConversationMessagesDigestReportsOnlyPublicEventMetadata(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "public audit title", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+	for _, activity := range []db.Activity{
+		{Kind: "tool_use", Detail: "private fixture tool input"},
+		{Kind: "result", Detail: "private fixture response"},
+		{Kind: "result", IsError: true, Detail: "private fixture error"},
+		{Kind: "result", IsError: true, Outcome: "cancelled"},
+	} {
+		if _, err := s.m.pg.AppendConvActivity(conv.ID, activity); err != nil {
+			t.Fatal(err)
+		}
+	}
+	approval, err := s.m.pg.CreateInterceptPending(0, conv.ID, "", "reviewer", "read_file", nil, "private fixture approval")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = s.m.pg.Exec("DELETE FROM intercept_pending WHERE id=$1", approval) })
+
+	req := httptest.NewRequest(http.MethodGet, "/api/conversations/digest", nil)
+	rec := httptest.NewRecorder()
+	s.pgConversationDigest(rec, req)
+	var page struct{ Items []db.ConversationDigestItem }
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &page) != nil {
+		t.Fatalf("invalid digest response: %d", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), "private fixture") {
+		t.Fatal("digest contains private payload")
+	}
+	found := map[string]int{}
+	for _, item := range page.Items {
+		if item.ConversationID == conv.ID && item.Title == "public audit title" && !item.At.IsZero() {
+			found[item.Kind]++
+		}
+	}
+	for _, kind := range []string{"approval", "completed", "failed", "stopped"} {
+		if found[kind] != 1 {
+			t.Fatalf("unexpected digest categories %v", found)
+		}
+	}
+}

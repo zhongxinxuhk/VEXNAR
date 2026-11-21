@@ -420,6 +420,12 @@ contextBridge.exposeInMainWorld('vexnar', {
         if (method === 'PUT') system = { ...system, ...body }
         return ok(system)
       }
+      if (path === '/conversations/digest' && method === 'GET') {
+        return ok({ items: [
+          { key: 'approval:fixture', conversation_id: 1, title: '搭建 VEXNAR 官网', kind: 'approval', at: '2026-11-20T10:10:00Z' },
+          { key: 'turn:fixture', conversation_id: 2, title: '检查 LLM 网关', kind: 'completed', at: '2026-11-20T10:11:00Z' }
+        ] })
+      }
       if (path === '/conversations' && method === 'GET') {
         return ok({ conversations })
       }

@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { conversations } from '@/lib/conversations'
 import { useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -25,7 +25,7 @@ type CallLookup = {
   call?: ToolCall
 }
 
-export function ExecutionTimeline({ conversationId, events }: {
+export function ExecutionTimeline({ conversationId, events: sourceEvents }: {
   conversationId: string
   events: ToolTraceEvent[]
 }): React.JSX.Element {
@@ -37,6 +37,10 @@ export function ExecutionTimeline({ conversationId, events }: {
   const [scrollTop, setScrollTop] = useState(0)
   const [lookup, setLookup] = useState<CallLookup | null>(null)
   const lookupRequest = useRef(0)
+  const [auditFilter, setAuditFilter] = useState<'all' | ToolTraceEvent['outcome']>('all')
+  const events = useMemo(() => auditFilter === 'all' ? sourceEvents : sourceEvents.filter((event) =>
+    event.outcome === auditFilter), [sourceEvents, auditFilter])
+
   const maxOffset = Math.max(0, events.length - WINDOW_ROWS) * ROW_HEIGHT
   const firstVisible = Math.floor(Math.min(scrollTop, maxOffset) / ROW_HEIGHT)
   const firstRendered = Math.max(0, firstVisible - OVERSCAN)
@@ -91,6 +95,29 @@ export function ExecutionTimeline({ conversationId, events }: {
 
   return (
     <div className="ml-2 border-l border-line-soft">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-2 py-1.5">
+        <span className="text-xs font-medium text-ink-soft">{t('chat.auditLog')}</span>
+        <select
+          value={auditFilter}
+          aria-label={t('chat.auditOutcome')}
+          onChange={(event) => {
+            setAuditFilter(event.currentTarget.value as typeof auditFilter)
+            setHighlight(null)
+            pendingFocus.current = null
+            lookupRequest.current++
+            setLookup(null)
+            if (viewport.current) viewport.current.scrollTop = 0
+            setScrollTop(0)
+          }}
+          className="rounded border border-line-soft bg-bg px-2 py-1 text-xs text-ink-soft"
+        >
+          <option value="all">{t('chat.toolFilterAll')} ({sourceEvents.length})</option>
+          {(Object.keys(labels) as ToolTraceEvent['outcome'][]).map((outcome) => (
+            <option key={outcome} value={outcome}>{t(labels[outcome])} ({sourceEvents.filter((item) => item.outcome === outcome).length})</option>
+          ))}
+        </select>
+      </div>
+
       <div
         ref={viewport}
         role="region"
@@ -126,7 +153,7 @@ export function ExecutionTimeline({ conversationId, events }: {
                 {related !== undefined ? (
                   <button
                     type="button"
-                    onClick={() => jumpToCall(related)}
+                    onClick={() => auditFilter === 'all' ? jumpToCall(related) : void findCall(event)}
                     className="shrink-0 rounded px-1 text-accent underline-offset-2 hover:underline focus-visible:underline"
                   >
                     {t('chat.toolRelatedCall', { sequence: related })}
@@ -172,7 +199,7 @@ export function ExecutionTimeline({ conversationId, events }: {
         </section>
       ) : null}
       <p className="px-2 py-1 text-[11px] text-muted">
-        {t('chat.toolPage', {
+        {events.length === 0 ? t('chat.toolFilterEmpty') : t('chat.toolPage', {
           start: firstVisible + 1,
           end: Math.min(firstVisible + WINDOW_ROWS, events.length),
           total: events.length

@@ -471,3 +471,44 @@ ORDER BY a.id`, convID, resultID)
 	}
 	return events, rows.Err()
 }
+
+// ConversationDigestItem is a payload-free summary for the notification center.
+type ConversationDigestItem struct {
+	Key            string    `json:"key"`
+	ConversationID int64     `json:"conversation_id"`
+	Title          string    `json:"title"`
+	Kind           string    `json:"kind"`
+	At             time.Time `json:"at"`
+}
+
+func (d *DB) RecentConversationDigest() ([]ConversationDigestItem, error) {
+	rows, err := d.Query(`
+SELECT item.key, item.conversation_id, c.title, item.kind, item.at
+FROM (
+    (SELECT 'turn:' || id::text AS key, conversation_id,
+        CASE WHEN outcome='cancelled' THEN 'stopped' WHEN is_error THEN 'failed' ELSE 'completed' END AS kind,
+        created_at AS at
+      FROM conversation_activities
+      WHERE kind='result' AND created_at >= now() - interval '7 days'
+      ORDER BY created_at DESC, id DESC LIMIT 40)
+    UNION ALL
+    (SELECT 'approval:' || id::text, conversation_id, 'approval', created_at
+      FROM intercept_pending WHERE status='pending' AND conversation_id IS NOT NULL
+      ORDER BY created_at DESC, id DESC LIMIT 40)
+) item JOIN conversations c ON c.id=item.conversation_id
+ORDER BY (item.kind='approval') DESC, item.at DESC, item.key DESC
+LIMIT 60`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]ConversationDigestItem, 0)
+	for rows.Next() {
+		var item ConversationDigestItem
+		if err := rows.Scan(&item.Key, &item.ConversationID, &item.Title, &item.Kind, &item.At); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}

@@ -399,6 +399,20 @@ func (s *Server) pgDeleteConversationsBatch(w http.ResponseWriter, r *http.Reque
 
 func (s *Server) convBusyKey(id int64) string { return "conv-" + strconv.FormatInt(id, 10) }
 
+func (s *Server) pgConversationDigest(w http.ResponseWriter, _ *http.Request) {
+	if s.m.pg == nil {
+		writeErr(w, http.StatusServiceUnavailable, "conversation store unavailable")
+		return
+	}
+	items, err := s.m.pg.RecentConversationDigest()
+	if err != nil {
+		log.Printf("[conv] read digest: %v", err)
+		writeErr(w, http.StatusInternalServerError, "could not read conversation digest")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
 // pgConversationMessages returns steps after ?since=cursor plus whether a turn is
 // still running (so the client knows to keep polling). Same item shape as the task
 // activity stream, so the frontend transcript renderer is reused verbatim.

@@ -249,6 +249,11 @@ app.whenReady().then(async () => {
     await new Promise((resolve) => setTimeout(resolve, 150))
     fs.writeFileSync(path.join(output, 'chat-activity.png'), (await w.webContents.capturePage()).toPNG())
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按时间线查看').click()`)
+    const auditFilter = `(${activity}).parentElement.querySelector('select[aria-label="筛选审计结果"]')`
+    await wait(`!!(${auditFilter})`)
+    await changeSelect(auditFilter, 'error')
+    await wait(`(${activity}).parentElement.querySelector('ol')?.textContent.includes('结果 · 失败') && (${activity}).parentElement.querySelectorAll('ol li').length===1`)
+    await changeSelect(auditFilter, 'all')
     const viewport = `(${activity}).parentElement.querySelector('[role="region"][aria-label="按时间线查看"]')`
     const timeline = `(${viewport}).querySelector('ol')`
     await wait(`(${viewport})?.querySelectorAll('li').length===15`)
@@ -400,9 +405,15 @@ app.whenReady().then(async () => {
     await wait(`(${liveActivity})?.textContent.includes('1 项失败') && (${liveActivity}).parentElement.textContent.includes('没有符合当前状态的调用')`)
     await selectStatus(liveActivity, 'error')
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
+    await openMenu('通知')
+    await wait(`[...document.querySelectorAll('[role="menuitem"]')].some(e=>e.textContent.includes('等待会话审批'))`)
+    await run(`[...document.querySelectorAll('[role="menu"] button')].find(e=>e.textContent==='会话摘要').click()`)
+    await wait(`document.querySelector('[aria-label="会话摘要"]')?.textContent.includes('回合已完成1')`)
+    await run(`[...document.querySelectorAll('[role="menu"] button')].find(e=>e.textContent==='全部标为已读').click()`)
+    await wait(`JSON.parse(localStorage.getItem('vexnar-chat-notice-read-v1')).length===2`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, chat actions and phases, structured tool details, virtual timeline, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, chat actions and phases, structured tool details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

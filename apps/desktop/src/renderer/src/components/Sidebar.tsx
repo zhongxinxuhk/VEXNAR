@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { ConversationNotifications } from './chat/ConversationNotifications'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -31,7 +32,6 @@ const menuContent =
   'z-50 min-w-[168px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
 const menuItem =
   'flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12.5px] text-ink-soft outline-none data-[highlighted]:bg-panel-2 data-[highlighted]:text-ink'
-const menuLabel = 'px-2.5 pb-1 pt-1.5 text-[10.5px] font-medium text-muted'
 
 function projectName(path: string, fallback: string): string {
   if (!path) return fallback
@@ -161,7 +161,6 @@ export function Sidebar(): React.JSX.Element {
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const view = useAppStore((state) => state.view)
   const settings = useAppStore((state) => state.settings)
-  const backend = useAppStore((state) => state.backend)
   const newSession = useAppStore((state) => state.newSession)
   const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
   const selectSession = useAppStore((state) => state.selectSession)
@@ -307,20 +306,7 @@ export function Sidebar(): React.JSX.Element {
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content side="bottom" align="end" sideOffset={6} className={menuContent}>
-                <div className={menuLabel}>{t('app.notifications')}</div>
-                <div className="px-2.5 py-3 text-center text-[12px] text-muted">
-                  {t('app.noNotifications')}
-                </div>
-                <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
-                <div className="flex items-center gap-2 px-2.5 py-2 text-[11.5px] text-muted">
-                  <span
-                    className={cn(
-                      'h-1.5 w-1.5 rounded-full',
-                      backend?.connected ? 'bg-accent-2' : 'bg-muted/40'
-                    )}
-                  />
-                  {backend?.connected ? t('app.localServiceReady') : t('app.localServiceStarting')}
-                </div>
+                <ConversationNotifications />
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
