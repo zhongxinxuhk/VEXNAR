@@ -231,12 +231,17 @@ const PERMISSION_WARNING_SCRIPT = `
 (() => {
   document.documentElement.dataset.vexnarPermInjected = '1';
   const labels = new Set(['完全权限','Full access','フルアクセス','Acceso completo','Accès complet','Voller Zugriff','Полный доступ','Acesso total']);
+  const paint = (node, full) => {
+    if (!(node instanceof HTMLElement)) return;
+    if (full) { node.style.setProperty('color', '#dc2626', 'important'); node.style.setProperty('font-weight', '600', 'important'); }
+    else { node.style.removeProperty('color'); node.style.removeProperty('font-weight'); }
+  };
   const sweep = () => {
     document.querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]').forEach((node) => {
-      if (!(node instanceof HTMLElement)) return;
-      const full = labels.has((node.textContent || '').trim());
-      if (full) { node.style.setProperty('color', '#dc2626', 'important'); node.style.setProperty('font-weight', '600', 'important'); }
-      else { node.style.removeProperty('color'); node.style.removeProperty('font-weight'); }
+      paint(node, labels.has((node.textContent || '').trim()));
+    });
+    document.querySelectorAll('[role="menuitem"]').forEach((item) => {
+      paint(item, labels.has((item.textContent || '').trim()));
     });
   };
   sweep();
