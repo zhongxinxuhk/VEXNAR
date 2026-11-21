@@ -2,6 +2,8 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { ReplyViewCard } from './chat/ReplyViewCard'
+import { parseReplyView } from '@/lib/reply-view'
 import { memo, useState } from 'react'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -309,11 +311,13 @@ function BlockView({ block }: { block: Block }): React.JSX.Element | null {
  */
 export const Markdown = memo(function Markdown({
   content,
-  className
+  className,
+  replyViews = false
 }: {
   content: string
   /** 仅用于承载展示态（如流式光标 .answer-streaming），不参与解析。 */
   className?: string
+  replyViews?: boolean
 }): React.JSX.Element {
   const segments = content.split('```')
   return (
@@ -323,6 +327,10 @@ export const Markdown = memo(function Markdown({
           const newline = segment.indexOf('\n')
           const language = (newline >= 0 ? segment.slice(0, newline) : '').trim()
           const code = newline >= 0 ? segment.slice(newline + 1) : segment
+          if (replyViews && language === 'vexnar-view' && index < segments.length - 1) {
+            const view = parseReplyView(code)
+            if (view) return <ReplyViewCard key={index} view={view} render={(body) => <Markdown content={body} />} />
+          }
           return <CodeBlock key={index} language={language} code={code.replace(/\n$/, '')} />
         }
         if (!segment) return null

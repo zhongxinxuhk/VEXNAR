@@ -355,6 +355,14 @@ app.whenReady().then(async () => {
     if (await run(`document.body.textContent.includes('PRIVATE_FLOW_FIXTURE')`)) throw Error('Ordered transcript rendered raw reasoning')
     await run(`document.querySelector('[data-flow="calls"] summary').click()`)
     await wait(`document.querySelector('[data-flow="calls"] details[data-call-sequence] summary')?.textContent.includes('Bash')`)
+    for (const label of ['制品', '差异视图', '差异表', '结构化数据', '洞察卡', '比较']) {
+      await wait(`!!document.querySelector('section[aria-label="${label}"]')`)
+    }
+    const artifact = `document.querySelector('section[aria-label="制品"]')`
+    await wait(`(${artifact}).textContent.includes('修订内容')`)
+    await run(`[...(${artifact}).querySelectorAll('button')].find(e=>e.textContent==='上一页').click()`)
+    await wait(`(${artifact}).textContent.includes('初版内容')`)
+
     fs.writeFileSync(path.join(output, 'chat-ordered.png'), (await w.webContents.capturePage()).toPNG())
     await run(`window.__uiFixture.seedHistoricalCall()`)
     await run(openHistoryFixture)

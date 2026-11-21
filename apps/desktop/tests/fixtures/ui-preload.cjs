@@ -150,7 +150,14 @@ contextBridge.exposeInMainWorld('__uiFixture', {
       { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
       { kind: 'tool_use', tool: 'read_file', tool_use_id: 'flow-b', detail: '{"path":"README.md"}' },
       { kind: 'tool_result', tool: 'read_file', tool_use_id: 'flow-b', detail: '文档内容' },
-      { kind: 'result', detail: '目录和文档已核对。' }
+      { kind: 'result', detail: '目录和文档已核对。\n\n' + [
+        { kind: 'artifact', title: '核对说明', versions: [{ title: '初稿', body: '初版内容' }, { title: '修订稿', body: '**修订内容**', note: '补充结论' }] },
+        { kind: 'diff', title: '说明变更', before: '旧说明', after: '新说明' },
+        { kind: 'diff-table', title: '更新字段', rows: [{ field: '状态', before: '草稿', after: '通过' }] },
+        { kind: 'structured-data', title: '文档索引', columns: ['文件', '行数'], rows: [['README.md', 12]] },
+        { kind: 'insight', title: '核对洞察', summary: '文档可用', metrics: [{ label: '文档', value: 1 }] },
+        { kind: 'comparison', title: '版本比较', left: '旧版本', right: '新版本', rows: [{ field: '章节', before: 2, after: 3 }] }
+      ].map((view) => '```vexnar-view\n' + JSON.stringify(view) + '\n```').join('\n\n') }
     ]
     conversationActivities[2] = rows.map((row) => ({ ...row, seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:09:00Z' }))
   },

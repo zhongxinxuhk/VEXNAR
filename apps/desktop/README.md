@@ -75,6 +75,16 @@ Agent Runtime        Go sidecar (bundled `vexnar`)
 - 技能和计划在调用概览里显示已记录的技能名、待办与状态。终端、MCP、浏览器、软件和网络工具可以查看各自的结构化字段，调用详情通过「概览」「输入」「输出／错误」切换。仅表示执行器显式记录的字段。
 - 验收包括 `go test ./server -run 'TestConversationMessages'`（需要测试 PostgreSQL）、`npm run typecheck`、`npm test` 和 `npm run test:ui`。Electron UI 用固定会话数据验证界面交互，Go 测试验证实际 PostgreSQL 持久化和 HTTP 响应。
 
+### 结构化答复
+
+助手的公开答复可用完整的 `vexnar-view` 围栏提供只读视图。例如：
+
+```vexnar-view
+{"kind":"structured-data","title":"文档核对","columns":["文档","状态"],"rows":[["README.md","完成"]]}
+```
+
+支持的视图包括 `artifact`（`versions` 中的 `title`、`body` 与可选 `note`）、`diff`（`before`、`after`）、`diff-table`（`rows` 中的 `field`、`before`、`after`）、`structured-data`、`insight`（`summary` 和可选 `metrics`）以及 `comparison`（`left`、`right` 和对照行）。数据不符时保留原文代码块。计划检查点可浏览已记录的 TodoWrite 快照。
+
 ## 便携 PostgreSQL
 
 桌面端**始终使用 PostgreSQL**。SQLite 仅作为历史实现被移除，不提供回退。

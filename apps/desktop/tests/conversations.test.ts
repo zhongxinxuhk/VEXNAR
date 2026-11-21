@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { describeToolPayload } from '@/lib/tool-inspection'
+import { parseReplyView } from '@/lib/reply-view'
 import { executionGroup } from '@/lib/execution-groups'
 import {
   lastTurnUsage,
@@ -412,5 +413,17 @@ describe('describeToolPayload', () => {
       .not.toContainEqual(expect.objectContaining({ key: 'session' }))
     expect(describeToolPayload('mcp__software__inspect', '{}', '{"software_session_id":"editor"}').fields)
       .toContainEqual(expect.objectContaining({ key: 'session', value: 'editor' }))
+  })
+})
+
+describe('parseReplyView', () => {
+  it('validates explicit result views and rejects malformed grids', () => {
+    expect(parseReplyView('{"kind":"structured-data","title":"Inventory","columns":["File"],"rows":[["README.md"]]}'))
+      .toMatchObject({ kind: 'structured-data', rows: [['README.md']] })
+    expect(parseReplyView('{"kind":"structured-data","title":"Bad","columns":["File"],"rows":[["README.md",null]]}'))
+      .toBeNull()
+    expect(parseReplyView('{"kind":"artifact","title":"Unsafe","versions":[{"url":"javascript:alert(1)"}]}'))
+      .toBeNull()
+    expect(parseReplyView('x'.repeat(256 * 1024 + 1))).toBeNull()
   })
 })

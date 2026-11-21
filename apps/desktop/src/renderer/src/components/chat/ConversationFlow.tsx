@@ -95,7 +95,7 @@ export function ConversationFlow({ message, quotaFailure }: {
           ? 'chat.streamingReply' : message.execution?.cancelled ? 'chat.partialReply' : 'chat.finalAnswer'
         return (
           <section key={block.sequence} data-flow="text" data-sequence={block.sequence} aria-label={t(label)}>
-            <Markdown content={text} className={message.streaming && last ? 'answer-streaming' : undefined} />
+            <Markdown content={text} replyViews className={message.streaming && last ? 'answer-streaming' : undefined} />
           </section>
         )
       })}
