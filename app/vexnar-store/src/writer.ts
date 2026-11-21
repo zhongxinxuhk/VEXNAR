@@ -91,7 +91,7 @@ export function storeWriter(root: string) {
       for (const name of names.filter((file) => file.endsWith('.json'))) {
         const path = join(journalDir, name)
         const journal = JSON.parse(await readFile(path, 'utf8'))
-        if (journal.state !== 'prepared' && journal.state !== 'failed') continue
+        if (journal.state !== 'prepared') continue
         for (const op of journal.ops as Op[]) await apply({ ...op, expectedRev: undefined })
         await writeFile(path, `${JSON.stringify({ ...journal, state: 'committed' }, null, 2)}\n`, { mode: 0o600 })
         replayed += 1

@@ -76,6 +76,8 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - 每条记录带 `rev`，`expectedRev` 不匹配抛 `StoreConflict`（HTTP 409）；
 - 写入是"一条记录一个文档"，不会整表重写；
 - `reportFinding` 把 finding、finding 节点、`yields` 边放在同一个 journal 提交里；
+- `updateTask` / `controlTask` / `deleteTask`：改名/置顶、pause/resume、软删除；
+- journal 恢复只重放 `prepared`，`failed` 不重放；
 - 测试：`npm run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
 
 ## 与 dsh 的关系

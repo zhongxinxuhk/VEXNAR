@@ -138,6 +138,38 @@ api.post('/api/exploration/findings', async (c) => {
   }
 })
 
+api.patch('/api/tasks/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const record = await operations.updateTask(c.req.param('id'), { name: body.name, pinned: body.pinned }, body.rev)
+    store.invalidate?.(['tasks'])
+    return c.json(taskDto(record))
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, error?.name === 'StoreConflict' ? 409 : error?.status ?? 400)
+  }
+})
+
+api.delete('/api/tasks/:id', async (c) => {
+  try {
+    const result = await operations.deleteTask(c.req.param('id'))
+    store.invalidate?.(['tasks'])
+    return c.json(result)
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
+  }
+})
+
+api.post('/api/tasks/:id/control', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const record = await operations.controlTask(c.req.param('id'), String(body.action ?? ''))
+    store.invalidate?.(['tasks'])
+    return c.json({ id: record.id, paused: record.paused, queued: record.queued, status: record.status })
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
+  }
+})
+
 api.patch('/api/exploration/findings/:id', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {

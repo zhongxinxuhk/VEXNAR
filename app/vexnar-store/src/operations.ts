@@ -172,5 +172,37 @@ export function storeOperations(root: string) {
     }
   }
 
-  return { writer, createTask, patchFinding, reportFinding }
+  async function updateTask(id: string, patch: { name?: string; pinned?: boolean }, expectedRev?: number) {
+    const current = await writer.readRecord('tasks', id)
+    if (!current || current.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const next: Record<string, unknown> = { ...current }
+    if (patch.name !== undefined) next.name = String(patch.name)
+    if (patch.pinned !== undefined) next.pinned_at = patch.pinned ? rfc3339(new Date()) : null
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'tasks', key: id, record: next, expectedRev: expectedRev ?? Number(current.rev ?? 0) }])
+    return written
+  }
+
+  async function controlTask(id: string, action: string) {
+    if (action !== 'pause' && action !== 'resume') throw Object.assign(new Error(`非法动作: ${action}`), { status: 400 })
+    const current = await writer.readRecord('tasks', id)
+    if (!current || current.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const next = { ...current, paused: action === 'pause', queued: false }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'tasks', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return written
+  }
+
+  /** Soft delete: the task leaves the list, findings and graph stay intact. */
+  async function deleteTask(id: string) {
+    const current = await writer.readRecord('tasks', id)
+    if (!current || current.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const now = new Date()
+    const next = { ...current, status: 'deleted', deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1000) }
+    delete next.rev
+    await writer.commit([{ table: 'tasks', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return { deleted: true, id: Number(id) }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask }
 }

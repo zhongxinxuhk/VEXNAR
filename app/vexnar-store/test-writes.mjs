@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
 import { StoreConflict } from './src/writer.ts'
+import { jsonStore } from './src/json-store.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-writes-'))
 const ops = storeOperations(root)
@@ -24,7 +25,7 @@ check('patch finding', patched.status === 'confirmed' && patched.rev === 2, JSON
 
 let conflict = null
 try {
-  await ops.writer.put({ table: 'findings', key: '900', record: { status: 'ignored' }, expectedRev: 1 })
+  await ops.writer.put({ table: 'findings', key: '900', record: { ...patched, status: 'ignored' }, expectedRev: 1 })
 } catch (error) {
   conflict = error
 }
@@ -40,6 +41,23 @@ check('report finding commits graph', node?.kind === 'finding' && node?.state ==
 let invalidTask = null
 try { await ops.reportFinding({ task_id: '99999', vulnclass: 'X', severity: 'low', summary: 's', evidence: 'e' }) } catch (error) { invalidTask = error }
 check('report rejects unknown task', invalidTask?.status === 404, String(invalidTask))
+
+const renamed = await ops.updateTask(task.id, { name: 'renamed', pinned: true })
+check('update task name/pin', renamed.name === 'renamed' && renamed.pinned_at !== null, JSON.stringify({ name: renamed.name, pinned: renamed.pinned_at }))
+const paused = await ops.controlTask(task.id, 'pause')
+const resumed = await ops.controlTask(task.id, 'resume')
+check('pause then resume', paused.paused === true && resumed.paused === false, JSON.stringify({ paused: paused.paused, resumed: resumed.paused }))
+
+let staleTask = null
+try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
+check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
+
+const removed = await ops.deleteTask(task.id)
+const store = jsonStore(root)
+const listed = await store.tasks.list()
+check('delete hides task', removed.deleted === true && !listed.some((row) => row.id === task.id), JSON.stringify(removed))
+const survivingFinding = await ops.writer.readRecord('findings', reported.finding_id)
+check('findings survive delete', survivingFinding?.id === reported.finding_id, String(survivingFinding?.id))
 
 // Crash recovery: a prepared journal is replayed.
 await writeFile(join(root, 'journal', 'manual.json'), JSON.stringify({

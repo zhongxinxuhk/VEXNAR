@@ -56,6 +56,9 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 | `POST /api/tasks` | ✅ 新建任务：journal + rev，返回任务 DTO |
 | `PATCH /api/exploration/findings/:id` | ✅ 改状态/严重度：乐观锁，冲突 409 |
 | `POST /api/exploration/findings` | ✅ 上报漏洞：finding + node + edge 一次 journal 提交 |
+| `PATCH /api/tasks/:id` | ✅ 改名/置顶，支持 `rev` 乐观锁 |
+| `POST /api/tasks/:id/control` | ✅ pause / resume |
+| `DELETE /api/tasks/:id` | ✅ 软删除：任务消失，findings 与图保留 |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**
