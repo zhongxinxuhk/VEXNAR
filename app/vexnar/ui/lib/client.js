@@ -592,34 +592,6 @@ function installPermissionWarning() {
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   return () => observer.disconnect();
 }
-var PANEL_ID = "vexnar-console";
-var NAV_GROUPS = [
-  { title: "\u529F\u80FD", items: [
-    { id: "dashboard", label: "\u4EEA\u8868\u76D8", desc: "\u4EFB\u52A1\u3001\u53D1\u73B0\u3001\u8D44\u4EA7\u4E0E Token \u603B\u89C8" },
-    { id: "chat", label: "\u5BF9\u8BDD", desc: "\u4E3B Agent \u4F1A\u8BDD\u4E0E\u4E0A\u4E0B\u6587" },
-    { id: "tasks", label: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u5217\u8868\u3001\u610F\u56FE\u4E0E\u76EE\u6807" },
-    { id: "findings", label: "\u53D1\u73B0", desc: "\u6F0F\u6D1E\u5217\u8868\u3001\u5206\u7EC4\u4E0E\u8BE6\u60C5" },
-    { id: "traffic", label: "\u6D41\u91CF", desc: "\u6293\u5305\u3001\u8BC1\u636E\u7ED1\u5B9A\u4E0E\u6B63\u6587" },
-    { id: "tools-run", label: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" },
-    { id: "llm-record", label: "LLM \u5F55\u5236", desc: "\u8BF7\u6C42\u4E0E\u54CD\u5E94\u8BB0\u5F55" },
-    { id: "assets", label: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
-    { id: "assets-sync", label: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
-    { id: "workspace", label: "\u5DE5\u4F5C\u7A7A\u95F4", desc: "\u6587\u4EF6\u4E0E\u4EA7\u7269" }
-  ] },
-  { title: "\u7CFB\u7EDF", items: [
-    { id: "llm", label: "LLM", desc: "\u6A21\u578B\u914D\u7F6E\u4E0E\u7F51\u5173" },
-    { id: "agents", label: "Agent", desc: "\u89C4\u5212\u8005 / \u6267\u884C\u8005 / \u89E6\u53D1" },
-    { id: "mcp", label: "MCP", desc: "MCP server \u4E0E\u5DE5\u5177\u76EE\u5F55" },
-    { id: "skill", label: "Skill", desc: "\u6280\u80FD\u5305\u4E0E\u53EF\u89C1\u6027" },
-    { id: "tools", label: "\u5DE5\u5177", desc: "\u5185\u7F6E\u4E0E\u81EA\u5B9A\u4E49\u5DE5\u5177" },
-    { id: "notify", label: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012\u8BB0\u5F55" },
-    { id: "intercept", label: "\u62E6\u622A\u89C4\u5219", desc: "\u8BF7\u6C42\u62E6\u622A\u4E0E\u6539\u5199" },
-    { id: "asset-intercept", label: "\u8D44\u4EA7\u62E6\u622A", desc: "\u8D44\u4EA7\u8303\u56F4\u4E0E\u81EA\u52A8\u8BA4\u9886" },
-    { id: "approvals", label: "\u5BA1\u6279\u8BB0\u5F55", desc: "\u4EBA\u5DE5\u5BA1\u6279\u4E0E\u64CD\u4F5C\u65E5\u5FD7", badge: 2 },
-    { id: "logs", label: "\u65E5\u5FD7", desc: "\u5F15\u64CE\u4E0E\u5DE5\u5177\u65E5\u5FD7" },
-    { id: "settings", label: "\u7CFB\u7EDF\u914D\u7F6E", desc: "\u8FD0\u884C\u53C2\u6570\u4E0E\u504F\u597D" }
-  ] }
-];
 function ConsoleIcon({ size }) {
   return (0, import_react.createElement)(
     "svg",
@@ -972,118 +944,95 @@ function TrafficPage() {
     )
   );
 }
-function InterceptPage() {
-  const { data, error, loading } = useApi("/api/intercept/rules");
-  const [version, setVersion] = (0, import_react.useState)(0);
-  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u89C4\u5219\uFF09`);
-  const rows = data?.rules ?? [];
-  const remove = async (row) => {
-    if (!window.confirm(`\u5220\u9664\u89C4\u5219 #${row.id}?`)) return;
-    try {
-      await callApi(`/api/intercept/rules/${row.id}`, "DELETE");
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
+function PanelShell({ title, desc, children }) {
+  const connect = () => {
+    const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
+    if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
+    const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
+    if (token) localStorage.setItem("vexnar.coreToken", token);
+    window.location.reload();
   };
   return (0, import_react.createElement)(
     "div",
-    { key: version, fontSize: 13 },
-    (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? rows.length} \u6761\u89C4\u5219`),
+    { style: { height: "100%", overflowY: "auto", padding: 24 } },
     (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
+      (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, title),
+      (0, import_react.createElement)("button", { type: "button", onClick: connect, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 } }, "\u8FDE\u63A5 core")
+    ),
+    desc ? (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 18px" } }, desc) : (0, import_react.createElement)("div", { style: { height: 12 } }),
+    children
+  );
+}
+function TasksPanel() {
+  const [taskId, setTaskId] = (0, import_react.useState)("");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u5217\u8868\u3001\u76EE\u6807\u3001\u610F\u56FE\u4E0E\u8986\u76D6\u5EA6" },
+    taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)("div", null, (0, import_react.createElement)(Dashboard), (0, import_react.createElement)(TaskList, { onSelect: setTaskId }))
+  );
+}
+function FindingsPanel() {
+  const [findingId, setFindingId] = (0, import_react.useState)("");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u53D1\u73B0", desc: "\u6F0F\u6D1E\u5217\u8868\u3001\u8BC1\u636E\u4E0E\u6D41\u91CF\u7ED1\u5B9A" },
+    findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId })
+  );
+}
+function AssetsPanel() {
+  const { data, error, loading } = useApi("/api/assets?limit=50");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
+    loading ? (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : error ? (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error) : (0, import_react.createElement)(
       "table",
-      { style: { width: "100%", borderCollapse: "collapse" } },
-      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u5339\u914D", "\u52A8\u4F5C", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u7C7B\u578B", "\u57DF\u540D/IP", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, (data?.assets ?? []).map((row) => (0, import_react.createElement)(
         "tr",
         { key: row.id },
         (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name ?? row.match ?? row.match_target ?? ""),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.action ?? row.enabled === false ? "\u505C\u7528" : "\u542F\u7528"),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664"))
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.type),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.domain || row.ip || row.url || ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.port ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.last_seen ?? "")
       )))
     )
   );
 }
-function ApprovalsPage() {
-  return (0, import_react.createElement)(
-    "div",
-    { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
-    "\u5BA1\u6279\u8BB0\u5F55\uFF1AGo \u4FA7\u6682\u65E0\u72EC\u7ACB REST \u63A5\u53E3\uFF08web \u63A7\u5236\u53F0\u4E5F\u6CA1\u6709\u8BE5\u9875\uFF09\uFF0C\u8FC1\u79FB\u65F6\u968F\u62E6\u622A\u89C4\u5219\u4E00\u8D77\u843D\u5730\u3002"
-  );
+function TrafficPanel() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u6D41\u91CF", desc: "\u6293\u5305\u5217\u8868\uFF08\u7ECF core \u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09" }, (0, import_react.createElement)(TrafficPage));
 }
-function VexnarConsole() {
-  const [active, setActive] = (0, import_react.useState)("dashboard");
-  const [taskId, setTaskId] = (0, import_react.useState)("");
-  const [findingId, setFindingId] = (0, import_react.useState)("");
-  const items = NAV_GROUPS.flatMap((group) => group.items);
-  const current = items.find((item) => item.id === active) ?? items[0];
-  const selectPanel = (id) => {
-    setActive(id);
-    if (id !== "tasks") setTaskId("");
-    if (id !== "findings") setFindingId("");
-  };
-  return (0, import_react.createElement)(
-    "div",
-    { style: { display: "flex", height: "100%", minHeight: 0, background: "var(--vx-bg, #fff)" } },
-    (0, import_react.createElement)(
-      "aside",
-      { style: { width: 240, flex: "0 0 240px", borderRight: "1px solid var(--vx-border, #e5e7eb)", overflowY: "auto", padding: "12px 8px" } },
-      NAV_GROUPS.map((group) => (0, import_react.createElement)(
-        "div",
-        { key: group.title, style: { marginBottom: 14 } },
-        (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", padding: "6px 10px" } }, group.title),
-        group.items.map((item) => (0, import_react.createElement)("button", {
-          key: item.id,
-          type: "button",
-          onClick: () => selectPanel(item.id),
-          style: {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-            padding: "8px 10px",
-            border: 0,
-            borderRadius: 8,
-            cursor: "pointer",
-            textAlign: "left",
-            background: item.id === active ? "var(--vx-active, #eef2ff)" : "transparent",
-            color: "var(--vx-fg, #111827)",
-            fontSize: 14
-          }
-        }, (0, import_react.createElement)("span", null, item.label), item.badge ? (0, import_react.createElement)("span", { style: { minWidth: 18, height: 18, borderRadius: 9, background: "#f59e0b", color: "#fff", fontSize: 11, lineHeight: "18px", textAlign: "center" } }, String(item.badge)) : null))
-      )),
-      (0, import_react.createElement)("div", { style: { fontSize: 11, color: "var(--vx-muted, #9ca3af)", padding: "8px 10px" } }, "\u6570\u636E\u6E90\uFF1Avexnar-core")
-    ),
-    (0, import_react.createElement)(
-      "section",
-      { style: { flex: 1, minWidth: 0, overflowY: "auto", padding: 24 } },
-      (0, import_react.createElement)(
-        "div",
-        { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 } },
-        (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, current.label),
-        (0, import_react.createElement)("button", {
-          type: "button",
-          onClick: () => {
-            const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
-            if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
-            const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
-            if (token) localStorage.setItem("vexnar.coreToken", token);
-            window.location.reload();
-          },
-          style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 }
-        }, "\u8FDE\u63A5 core")
-      ),
-      (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
-      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId }) : current.id === "agents" ? (0, import_react.createElement)(AgentsPage) : current.id === "mcp" ? (0, import_react.createElement)(McpPage) : current.id === "tools" ? (0, import_react.createElement)(ToolsPage) : current.id === "notify" ? (0, import_react.createElement)(NotifyPage) : current.id === "tools-run" ? (0, import_react.createElement)(ToolRunPage) : current.id === "traffic" ? (0, import_react.createElement)(TrafficPage) : current.id === "intercept" ? (0, import_react.createElement)(InterceptPage) : current.id === "approvals" ? (0, import_react.createElement)(ApprovalsPage) : (0, import_react.createElement)(
-        "div",
-        { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
-        "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"
-      )
-    )
-  );
+function ToolRunPanel() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" }, (0, import_react.createElement)(ToolRunPage));
 }
+function AgentSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react.createElement)(AgentsPage));
+}
+function McpSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "MCP", desc: "MCP server \u542F\u505C\u4E0E\u5220\u9664" }, (0, import_react.createElement)(McpPage));
+}
+function ToolSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177", desc: "\u5185\u7F6E\u4E0E\u81EA\u5B9A\u4E49\u5DE5\u5177" }, (0, import_react.createElement)(ToolsPage));
+}
+function NotifySettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react.createElement)(NotifyPage));
+}
+var PANELS = [
+  { id: "vexnar-tasks", label: "\u4EFB\u52A1", order: 100, component: TasksPanel },
+  { id: "vexnar-findings", label: "\u53D1\u73B0", order: 101, component: FindingsPanel },
+  { id: "vexnar-traffic", label: "\u6D41\u91CF", order: 102, component: TrafficPanel },
+  { id: "vexnar-assets", label: "\u8D44\u4EA7", order: 103, component: AssetsPanel },
+  { id: "vexnar-tool-run", label: "\u5DE5\u5177\u6267\u884C", order: 104, component: ToolRunPanel }
+];
+var SETTINGS = [
+  { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
+  { id: "vexnar-mcp", label: "MCP", order: 41, component: McpSettings },
+  { id: "vexnar-tools", label: "\u5DE5\u5177", order: 42, component: ToolSettings },
+  { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings }
+];
 function apply(ctx) {
   const { slots } = ctx;
   if (slots === void 0) {
@@ -1093,8 +1042,13 @@ function apply(ctx) {
   installStyles();
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
-  slots.inject("main", () => slots.register({ name: "main", key: PANEL_ID }, VexnarConsole));
-  slots.inject("sidebar.panellist", () => slots.register({ name: "sidebar.panellist", id: PANEL_ID, order: 50, label: () => "VEXNAR" }, ConsoleIcon));
+  for (const panel of PANELS) {
+    slots.inject("main", () => slots.register({ name: "main", key: panel.id }, panel.component));
+    slots.inject("sidebar.panellist", () => slots.register({ name: "sidebar.panellist", id: panel.id, order: panel.order, label: () => panel.label }, ConsoleIcon));
+  }
+  for (const section of SETTINGS) {
+    slots.inject("settings.section", () => slots.register({ name: "settings.section", id: section.id, label: section.label, order: section.order }, section.component));
+  }
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));
   slots.inject("conversation.hero.brand.mark", () => slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
