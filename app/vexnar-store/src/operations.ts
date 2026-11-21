@@ -1069,6 +1069,44 @@ export function storeOperations(root: string) {
     return { by_kind: byKind, by_state: byState, edges, anchors: anchors.length, open_intents: openIntents.slice(0, 20) }
   }
 
+  async function importAssets(inputs: any[]) {
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'assets'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'assets', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    let nextId = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    let created = 0
+    let existing = 0
+    for (const input of inputs) {
+      const type = String(input.type ?? '').trim()
+      if (!type) continue
+      const same = rows.find((row) => row.type === type && (
+        (input.url && row.url === input.url) ||
+        (input.domain && row.domain === input.domain) ||
+        (input.ip && row.ip === input.ip)
+      ))
+      if (same) { existing += 1; continue }
+      const record = {
+        id: nextId++, type, task_ids: [],
+        ...(input.domain ? { domain: String(input.domain) } : {}),
+        ...(input.root_domain ? { root_domain: String(input.root_domain) } : {}),
+        ...(input.ip ? { ip: String(input.ip) } : {}),
+        ...(input.port == null ? {} : { port: Number(input.port) }),
+        ...(input.url ? { url: String(input.url) } : {}),
+        last_seen: rfc3339(new Date())
+      }
+      await writer.commit([{ table: 'assets', key: String(record.id), record }])
+      rows.push(record)
+      created += 1
+    }
+    return { requested: inputs.length, created, existing }
+  }
+
   async function addAsset(taskId: string, input: any) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
@@ -1113,6 +1151,7 @@ export function storeOperations(root: string) {
       ...(input.technologies ? { technologies: input.technologies } : {}),
       ...(input.service_name ? { service_name: String(input.service_name) } : {}),
       ...(input.status_code == null ? {} : { status_code: Number(input.status_code) }),
+      ...(input.extra ? { extra: input.extra } : {}),
       last_seen: rfc3339(new Date())
     }
     await writer.commit([{ table: 'assets', key: String(id), record }])
@@ -1283,5 +1322,5 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, updateNodePayload, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  return { writer, importAssets, updateNodePayload, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
