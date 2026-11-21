@@ -38,10 +38,10 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/http-exception.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/http-exception.js
 var HTTPException;
 var init_http_exception = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/http-exception.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/http-exception.js"() {
     HTTPException = class extends Error {
       res;
       status;
@@ -71,24 +71,24 @@ var init_http_exception = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request/constants.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request/constants.js
 var GET_MATCH_RESULT;
 var init_constants = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request/constants.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request/constants.js"() {
     GET_MATCH_RESULT = Symbol();
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/crypto.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/crypto.js
 var init_crypto = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/crypto.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/crypto.js"() {
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/buffer.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/buffer.js
 var bufferToFormData;
 var init_buffer = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/buffer.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/buffer.js"() {
     init_crypto();
     bufferToFormData = (arrayBuffer, contentType) => {
       return new Response(arrayBuffer, { headers: { "Content-Type": contentType.replace(/^[^;]+/, (mediaType) => mediaType.toLowerCase()) } }).formData();
@@ -96,7 +96,7 @@ var init_buffer = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/body.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/body.js
 async function parseFormData(request, options) {
   if (!isRawRequest(request) && request.bodyCache.formData) return convertFormDataToBodyData(await request.bodyCache.formData, options);
   const headers = isRawRequest(request) ? request.headers : request.raw.headers;
@@ -124,7 +124,7 @@ function convertFormDataToBodyData(formData, options) {
 }
 var MAX_NESTED_OBJECTS, isRawRequest, parseBody, handleParsingAllValues, handleParsingNestedValues, throwNestingLimitExceeded;
 var init_body = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/body.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/body.js"() {
     init_buffer();
     MAX_NESTED_OBJECTS = 1e4;
     isRawRequest = (request) => "headers" in request;
@@ -166,10 +166,10 @@ var init_body = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/url.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/url.js
 var splitPath, splitRoutingPath, extractGroupsFromPath, replaceGroupMarks, patternCache, getPattern, tryDecode, decodeURIWithPreservedPercent, getPath, getPathNoStrict, mergePath, checkOptionalParameter, tryDecodeURIComponent, _decodeURI, _getQueryParam, getQueryParam, getQueryParams, decodeURIComponent_;
 var init_url = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/url.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/url.js"() {
     splitPath = (path) => {
       const paths = path.split("/");
       if (paths[0] === "") paths.shift();
@@ -353,10 +353,10 @@ var init_url = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request.js
 var HonoRequest;
 var init_request = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/request.js"() {
     init_http_exception();
     init_constants();
     init_body();
@@ -632,10 +632,10 @@ var init_request = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/html.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/html.js
 var HtmlEscapedCallbackPhase, raw, resolveCallback;
 var init_html = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/html.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/html.js"() {
     HtmlEscapedCallbackPhase = {
       Stringify: 1,
       BeforeStream: 2,
@@ -667,10 +667,10 @@ var init_html = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/context.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/context.js
 var TEXT_PLAIN, setDefaultContentType, createResponseInstance, Context;
 var init_context = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/context.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/context.js"() {
     init_request();
     init_html();
     TEXT_PLAIN = "text/plain; charset=UTF-8";
@@ -1052,10 +1052,10 @@ var init_context = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/compose.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/compose.js
 var compose;
 var init_compose = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/compose.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/compose.js"() {
     compose = (middleware, onError, onNotFound) => {
       return (context, next) => {
         let index = -1;
@@ -1088,10 +1088,10 @@ var init_compose = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/route/index.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/route/index.js
 var matchedRoutes, routePath;
 var init_route = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/route/index.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/route/index.js"() {
     init_constants();
     init_url();
     matchedRoutes = (c) => c.req[GET_MATCH_RESULT][0].map(([[, route]]) => route);
@@ -1099,10 +1099,10 @@ var init_route = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router.js
 var METHODS, MESSAGE_MATCHER_IS_ALREADY_BUILT, UnsupportedPathError;
 var init_router = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router.js"() {
     METHODS = [
       "get",
       "post",
@@ -1118,18 +1118,18 @@ var init_router = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/constants.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/constants.js
 var COMPOSED_HANDLER;
 var init_constants2 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/constants.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/constants.js"() {
     COMPOSED_HANDLER = "__COMPOSED_HANDLER";
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/mount.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/mount.js
 var countTrailingSlashes, getPathPrefixLength, createMountedRequest;
 var init_mount = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/mount.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/mount.js"() {
     init_http_exception();
     init_constants();
     init_url();
@@ -1181,10 +1181,10 @@ var init_mount = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono-base.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono-base.js
 var notFoundHandler, errorHandler, Hono;
 var init_hono_base = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono-base.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono-base.js"() {
     init_compose();
     init_url();
     init_context();
@@ -1531,15 +1531,15 @@ var init_hono_base = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/utils.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/utils.js
 var createNullObject;
 var init_utils = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/utils.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/utils.js"() {
     createNullObject = () => /* @__PURE__ */ Object.create(null);
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/matcher.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/matcher.js
 function match(method, path) {
   const matchers = this.buildAllMatchers();
   const match2 = ((method2, path2) => {
@@ -1556,13 +1556,13 @@ function match(method, path) {
 }
 var emptyParam;
 var init_matcher = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/matcher.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/matcher.js"() {
     init_router();
     emptyParam = [];
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/node.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/node.js
 function compareKey(a, b) {
   if (a.length === 1) return b.length === 1 ? a < b ? -1 : 1 : -1;
   if (b.length === 1) return 1;
@@ -1574,7 +1574,7 @@ function compareKey(a, b) {
 }
 var LABEL_REG_EXP_STR, ONLY_WILDCARD_REG_EXP_STR, TAIL_WILDCARD_REG_EXP_STR, PATH_ERROR, regExpMetaChars, Node;
 var init_node = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/node.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/node.js"() {
     init_utils();
     LABEL_REG_EXP_STR = "[^/]+";
     ONLY_WILDCARD_REG_EXP_STR = "[^]*";
@@ -1652,10 +1652,10 @@ var init_node = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/trie.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/trie.js
 var Trie;
 var init_trie = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/trie.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/trie.js"() {
     init_utils();
     init_node();
     Trie = class {
@@ -1734,7 +1734,7 @@ var init_trie = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/router.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/router.js
 function endsWithWildcard(keys) {
   const tail = keys[keys.length - 1];
   return tail === "[^]*" || tail === "(?:|/[^]*)";
@@ -1746,7 +1746,7 @@ function covers(wildcard, target) {
 }
 var RegExpRouter;
 var init_router2 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/router.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/reg-exp-router/router.js"() {
     init_url();
     init_router();
     init_utils();
@@ -1827,10 +1827,10 @@ var init_router2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/smart-router/router.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/smart-router/router.js
 var SmartRouter;
 var init_router3 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/smart-router/router.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/smart-router/router.js"() {
     init_router();
     SmartRouter = class {
       name = "SmartRouter";
@@ -1880,10 +1880,10 @@ var init_router3 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/node.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/node.js
 var emptyParams, order, Node3;
 var init_node2 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/node.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/node.js"() {
     init_url();
     init_router();
     init_utils();
@@ -2018,10 +2018,10 @@ var init_node2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/router.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/router.js
 var TrieRouter;
 var init_router4 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/router.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/router.js"() {
     init_url();
     init_node2();
     TrieRouter = class {
@@ -2037,17 +2037,17 @@ var init_router4 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/index.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/index.js
 var init_trie_router = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/index.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/router/trie-router/index.js"() {
     init_router4();
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono.js
 var Hono3;
 var init_hono = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/hono.js"() {
     init_hono_base();
     init_router2();
     init_router3();
@@ -2067,17 +2067,17 @@ var init_hono = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/index.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/index.js
 var init_dist = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/index.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/index.js"() {
     init_context();
     init_hono();
   }
 });
 
-// ../node_modules/.pnpm/postgres-array@2.0.0/node_modules/postgres-array/index.js
+// node_modules/.pnpm/postgres-array@2.0.0/node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
-  "../node_modules/.pnpm/postgres-array@2.0.0/node_modules/postgres-array/index.js"(exports) {
+  "node_modules/.pnpm/postgres-array@2.0.0/node_modules/postgres-array/index.js"(exports) {
     "use strict";
     exports.parse = function(source, transform2) {
       return new ArrayParser(source, transform2).parse();
@@ -2169,9 +2169,9 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/arrayParser.js
+// node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/arrayParser.js
 var require_arrayParser = __commonJS({
-  "../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/arrayParser.js"(exports, module) {
+  "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/arrayParser.js"(exports, module) {
     var array2 = require_postgres_array();
     module.exports = {
       create: function(source, transform2) {
@@ -2185,9 +2185,9 @@ var require_arrayParser = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/postgres-date@1.0.7/node_modules/postgres-date/index.js
+// node_modules/.pnpm/postgres-date@1.0.7/node_modules/postgres-date/index.js
 var require_postgres_date = __commonJS({
-  "../node_modules/.pnpm/postgres-date@1.0.7/node_modules/postgres-date/index.js"(exports, module) {
+  "node_modules/.pnpm/postgres-date@1.0.7/node_modules/postgres-date/index.js"(exports, module) {
     "use strict";
     var DATE_TIME = /(\d{1,})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(\.\d{1,})?.*?( BC)?$/;
     var DATE = /^(\d{1,})-(\d{2})-(\d{2})( BC)?$/;
@@ -2272,9 +2272,9 @@ var require_postgres_date = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/xtend@4.0.2/node_modules/xtend/mutable.js
+// node_modules/.pnpm/xtend@4.0.2/node_modules/xtend/mutable.js
 var require_mutable = __commonJS({
-  "../node_modules/.pnpm/xtend@4.0.2/node_modules/xtend/mutable.js"(exports, module) {
+  "node_modules/.pnpm/xtend@4.0.2/node_modules/xtend/mutable.js"(exports, module) {
     module.exports = extend2;
     var hasOwnProperty = Object.prototype.hasOwnProperty;
     function extend2(target) {
@@ -2291,9 +2291,9 @@ var require_mutable = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/postgres-interval@1.2.0/node_modules/postgres-interval/index.js
+// node_modules/.pnpm/postgres-interval@1.2.0/node_modules/postgres-interval/index.js
 var require_postgres_interval = __commonJS({
-  "../node_modules/.pnpm/postgres-interval@1.2.0/node_modules/postgres-interval/index.js"(exports, module) {
+  "node_modules/.pnpm/postgres-interval@1.2.0/node_modules/postgres-interval/index.js"(exports, module) {
     "use strict";
     var extend2 = require_mutable();
     module.exports = PostgresInterval;
@@ -2382,9 +2382,9 @@ var require_postgres_interval = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/postgres-bytea@1.0.1/node_modules/postgres-bytea/index.js
+// node_modules/.pnpm/postgres-bytea@1.0.1/node_modules/postgres-bytea/index.js
 var require_postgres_bytea = __commonJS({
-  "../node_modules/.pnpm/postgres-bytea@1.0.1/node_modules/postgres-bytea/index.js"(exports, module) {
+  "node_modules/.pnpm/postgres-bytea@1.0.1/node_modules/postgres-bytea/index.js"(exports, module) {
     "use strict";
     var bufferFrom = Buffer.from || Buffer;
     module.exports = function parseBytea(input2) {
@@ -2418,9 +2418,9 @@ var require_postgres_bytea = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/textParsers.js
+// node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/textParsers.js
 var require_textParsers = __commonJS({
-  "../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/textParsers.js"(exports, module) {
+  "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/textParsers.js"(exports, module) {
     var array2 = require_postgres_array();
     var arrayParser = require_arrayParser();
     var parseDate = require_postgres_date();
@@ -2618,9 +2618,9 @@ var require_textParsers = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/index.js
+// node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/index.js
 var require_pg_int8 = __commonJS({
-  "../node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/index.js"(exports, module) {
+  "node_modules/.pnpm/pg-int8@1.0.1/node_modules/pg-int8/index.js"(exports, module) {
     "use strict";
     var BASE = 1e6;
     function readInt8(buffer) {
@@ -2698,9 +2698,9 @@ var require_pg_int8 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/binaryParsers.js
+// node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/binaryParsers.js
 var require_binaryParsers = __commonJS({
-  "../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/binaryParsers.js"(exports, module) {
+  "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/binaryParsers.js"(exports, module) {
     var parseInt64 = require_pg_int8();
     var parseBits = function(data, bits, offset, invert, callback) {
       offset = offset || 0;
@@ -2898,9 +2898,9 @@ var require_binaryParsers = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/builtins.js
+// node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/builtins.js
 var require_builtins = __commonJS({
-  "../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/builtins.js"(exports, module) {
+  "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/lib/builtins.js"(exports, module) {
     module.exports = {
       BOOL: 16,
       BYTEA: 17,
@@ -2966,9 +2966,9 @@ var require_builtins = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/index.js
+// node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/index.js
 var require_pg_types = __commonJS({
-  "../node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/index.js"(exports) {
+  "node_modules/.pnpm/pg-types@2.2.0/node_modules/pg-types/index.js"(exports) {
     var textParsers = require_textParsers();
     var binaryParsers = require_binaryParsers();
     var arrayParser = require_arrayParser();
@@ -3007,9 +3007,9 @@ var require_pg_types = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/defaults.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/defaults.js
 var require_defaults = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/defaults.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/defaults.js"(exports, module) {
     "use strict";
     var user;
     try {
@@ -3076,9 +3076,9 @@ var require_defaults = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/utils.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/utils.js
 var require_utils = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/utils.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/utils.js"(exports, module) {
     "use strict";
     var defaults2 = require_defaults();
     var nodeUtils = __require("util");
@@ -3240,9 +3240,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/utils.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/utils.js
 var require_utils2 = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/utils.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/utils.js"(exports, module) {
     var nodeCrypto = __require("crypto");
     module.exports = {
       postgresMd5PasswordHash,
@@ -3291,9 +3291,9 @@ var require_utils2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/cert-signatures.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/cert-signatures.js
 var require_cert_signatures = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/cert-signatures.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/cert-signatures.js"(exports, module) {
     function x509Error(msg, cert) {
       return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert.toString("base64"));
     }
@@ -3404,9 +3404,9 @@ var require_cert_signatures = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/sasl.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/sasl.js
 var require_sasl = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
     var crypto2 = require_utils2();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
@@ -3589,9 +3589,9 @@ var require_sasl = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/type-overrides.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/type-overrides.js
 var require_type_overrides = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/type-overrides.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/type-overrides.js"(exports, module) {
     "use strict";
     var types2 = require_pg_types();
     function TypeOverrides2(userTypes) {
@@ -3624,9 +3624,9 @@ var require_type_overrides = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-connection-string@2.14.1/node_modules/pg-connection-string/index.js
+// node_modules/.pnpm/pg-connection-string@2.14.1/node_modules/pg-connection-string/index.js
 var require_pg_connection_string = __commonJS({
-  "../node_modules/.pnpm/pg-connection-string@2.14.1/node_modules/pg-connection-string/index.js"(exports, module) {
+  "node_modules/.pnpm/pg-connection-string@2.14.1/node_modules/pg-connection-string/index.js"(exports, module) {
     "use strict";
     function parse5(str, options = {}) {
       if (str.charAt(0) === "/") {
@@ -3812,9 +3812,9 @@ See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode de
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection-parameters.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection-parameters.js
 var require_connection_parameters = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection-parameters.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection-parameters.js"(exports, module) {
     "use strict";
     var dns = __require("dns");
     var defaults2 = require_defaults();
@@ -3963,9 +3963,9 @@ var require_connection_parameters = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/result.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/result.js
 var require_result = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/result.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/result.js"(exports, module) {
     "use strict";
     var types2 = require_pg_types();
     var matchRegexp = /^([A-Za-z]+)(?: (\d+))?(?: (\d+))?/;
@@ -4054,9 +4054,9 @@ var require_result = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/query.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/query.js
 var require_query = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/query.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/query.js"(exports, module) {
     "use strict";
     var { EventEmitter } = __require("events");
     var Result2 = require_result();
@@ -4256,9 +4256,9 @@ var require_query = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/messages.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/messages.js
 var require_messages = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/messages.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/messages.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.NoticeMessage = exports.DataRowMessage = exports.CommandCompleteMessage = exports.ReadyForQueryMessage = exports.NotificationResponseMessage = exports.BackendKeyDataMessage = exports.AuthenticationMD5Password = exports.ParameterStatusMessage = exports.ParameterDescriptionMessage = exports.RowDescriptionMessage = exports.Field = exports.CopyResponse = exports.CopyDataMessage = exports.DatabaseError = exports.copyDone = exports.emptyQuery = exports.replicationStart = exports.portalSuspended = exports.noData = exports.closeComplete = exports.bindComplete = exports.parseComplete = void 0;
@@ -4421,9 +4421,9 @@ var require_messages = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-writer.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-writer.js
 var require_buffer_writer = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-writer.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-writer.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Writer = void 0;
@@ -4534,9 +4534,9 @@ var require_buffer_writer = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/serializer.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/serializer.js
 var require_serializer = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/serializer.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/serializer.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.serialize = void 0;
@@ -4748,9 +4748,9 @@ var require_serializer = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-reader.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-reader.js
 var require_buffer_reader = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-reader.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/buffer-reader.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.BufferReader = void 0;
@@ -4807,9 +4807,9 @@ var require_buffer_reader = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/parser.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/parser.js
 var require_parser = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/parser.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/parser.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Parser = void 0;
@@ -5114,9 +5114,9 @@ var require_parser = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/index.js
+// node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/index.js
 var require_dist = __commonJS({
-  "../node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/index.js"(exports) {
+  "node_modules/.pnpm/pg-protocol@1.16.1/node_modules/pg-protocol/dist/index.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DatabaseError = exports.serialize = void 0;
@@ -5138,18 +5138,18 @@ var require_dist = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-cloudflare@1.4.1/node_modules/pg-cloudflare/dist/empty.js
+// node_modules/.pnpm/pg-cloudflare@1.4.1/node_modules/pg-cloudflare/dist/empty.js
 var require_empty = __commonJS({
-  "../node_modules/.pnpm/pg-cloudflare@1.4.1/node_modules/pg-cloudflare/dist/empty.js"(exports) {
+  "node_modules/.pnpm/pg-cloudflare@1.4.1/node_modules/pg-cloudflare/dist/empty.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.default = {};
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/stream.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/stream.js
 var require_stream = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/stream.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/stream.js"(exports, module) {
     var { getStream, getSecureStream } = getStreamFuncs();
     module.exports = {
       /**
@@ -5213,9 +5213,9 @@ var require_stream = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection.js
 var require_connection = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
     var { parse: parse5, serialize } = require_dist();
@@ -5415,9 +5415,9 @@ var require_connection = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/split2@4.2.0/node_modules/split2/index.js
+// node_modules/.pnpm/split2@4.2.0/node_modules/split2/index.js
 var require_split2 = __commonJS({
-  "../node_modules/.pnpm/split2@4.2.0/node_modules/split2/index.js"(exports, module) {
+  "node_modules/.pnpm/split2@4.2.0/node_modules/split2/index.js"(exports, module) {
     "use strict";
     var { Transform } = __require("stream");
     var { StringDecoder } = __require("string_decoder");
@@ -5516,9 +5516,9 @@ var require_split2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/helper.js
+// node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/helper.js
 var require_helper = __commonJS({
-  "../node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/helper.js"(exports, module) {
+  "node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/helper.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var Stream = __require("stream").Stream;
@@ -5687,9 +5687,9 @@ var require_helper = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/index.js
+// node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/index.js
 var require_lib = __commonJS({
-  "../node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/index.js"(exports, module) {
+  "node_modules/.pnpm/pgpass@1.0.5/node_modules/pgpass/lib/index.js"(exports, module) {
     "use strict";
     var path = __require("path");
     var fs = __require("fs");
@@ -5708,9 +5708,9 @@ var require_lib = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/client.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/client.js
 var require_client = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/client.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/client.js"(exports, module) {
     var EventEmitter = __require("events").EventEmitter;
     var utils = require_utils();
     var nodeUtils = __require("util");
@@ -6405,9 +6405,9 @@ var require_client = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.1/node_modules/pg-pool/index.js
+// node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.1/node_modules/pg-pool/index.js
 var require_pg_pool = __commonJS({
-  "../node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.1/node_modules/pg-pool/index.js"(exports, module) {
+  "node_modules/.pnpm/pg-pool@3.14.0_pg@8.23.1/node_modules/pg-pool/index.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
     var NOOP = function() {
@@ -6831,9 +6831,9 @@ var require_pg_pool = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/query.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/query.js
 var require_query2 = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/query.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/query.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
     var util = __require("util");
@@ -6974,9 +6974,9 @@ var require_query2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/client.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/client.js
 var require_client2 = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/client.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/client.js"(exports, module) {
     var nodeUtils = __require("util");
     var Native;
     try {
@@ -7312,17 +7312,17 @@ var require_client2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/index.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/index.js
 var require_native = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/index.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/native/index.js"(exports, module) {
     "use strict";
     module.exports = require_client2();
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/index.js
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/index.js
 var require_lib2 = __commonJS({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/index.js"(exports, module) {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/index.js"(exports, module) {
     "use strict";
     var Client2 = require_client();
     var defaults2 = require_defaults();
@@ -7386,10 +7386,10 @@ var require_lib2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs
+// node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs
 var import_lib, Client, Pool, Connection, types, Query, DatabaseError, escapeIdentifier, escapeLiteral, Result, TypeOverrides, defaults, esm_default;
 var init_esm = __esm({
-  "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs"() {
+  "node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs"() {
     import_lib = __toESM(require_lib2(), 1);
     Client = import_lib.default.Client;
     Pool = import_lib.default.Pool;
@@ -7406,7 +7406,7 @@ var init_esm = __esm({
   }
 });
 
-// ../vexnar-store/src/task-status.ts
+// vexnar-store/src/task-status.ts
 function isTerminalTaskStatus(status) {
   return BY_KEY.get(status)?.terminal === true;
 }
@@ -7494,7 +7494,7 @@ function summarizeTasks(rows, metrics, options = {}) {
 }
 var TASK_LIFECYCLE, TASK_STATUS_KEYS, BY_KEY, DAY_SECONDS;
 var init_task_status = __esm({
-  "../vexnar-store/src/task-status.ts"() {
+  "vexnar-store/src/task-status.ts"() {
     "use strict";
     TASK_LIFECYCLE = [
       { key: "created", label: "\u5F85\u542F\u52A8", tone: "muted", terminal: false, active: false, hint: "\u5DF2\u521B\u5EFA\uFF0C\u5F15\u64CE\u8FD8\u6CA1\u8FD0\u884C\u8FC7" },
@@ -7511,7 +7511,7 @@ var init_task_status = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js
 var util_exports = {};
 __export(util_exports, {
   BIGINT_FORMAT_RANGES: () => BIGINT_FORMAT_RANGES,
@@ -8257,7 +8257,7 @@ function constantCatch(value) {
 }
 var Cached, EVALUATING, captureStackTrace, allowsEval, getParsedType, propertyKeyTypes, primitiveTypes, NUMBER_FORMAT_RANGES, BIGINT_FORMAT_RANGES, highSurrogate, Class, installing, broke, breaker, CONSTANT_CATCH;
 var init_util = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/util.js"() {
     init_core();
     Cached = class {
       constructor(getter) {
@@ -8372,7 +8372,7 @@ var init_util = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/core.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/core.js
 function newError(Definition) {
   const E = _E;
   if (E) {
@@ -8475,7 +8475,7 @@ function config(newConfig) {
 }
 var _a, NEVER, _zodDesc, _E, $brand, $ZodAsyncError, $ZodEncodeError, globalConfig;
 var init_core = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/core.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/core.js"() {
     init_util();
     NEVER = /* @__PURE__ */ Object.freeze({
       status: "aborted"
@@ -8499,7 +8499,7 @@ var init_core = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/errors.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/errors.js
 function _getMessage() {
   const internals = this._zod;
   internals.message ?? (internals.message = JSON.stringify(internals.def, jsonStringifyReplacer, 2));
@@ -8657,7 +8657,7 @@ function prettifyError(error62) {
 }
 var _messageDesc, _issuesDesc, _installedToString, initializer, $ZodError, $ZodRealError;
 var init_errors = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/errors.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/errors.js"() {
     init_core();
     init_util();
     _messageDesc = {
@@ -8698,7 +8698,7 @@ var init_errors = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/parse.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/parse.js
 function finalizeParams(callee, params) {
   return { callee: params?.callee ?? callee, Err: params?.Err };
 }
@@ -8738,7 +8738,7 @@ function validateFallback(schema, value, _ctx) {
 }
 var _parse, parse, _parseAsync, parseAsync, _safeParse, safeParse, _safeParseAsync, safeParseAsync, COMPILE_INVALID, COMPILE_FALLBACK, validate, validateAsync, _encode, encode, _decode, decode, _encodeAsync, encodeAsync, _decodeAsync, decodeAsync, _safeEncode, safeEncode, _safeDecode, safeDecode, _safeEncodeAsync, safeEncodeAsync, _safeDecodeAsync, safeDecodeAsync;
 var init_parse = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/parse.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/parse.js"() {
     init_core();
     init_errors();
     init_util();
@@ -8866,7 +8866,7 @@ var init_parse = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js
 var regexes_exports = {};
 __export(regexes_exports, {
   anyString: () => anyString,
@@ -8967,7 +8967,7 @@ function fixedBase64url(length) {
 }
 var cuid, cuid2, ulid, xid, ksuid, nanoid, duration, extendedDuration, guid, uuid, uuid4, uuid6, uuid7, email, html5Email, rfc5322Email, unicodeEmail, idnEmail, browserEmail, _emoji, ipv4, ipv6, mac, cidrv4, cidrv6, base64, base64url, hostname, domain, httpProtocol, e164, creditCard, currencyCode, iban, dateSource, date, anyString, string, bigint, integer, number, boolean, _null, _undefined, lowercase, uppercase, hex, md5_hex, md5_base64, md5_base64url, sha1_hex, sha1_base64, sha1_base64url, sha256_hex, sha256_base64, sha256_base64url, sha384_hex, sha384_base64, sha384_base64url, sha512_hex, sha512_base64, sha512_base64url;
 var init_regexes = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/regexes.js"() {
     init_util();
     cuid = /^[cC][0-9a-z]{6,}$/;
     cuid2 = /^[0-9a-z]+$/;
@@ -9044,7 +9044,7 @@ var init_regexes = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/checks.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/checks.js
 function handleCheckPropertyResult(result, payload, property) {
   if (result.issues.length) {
     payload.issues.push(...prefixIssues(property, result.issues));
@@ -9052,7 +9052,7 @@ function handleCheckPropertyResult(result, payload, property) {
 }
 var $ZodCheck, _whenHasSize, _whenHasLength, numericOriginMap, $ZodCheckLessThan, $ZodCheckGreaterThan, $ZodCheckMultipleOf, $ZodCheckNumberFormat, $ZodCheckBigIntFormat, $ZodCheckMaxSize, $ZodCheckMinSize, $ZodCheckSizeEquals, $ZodCheckMaxLength, $ZodCheckMinLength, $ZodCheckLengthEquals, $ZodCheckStringFormat, $ZodCheckRegex, $ZodCheckLowerCase, $ZodCheckUpperCase, $ZodCheckIncludes, $ZodCheckStartsWith, $ZodCheckEndsWith, $ZodCheckProperty, $ZodCheckProperties, $ZodCheckMimeType, $ZodCheckOverwrite;
 var init_checks = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/checks.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/checks.js"() {
     init_core();
     init_regexes();
     init_util();
@@ -9528,10 +9528,10 @@ var init_checks = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/doc.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/doc.js
 var Doc;
 var init_doc = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/doc.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/doc.js"() {
     Doc = class {
       constructor(args = [], closed = {}) {
         this.content = [];
@@ -9574,10 +9574,10 @@ ${content.join("\n")}
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/versions.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/versions.js
 var version;
 var init_versions = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/versions.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/versions.js"() {
     version = {
       major: 4,
       minor: 6,
@@ -9586,7 +9586,7 @@ var init_versions = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/schemas.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/schemas.js
 async function validateAsync2(inst, value) {
   const ctx = { async: true };
   return toStandardResult(await inst._zod.run({ value, issues: [] }, ctx), ctx);
@@ -10267,7 +10267,7 @@ function handleRefineResult(result, payload, input2, inst) {
 }
 var $ZodType, toStandardResult, $ZodString, $ZodStringFormat, $ZodGUID, $ZodUUID, $ZodEmail, URL_BAD_FORMAT, URL_UNPARSEABLE, asciiTabOrNewline, $ZodURL, $ZodEmoji, $ZodNanoID, $ZodCUID, $ZodCUID2, $ZodULID, $ZodXID, $ZodKSUID, $ZodISODateTime, $ZodISODate, $ZodISOTime, $ZodISODuration, $ZodIPv4, ipv6Alphabet, $ZodIPv6, $ZodMAC, $ZodCIDRv4, $ZodCIDRv6, base64Charset, $ZodBase64, base64urlCharset, $ZodBase64URL, $ZodE164, CC_SANITIZE, $ZodCreditCard, $ZodIBAN, $ZodJWT, $ZodCustomStringFormat, $ZodNumber, $ZodNumberFormat, $ZodBoolean, $ZodBigInt, $ZodBigIntFormat, $ZodSymbol, $ZodUndefined, $ZodNull, $ZodAny, $ZodUnknown, $ZodNever, $ZodVoid, $ZodDate, arraySize, mapSize, setSize, $ZodArray, NO_SYMBOL_KEYS, $ZodObject, $ZodObjectJIT, $ZodUnion, $ZodXor, $ZodDiscriminatedUnion, $ZodIntersection, $ZodTuple, $ZodRecord, $ZodMap, $ZodSet, $ZodEnum, $ZodLiteral, $ZodFile, $ZodTransform, $ZodOptional, $ZodExactOptional, $ZodNullable, $ZodDefault, $ZodPrefault, $ZodNonOptional, $ZodSuccess, $ZodCatch, $ZodNaN, $ZodPipe, $ZodCodec, $ZodPreprocess, $ZodReadonly, $ZodTemplateLiteral, $ZodFunction, $ZodPromise, $ZodLazy, $ZodCustom;
 var init_schemas = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/schemas.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/schemas.js"() {
     init_checks();
     init_core();
     init_doc();
@@ -12041,7 +12041,7 @@ var init_schemas = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/memoizer.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/memoizer.js
 function isRef(value) {
   return value !== null && typeof value === "object";
 }
@@ -12205,7 +12205,7 @@ function isBackEdge(ctx, value) {
 }
 var $ZodCyclicError, STATE, NO_ISSUES, recursive, NONE, ASSUMED, PROVEN, handoff, open, memo;
 var init_memoizer = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/memoizer.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/memoizer.js"() {
     init_util();
     $ZodCyclicError = class extends Error {
       constructor() {
@@ -12323,7 +12323,7 @@ var init_memoizer = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ar.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ar.js
 function ar_default() {
   return {
     localeError: error()
@@ -12331,7 +12331,7 @@ function ar_default() {
 }
 var error;
 var init_ar = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ar.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ar.js"() {
     init_util();
     error = () => {
       const Sizable = {
@@ -12441,7 +12441,7 @@ var init_ar = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/az.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/az.js
 function az_default() {
   return {
     localeError: error2()
@@ -12449,7 +12449,7 @@ function az_default() {
 }
 var error2;
 var init_az = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/az.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/az.js"() {
     init_util();
     error2 = () => {
       const Sizable = {
@@ -12558,7 +12558,7 @@ var init_az = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/be.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/be.js
 function getBelarusianPlural(count, one, few, many) {
   const absCount = Math.abs(count);
   const lastDigit = absCount % 10;
@@ -12581,7 +12581,7 @@ function be_default() {
 }
 var error3;
 var init_be = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/be.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/be.js"() {
     init_util();
     error3 = () => {
       const Sizable = {
@@ -12733,7 +12733,7 @@ var init_be = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bg.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bg.js
 function bg_default() {
   return {
     localeError: error4()
@@ -12741,7 +12741,7 @@ function bg_default() {
 }
 var error4;
 var init_bg = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bg.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bg.js"() {
     init_util();
     error4 = () => {
       const Sizable = {
@@ -12865,7 +12865,7 @@ var init_bg = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bn.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bn.js
 function bn_default() {
   return {
     localeError: error5()
@@ -12873,7 +12873,7 @@ function bn_default() {
 }
 var error5;
 var init_bn = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bn.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/bn.js"() {
     init_util();
     error5 = () => {
       const Sizable = {
@@ -12985,7 +12985,7 @@ var init_bn = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ca.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ca.js
 function ca_default() {
   return {
     localeError: error6()
@@ -12993,7 +12993,7 @@ function ca_default() {
 }
 var error6;
 var init_ca = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ca.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ca.js"() {
     init_util();
     error6 = () => {
       const Sizable = {
@@ -13105,7 +13105,7 @@ var init_ca = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ckb.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ckb.js
 function ckb_default() {
   return {
     localeError: error7()
@@ -13113,7 +13113,7 @@ function ckb_default() {
 }
 var error7;
 var init_ckb = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ckb.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ckb.js"() {
     init_util();
     error7 = () => {
       const Sizable = {
@@ -13244,7 +13244,7 @@ var init_ckb = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/cs.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/cs.js
 function cs_default() {
   return {
     localeError: error8()
@@ -13252,7 +13252,7 @@ function cs_default() {
 }
 var error8;
 var init_cs = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/cs.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/cs.js"() {
     init_util();
     error8 = () => {
       const Sizable = {
@@ -13367,7 +13367,7 @@ var init_cs = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/da.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/da.js
 function da_default() {
   return {
     localeError: error9()
@@ -13375,7 +13375,7 @@ function da_default() {
 }
 var error9;
 var init_da = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/da.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/da.js"() {
     init_util();
     error9 = () => {
       const Sizable = {
@@ -13494,7 +13494,7 @@ var init_da = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/de.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/de.js
 function de_default() {
   return {
     localeError: error10()
@@ -13502,7 +13502,7 @@ function de_default() {
 }
 var error10;
 var init_de = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/de.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/de.js"() {
     init_util();
     error10 = () => {
       const Sizable = {
@@ -13614,7 +13614,7 @@ var init_de = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/el.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/el.js
 function el_default() {
   return {
     localeError: error11()
@@ -13622,7 +13622,7 @@ function el_default() {
 }
 var error11;
 var init_el = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/el.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/el.js"() {
     init_util();
     error11 = () => {
       const Sizable = {
@@ -13733,7 +13733,7 @@ var init_el = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/en.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/en.js
 function en_default() {
   return {
     localeError: error12()
@@ -13741,7 +13741,7 @@ function en_default() {
 }
 var error12;
 var init_en = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/en.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/en.js"() {
     init_util();
     error12 = () => {
       const Sizable = {
@@ -13864,7 +13864,7 @@ var init_en = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/eo.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/eo.js
 function eo_default() {
   return {
     localeError: error13()
@@ -13872,7 +13872,7 @@ function eo_default() {
 }
 var error13;
 var init_eo = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/eo.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/eo.js"() {
     init_util();
     error13 = () => {
       const Sizable = {
@@ -13985,7 +13985,7 @@ var init_eo = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/es.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/es.js
 function es_default() {
   return {
     localeError: error14()
@@ -13993,7 +13993,7 @@ function es_default() {
 }
 var error14;
 var init_es = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/es.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/es.js"() {
     init_util();
     error14 = () => {
       const Sizable = {
@@ -14128,7 +14128,7 @@ var init_es = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fa.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fa.js
 function fa_default() {
   return {
     localeError: error15()
@@ -14136,7 +14136,7 @@ function fa_default() {
 }
 var error15;
 var init_fa = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fa.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fa.js"() {
     init_util();
     error15 = () => {
       const Sizable = {
@@ -14254,7 +14254,7 @@ var init_fa = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fi.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fi.js
 function fi_default() {
   return {
     localeError: error16()
@@ -14262,7 +14262,7 @@ function fi_default() {
 }
 var error16;
 var init_fi = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fi.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fi.js"() {
     init_util();
     error16 = () => {
       const Sizable = {
@@ -14378,7 +14378,7 @@ var init_fi = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr.js
 function fr_default() {
   return {
     localeError: error17()
@@ -14386,7 +14386,7 @@ function fr_default() {
 }
 var error17;
 var init_fr = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr.js"() {
     init_util();
     error17 = () => {
       const Sizable = {
@@ -14514,7 +14514,7 @@ var init_fr = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr-CA.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr-CA.js
 function fr_CA_default() {
   return {
     localeError: error18()
@@ -14522,7 +14522,7 @@ function fr_CA_default() {
 }
 var error18;
 var init_fr_CA = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr-CA.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/fr-CA.js"() {
     init_util();
     error18 = () => {
       const Sizable = {
@@ -14633,7 +14633,7 @@ var init_fr_CA = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/gu.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/gu.js
 function gu_default() {
   return {
     localeError: error19()
@@ -14641,7 +14641,7 @@ function gu_default() {
 }
 var error19;
 var init_gu = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/gu.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/gu.js"() {
     init_util();
     error19 = () => {
       const Sizable = {
@@ -14753,7 +14753,7 @@ var init_gu = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/he.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/he.js
 function he_default() {
   return {
     localeError: error20()
@@ -14761,7 +14761,7 @@ function he_default() {
 }
 var error20;
 var init_he = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/he.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/he.js"() {
     init_util();
     error20 = () => {
       const TypeNames = {
@@ -14961,7 +14961,7 @@ var init_he = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hi.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hi.js
 function hi_default() {
   return {
     localeError: error21()
@@ -14969,7 +14969,7 @@ function hi_default() {
 }
 var error21;
 var init_hi = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hi.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hi.js"() {
     init_util();
     error21 = () => {
       const Sizable = {
@@ -15079,7 +15079,7 @@ var init_hi = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hr.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hr.js
 function hr_default() {
   return {
     localeError: error22()
@@ -15087,7 +15087,7 @@ function hr_default() {
 }
 var error22;
 var init_hr = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hr.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hr.js"() {
     init_util();
     error22 = () => {
       const Sizable = {
@@ -15212,7 +15212,7 @@ var init_hr = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hu.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hu.js
 function hu_default() {
   return {
     localeError: error23()
@@ -15220,7 +15220,7 @@ function hu_default() {
 }
 var error23;
 var init_hu = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hu.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hu.js"() {
     init_util();
     error23 = () => {
       const Sizable = {
@@ -15332,7 +15332,7 @@ var init_hu = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hy.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hy.js
 function getArmenianPlural(count, one, many) {
   return Math.abs(count) === 1 ? one : many;
 }
@@ -15350,7 +15350,7 @@ function hy_default() {
 }
 var error24;
 var init_hy = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hy.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hy.js"() {
     init_util();
     error24 = () => {
       const Sizable = {
@@ -15497,7 +15497,7 @@ var init_hy = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/id.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/id.js
 function id_default() {
   return {
     localeError: error25()
@@ -15505,7 +15505,7 @@ function id_default() {
 }
 var error25;
 var init_id = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/id.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/id.js"() {
     init_util();
     error25 = () => {
       const Sizable = {
@@ -15615,7 +15615,7 @@ var init_id = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/is.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/is.js
 function is_default() {
   return {
     localeError: error26()
@@ -15623,7 +15623,7 @@ function is_default() {
 }
 var error26;
 var init_is = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/is.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/is.js"() {
     init_util();
     error26 = () => {
       const Sizable = {
@@ -15736,7 +15736,7 @@ var init_is = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/it.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/it.js
 function it_default() {
   return {
     localeError: error27()
@@ -15744,7 +15744,7 @@ function it_default() {
 }
 var error27;
 var init_it = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/it.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/it.js"() {
     init_util();
     error27 = () => {
       const Sizable = {
@@ -15856,7 +15856,7 @@ var init_it = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ja.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ja.js
 function ja_default() {
   return {
     localeError: error28()
@@ -15864,7 +15864,7 @@ function ja_default() {
 }
 var error28;
 var init_ja = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ja.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ja.js"() {
     init_util();
     error28 = () => {
       const Sizable = {
@@ -15975,7 +15975,7 @@ var init_ja = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ka.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ka.js
 function ka_default() {
   return {
     localeError: error29()
@@ -15983,7 +15983,7 @@ function ka_default() {
 }
 var error29;
 var init_ka = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ka.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ka.js"() {
     init_util();
     error29 = () => {
       const Sizable = {
@@ -16099,7 +16099,7 @@ var init_ka = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/km.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/km.js
 function km_default() {
   return {
     localeError: error30()
@@ -16107,7 +16107,7 @@ function km_default() {
 }
 var error30;
 var init_km = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/km.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/km.js"() {
     init_util();
     error30 = () => {
       const Sizable = {
@@ -16221,17 +16221,17 @@ var init_km = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kh.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kh.js
 function kh_default() {
   return km_default();
 }
 var init_kh = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kh.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kh.js"() {
     init_km();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kn.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kn.js
 function kn_default() {
   return {
     localeError: error31()
@@ -16239,7 +16239,7 @@ function kn_default() {
 }
 var error31;
 var init_kn = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kn.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/kn.js"() {
     init_util();
     error31 = () => {
       const Sizable = {
@@ -16353,7 +16353,7 @@ var init_kn = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ko.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ko.js
 function ko_default() {
   return {
     localeError: error32()
@@ -16361,7 +16361,7 @@ function ko_default() {
 }
 var error32;
 var init_ko = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ko.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ko.js"() {
     init_util();
     error32 = () => {
       const Sizable = {
@@ -16476,7 +16476,7 @@ var init_ko = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
   const last = abs % 10;
@@ -16494,7 +16494,7 @@ function lt_default() {
 }
 var capitalizeFirstCharacter, error33;
 var init_lt = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js"() {
     init_util();
     capitalizeFirstCharacter = (text3) => {
       return text3.charAt(0).toUpperCase() + text3.slice(1);
@@ -16690,7 +16690,7 @@ var init_lt = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/mk.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/mk.js
 function mk_default() {
   return {
     localeError: error34()
@@ -16698,7 +16698,7 @@ function mk_default() {
 }
 var error34;
 var init_mk = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/mk.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/mk.js"() {
     init_util();
     error34 = () => {
       const Sizable = {
@@ -16811,7 +16811,7 @@ var init_mk = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ms.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ms.js
 function ms_default() {
   return {
     localeError: error35()
@@ -16819,7 +16819,7 @@ function ms_default() {
 }
 var error35;
 var init_ms = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ms.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ms.js"() {
     init_util();
     error35 = () => {
       const Sizable = {
@@ -16930,7 +16930,7 @@ var init_ms = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ne.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ne.js
 function ne_default() {
   return {
     localeError: error36()
@@ -16938,7 +16938,7 @@ function ne_default() {
 }
 var error36;
 var init_ne = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ne.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ne.js"() {
     init_util();
     error36 = () => {
       const Sizable = {
@@ -17048,7 +17048,7 @@ var init_ne = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nl.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nl.js
 function nl_default() {
   return {
     localeError: error37()
@@ -17056,7 +17056,7 @@ function nl_default() {
 }
 var error37;
 var init_nl = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nl.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nl.js"() {
     init_util();
     error37 = () => {
       const Sizable = {
@@ -17170,7 +17170,7 @@ var init_nl = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nn.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nn.js
 function nn_default() {
   return {
     localeError: error38()
@@ -17178,7 +17178,7 @@ function nn_default() {
 }
 var error38;
 var init_nn = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nn.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/nn.js"() {
     init_util();
     error38 = () => {
       const Sizable = {
@@ -17290,7 +17290,7 @@ var init_nn = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/no.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/no.js
 function no_default() {
   return {
     localeError: error39()
@@ -17298,7 +17298,7 @@ function no_default() {
 }
 var error39;
 var init_no = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/no.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/no.js"() {
     init_util();
     error39 = () => {
       const Sizable = {
@@ -17410,7 +17410,7 @@ var init_no = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ota.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ota.js
 function ota_default() {
   return {
     localeError: error40()
@@ -17418,7 +17418,7 @@ function ota_default() {
 }
 var error40;
 var init_ota = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ota.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ota.js"() {
     init_util();
     error40 = () => {
       const Sizable = {
@@ -17531,7 +17531,7 @@ var init_ota = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ps.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ps.js
 function ps_default() {
   return {
     localeError: error41()
@@ -17539,7 +17539,7 @@ function ps_default() {
 }
 var error41;
 var init_ps = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ps.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ps.js"() {
     init_util();
     error41 = () => {
       const Sizable = {
@@ -17657,7 +17657,7 @@ var init_ps = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pl.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pl.js
 function pl_default() {
   return {
     localeError: error42()
@@ -17665,7 +17665,7 @@ function pl_default() {
 }
 var error42;
 var init_pl = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pl.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pl.js"() {
     init_util();
     error42 = () => {
       const Sizable = {
@@ -17778,7 +17778,7 @@ var init_pl = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt.js
 function pt_default() {
   return {
     localeError: error43()
@@ -17786,7 +17786,7 @@ function pt_default() {
 }
 var error43;
 var init_pt = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt.js"() {
     init_util();
     error43 = () => {
       const Sizable = {
@@ -17928,7 +17928,7 @@ var init_pt = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt-BR.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt-BR.js
 function pt_BR_default() {
   return {
     localeError: error44()
@@ -17936,7 +17936,7 @@ function pt_BR_default() {
 }
 var error44;
 var init_pt_BR = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt-BR.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/pt-BR.js"() {
     init_util();
     error44 = () => {
       const Sizable = {
@@ -18079,7 +18079,7 @@ var init_pt_BR = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ro.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ro.js
 function ro_default() {
   return {
     localeError: error45()
@@ -18087,7 +18087,7 @@ function ro_default() {
 }
 var error45;
 var init_ro = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ro.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ro.js"() {
     init_util();
     error45 = () => {
       const Sizable = {
@@ -18208,7 +18208,7 @@ var init_ro = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ru.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ru.js
 function getRussianPlural(count, one, few, many) {
   const absCount = Math.abs(count);
   const lastDigit = absCount % 10;
@@ -18231,7 +18231,7 @@ function ru_default() {
 }
 var error46;
 var init_ru = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ru.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ru.js"() {
     init_util();
     error46 = () => {
       const Sizable = {
@@ -18383,7 +18383,7 @@ var init_ru = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sk.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sk.js
 function sk_default() {
   return {
     localeError: error47()
@@ -18391,7 +18391,7 @@ function sk_default() {
 }
 var error47;
 var init_sk = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sk.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sk.js"() {
     init_util();
     error47 = () => {
       const Sizable = {
@@ -18506,7 +18506,7 @@ var init_sk = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sl.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sl.js
 function sl_default() {
   return {
     localeError: error48()
@@ -18514,7 +18514,7 @@ function sl_default() {
 }
 var error48;
 var init_sl = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sl.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sl.js"() {
     init_util();
     error48 = () => {
       const Sizable = {
@@ -18627,7 +18627,7 @@ var init_sl = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sv.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sv.js
 function sv_default() {
   return {
     localeError: error49()
@@ -18635,7 +18635,7 @@ function sv_default() {
 }
 var error49;
 var init_sv = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sv.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/sv.js"() {
     init_util();
     error49 = () => {
       const Sizable = {
@@ -18749,7 +18749,7 @@ var init_sv = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ta.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ta.js
 function ta_default() {
   return {
     localeError: error50()
@@ -18757,7 +18757,7 @@ function ta_default() {
 }
 var error50;
 var init_ta = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ta.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ta.js"() {
     init_util();
     error50 = () => {
       const Sizable = {
@@ -18871,7 +18871,7 @@ var init_ta = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tg.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tg.js
 function tg_default() {
   return {
     localeError: error51()
@@ -18879,7 +18879,7 @@ function tg_default() {
 }
 var error51;
 var init_tg = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tg.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tg.js"() {
     init_util();
     error51 = () => {
       const Sizable = {
@@ -18994,7 +18994,7 @@ var init_tg = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/th.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/th.js
 function th_default() {
   return {
     localeError: error52()
@@ -19002,7 +19002,7 @@ function th_default() {
 }
 var error52;
 var init_th = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/th.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/th.js"() {
     init_util();
     error52 = () => {
       const Sizable = {
@@ -19116,7 +19116,7 @@ var init_th = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tk.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tk.js
 function tk_default() {
   return {
     localeError: error53()
@@ -19124,7 +19124,7 @@ function tk_default() {
 }
 var error53;
 var init_tk = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tk.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tk.js"() {
     init_util();
     error53 = () => {
       const Sizable = {
@@ -19230,7 +19230,7 @@ var init_tk = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tr.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tr.js
 function tr_default() {
   return {
     localeError: error54()
@@ -19238,7 +19238,7 @@ function tr_default() {
 }
 var error54;
 var init_tr = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tr.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/tr.js"() {
     init_util();
     error54 = () => {
       const Sizable = {
@@ -19347,7 +19347,7 @@ var init_tr = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uk.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uk.js
 function uk_default() {
   return {
     localeError: error55()
@@ -19355,7 +19355,7 @@ function uk_default() {
 }
 var error55;
 var init_uk = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uk.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uk.js"() {
     init_util();
     error55 = () => {
       const Sizable = {
@@ -19467,17 +19467,17 @@ var init_uk = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ua.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ua.js
 function ua_default() {
   return uk_default();
 }
 var init_ua = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ua.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ua.js"() {
     init_uk();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ur.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ur.js
 function ur_default() {
   return {
     localeError: error56()
@@ -19485,7 +19485,7 @@ function ur_default() {
 }
 var error56;
 var init_ur = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ur.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ur.js"() {
     init_util();
     error56 = () => {
       const Sizable = {
@@ -19599,7 +19599,7 @@ var init_ur = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uz.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uz.js
 function uz_default() {
   return {
     localeError: error57()
@@ -19607,7 +19607,7 @@ function uz_default() {
 }
 var error57;
 var init_uz = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uz.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/uz.js"() {
     init_util();
     error57 = () => {
       const Sizable = {
@@ -19719,7 +19719,7 @@ var init_uz = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/vi.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/vi.js
 function vi_default() {
   return {
     localeError: error58()
@@ -19727,7 +19727,7 @@ function vi_default() {
 }
 var error58;
 var init_vi = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/vi.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/vi.js"() {
     init_util();
     error58 = () => {
       const Sizable = {
@@ -19839,7 +19839,7 @@ var init_vi = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-CN.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-CN.js
 function zh_CN_default() {
   return {
     localeError: error59()
@@ -19847,7 +19847,7 @@ function zh_CN_default() {
 }
 var error59;
 var init_zh_CN = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-CN.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-CN.js"() {
     init_util();
     error59 = () => {
       const Sizable = {
@@ -19960,7 +19960,7 @@ var init_zh_CN = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-TW.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-TW.js
 function zh_TW_default() {
   return {
     localeError: error60()
@@ -19968,7 +19968,7 @@ function zh_TW_default() {
 }
 var error60;
 var init_zh_TW = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-TW.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/zh-TW.js"() {
     init_util();
     error60 = () => {
       const Sizable = {
@@ -20079,7 +20079,7 @@ var init_zh_TW = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/yo.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/yo.js
 function yo_default() {
   return {
     localeError: error61()
@@ -20087,7 +20087,7 @@ function yo_default() {
 }
 var error61;
 var init_yo = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/yo.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/yo.js"() {
     init_util();
     error61 = () => {
       const Sizable = {
@@ -20198,7 +20198,7 @@ var init_yo = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/index.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/index.js
 var locales_exports = {};
 __export(locales_exports, {
   ar: () => ar_default,
@@ -20266,7 +20266,7 @@ __export(locales_exports, {
   zhTW: () => zh_TW_default
 });
 var init_locales = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/index.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/index.js"() {
     init_ar();
     init_az();
     init_be();
@@ -20333,13 +20333,13 @@ var init_locales = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/registries.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/registries.js
 function registry() {
   return new $ZodRegistry();
 }
 var _a2, $output, $input, $ZodRegistry, globalRegistry;
 var init_registries = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/registries.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/registries.js"() {
     $output = /* @__PURE__ */ Symbol("ZodOutput");
     $input = /* @__PURE__ */ Symbol("ZodInput");
     $ZodRegistry = class {
@@ -20387,7 +20387,7 @@ var init_registries = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/compile.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/compile.js
 function compileValidator(schema, parser) {
   try {
     return compileFn(schema, { assertOnly: true });
@@ -21949,7 +21949,7 @@ function generateTransformCheck(doc, ctx, schema, accessor) {
 }
 var INVALID, FALLBACK_FLAG, ZodCompileAsyncError, ZodCompileUnsupportedError, WHEN_DEFAULTED_CHECKS, PATTERN_IS_COMPLETE;
 var init_compile = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/compile.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/compile.js"() {
     init_core();
     init_doc();
     init_memoizer();
@@ -22008,7 +22008,7 @@ var init_compile = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/api.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/api.js
 function snapshotChecks(def) {
   if (def.checks)
     def.checks = [...def.checks];
@@ -23061,7 +23061,7 @@ function _stringFormat(Class2, format, fnOrRegex, _params = {}) {
 }
 var TimePrecision;
 var init_api = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/api.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/api.js"() {
     init_checks();
     init_registries();
     init_schemas();
@@ -23076,7 +23076,7 @@ var init_api = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/to-json-schema.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/to-json-schema.js
 function assignProps(target, ...sources) {
   for (const source of sources) {
     for (const key of Reflect.ownKeys(source)) {
@@ -23592,7 +23592,7 @@ function isTransforming(_schema, _ctx) {
 }
 var FOLDABLE_KEYS, UNION_KEYS, createToJSONSchemaMethod, createStandardJSONSchemaMethod;
 var init_to_json_schema = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/to-json-schema.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/to-json-schema.js"() {
     init_registries();
     init_util();
     FOLDABLE_KEYS = /* @__PURE__ */ new Set(["type", "properties", "required", "additionalProperties"]);
@@ -23613,7 +23613,7 @@ var init_to_json_schema = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-processors.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-processors.js
 function aggregateChecks(schema) {
   const agg = {};
   const def = schema._zod.def;
@@ -23763,7 +23763,7 @@ function toJSONSchema(input2, params) {
 }
 var narrowMin, narrowMax, narrowBoth, addDivisor, addPattern, intersectMime, setFormat, minContributor, maxContributor, formatContributor, contributors, formatMap, exactPatterns, exactPattern, stringProcessor, numberProcessor, booleanProcessor, bigintProcessor, symbolProcessor, nullProcessor, undefinedProcessor, voidProcessor, neverProcessor, anyProcessor, unknownProcessor, dateProcessor, enumProcessor, literalProcessor, nanProcessor, templateLiteralProcessor, fileProcessor, successProcessor, customProcessor, functionProcessor, transformProcessor, mapProcessor, setProcessor, arrayProcessor, objectProcessor, unionProcessor, intersectionProcessor, tupleProcessor, pendingRecords, recordProcessor, nullableProcessor, nonoptionalProcessor, UNREPRESENTABLE_DEFAULT, defaultProcessor, prefaultProcessor, catchProcessor, pipeProcessor, readonlyProcessor, promiseProcessor, optionalProcessor, lazyProcessor, allProcessors;
 var init_json_schema_processors = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-processors.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-processors.js"() {
     init_regexes();
     init_schemas();
     init_to_json_schema();
@@ -24370,10 +24370,10 @@ var init_json_schema_processors = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-generator.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-generator.js
 var JSONSchemaGenerator;
 var init_json_schema_generator = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-generator.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema-generator.js"() {
     init_json_schema_processors();
     init_to_json_schema();
     JSONSchemaGenerator = class {
@@ -24455,14 +24455,14 @@ var init_json_schema_generator = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema.js
 var json_schema_exports = {};
 var init_json_schema = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/json-schema.js"() {
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/index.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/index.js
 var core_exports2 = {};
 __export(core_exports2, {
   $ZodAny: () => $ZodAny,
@@ -24779,7 +24779,7 @@ __export(core_exports2, {
   withParser: () => withParser
 });
 var init_core2 = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/index.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/index.js"() {
     init_core();
     init_parse();
     init_errors();
@@ -24802,7 +24802,7 @@ var init_core2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/checks.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/checks.js
 var checks_exports2 = {};
 __export(checks_exports2, {
   endsWith: () => _endsWith,
@@ -24837,12 +24837,12 @@ __export(checks_exports2, {
   uppercase: () => _uppercase
 });
 var init_checks2 = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/checks.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/checks.js"() {
     init_core2();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/errors.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/errors.js
 function _lazyMethod(proto, key, make) {
   Object.defineProperty(proto, key, {
     configurable: true,
@@ -24859,7 +24859,7 @@ function _lazyMethod(proto, key, make) {
 }
 var _installedErrorProtos, initializer2, ZodError, ZodRealError;
 var init_errors2 = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/errors.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/errors.js"() {
     init_core2();
     init_core2();
     init_util();
@@ -24896,10 +24896,10 @@ var init_errors2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/parse.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/parse.js
 var parse2, parseAsync2, safeParse2, safeParseAsync2, encode2, decode2, encodeAsync2, decodeAsync2, safeEncode2, safeDecode2, safeEncodeAsync2, safeDecodeAsync2;
 var init_parse2 = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/parse.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/parse.js"() {
     init_core2();
     init_errors2();
     init_core2();
@@ -24918,7 +24918,7 @@ var init_parse2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/schemas.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/schemas.js
 var schemas_exports2 = {};
 __export(schemas_exports2, {
   ZodAny: () => ZodAny,
@@ -25592,7 +25592,7 @@ function preprocess(fn, schema) {
 }
 var ZodType, _ZodString, ZodString, ZodStringFormat, ZodISODateTime, ZodISODate, ZodISOTime, ZodISODuration, ZodEmail, ZodGUID, ZodUUID, ZodURL, ZodEmoji, ZodNanoID, ZodCUID, ZodCUID2, ZodULID, ZodXID, ZodKSUID, ZodIPv4, ZodMAC, ZodIPv6, ZodCIDRv4, ZodCIDRv6, ZodBase64, ZodBase64URL, ZodE164, ZodCreditCard, ZodIBAN, ZodJWT, ZodCustomStringFormat, ZodNumber, ZodNumberFormat, ZodBoolean, ZodBigInt, ZodBigIntFormat, ZodSymbol, ZodUndefined, ZodNull, ZodAny, ZodUnknown, ZodNever, ZodVoid, ZodDate, ZodArray, ZodObject, ZodUnion, ZodXor, ZodDiscriminatedUnion, ZodIntersection, ZodTuple, ZodRecord, ZodMap, ZodSet, ZodEnum, ZodLiteral, ZodFile, ZodTransform, ZodOptional, ZodExactOptional, ZodNullable, ZodDefault, ZodPrefault, ZodNonOptional, ZodSuccess, ZodCatch, ZodNaN, ZodPipe, ZodCodec, ZodPreprocess, ZodReadonly, ZodTemplateLiteral, ZodLazy, ZodPromise, ZodFunction, ZodCustom, describe2, meta2, ZodInstanceOf, stringbool;
 var init_schemas2 = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/schemas.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/schemas.js"() {
     init_core2();
     init_core2();
     init_json_schema_processors();
@@ -26575,7 +26575,7 @@ var init_schemas2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/compat.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/compat.js
 function setErrorMap(map2) {
   config({
     customError: map2
@@ -26586,7 +26586,7 @@ function getErrorMap() {
 }
 var ZodIssueCode, ZodFirstPartyTypeKind;
 var init_compat = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/compat.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/compat.js"() {
     init_core2();
     ZodIssueCode = {
       invalid_type: "invalid_type",
@@ -26606,7 +26606,7 @@ var init_compat = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/iso.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/iso.js
 var iso_exports = {};
 __export(iso_exports, {
   ZodISODate: () => ZodISODate,
@@ -26631,14 +26631,14 @@ function duration2(params) {
   return _isoDuration(ZodISODuration, params);
 }
 var init_iso = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/iso.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/iso.js"() {
     init_core2();
     init_schemas2();
     init_schemas2();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/from-json-schema.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/from-json-schema.js
 function detectVersion(schema, defaultTarget) {
   const $schema = schema.$schema;
   if ($schema === "https://json-schema.org/draft/2020-12/schema") {
@@ -27269,7 +27269,7 @@ function fromJSONSchema(schema, params) {
 }
 var z, RECOGNIZED_KEYS, SCHEMA_KEYWORDS, SCHEMA_MAP_KEYWORDS, fullTime;
 var init_from_json_schema = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/from-json-schema.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/from-json-schema.js"() {
     init_registries();
     init_util();
     init_checks2();
@@ -27381,7 +27381,7 @@ var init_from_json_schema = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js
 function visit(schema, fnOrHandlers) {
   const fn = typeof fnOrHandlers === "function" ? fnOrHandlers : (node2, rewritten) => {
     const h = fnOrHandlers[node2._zod.def.type];
@@ -27536,14 +27536,14 @@ function visit(schema, fnOrHandlers) {
 }
 var RESOLVING;
 var init_visit = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/core/visit.js"() {
     init_schemas();
     init_util();
     RESOLVING = Symbol("z.visit/resolving");
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/deep-partial.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/deep-partial.js
 function deepPartial(schema) {
   return visit(schema, {
     object: (s) => s.partial(),
@@ -27555,13 +27555,13 @@ function deepPartial(schema) {
   });
 }
 var init_deep_partial = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/deep-partial.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/deep-partial.js"() {
     init_visit();
     init_schemas2();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/in-out.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/in-out.js
 function withChecks(side, checks) {
   if (!checks?.length)
     return side;
@@ -27591,14 +27591,14 @@ function output(schema) {
   });
 }
 var init_in_out = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/in-out.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/in-out.js"() {
     init_util();
     init_visit();
     init_schemas2();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/coerce.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/coerce.js
 var coerce_exports = {};
 __export(coerce_exports, {
   bigint: () => bigint3,
@@ -27623,13 +27623,13 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 var init_coerce = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/coerce.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/coerce.js"() {
     init_core2();
     init_schemas2();
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js
 var external_exports = {};
 __export(external_exports, {
   $brand: () => $brand,
@@ -27892,7 +27892,7 @@ __export(external_exports, {
   xor: () => xor
 });
 var init_external = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js"() {
     init_core2();
     init_schemas2();
     init_checks2();
@@ -27911,18 +27911,18 @@ var init_external = __esm({
   }
 });
 
-// ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/index.js
+// node_modules/.pnpm/zod@4.6.7/node_modules/zod/index.js
 var init_zod = __esm({
-  "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/index.js"() {
+  "node_modules/.pnpm/zod@4.6.7/node_modules/zod/index.js"() {
     init_external();
     init_external();
   }
 });
 
-// ../vexnar-store/src/types.ts
+// vexnar-store/src/types.ts
 var taskRow, findingRow, assetRow, nodeRow, companyRow;
 var init_types = __esm({
-  "../vexnar-store/src/types.ts"() {
+  "vexnar-store/src/types.ts"() {
     "use strict";
     init_zod();
     taskRow = external_exports.object({
@@ -27991,7 +27991,7 @@ var init_types = __esm({
   }
 });
 
-// ../vexnar-store/src/pg-store.ts
+// vexnar-store/src/pg-store.ts
 function pgStore(connection) {
   const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
   const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
@@ -28360,7 +28360,7 @@ function pgStore(connection) {
   };
 }
 var init_pg_store = __esm({
-  "../vexnar-store/src/pg-store.ts"() {
+  "vexnar-store/src/pg-store.ts"() {
     "use strict";
     init_esm();
     init_task_status();
@@ -28369,7 +28369,7 @@ var init_pg_store = __esm({
   }
 });
 
-// ../vexnar-store/src/writer.ts
+// vexnar-store/src/writer.ts
 import { mkdir, open as open2, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 function storeWriter(root) {
@@ -28513,7 +28513,7 @@ function storeWriter(root) {
 }
 var StoreConflict, SAFE;
 var init_writer = __esm({
-  "../vexnar-store/src/writer.ts"() {
+  "vexnar-store/src/writer.ts"() {
     "use strict";
     StoreConflict = class extends Error {
       constructor(table, key, expected, actual) {
@@ -28529,7 +28529,7 @@ var init_writer = __esm({
   }
 });
 
-// ../vexnar-store/src/meta-store.ts
+// vexnar-store/src/meta-store.ts
 import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, join as join2 } from "node:path";
 function metaStore(root) {
@@ -28566,12 +28566,12 @@ function metaStore(root) {
   };
 }
 var init_meta_store = __esm({
-  "../vexnar-store/src/meta-store.ts"() {
+  "vexnar-store/src/meta-store.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/per-record.ts
+// vexnar-store/src/per-record.ts
 import { mkdir as mkdir3, readdir as readdir2, readFile as readFile3, rename as rename3, rm as rm2, writeFile as writeFile3 } from "node:fs/promises";
 import { join as join3 } from "node:path";
 async function readPerRecord(root, table, schema) {
@@ -28595,12 +28595,12 @@ async function readPerRecord(root, table, schema) {
   return rows;
 }
 var init_per_record = __esm({
-  "../vexnar-store/src/per-record.ts"() {
+  "vexnar-store/src/per-record.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/json-store.ts
+// vexnar-store/src/json-store.ts
 import { mkdir as mkdir4 } from "node:fs/promises";
 function createStore(backend2, readTable, init = async () => {
 }, cacheEnabled = true) {
@@ -28929,7 +28929,7 @@ function jsonStore(root) {
 }
 var resolveTaskRow;
 var init_json_store = __esm({
-  "../vexnar-store/src/json-store.ts"() {
+  "vexnar-store/src/json-store.ts"() {
     "use strict";
     init_task_status();
     init_types();
@@ -28938,7 +28938,7 @@ var init_json_store = __esm({
   }
 });
 
-// ../vexnar-store/src/sqlite.ts
+// vexnar-store/src/sqlite.ts
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
@@ -29071,7 +29071,7 @@ function sqliteStore(path) {
 }
 var parse3;
 var init_sqlite = __esm({
-  "../vexnar-store/src/sqlite.ts"() {
+  "vexnar-store/src/sqlite.ts"() {
     "use strict";
     init_json_store();
     init_writer();
@@ -29079,7 +29079,7 @@ var init_sqlite = __esm({
   }
 });
 
-// ../vexnar-store/src/pg-meta.ts
+// vexnar-store/src/pg-meta.ts
 function settingsRow(row) {
   const raw2 = row.value ?? "";
   if (raw2 === "") return [row.key, ""];
@@ -29158,7 +29158,7 @@ function pgMetaStore(connection, fallback) {
 }
 var iso, json2, LOADERS, SENSITIVE_SETTING;
 var init_pg_meta = __esm({
-  "../vexnar-store/src/pg-meta.ts"() {
+  "vexnar-store/src/pg-meta.ts"() {
     "use strict";
     init_esm();
     esm_default.types.setTypeParser(20, (value) => Number(value));
@@ -29276,7 +29276,7 @@ var init_pg_meta = __esm({
   }
 });
 
-// ../vexnar-store/src/backend.ts
+// vexnar-store/src/backend.ts
 import { homedir } from "node:os";
 import { join as join4 } from "node:path";
 function storeRoot() {
@@ -29321,7 +29321,7 @@ async function openStore(root = storeRoot()) {
   return store2;
 }
 var init_backend = __esm({
-  "../vexnar-store/src/backend.ts"() {
+  "vexnar-store/src/backend.ts"() {
     "use strict";
     init_writer();
     init_meta_store();
@@ -29331,7 +29331,7 @@ var init_backend = __esm({
   }
 });
 
-// ../vexnar-store/src/operations.ts
+// vexnar-store/src/operations.ts
 function rfc3339(date5) {
   const offset = -date5.getTimezoneOffset();
   const sign = offset >= 0 ? "+" : "-";
@@ -30435,7 +30435,7 @@ function storeOperations(_root) {
 }
 var STATUSES, SEVERITIES;
 var init_operations = __esm({
-  "../vexnar-store/src/operations.ts"() {
+  "vexnar-store/src/operations.ts"() {
     "use strict";
     init_backend();
     STATUSES = /* @__PURE__ */ new Set(["pending", "in_progress", "confirmed", "resolved", "fixed", "false_positive", "ignored", "duplicate", "risk_accepted"]);
@@ -30443,7 +30443,7 @@ var init_operations = __esm({
   }
 });
 
-// ../vexnar-store/src/tools.ts
+// vexnar-store/src/tools.ts
 function toolSpecs() {
   return Object.values(templates).map(({ name, description }) => ({ name, description }));
 }
@@ -30564,7 +30564,7 @@ async function persistToolResult(ops, taskId, nodeId, name, parsed, raw2) {
 }
 var templates;
 var init_tools = __esm({
-  "../vexnar-store/src/tools.ts"() {
+  "vexnar-store/src/tools.ts"() {
     "use strict";
     templates = {
       nmap: {
@@ -30778,7 +30778,7 @@ var init_tools = __esm({
   }
 });
 
-// ../vexnar-store/src/engine.ts
+// vexnar-store/src/engine.ts
 function parseJson(text3) {
   const trimmed = text3.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
   try {
@@ -30991,14 +30991,14 @@ ${result.stderr.slice(0, 2e3)}` : ""}`;
 }
 var claimChains;
 var init_engine = __esm({
-  "../vexnar-store/src/engine.ts"() {
+  "vexnar-store/src/engine.ts"() {
     "use strict";
     init_tools();
     claimChains = /* @__PURE__ */ new Map();
   }
 });
 
-// ../vexnar-store/src/exec.ts
+// vexnar-store/src/exec.ts
 import { spawn } from "node:child_process";
 function createRunner(options = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1);
@@ -31072,13 +31072,13 @@ function createRunner(options = {}) {
 }
 var ALLOWED;
 var init_exec = __esm({
-  "../vexnar-store/src/exec.ts"() {
+  "vexnar-store/src/exec.ts"() {
     "use strict";
     ALLOWED = /* @__PURE__ */ new Set(["nmap", "httpx", "ffuf", "sqlmap", "nuclei", "curl", "dig", "whois", "openssl", "nc", "nikto", "gobuster", "subfinder", "katana"]);
   }
 });
 
-// ../vexnar-store/src/blobs.ts
+// vexnar-store/src/blobs.ts
 import { createHash } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile4, rename as rename4, stat, writeFile as writeFile4 } from "node:fs/promises";
 import { join as join5 } from "node:path";
@@ -31110,12 +31110,12 @@ function blobStore(root) {
   };
 }
 var init_blobs = __esm({
-  "../vexnar-store/src/blobs.ts"() {
+  "vexnar-store/src/blobs.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/scheduler.ts
+// vexnar-store/src/scheduler.ts
 function createScheduler(options = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1);
   const queue = [];
@@ -31180,12 +31180,12 @@ function createScheduler(options = {}) {
   };
 }
 var init_scheduler = __esm({
-  "../vexnar-store/src/scheduler.ts"() {
+  "vexnar-store/src/scheduler.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/notify.ts
+// vexnar-store/src/notify.ts
 function createNotifier(channels, send, record2, maxAttempts = 3) {
   const dispatch = async (event) => {
     const results = [];
@@ -31222,12 +31222,12 @@ async function defaultSend(channel, event) {
   return { ok: response.ok, detail: `HTTP ${response.status}` };
 }
 var init_notify = __esm({
-  "../vexnar-store/src/notify.ts"() {
+  "vexnar-store/src/notify.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/triggers.ts
+// vexnar-store/src/triggers.ts
 async function spawnTriggerTask(ops, agentKey, fire) {
   const text3 = String(fire.message || fire.event);
   return ops.createTask({
@@ -31263,7 +31263,7 @@ async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
 }
 var EVENT_FLAGS;
 var init_triggers = __esm({
-  "../vexnar-store/src/triggers.ts"() {
+  "vexnar-store/src/triggers.ts"() {
     "use strict";
     EVENT_FLAGS = [
       ["finding_created", "on_finding", "finding_message"],
@@ -31275,7 +31275,7 @@ var init_triggers = __esm({
   }
 });
 
-// ../vexnar-store/src/schedules.ts
+// vexnar-store/src/schedules.ts
 function nextFire(frequency, timeOfDay, from = /* @__PURE__ */ new Date()) {
   const [hour, minute] = String(timeOfDay || "09:00").split(":").map(Number);
   const next = new Date(from);
@@ -31305,12 +31305,12 @@ function startSchedules(store2, scheduler2, ops, handler, intervalMs = 3e4) {
   return stop;
 }
 var init_schedules = __esm({
-  "../vexnar-store/src/schedules.ts"() {
+  "vexnar-store/src/schedules.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/queue.ts
+// vexnar-store/src/queue.ts
 function createTaskQueue(options = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1);
   const entries = [];
@@ -31379,12 +31379,12 @@ function createTaskQueue(options = {}) {
   };
 }
 var init_queue = __esm({
-  "../vexnar-store/src/queue.ts"() {
+  "vexnar-store/src/queue.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/report.ts
+// vexnar-store/src/report.ts
 import { mkdir as mkdir6, readdir as readdir3, readFile as readFile5, rename as rename5, writeFile as writeFile5 } from "node:fs/promises";
 import { join as join6 } from "node:path";
 async function saveReport(root, taskId, markdown, stats, ext = "md") {
@@ -31481,12 +31481,12 @@ function buildReport(input2) {
   return { markdown: lines.join("\n"), stats: { findings: findings.length, by_severity: bySeverity, by_status: byStatus, assets: assets.length } };
 }
 var init_report = __esm({
-  "../vexnar-store/src/report.ts"() {
+  "vexnar-store/src/report.ts"() {
     "use strict";
   }
 });
 
-// ../vexnar-store/src/index.ts
+// vexnar-store/src/index.ts
 async function openStore2(root) {
   const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
   const connection = pgConnection();
@@ -31500,7 +31500,7 @@ async function openStore2(root) {
   return openStore(root);
 }
 var init_src = __esm({
-  "../vexnar-store/src/index.ts"() {
+  "vexnar-store/src/index.ts"() {
     "use strict";
     init_pg_store();
     init_backend();
@@ -31522,7 +31522,7 @@ var init_src = __esm({
   }
 });
 
-// src/gateway.ts
+// vexnar-core/src/gateway.ts
 async function responsesComplete(base, token, messages) {
   const response = await fetch(`${base}/responses`, {
     method: "POST",
@@ -31556,12 +31556,12 @@ async function gatewayComplete(messages) {
   return content;
 }
 var init_gateway = __esm({
-  "src/gateway.ts"() {
+  "vexnar-core/src/gateway.ts"() {
     "use strict";
   }
 });
 
-// src/dsl.ts
+// vexnar-core/src/dsl.ts
 function readToken(text3, pos) {
   if (text3[pos] === '"') {
     const end = text3.indexOf('"', pos + 1);
@@ -31724,7 +31724,7 @@ function queryDSL(assets, dsl) {
 }
 var STRING_FIELDS, ARRAY_FIELDS, NUMERIC_FIELDS, FULL_TEXT, isField, lower;
 var init_dsl = __esm({
-  "src/dsl.ts"() {
+  "vexnar-core/src/dsl.ts"() {
     "use strict";
     STRING_FIELDS = /* @__PURE__ */ new Set(["domain", "root_domain", "ip", "url", "page_title", "title", "icp", "service_name", "app_name", "bundle_id", "category", "app_icp", "method", "service_type", "record_type"]);
     ARRAY_FIELDS = /* @__PURE__ */ new Set(["technology", "technologies", "tech"]);
@@ -31735,7 +31735,2475 @@ var init_dsl = __esm({
   }
 });
 
-// src/context.ts
+// vexnar-core/src/catalog/defaults.ts
+var DEFAULT_TOOLS, DEFAULT_SERVERS;
+var init_defaults = __esm({
+  "vexnar-core/src/catalog/defaults.ts"() {
+    "use strict";
+    DEFAULT_TOOLS = [
+      {
+        "key": "add_company_scope",
+        "description": "\u628A\u57DF\u540D/IP/CIDR/ICP\u5907\u6848/\u4F01\u4E1A\u5173\u952E\u8BCD\u52A0\u5165\u67D0\u516C\u53F8\u7684\u3010\u8D44\u4EA7\u8303\u56F4\u3011\u2014\u2014\u57DF\u540D\u3001\u7F51\u7EDC\u548CICP\u4F1A\u81EA\u52A8\u8BA4\u9886\u547D\u4E2D\u7684\u8D44\u4EA7\uFF0C\u5173\u952E\u8BCD\u53EA\u63D0\u4F9B\u7ED9Agent\u4F5C\u4E3A\u8303\u56F4\u63D0\u793A\u3002\n\u516C\u53F8\u540D\u552F\u4E00\uFF1Acompany \u4E0D\u5B58\u5728\u5219\u65B0\u5EFA\uFF0C\u5DF2\u5B58\u5728\u5219\u590D\u7528(\u53EA\u628A\u8303\u56F4\u5E76\u8FDB\u53BB)\u3002\nscope \u4E00\u884C\u4E00\u6761\uFF0C\u7CFB\u7EDF\u81EA\u52A8\u8BC6\u522B\uFF1A\u6839\u57DF\u540D / URL / \u5355\u4E2A IP / CIDR \u7F51\u6BB5 / ICP\u5907\u6848 / \u4F01\u4E1A\u5173\u952E\u8BCD\u3002\n\u52A1\u5FC5\u7ED9 reason \u8BF4\u660E\u5F52\u5C5E\u4F9D\u636E(whois/\u8BC1\u4E66/ASN \u7B49)\u3002\n\u62A4\u680F\uFF1A\u62D2\u7EDD\u88F8 TLD \u4E0E\u8FC7\u5BBD\u7F51\u6BB5(IPv4\u524D\u7F00\u9700\u4E3A/16-/32\u3001IPv6\u524D\u7F00\u9700\u4E3A/32-/128)\uFF0C\u975E\u6CD5\u884C\u4F1A\u88AB\u8DF3\u8FC7\u5E76\u5728 errors \u8FD4\u56DE\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "company",
+            "scope"
+          ],
+          "properties": {
+            "logo": {
+              "type": "string",
+              "description": "\u516C\u53F8\u56FE\u6807 URL(\u53EF\u9009\uFF1B\u4EC5\u65B0\u5EFA\u516C\u53F8\u65F6\u751F\u6548)"
+            },
+            "scope": {
+              "type": "string",
+              "description": "\u8D44\u4EA7\u8303\u56F4\uFF0C\u4E00\u884C\u4E00\u6761\uFF1A\u57DF\u540D / URL / IP / CIDR / ICP\u5907\u6848 / \u4F01\u4E1A\u5173\u952E\u8BCD"
+            },
+            "reason": {
+              "type": "string",
+              "description": "\u5F52\u5C5E\u4F9D\u636E(\u8BC1\u636E/\u6765\u6E90)\uFF0C\u52A1\u5FC5\u586B\u5199"
+            },
+            "company": {
+              "type": "string",
+              "description": "\u516C\u53F8\u540D(\u4E0D\u5B58\u5728\u5219\u65B0\u5EFA\u3001\u5B58\u5728\u5219\u590D\u7528\uFF1B\u540D\u79F0\u552F\u4E00)"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "add_hint",
+        "description": "\u628A\u4EBA\u7C7B/\u4E3B agent \u7684\u6218\u7565\u63D0\u793A\u6302\u5230\u63A2\u7D22\u56FE\uFF0C\u89C4\u5212\u8005\u4E0B\u6B21\u751F\u6210\u610F\u56FE\u65F6\u4F1A\u8BFB\u5230\u5B83\u3002\n\u2605\u4F18\u5148\u6279\u91CF\uFF1A\u591A\u6761\u63D0\u793A\u653E\u8FDB hints \u6570\u7EC4\u4E00\u6B21\u63D0\u4EA4\uFF08\u6BD4\u9010\u6761\u8C03\u7528\u7701\u5F80\u8FD4\uFF09\u3002\u8FD4\u56DE ids \u6570\u7EC4\uFF0C\u4E0E hints \u7B49\u957F\u540C\u5E8F\uFF08\u5931\u8D25\u9879 id=0\uFF0C\u8BE6\u60C5\u89C1 errors\uFF09\u3002\u5355\u6761\u5219\u7701\u7565 hints \u76F4\u63A5\u7ED9\u9876\u5C42 text\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u63D0\u793A\u5185\u5BB9\uFF0C\u5982'\u91CD\u70B9\u6316\u8BA4\u8BC1\u540E\u63A5\u53E3'"
+            },
+            "hints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "\u63D0\u793A\u5185\u5BB9"
+                  },
+                  "asset_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "traffic_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "traffic_id"
+                      ],
+                      "properties": {
+                        "note": {
+                          "type": "string",
+                          "description": "\u8BE5\u6D41\u91CF\u652F\u6301\u4EC0\u4E48\u7ED3\u8BBA"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "baseline / proof / verification / supporting"
+                        },
+                        "traffic_id": {
+                          "type": "string",
+                          "description": "\u771F\u5B9E\u6D41\u91CF ID"
+                        }
+                      }
+                    },
+                    "description": "\u53EF\u9009\uFF1A\u5DF2\u6838\u5B9E\u4E14\u5BF9\u5E94\u672C\u63D0\u793A\u4E2D\u5177\u4F53\u6F0F\u6D1E\u7684\u6D41\u91CF\u5F15\u7528\uFF0C\u4FDD\u7559\u987A\u5E8F\uFF1B\u4EA4\u63A5\u540E report_finding \u53EF\u4F20 evidence_hint_id \u643A\u5E26\u8FD9\u4E9B\u5F15\u7528\u3002"
+                  }
+                }
+              },
+              "description": "\u3010\u4F18\u5148\u7528\u8FD9\u4E2A\u3011\u8981\u65B0\u589E\u7684\u63D0\u793A\u6570\u7EC4\uFF0C\u6309\u987A\u5E8F\u5904\u7406\u3002\u6BCF\u4E2A\u5143\u7D20\u5B57\u6BB5\u540C\u4E0B\u65B9\u9876\u5C42\u5B57\u6BB5\uFF08text/asset_ids/traffic_refs\uFF09\u3002\u8FD4\u56DE ids \u4E0E\u672C\u6570\u7EC4\u7B49\u957F\u3001\u540C\u5E8F\u3002"
+            },
+            "asset_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u951A\u5B9A\u7684\u8D44\u4EA7 id\uFF08\u53EF\u9009\uFF0C0/1/\u591A\u4E2A\uFF09"
+            },
+            "traffic_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "traffic_id"
+                ],
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "description": "\u8BE5\u6D41\u91CF\u652F\u6301\u4EC0\u4E48\u7ED3\u8BBA"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "baseline / proof / verification / supporting"
+                  },
+                  "traffic_id": {
+                    "type": "string",
+                    "description": "\u771F\u5B9E\u6D41\u91CF ID"
+                  }
+                }
+              },
+              "description": "\u53EF\u9009\uFF1A\u5DF2\u6838\u5B9E\u4E14\u5BF9\u5E94\u672C\u63D0\u793A\u4E2D\u5177\u4F53\u6F0F\u6D1E\u7684\u6D41\u91CF\u5F15\u7528\uFF0C\u4FDD\u7559\u987A\u5E8F\uFF1B\u4EA4\u63A5\u540E report_finding \u53EF\u4F20 evidence_hint_id \u643A\u5E26\u8FD9\u4E9B\u5F15\u7528\u3002"
+            }
+          }
+        },
+        "agents": [
+          "mainagent"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "add_intent",
+        "description": "\u751F\u6210\u3010\u63A2\u7D22\u65B9\u5411\u3011\u5199\u5165 frontier\uFF0C\u5E76\u8FDE\u5165\u63A2\u7D22\u94FE\u8DEF\u3002\u610F\u56FE\u662F\u5F00\u653E\u7684\u63A2\u7D22\u65B9\u5411\uFF0C\u4E0D\u662F\u56FA\u5B9A\u7C7B\u578B\u2014\u2014\u7528 summary \u4E00\u53E5\u8BDD\u81EA\u7531\u63CF\u8FF0\u8981\u63A2\u7D22/\u9A8C\u8BC1/\u5229\u7528\u4EC0\u4E48\u3002\n\u2605\u4F18\u5148\u6279\u91CF\uFF1A\u4E00\u8F6E\u7B5B\u51FA\u7684\u591A\u4E2A\u65B0\u65B9\u5411\u653E\u8FDB intents \u6570\u7EC4\u4E00\u6B21\u63D0\u4EA4\uFF08\u6BD4\u9010\u6761\u8C03\u7528\u7701\u5F80\u8FD4\uFF09\u3002\u8FD4\u56DE ids \u6570\u7EC4\uFF0C\u4E0E intents \u7B49\u957F\u540C\u5E8F\uFF08\u5931\u8D25\u9879 id=0\uFF0C\u8BE6\u60C5\u89C1 errors\uFF09\u3002\u5355\u6761\u5219\u7701\u7565 intents \u76F4\u63A5\u7ED9\u9876\u5C42 summary\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "intents": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "\u3010\u4F18\u5148\u7528\u8FD9\u4E2A\u3011\u8981\u65B0\u589E\u7684\u63A2\u7D22\u65B9\u5411\u6570\u7EC4\uFF0C\u6309\u987A\u5E8F\u5904\u7406\u3002\u6BCF\u4E2A\u5143\u7D20\u5B57\u6BB5\u540C\u4E0B\u65B9\u9876\u5C42\u5B57\u6BB5\uFF08summary/asset_ids/parent_ids/priority\uFF09\u3002\u8FD4\u56DE ids \u4E0E\u672C\u6570\u7EC4\u7B49\u957F\u3001\u540C\u5E8F\u3002"
+            },
+            "summary": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u4E00\u53E5\u8BDD\u63CF\u8FF0\u8FD9\u4E2A\u63A2\u7D22\u65B9\u5411\uFF1A\u505A\u4EC0\u4E48+\u4E3A\u4EC0\u4E48\u3002\u5DF2\u5199\u6E05\u65B9\u5411\u5373\u53EF\uFF0C\u4E0D\u4F9D\u8D56\u8D44\u4EA7 id\u3002"
+            },
+            "priority": {
+              "type": "integer",
+              "description": "\u4F18\u5148\u7EA7 0-10\uFF0C\u9ED8\u8BA45"
+            },
+            "asset_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u672C\u65B9\u5411\u8981\u6D4B\u8BD5/\u653B\u51FB\u7684\u3010\u76EE\u6807\u8D44\u4EA7 id\u3011\uFF08**\u5C3D\u91CF\u4F20**\uFF0C0/1/\u591A\u4E2A\uFF1B\u662F list_assets \u8FD4\u56DE\u7684\u8D44\u4EA7 id\uFF0C\u4E0D\u662F\u63A2\u7D22\u8282\u70B9 id\uFF09\uFF1A\u8FD9\u6761\u63A2\u7D22\u65B9\u5411\u9488\u5BF9\u54EA\u4E9B\u8D44\u4EA7\uFF08\u7AD9\u70B9/\u63A5\u53E3/\u53C2\u6570/\u4E3B\u673A\u7B49\uFF09\u3002\u53EA\u8981\u65B9\u5411\u56F4\u7ED5\u67D0\u4E9B\u5177\u4F53\u8D44\u4EA7\u5C31\u52A1\u5FC5\u4F20\u4E0A\u2014\u2014\u5B83\u662F\u300C\u8FD9\u6761\u63A2\u7D22\u6253\u54EA\u4E9B\u76EE\u6807\u300D\u7684\u7ED3\u6784\u5316\u6807\u8BB0\uFF0C\u7528\u4E8E\u8986\u76D6\u53BB\u91CD\u3001\u628A\u610F\u56FE\u8FDE\u5165\u8D44\u4EA7\u94FE\u8DEF\u3002\u4EC5\u5F53\u7EAF\u5168\u5C40\u4FA6\u5BDF\u3001\u786E\u5B9E\u6CA1\u6709\u5177\u4F53\u76EE\u6807\u8D44\u4EA7\u65F6\u624D\u7559\u7A7A\u3002"
+            },
+            "parent_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u4E0A\u6E38\u951A\u70B9 id\uFF08\u53EF\u9009\uFF0C0/1/\u591A\u4E2A\uFF09\uFF1A\u672C\u65B9\u5411\u7531\u54EA\u4E9B\u3010\u5DF2\u786E\u8BA4\u7684\u4E8B\u5B9E(fact)/\u53D1\u73B0(finding)\u3011\u7EFC\u5408\u5F97\u51FA\u3002**\u53EA\u80FD\u586B\u5DF2\u5B58\u5728\u7684 fact/finding \u8282\u70B9 id,\u4E0D\u80FD\u586B\u610F\u56FE/\u76EE\u6807/\u63D0\u793A**\u2014\u2014\u610F\u56FE\u5FC5\u987B\u951A\u5728\u5DF2\u786E\u8BA4\u77E5\u8BC6\u4E0A,\u53D1\u73B0\u9A71\u52A8\u800C\u975E\u51ED\u7A7A\u89C4\u5212\u3002\u591A\u4E2A\u4E8B\u5B9E\u5171\u540C\u4EA7\u751F\u4E00\u4E2A\u65B0\u610F\u56FE\u5C31\u4F20\u591A\u4E2A;\u9876\u5C42\u5168\u65B0\u4FA6\u5BDF\u65B9\u5411\u8BF7\u7559\u7A7A\uFF08\u4F1A\u81EA\u52A8\u6302\u5230\u4EFB\u52A1\u8D77\u70B9 origin fact\uFF09\u3002"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "add_task_hint",
+        "description": "\u7ED9\u6307\u5B9A\u4EFB\u52A1\u6CE8\u5165\u6218\u7565\u63D0\u793A(\u8BE5\u4EFB\u52A1\u7684 planner \u4E0B\u8F6E\u751F\u6210\u610F\u56FE\u65F6\u4F1A\u8BFB\u5230)\u3002\n\u2605\u4F18\u5148\u6279\u91CF\uFF1A\u591A\u6761\u63D0\u793A\u653E\u8FDB hints \u6570\u7EC4\u4E00\u6B21\u63D0\u4EA4\uFF08\u8FD4\u56DE ids \u6570\u7EC4\uFF0C\u4E0E hints \u7B49\u957F\u540C\u5E8F\uFF0C\u5931\u8D25\u9879 id=0\uFF09\uFF1B\u5355\u6761\u5219\u7701\u7565 hints \u76F4\u63A5\u7ED9\u9876\u5C42 text\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u63D0\u793A\u5185\u5BB9"
+            },
+            "hints": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "\u63D0\u793A\u5185\u5BB9"
+                  },
+                  "asset_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "traffic_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "traffic_id"
+                      ],
+                      "properties": {
+                        "note": {
+                          "type": "string",
+                          "description": "\u8BE5\u6D41\u91CF\u652F\u6301\u4EC0\u4E48\u7ED3\u8BBA"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "baseline / proof / verification / supporting"
+                        },
+                        "traffic_id": {
+                          "type": "string",
+                          "description": "\u771F\u5B9E\u6D41\u91CF ID"
+                        }
+                      }
+                    },
+                    "description": "\u53EF\u9009\uFF1A\u5DF2\u6838\u5B9E\u4E14\u5BF9\u5E94\u672C\u63D0\u793A\u4E2D\u5177\u4F53\u6F0F\u6D1E\u7684\u6D41\u91CF\u5F15\u7528\uFF0C\u4FDD\u7559\u987A\u5E8F\uFF1B\u4EA4\u63A5\u540E report_finding \u53EF\u4F20 evidence_hint_id \u643A\u5E26\u8FD9\u4E9B\u5F15\u7528\u3002"
+                  }
+                }
+              },
+              "description": "\u3010\u4F18\u5148\u7528\u8FD9\u4E2A\u3011\u63D0\u793A\u6570\u7EC4\uFF0C\u6BCF\u4E2A\u5143\u7D20\u5B57\u6BB5\u540C\u9876\u5C42\uFF08text/asset_ids/traffic_refs\uFF09\u3002"
+            },
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            },
+            "asset_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u951A\u5B9A\u7684\u8D44\u4EA7 id\uFF08\u53EF\u9009\uFF0C0/1/\u591A\u4E2A\uFF1B\u8BE5\u4EFB\u52A1\u5185\u7684\u8D44\u4EA7 id\uFF09"
+            },
+            "traffic_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "traffic_id"
+                ],
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "description": "\u8BE5\u6D41\u91CF\u652F\u6301\u4EC0\u4E48\u7ED3\u8BBA"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "baseline / proof / verification / supporting"
+                  },
+                  "traffic_id": {
+                    "type": "string",
+                    "description": "\u771F\u5B9E\u6D41\u91CF ID"
+                  }
+                }
+              },
+              "description": "\u53EF\u9009\uFF1A\u5DF2\u6838\u5B9E\u4E14\u5BF9\u5E94\u672C\u63D0\u793A\u4E2D\u5177\u4F53\u6F0F\u6D1E\u7684\u6D41\u91CF\u5F15\u7528\uFF0C\u4FDD\u7559\u987A\u5E8F\uFF1B\u4EA4\u63A5\u540E report_finding \u53EF\u4F20 evidence_hint_id \u643A\u5E26\u8FD9\u4E9B\u5F15\u7528\u3002"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "add_task_scope",
+        "description": "\u628A\u6D4B\u8BD5\u8303\u56F4\u52A0\u5165\u3010\u672C\u4EFB\u52A1\u3011\u2014\u2014\u8FD9\u662F\u672C\u4EFB\u52A1\u7684\u6388\u6743\u8FB9\u754C\uFF0C\u4E5F\u662F\u8D44\u4EA7\u6D4B\u8BD5\u8986\u76D6\u5EA6\u7684\u5206\u6BCD\u3002\nkind \u652F\u6301\uFF1Acompany(\u6574\u4E2A\u516C\u53F8\u540D\u4E0B\u8D44\u4EA7) / root_domain(\u6574\u4E2A\u6839\u57DF\uFF0C\u542B\u6240\u6709\u5B50\u57DF) / subdomain(\u5355\u4E2A\u7CBE\u786E\u5B50\u57DF) / ip / cidr / icp / keyword\u3002\n\u8BF4\u660E\uFF1Aworker \u9010\u4E2A\u78B0\u5230\u7684\u4E3B\u673A\u4F1A\u88AB\u7CFB\u7EDF\u3010\u81EA\u52A8\u3011\u52A0\u8FDB\u8303\u56F4(\u7CBE\u786E\u5B50\u57DF)\uFF1B\u672C\u5DE5\u5177\u7528\u4E8E\u3010\u4E3B\u52A8\u6269\u5927\u3011\u2014\u2014\u628A\u6574\u4E2A\u6839\u57DF/\u6574\u4E2A\u516C\u53F8\u7EB3\u5165\uFF0C\u6216\u8865\u5145\u6307\u5B9A\u67D0\u5B50\u57DF/IP\u3002\nvalue\uFF1Acompany \u4F20\u516C\u53F8\u540D\u6216 id(\u516C\u53F8\u987B\u5DF2\u5B58\u5728)\uFF1Broot_domain/subdomain \u4F20\u57DF\u540D\uFF1Bip/cidr \u4F20 IP \u6216\u7F51\u6BB5\uFF1Bicp/keyword \u4F20\u5907\u6848\u53F7\u6216\u4F01\u4E1A\u5173\u952E\u8BCD\u3002\n\u52A1\u5FC5\u7ED9 reason \u8BF4\u660E\u4F9D\u636E(\u53EF\u5BA1\u8BA1)\u3002\u591A\u6761\u7528 entries \u6570\u7EC4\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "[\u5355\u6761] company / root_domain / subdomain / ip / cidr / icp / keyword"
+            },
+            "value": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u516C\u53F8\u540D\u6216id / \u57DF\u540D / IP / CIDR / ICP / \u5173\u952E\u8BCD"
+            },
+            "reason": {
+              "type": "string",
+              "description": "\u52A0\u5165\u4F9D\u636E(\u7528\u4E8E\u5BA1\u8BA1)\uFF0C\u52A1\u5FC5\u586B\u5199"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "\u6279\u91CF\uFF1A[{kind, value}]\u3002kind\u2208company/root_domain/subdomain/ip/cidr/icp/keyword\u3002"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "bind_finding_traffic",
+        "description": "\u4E3A\u5DF2\u767B\u8BB0\u6F0F\u6D1E\u8865\u7ED1\u7ECF\u6838\u5B9E\u7684\u771F\u5B9E HTTP \u6D41\u91CF\u3002finding_id \u4F7F\u7528\u72EC\u7ACB\u6F0F\u6D1E\u8BB0\u5F55 ID\uFF1B\u4E0D\u8981\u4F20\u63A2\u7D22\u8282\u70B9 ID\u3002\u540C\u6279\u5F15\u7528\u5168\u90E8\u6210\u529F\u6216\u5168\u90E8\u5931\u8D25\uFF0C\u91CD\u590D\u5F15\u7528\u4E0D\u8986\u76D6\u5DF2\u6709\u8BF4\u660E\u3002\u8865\u7ED1\u4F1A\u4F7F\u5DF2\u6709\u62A5\u544A\u6807\u8BB0\u5F85\u66F4\u65B0\uFF1B\u4E0D\u8981\u4E3A\u8865\u5305\u91CD\u65B0\u63A2\u6D4B\u6216\u91CD\u590D\u521B\u5EFA\u6F0F\u6D1E\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "finding_id",
+            "traffic_refs"
+          ],
+          "properties": {
+            "finding_id": {
+              "type": "string",
+              "description": "\u72EC\u7ACB\u6F0F\u6D1E\u8BB0\u5F55 ID\uFF0C\u4ECE list_task_findings / get_task_node_detail \u7684 finding_id \u5B57\u6BB5\u8BFB\u53D6"
+            },
+            "traffic_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "traffic_id"
+                ],
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "description": "\u8BE5\u6D41\u91CF\u652F\u6301\u4EC0\u4E48\u7ED3\u8BBA"
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "baseline / proof / verification / supporting"
+                  },
+                  "traffic_id": {
+                    "type": "string",
+                    "description": "\u771F\u5B9E\u6D41\u91CF ID"
+                  }
+                }
+              },
+              "description": "\u53EF\u9009\uFF1A\u5DF2\u6838\u5B9E\u4E14\u5BF9\u5E94\u672C\u63D0\u793A\u4E2D\u5177\u4F53\u6F0F\u6D1E\u7684\u6D41\u91CF\u5F15\u7528\uFF0C\u4FDD\u7559\u987A\u5E8F\uFF1B\u4EA4\u63A5\u540E report_finding \u53EF\u4F20 evidence_hint_id \u643A\u5E26\u8FD9\u4E9B\u5F15\u7528\u3002"
+            }
+          }
+        },
+        "agents": [
+          "reporter",
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "create_custom_tool",
+        "description": "\u3010\u91CD\u8981\u3011\u5F53\u5B89\u88C5\u4E00\u4E9B\u5E73\u53F0\u6CA1\u6709\u7684\u5DE5\u5177\u65F6\uFF0C\u8C03\u7528\u8BE5\u5DE5\u5177\u5C06\u5B89\u88C5\u7684\u5DE5\u5177\u653E\u5165\u5E73\u53F0\u4E2D\uFF0C\u8BA9\u5E73\u53F0\u53EF\u4EE5\u8C03\u7528\uFF01\u521B\u5EFA\u4E00\u4E2A\u81EA\u5B9A\u4E49\u5DE5\u5177(shell/command/script/http)\u3002shell=bash \u73AF\u5883\u58F0\u660E\uFF0C\u53EA\u9700 key+description+agents\uFF0C\u65E0\u9700 exec/schema\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "key",
+            "kind"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "\u5DE5\u5177 key(\u5C0F\u5199\u5B57\u6BCD\u5F00\u5934\uFF0C\u5B57\u6BCD/\u6570\u5B57/\u4E0B\u5212\u7EBF)"
+            },
+            "exec": {
+              "type": "object",
+              "description": "\u6267\u884C\u89C4\u683C(shell \u7C7B\u578B\u4E0D\u9700\u8981): command\u2192{command}; script\u2192{code}; http\u2192{method,url,headers,body,proxy,use_recording_proxy}"
+            },
+            "kind": {
+              "type": "string",
+              "description": "shell | command | script(\u4EC5Python) | http\u3002shell=bash \u73AF\u5883\u58F0\u660E(\u4EC5\u544A\u77E5\u6A21\u578B\u8BE5\u5DE5\u5177\u53EF\u5728 bash \u4E2D\u76F4\u63A5\u8C03\u7528\uFF0C\u65E0\u9700 exec/schema)\uFF1B\u5176\u4F59\u4E09\u79CD\u9700\u63D0\u4F9B exec"
+            },
+            "agents": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "\u7ED1\u5B9A\u7684 agent key(\u53EF\u9009)"
+            },
+            "schema": {
+              "type": "object",
+              "description": "\u53C2\u6570 JSON-Schema(shell/command/script \u53EF\u7559\u7A7A; http \u5FC5\u586B\u4E14\u9700\u542B properties)"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u542F\u7528(\u9ED8\u8BA4 true)"
+            },
+            "deferred": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u5EF6\u8FDF(shell \u7C7B\u578B\u65E0\u6548\uFF1B\u4EC5 command/script/http \u7684\u4E0D\u5E38\u7528\u5DE5\u5177\u624D\u5F00)"
+            },
+            "description": {
+              "type": "string",
+              "description": "\u53D1\u7ED9\u6A21\u578B\u7684\u63CF\u8FF0"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "create_mcp",
+        "description": "\u521B\u5EFA\u4E00\u4E2A MCP \u670D\u52A1\u5668(stdio/http/sse)\u3002\u521B\u5EFA\u540E\u5176\u5DE5\u5177\u9700\u6309 agent \u53EF\u89C1\u6027\u6388\u6743\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "name",
+            "transport"
+          ],
+          "properties": {
+            "env": {
+              "type": "object",
+              "description": "\u73AF\u5883\u53D8\u91CF {KEY:VALUE}"
+            },
+            "url": {
+              "type": "string",
+              "description": "http/sse \u7684 URL"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "\u547D\u4EE4\u53C2\u6570\u6570\u7EC4"
+            },
+            "name": {
+              "type": "string",
+              "description": "MCP \u670D\u52A1\u5668\u540D"
+            },
+            "command": {
+              "type": "string",
+              "description": "stdio \u7684\u542F\u52A8\u547D\u4EE4(\u5982 npx)"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u542F\u7528(\u9ED8\u8BA4 true)"
+            },
+            "insecure": {
+              "type": "boolean",
+              "description": "http: \u8DF3\u8FC7 TLS \u8BC1\u4E66\u6821\u9A8C(\u81EA\u7B7E\u8BC1\u4E66\u65F6\u7F6E true, \u9ED8\u8BA4 false)"
+            },
+            "transport": {
+              "type": "string",
+              "description": "stdio | http / sse"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "create_skill",
+        "description": "\u521B\u5EFA\u4E00\u4E2A\u65B0 skill(\u5199 SKILL.md\uFF0Cagentskills.io \u89C4\u8303)\u3002name \u5C0F\u5199\u5B57\u6BCD/\u6570\u5B57/\u8FDE\u5B57\u7B26\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "name",
+            "description"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "skill \u540D(\u5C0F\u5199\u5B57\u6BCD\u5F00\u5934\uFF0C\u5B57\u6BCD/\u6570\u5B57/\u8FDE\u5B57\u7B26)"
+            },
+            "description": {
+              "type": "string",
+              "description": "skill \u63CF\u8FF0(\u5FC5\u586B\uFF0C\u8BF4\u660E\u5B83\u505A\u4EC0\u4E48/\u4F55\u65F6\u7528)"
+            },
+            "instructions": {
+              "type": "string",
+              "description": "Markdown \u6B63\u6587\u8BF4\u660E(\u53EF\u9009)"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "delete_assets_by_host",
+        "description": "\u6309 host \u7CBE\u786E\u5220\u9664\u8D44\u4EA7\uFF1A\u5220\u6389\u8BE5 host \u7684\u57DF\u540D/\u5B50\u57DF\u540D\uFF0C\u4EE5\u53CA\u5176\u4E0B\u7684\u670D\u52A1(service)\u3001\u63A5\u53E3(endpoint)\u3002\nhost \u5B8C\u5168\u5339\u914D(\u5C0F\u5199\u3001\u53BB\u7A7A\u683C)\uFF0C\u4E0D\u662F\u6A21\u7CCA/\u901A\u914D\u3002\n\u4F20\u6839\u57DF\u540D(\u5982 example.com)\u4F1A\u8FDE\u5E26\u5220\u9664\u5B83\u7684\u5B50\u57DF\u540D\u53CA\u5176\u670D\u52A1/\u63A5\u53E3\uFF1B\u4F20\u5B50\u57DF\u540D(\u5982 a.example.com)\u6216 IP \u53EA\u5220\u8BE5 host \u81EA\u8EAB\u53CA\u5176\u670D\u52A1/\u63A5\u53E3\u3002\n\u26A0\uFE0F \u786C\u5220\u9664\u3001\u4F5C\u7528\u4E8E\u5168\u5C40\u8D44\u4EA7\u5E93(\u8DE8\u4EFB\u52A1\u5171\u4EAB)\u3001\u4E0D\u53EF\u64A4\u9500\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "\u8981\u5220\u9664\u7684 host\uFF1A\u57DF\u540D/\u5B50\u57DF\u540D/IP\u3002\u5B8C\u5168\u5339\u914D\uFF0C\u5982 example.com \u6216 a.example.com \u6216 1.2.3.4"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "execution_chain",
+        "description": "\u67E5\u770B\u672C\u4EFB\u52A1\u7684\u81EA\u4E3B\u6267\u884C\u94FE\u72B6\u6001\uFF1A\u5F53\u524D\u9636\u6BB5\uFF08recon\u2192foothold\u2192exec\u2192lateral\u2192impact\uFF09\u3001\u5DF2\u6301\u6709\u80FD\u529B\u3001\u80FD\u529B\u7F3A\u53E3\u3001\u5DF2\u91CD\u590D\u5931\u8D25\u7684\u65B9\u5411\u3002\u7528\u4E8E\u5224\u65AD\u4E0B\u4E00\u6B65\u8BE5\u8865\u54EA\u9879\u524D\u7F6E\u80FD\u529B\u3001\u54EA\u4E9B\u65B9\u5411\u4E0D\u8981\u518D\u6D3E\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "expand_digest",
+        "description": "\u5C55\u5F00\u4E00\u4E2A cold digest\uFF1A\u8FD4\u56DE\u5B83\u6298\u53E0\u7684\u6210\u5458\u7D27\u51D1\u5217\u8868\uFF08id/summary/state/confidence\uFF09\uFF0C\u4E0E\u6982\u89C8 recent_facts/recent_done_intents \u540C\u5F62\u72B6\u3002\u8981\u67D0\u6761\u5B8C\u6574\u7EC6\u8282/\u8BC1\u636E\u7528 node_detail(member_id)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "digest \u8282\u70B9 id\uFF08\u6765\u81EA\u6982\u89C8 cold_digests\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_credential",
+        "description": "\u6309 ID \u53D6\u4E00\u4EFD\u51ED\u636E\u7684\u660E\u6587\uFF08\u4EC5\u9650\u672C\u4EFB\u52A1\uFF09\u3002\u53EA\u5728\u786E\u5B9E\u8981\u53D1\u8D77\u767B\u5F55/\u8BA4\u8BC1\u65F6\u8C03\u7528\uFF1B\u62FF\u5230\u540E\u76F4\u63A5\u7528\u4E8E\u8BF7\u6C42\uFF0C\u4E0D\u8981\u590D\u8FF0\u5230\u62A5\u544A\u6216\u8BC1\u636E\u91CC\u3002\u4F1A\u8BDD\u8BF7\u7528 get_session\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "list_credentials \u8FD4\u56DE\u7684\u51ED\u636E ID"
+            }
+          }
+        },
+        "agents": [
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_finding_retest_context",
+        "description": "\u8BFB\u53D6\u5F53\u524D\u590D\u6D4B\u4F1A\u8BDD\u5173\u8054\u7684\u6F0F\u6D1E\u8BC1\u636E\u5FEB\u7167\u3001\u590D\u6D4B\u72B6\u6001\u3001\u8865\u5145\u8BF4\u660E\u4E0E\u5F53\u524D\u4EFB\u52A1\u7EA6\u675F\u3002\u65E0\u53C2\u6570\uFF0C\u53EA\u80FD\u8BFB\u53D6\u672C\u4F1A\u8BDD\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "retester"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_finding_traffic",
+        "description": "\u8BFB\u53D6\u6F0F\u6D1E\u5DF2\u7ED1\u5B9A\u7684\u771F\u5B9E\u6D41\u91CF\u8BC1\u636E\uFF0C\u4E0D\u4F9D\u8D56\u6355\u83B7\u5F00\u5173\u3002finding_id \u4F7F\u7528 report_finding JSON \u8FD4\u56DE\u7684\u72EC\u7ACB\u6F0F\u6D1E\u8BB0\u5F55 ID\uFF08\u4E0D\u662F\u7B2C\u4E00\u884C\u7684\u63A2\u7D22\u8282\u70B9 ID\uFF09\u3002\u5148\u4E0D\u4F20 binding_id \u83B7\u53D6\u6E05\u5355\u53CA version\uFF1B\u7A7A\u6E05\u5355\u662F\u6B63\u5E38\u60C5\u51B5\uFF0CTCP \u7B49\u975E HTTP \u6F0F\u6D1E\u6216\u672A\u91C7\u96C6\u65F6\u4ECD\u53EF\u4F9D\u636E\u6587\u5B57/\u547D\u4EE4\u8BC1\u636E\u7F16\u5199\u62A5\u544A\uFF0C\u4E0D\u5F3A\u5236\u7ED1\u5B9A\u3002\u6709\u7ED1\u5B9A\u65F6\u6309 binding_id\u3001side(request/response)\u3001offset \u5206\u6BB5\u8BFB\u53D6\u6B63\u6587\u3002\u5199\u62A5\u544A\u65F6\u5C06\u8BFB\u53D6\u7684 version \u4F5C\u4E3A evidence_version \u4F20\u7ED9 update_finding_report\uFF0C\u540E\u8005 finding_id \u4ECD\u4F7F\u7528\u63A2\u7D22\u8282\u70B9 ID\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "finding_id"
+          ],
+          "properties": {
+            "side": {
+              "type": "string",
+              "description": "request \u6216 response\uFF0C\u9ED8\u8BA4 response"
+            },
+            "length": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            },
+            "binding_id": {
+              "type": "string",
+              "description": "\u6E05\u5355\u91CC\u7684\u7ED1\u5B9A ID\uFF0C\u7701\u7565\u5219\u8FD4\u56DE\u6E05\u5355"
+            },
+            "finding_id": {
+              "type": "string",
+              "description": "\u72EC\u7ACB\u6F0F\u6D1E\u8BB0\u5F55 ID"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter",
+          "worker",
+          "planner",
+          "mainagent",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_session",
+        "description": "\u6309 ID \u53D6\u4E00\u4EFD\u4F1A\u8BDD\u7684\u8BF7\u6C42\u5934\uFF08Cookie/Authorization\uFF0C\u4EC5\u9650\u672C\u4EFB\u52A1\uFF09\u3002\u62FF\u5230\u540E\u76F4\u63A5\u653E\u8FDB\u8BF7\u6C42\uFF0C\u4E0D\u8981\u590D\u8FF0\u5230\u62A5\u544A/\u8BC1\u636E\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "list_sessions \u8FD4\u56DE\u7684\u4F1A\u8BDD ID"
+            }
+          }
+        },
+        "agents": [
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_task_graph",
+        "description": "\u8BFB\u6307\u5B9A\u4EFB\u52A1\u7684\u63A2\u7D22\u56FE\u603B\u89C8(\u540C graph_overview\uFF1A\u8D44\u4EA7\u8BA1\u6570/frontier/\u53D1\u73B0/\u8986\u76D6\u7B49)\uFF0C\u7528 task_id \u6307\u5B9A\u4EFB\u52A1\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_task_node_detail",
+        "description": "\u8BFB\u6307\u5B9A\u4EFB\u52A1\u91CC\u67D0\u4E2A\u63A2\u7D22\u56FE\u8282\u70B9\u7684\u5B8C\u6574\u5185\u5BB9(\u53D1\u73B0/\u4E8B\u5B9E/\u610F\u56FE/\u76EE\u6807\uFF1A\u6458\u8981 + \u8BE6\u60C5/\u8BC1\u636E/PoC)\u3002id \u4E3A\u63A2\u7D22\u8282\u70B9 id(\u5982 report_finding \u8FD4\u56DE\u3001\u6216 list_task_findings \u91CC\u7684 id)\u3002\u5199\u6F0F\u6D1E\u62A5\u544A\u524D\u7528\u5B83\u53D6\u8BE5\u6F0F\u6D1E\u7684\u5B8C\u6574\u8BC1\u636E\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id",
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "\u63A2\u7D22\u56FE\u8282\u70B9 id(\u975E\u8D44\u4EA7 id)"
+            },
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_task_worker_trace",
+        "description": "\u770B\u6307\u5B9A\u4EFB\u52A1\u91CC\u67D0\u4E2A work(\u610F\u56FE)\u7684\u6267\u884C\u8FC7\u7A0B\uFF1Aget_task_worker_trace(task_id, intent_id) \u770B\u6B65\u9AA4\u6458\u8981\uFF1B\u518D\u5E26 step_ids=[...] \u53D6\u90A3\u51E0\u6B65\u5B8C\u6574\u5185\u5BB9(\u4E00\u6B21\u6700\u591A 5 \u4E2A,\u591A\u4F20\u53EA\u8FD4\u56DE\u524D 5 \u4E2A)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id",
+            "intent_id"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            },
+            "step_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u53EF\u9009\uFF1A\u8981\u53D6\u5B8C\u6574\u5185\u5BB9\u7684\u6B65\u9AA4 id(\u4E00\u6B21\u6700\u591A 5 \u4E2A,\u591A\u4F20\u53EA\u8FD4\u56DE\u524D 5 \u4E2A,\u5176\u4F59\u5728 omitted_step_ids \u91CC\u5217\u51FA)"
+            },
+            "intent_id": {
+              "type": "integer",
+              "description": "\u610F\u56FE id(\u8BE5\u4EFB\u52A1\u91CC\u7684 work)"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_worker_output",
+        "description": "\u53D6\u672C\u4EFB\u52A1\u6216\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u67D0\u6761\u610F\u56FE(work)\u7684\u6700\u7EC8\u8F93\u51FA\u7ED3\u8BBA\u3002\u5173\u8054\u4EFB\u52A1\u7ED3\u679C\u5E26 source_task_id/inherited=true \u4E14\u53EA\u8BFB\u3002\u6B63\u5E38\u7ED3\u675F\u8FD4\u56DE\u5176\u603B\u7ED3\uFF1B\u88AB\u7EC8\u6B62(stopped)/\u5F02\u5E38\u7684 work \u8FD4\u56DE\u5176\u622A\u81F3\u4E2D\u6B62\u65F6\u7684\u6700\u540E\u8F93\u51FA\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "intent_id"
+          ],
+          "properties": {
+            "intent_id": {
+              "type": "integer",
+              "description": "\u610F\u56FE id\uFF08= work \u53E5\u67C4\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "get_worker_trace",
+        "description": "\u67E5\u770B\u67D0\u6761\u610F\u56FE(work)\u7684\u3010\u6267\u884C\u8FC7\u7A0B\u3011\uFF08\u533A\u522B\u4E8E get_worker_output \u53EA\u7ED9\u6700\u7EC8\u7ED3\u8BBA\uFF09\u3002\u4E09\u79CD\u7528\u6CD5\uFF1A\n\u2460 \u53EA\u4F20 intent_id \u2192 \u8FD4\u56DE\u8BE5 work \u6BCF\u4E00\u6B65\u7684\u6458\u8981\u6D41\uFF08summary\u2264100\u5B57\uFF0C\u542B step_id\uFF1B\u53EA\u662F\u52A8\u4F5C\u8F6E\u5ED3\uFF0C\u4E0D\u542B\u5B8C\u6574\u8F93\u51FA\uFF09\uFF1B\n\u2461 intent_id + q \u2192 \u53EA\u8FD4\u56DE\u547D\u4E2D\u5173\u952E\u5B57\u7684\u6B65\u9AA4\u6458\u8981\uFF08\u5728\u6458\u8981\u548C\u5B8C\u6574\u8F93\u51FA\u91CC\u90FD\u641C\uFF1B\u4ECD\u53EA\u7ED9 summary\uFF0C\u8981\u770B\u5185\u5BB9\u7528\u2462\uFF09\uFF1B\n\u2462 intent_id + step_ids \u2192 \u8FD4\u56DE\u8FD9\u4E9B\u6B65\u9AA4\u7684\u5B8C\u6574\u5185\u5BB9(detail)\uFF1B\u4E00\u6B21\u6700\u591A\u53D6 5 \u4E2A\uFF0C\u8D85\u51FA\u53EA\u8FD4\u56DE\u524D 5 \u4E2A\u5E76\u5728 notice/omitted_step_ids \u91CC\u544A\u77E5\u672A\u53D6\u7684\u3002\n\u5178\u578B\u6D41\u7A0B\uFF1A\u5148\u2460/\u2461\u5B9A\u4F4D\u53EF\u7591\u6B65\u9AA4\u7684 step_id\uFF0C\u518D\u7528\u2462\u53D6\u5176\u5B8C\u6574\u8F93\u51FA\u3002\u4E0D\u542B\u601D\u8003(thinking)\u6B65\u9AA4\u3002\u652F\u6301\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u7684\u5386\u53F2 trace\uFF1B\u5176\u7ED3\u679C\u5E26 source_task_id/inherited=true \u4E14\u53EA\u8BFB\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "intent_id"
+          ],
+          "properties": {
+            "q": {
+              "type": "string",
+              "description": "\u5173\u952E\u5B57\uFF1A\u53EA\u8FD4\u56DE\u6458\u8981/\u5B8C\u6574\u8F93\u51FA\u547D\u4E2D\u5B83\u7684\u6B65\u9AA4\uFF08\u53EF\u9009\uFF1B\u4E0E step_ids \u4E92\u65A5\uFF09"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "\u6458\u8981\u6D41/\u68C0\u7D22\u7684\u8FD4\u56DE\u4E0A\u9650\uFF08\u53EF\u9009\uFF09"
+            },
+            "step_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u8981\u53D6\u5B8C\u6574\u5185\u5BB9\u7684 step_id\uFF08\u6765\u81EA\u2460/\u2461\u8FD4\u56DE\uFF1B\u4E00\u6B21\u6700\u591A\u53D6 5 \u4E2A\uFF0C\u591A\u4F20\u53EA\u8FD4\u56DE\u524D 5 \u4E2A\uFF0C\u5176\u4F59\u5728 omitted_step_ids \u91CC\u5217\u51FA\uFF09"
+            },
+            "intent_id": {
+              "type": "integer",
+              "description": "\u610F\u56FE id\uFF08= work \u53E5\u67C4\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "goal_met",
+        "description": "\u3010\u7ACB\u5373\u7ED3\u675F\u6574\u4E2A\u4EFB\u52A1\u3011\u2014\u2014\u4EC5\u5F53\u4F60\u786E\u8BA4\u4EFB\u52A1\u7684\u3010\u5168\u90E8\u76EE\u6807\u90FD\u5DF2\u771F\u6B63\u8FBE\u6210\u3001\u6574\u4F53\u6536\u5B98\u3011\u65F6\u624D\u8C03\uFF08\u6CE8\u610F\u662F\u4EFB\u52A1\u3010\u6574\u4F53\u3011\u5B8C\u6210\uFF1B\u4EC5\u4EC5\u8FBE\u6210\u4E86\u5176\u4E2D\u67D0\u4E00\u4E2A\u76EE\u6807/\u67D0\u4E00\u4E2A flag/\u67D0\u4E00\u4E2A\u6F0F\u6D1E\u3010\u4E0D\u7B97\u3011\u2014\u2014\u90A3\u79CD\u60C5\u51B5\u7528 prove_goal \u6807\u8BB0\u8BE5\u76EE\u6807\u5373\u53EF\uFF09\u3002\u26A0\uFE0F\u5B83\u4E0D\u662F\u7528\u6765\u201C\u7ED3\u675F\u672C\u8F6E\u89C4\u5212\u201D\u7684\uFF1A\u672C\u8F6E\u6CA1\u6709\u65B0\u610F\u56FE\u8981\u6D3E\u3001\u6216\u5728\u7B49 worker \u4EA7\u51FA\uFF0C\u90FD\u3010\u76F4\u63A5\u7ED3\u675F\u672C\u8F6E\u5373\u53EF\uFF0C\u4E0D\u8981\u8C03\u672C\u5DE5\u5177\u3011\uFF080 \u4E2A\u610F\u56FE\u662F\u5B8C\u5168\u6B63\u5E38\u7684\uFF09\u3002\u6B63\u5E38\u5224\u5B9A\u4F18\u5148\u7528 prove_goal \u9010\u4E2A\u8BC1\u660E\u76EE\u6807\uFF1Bgoal_met \u53EA\u662F\u7ED5\u8FC7\u9010\u4E2A\u8BC1\u660E\u3001\u76F4\u63A5\u4ECE\u5168\u5C40\u6536\u5B98\u7684\u624B\u6BB5\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "reason"
+          ],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "\u8FBE\u6210\u7406\u7531\uFF08\u5FC5\u987B\u662F\u76EE\u6807\u771F\u6B63\u8FBE\u6210\u7684\u8BC1\u636E\uFF0C\u4E0D\u80FD\u662F\u201C\u672C\u8F6E\u65E0\u65B0\u65B9\u5411\u201D\u8FD9\u7C7B\u7ED3\u675F\u672C\u8F6E\u7684\u7406\u7531\uFF09"
+            }
+          }
+        },
+        "agents": [],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "graph_overview",
+        "description": "(\u63A2\u7D22\u94FE\u8DEF\u56FE)\u63A2\u7D22\u6001\u52BF\u84B8\u998F\u6458\u8981\uFF1A\u8D44\u4EA7\u8BA1\u6570\u3001\u65E0\u63A5\u53E3\u7684\u7AD9\u70B9\u3001frontier\u3001\u53D1\u73B0\u3001hints(\u4EBA\u7C7B/\u4E3B agent \u7684\u6218\u7565\u63D0\u793A\uFF0C\u751F\u6210\u610F\u56FE\u65F6\u987B\u7EB3\u5165)\u3002\u89C4\u5212\u65F6\u5148\u8C03\u5B83\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "insert_assets",
+        "description": "\u6279\u91CF\u767B\u8BB0\u65B0\u53D1\u73B0\u7684\u8D44\u4EA7\uFF0C\u4E00\u6B21\u53EF\u6DF7\u5408\u591A\u79CD\u7C7B\u578B\uFF08type \u89C1\u679A\u4E3E\uFF09\u3002\n\u5404\u7C7B\u578B\u5FC5\u586B\u5B57\u6BB5\uFF1Aroot_domain\u2192domain\uFF1Bip\u2192ip\uFF08\u987B\u4E3A IPv4/IPv6\uFF0C\u975E\u4E3B\u673A\u540D\uFF09\uFF1Bsubdomain\u2192domain\uFF1Bapp\u2192app_name\uFF1Bservice(HTTP)\u2192url\uFF1Bservice(\u975EHTTP)\u2192service_name+port\uFF08ip/domain \u81F3\u5C11\u586B\u4E00\u4E2A\uFF09\uFF1Bendpoint\u2192url+method\u3002\u5176\u4F59\u5B57\u6BB5\u542B\u4E49\u89C1\u5404\u81EA\u8BF4\u660E\u3002\nauth/technologies/params \u4E3A\u8FFD\u52A0\u5408\u5E76(append)\uFF0C\u4E0D\u8986\u76D6\u539F\u503C\u3002\n\u8FD4\u56DE\uFF1A{results:[{index,id,type}], errors:[{index,error}]}",
+        "schema": {
+          "type": "object",
+          "required": [
+            "assets"
+          ],
+          "properties": {
+            "assets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "ip": {
+                    "type": "string",
+                    "description": "IP \u5730\u5740\uFF0C\u5FC5\u987B\u662F IPv4/IPv6 \u5730\u5740\uFF0C\u4E0D\u80FD\u586B\u4E3B\u673A\u540D\uFF08\u4E3B\u673A\u540D\u8BF7\u7528 type=subdomain \u7684 domain \u5B57\u6BB5\uFF09\uFF1Bip \u7C7B\u578B\u5FC5\u586B\uFF1Bservice/endpoint \u7C7B\u578B\u53EF\u586B\uFF0C\u7528\u4E8E\u5173\u8054 IP"
+                  },
+                  "icp": {
+                    "type": "string",
+                    "description": "ICP \u5907\u6848\u53F7\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "\u5B8C\u6574 URL\uFF0C\u542B\u534F\u8BAE\u548C\u7AEF\u53E3\uFF08HTTP \u670D\u52A1\u5FC5\u586B\uFF1Bservice_type \u81EA\u52A8\u8BBE\u4E3A http\uFF09"
+                  },
+                  "auth": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "\u53D1\u73B0\u7684\u8BA4\u8BC1\u4FE1\u606F\u5217\u8868\uFF0C\u6BCF\u6761\u542B type/username/password \u7B49\u5B57\u6BB5\uFF08\u53EF\u9009\uFF0C\u8FFD\u52A0\u4E0D\u8986\u76D6\uFF09"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "description": "\u7AEF\u53E3\u53F7\uFF08service \u975E HTTP \u65F6\u5FC5\u586B\uFF09"
+                  },
+                  "type": {
+                    "enum": [
+                      "root_domain",
+                      "ip",
+                      "subdomain",
+                      "app",
+                      "service",
+                      "endpoint"
+                    ],
+                    "type": "string",
+                    "description": "\u8D44\u4EA7\u7C7B\u578B"
+                  },
+                  "domain": {
+                    "type": "string",
+                    "description": "\u6839\u57DF\u540D\u6216\u5B50\u57DF\u540D\uFF08root_domain/subdomain \u5FC5\u586B\uFF09"
+                  },
+                  "method": {
+                    "type": "string",
+                    "description": "HTTP \u65B9\u6CD5\uFF1AGET/POST/PUT/PATCH/DELETE \u7B49\uFF08endpoint \u5FC5\u586B\uFF09"
+                  },
+                  "params": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    },
+                    "description": "\u8BF7\u6C42\u53C2\u6570\u5217\u8868\uFF0C\u6BCF\u6761\u542B location(query/body/header/path)/name/value/type\uFF08\u53EF\u9009\uFF0C\u8FFD\u52A0\u4E0D\u8986\u76D6\uFF09"
+                  },
+                  "app_icp": {
+                    "type": "string",
+                    "description": "\u5E94\u7528 ICP \u5907\u6848\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "app_name": {
+                    "type": "string",
+                    "description": "\u5E94\u7528\u540D\u79F0\uFF08app \u7C7B\u578B\u5FC5\u586B\uFF09"
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "\u5E94\u7528\u5206\u7C7B\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "bundle_id": {
+                    "type": "string",
+                    "description": "Bundle ID\uFF08app \u7C7B\u578B\u53EF\u9009\uFF09"
+                  },
+                  "company_id": {
+                    "type": "integer",
+                    "description": "\u5F52\u5C5E\u4F01\u4E1A id\uFF08app \u7C7B\u578B\u53EF\u9009\uFF1Bapp \u65E0\u6CD5\u9760 scope \u81EA\u52A8\u5F52\u56E0\uFF0C\u9700\u663E\u5F0F\u6307\u5B9A\u3002id \u7531 add_company_scope \u8FD4\u56DE\uFF09"
+                  },
+                  "open_ports": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "port"
+                      ],
+                      "properties": {
+                        "port": {
+                          "type": "integer",
+                          "description": "\u7AEF\u53E3\u53F7"
+                        },
+                        "service": {
+                          "type": "string",
+                          "description": "\u670D\u52A1\u540D\u79F0\uFF0C\u5982 http/ssh/mysql \u7B49\uFF08\u53EF\u9009\uFF09"
+                        }
+                      }
+                    },
+                    "description": "\u5F00\u653E\u7AEF\u53E3\u5217\u8868\uFF08ip \u7C7B\u578B\u53EF\u9009\uFF09"
+                  },
+                  "page_title": {
+                    "type": "string",
+                    "description": "\u9875\u9762 <title> \u5185\u5BB9\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "\u5E94\u7528\u63CF\u8FF0\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "record_type": {
+                    "type": "string",
+                    "description": "DNS \u89E3\u6790\u7C7B\u578B\uFF1AA/AAAA/CNAME/MX \u7B49\uFF08subdomain \u53EF\u9009\uFF09"
+                  },
+                  "status_code": {
+                    "type": "integer",
+                    "description": "HTTP \u54CD\u5E94\u72B6\u6001\u7801\uFF0C\u5982 200/301/403/404\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "favicon_mmh3": {
+                    "type": "string",
+                    "description": "favicon MMH3 \u54C8\u5E0C\uFF08\u53EF\u9009\uFF09"
+                  },
+                  "record_value": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": 'DNS \u89E3\u6790\u503C\u5217\u8868\uFF08subdomain \u53EF\u9009\uFF0C\u5982 ["1.2.3.4","2.3.4.5"]\uFF09'
+                  },
+                  "service_name": {
+                    "type": "string",
+                    "description": "\u670D\u52A1\u540D\u79F0\uFF0C\u5982 ssh/mysql/redis\uFF08service \u975E HTTP \u65F6\u5FC5\u586B\uFF09"
+                  },
+                  "technologies": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": '\u6307\u7EB9/\u6280\u672F\u6808\u5217\u8868\uFF0C\u5982 ["Nginx","Vue","Bootstrap"]\uFF08\u53EF\u9009\uFF09'
+                  },
+                  "bound_domains": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "\u8BE5 IP \u7ED1\u5B9A\u7684\u57DF\u540D\u5217\u8868\uFF08ip \u7C7B\u578B\u53EF\u9009\uFF09"
+                  },
+                  "content_length": {
+                    "type": "integer",
+                    "description": "HTTP \u54CD\u5E94\u4F53\u5B57\u8282\u6570\uFF08\u53EF\u9009\uFF09"
+                  }
+                }
+              },
+              "description": "\u8D44\u4EA7\u6570\u7EC4\uFF0C\u6BCF\u4E2A\u5143\u7D20\u5BF9\u5E94\u4E00\u6761\u8D44\u4EA7\u8BB0\u5F55"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "worker",
+          "auto",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "kill_work",
+        "description": "\u7EC8\u6B62\u4E00\u6761\u6B63\u5728\u8FD0\u884C\u7684\u610F\u56FE(work)\u3002\u7528\u4E8E\u53EB\u505C\u8DD1\u504F/\u65E0\u610F\u4E49\u7684\u63A2\u7D22\uFF1B\u88AB\u7EC8\u6B62\u7684\u610F\u56FE\u6807\u8BB0\u4E3A stopped\uFF0C\u4E0D\u518D\u81EA\u52A8\u91CD\u9886\u3002\u5148\u7528 get_worker_output \u770B\u770B\u5B83\u5728\u5E72\u561B\u518D\u51B3\u5B9A\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "intent_id"
+          ],
+          "properties": {
+            "intent_id": {
+              "type": "integer",
+              "description": "\u8981\u7EC8\u6B62\u7684\u610F\u56FE id\uFF08= work \u53E5\u67C4\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_assets",
+        "description": "\u67E5\u8BE2\u8D44\u4EA7\u5E93\uFF1ADSL \u8868\u8FBE\u5F0F\u641C\u7D22\uFF0C\u6216\u6309 id/ids \u76F4\u53D6\uFF1B\u652F\u6301\u5206\u9875\u3002\u53EA\u8FD4\u56DE\u3010\u672C\u4EFB\u52A1\u53CA\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u3011\u6D4B\u8BD5\u8303\u56F4\u5185\u7684\u8D44\u4EA7\u3002\nDSL\uFF1Afield=value \u6A21\u7CCA(ILIKE) | field==value \u7CBE\u786E | field!=value \u6392\u9664 | \u6570\u5B57\u5B57\u6BB5\u652F\u6301 > >= < <= | \u88F8\u8BCD=\u5168\u6587\u6A21\u7CCA\uFF1BAND/OR \u7EC4\u5408(AND \u4F18\u5148\u7EA7\u9AD8)\uFF0C\u53EF\u7528\u62EC\u53F7\u5206\u7EC4\u3002\u8D44\u4EA7\u7C7B\u578B\u7528\u72EC\u7ACB type \u53C2\u6570\uFF0C\u4E0D\u5199\u8FDB DSL\u3002\n\u672A\u4F20 id/ids \u65F6 dsl \u5FC5\u987B\u975E\u7A7A\uFF08\u4E0D\u5141\u8BB8\u65E0\u6761\u4EF6\u5168\u91CF\u67E5\u8BE2\uFF09\u3002\n\u53EF\u7528\u5B57\u6BB5\uFF1Adomain(\u6839/\u5B50/\u670D\u52A1\u57DF\u540D)\u3001root_domain\u3001ip\u3001url\u3001page_title\u3001icp\u3001service_name\u3001app_name\u3001method(\u5982 GET/POST)\u3001service_type(http|other)\u3001record_type(\u5982 A/CNAME)\u3001technology(\u6570\u7EC4\uFF0C=\u6A21\u7CCA ==\u7CBE\u786E)\u3001port/status_code/company_id(\u6574\u6570)\u3002\n\u793A\u4F8B\uFF1Astatus_code>=400 AND technology=shiro \uFF1B(port==80 OR port==443) AND technology=nginx",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "\u76F4\u63A5\u6309\u5355\u4E2A\u8D44\u4EA7 id \u53D6\uFF08\u53EF\u9009\uFF0C\u4E0E dsl/type \u4E92\u65A5\uFF09"
+            },
+            "dsl": {
+              "type": "string",
+              "description": "DSL \u67E5\u8BE2\u8868\u8FBE\u5F0F\uFF08\u8BED\u6CD5/\u5B57\u6BB5\u89C1\u5DE5\u5177\u63CF\u8FF0\uFF09\u3002\u672A\u4F20 id/ids \u65F6\u5FC5\u987B\u975E\u7A7A\u3002"
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u76F4\u63A5\u6309\u591A\u4E2A\u8D44\u4EA7 id \u53D6\uFF08\u53EF\u9009\uFF0C\u4E0E dsl/type \u4E92\u65A5\uFF09"
+            },
+            "type": {
+              "type": "string",
+              "description": "\u8D44\u4EA7\u7C7B\u578B\u8FC7\u6EE4\uFF1Aroot_domain|ip|subdomain|app|service|endpoint\uFF08\u72EC\u7ACB\u5B57\u6BB5\uFF0C\u53EF\u4E0E dsl \u53E0\u52A0\uFF1B\u5355\u72EC type \u4E0D\u8DB3\u4EE5\u67E5\u8BE2\uFF0C\u4ECD\u9700 dsl\uFF09"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "\u8FD4\u56DE\u4E0A\u9650\uFF0C\u9ED8\u8BA4 10\uFF08\u53EF\u9009\uFF09"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "\u5206\u9875\u504F\u79FB\uFF0C\u9ED8\u8BA4 0\uFF08\u53EF\u9009\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker",
+          "auto",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_capabilities",
+        "description": "\u67E5\u672C\u4EFB\u52A1\u5DF2\u83B7\u5F97\u7684\u80FD\u529B\uFF08capability\uFF1A\u7F51\u7EDC\u53EF\u8FBE/\u767B\u5F55\u6001/\u6587\u4EF6\u8BFB\u5199/\u547D\u4EE4\u6267\u884C/\u6570\u636E\u5E93\u8BFB\u53D6/\u540E\u53F0\u8BBF\u95EE/\u6709\u6548\u4EE4\u724C\uFF09\uFF0C\u4EE5\u53CA\u8DDD\u79BB\u8FD9\u4E9B\u80FD\u529B\u8FD8\u7F3A\u54EA\u4E9B\u524D\u7F6E\u3002\u89C4\u5212\u5229\u7528\u94FE\u65F6\u5148\u770B\u8FD9\u91CC\uFF0C\u4E0D\u8981\u51ED\u8BB0\u5FC6\u5047\u8BBE\u67D0\u4E2A\u51ED\u636E\u6216\u4F1A\u8BDD\u8FD8\u5728\uFF1B\u80FD\u529B\u5E26\u6765\u6E90\u6F0F\u6D1E\u4E0E\u63A8\u5BFC\u89C4\u5219\uFF0C\u53EF\u8FFD\u6EAF\u5230\u8BC1\u636E\u3002\u53C2\u6570\uFF1Aasset_id(\u53EF\u9009\uFF0C\u53EA\u770B\u8BE5\u8D44\u4EA7+\u4EFB\u52A1\u7EA7\u80FD\u529B)\u3001kind(\u53EF\u9009\uFF0C\u6309\u80FD\u529B\u8FC7\u6EE4)\u3001include_gaps(\u9ED8\u8BA4 true)\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u6309\u80FD\u529B Key \u8FC7\u6EE4\uFF0C\u5982 net_reachable / cmd_exec"
+            },
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u53EA\u770B\u8BE5\u8D44\u4EA7\u4E0A\u7684\u80FD\u529B\uFF08\u4EFB\u52A1\u7EA7\u80FD\u529B\u4ECD\u4F1A\u8FD4\u56DE\uFF09"
+            },
+            "include_gaps": {
+              "type": "boolean",
+              "description": "\u53EF\u9009\uFF0C\u9ED8\u8BA4 true\u3002\u662F\u5426\u8FD4\u56DE\u7F3A\u53E3\u4E0E\u524D\u7F6E\u63D0\u793A"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_companies",
+        "description": "\u5217\u51FA\u8D44\u4EA7\u5E93\u4E2D\u7684\u3010\u4F01\u4E1A/\u516C\u53F8\u3011\u53CA\u5176\u8D44\u4EA7\u8303\u56F4(scope)\u4E0E\u5DF2\u5F52\u5C5E\u8D44\u4EA7\u6570\u3002\u7528\u4E8E\u67E5\u770B\u6709\u54EA\u4E9B\u516C\u53F8\u3001\u62FF\u5230 company_id\uFF08insert_assets \u5173\u8054 app\u3001list_assets \u6309 company_id \u8FC7\u6EE4\u65F6\u7528\uFF09\u3002\u53EF\u9009 search \u6309\u516C\u53F8\u540D\u6A21\u7CCA\u8FC7\u6EE4(\u4E0D\u533A\u5206\u5927\u5C0F\u5199)\uFF0C\u7559\u7A7A\u8FD4\u56DE\u5168\u90E8\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "\u6309\u516C\u53F8\u540D\u6A21\u7CCA\u8FC7\u6EE4(\u53EF\u9009\uFF0C\u4E0D\u533A\u5206\u5927\u5C0F\u5199)\uFF1B\u7559\u7A7A\u8FD4\u56DE\u5168\u90E8"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "auto",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_credentials",
+        "description": "\u67E5\u672C\u4EFB\u52A1\u5DF2\u83B7\u5F97\u7684\u51ED\u636E\u4E0E\u4F1A\u8BDD\uFF08\u5143\u6570\u636E\uFF0C\u4E0D\u542B\u660E\u6587\uFF09\u3002\u505A\u9700\u8981\u767B\u5F55\u6001\u7684\u5229\u7528\u524D\u5148\u770B\u8FD9\u91CC\uFF0C\u4E0D\u8981\u51ED\u8BB0\u5FC6\u5047\u8BBE\u67D0\u4E2A\u8D26\u53F7\u8FD8\u80FD\u7528\u3002\u8FD4\u56DE\uFF1A\u51ED\u636E\uFF08\u7C7B\u578B/\u7528\u6237\u540D/\u4F5C\u7528\u57DF/\u6765\u6E90/\u662F\u5426\u53EF\u53D6\u660E\u6587\uFF09\u4E0E\u4F1A\u8BDD\uFF08label/\u8EAB\u4EFD/\u662F\u5426\u5E26\u8BF7\u6C42\u5934/\u8FC7\u671F\u65F6\u95F4\uFF09\u3002\u8981\u5B9E\u9645\u4F7F\u7528\u8BF7\u8C03\u7528 get_credential / get_session\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u53EA\u770B\u8BE5\u8D44\u4EA7\u4E0A\u7684\u51ED\u636E/\u4F1A\u8BDD\uFF08\u4EFB\u52A1\u7EA7\u6761\u76EE\u4ECD\u8FD4\u56DE\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_facts",
+        "description": "\u5206\u9875\u5217\u672C\u4EFB\u52A1\u53CA\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u7684\u3010\u63A2\u7D22\u4E8B\u5B9E/\u7ED3\u8BBA\u3011\uFF0C\u6700\u65B0\u5728\u524D(\u7D27\u51D1\uFF1Aid+\u6458\u8981+\u72B6\u6001\uFF0C\u6458\u8981\u8FC7\u957F\u4F1A\u622A\u65AD\uFF0C\u5168\u6587\u7528 node_detail(id))\u3002\u53C2\u6570\u5747\u53EF\u9009\uFF1Alimit(\u9ED8\u8BA4 20\uFF0C\u4E0A\u9650 100)\u3001before(\u6E38\u6807\uFF0C\u4F20\u4E0A\u4E00\u9875\u8FD4\u56DE\u7684 next_before \u53D6\u66F4\u65E7\u7684\u4E00\u9875\uFF1B\u7701\u7565/0=\u6700\u65B0\u4E00\u9875)\u3001q(\u6309\u6458\u8981\u5173\u952E\u8BCD\u8FC7\u6EE4)\u3002\u8FD4\u56DE {facts, total, has_more, next_before}\uFF1Atotal \u662F\u8FC7\u6EE4\u540E\u7684\u603B\u6570\uFF0Chas_more=true \u65F6\u7528 next_before \u7EE7\u7EED\u7FFB\u9875\u3002\u5173\u8054\u4EFB\u52A1\u6761\u76EE\u5E26 source_task_id/inherited=true \u4E14\u53EA\u8BFB\u3002\u6F0F\u6D1E\u770B list_findings\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string",
+              "description": "\u6309\u4E8B\u5B9E\u6458\u8981\u5173\u952E\u8BCD\u8FC7\u6EE4\uFF08\u4E0D\u533A\u5206\u5927\u5C0F\u5199\uFF09\uFF1B\u7701\u7565 = \u4E0D\u8FC7\u6EE4"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "\u8FD4\u56DE\u6761\u6570\uFF0C\u9ED8\u8BA4 20\uFF0C\u4E0A\u9650 100"
+            },
+            "before": {
+              "type": "integer",
+              "description": "\u5206\u9875\u6E38\u6807\uFF1A\u53EA\u8FD4\u56DE id \u5C0F\u4E8E\u8BE5\u503C\u7684\u66F4\u65E7\u4E8B\u5B9E\uFF1B\u7701\u7565\u6216 0 = \u6700\u65B0\u4E00\u9875"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_findings",
+        "description": "\u5217\u672C\u4EFB\u52A1\u53CA\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u7684\u3010\u786E\u8BA4\u6F0F\u6D1E\u3011(\u7D27\u51D1\uFF1Aid+task_id+intent_id+vulnclass+severity+\u6458\u8981+\u72B6\u6001)\u3002\u5173\u8054\u4EFB\u52A1\u6761\u76EE\u5E26 source_task_id/inherited=true \u4E14\u53EA\u8BFB\u3002\u8FD9\u91CC\u53EA\u542B\u6F0F\u6D1E\uFF1B\u666E\u901A\u63A2\u7D22\u4E8B\u5B9E\u7528 list_facts\uFF0C\u8BE6\u60C5\u7528 node_detail(id)\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_goals",
+        "description": "\u5217\u51FA\u672C\u4EFB\u52A1\u7684\u76EE\u6807\u8282\u70B9\u53CA\u5176\u72B6\u6001\uFF08open/met\uFF09\uFF0C\u7528\u4E8E\u5224\u65AD\u662F\u5426\u8FBE\u6210\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_llm_profiles",
+        "description": "\u5217\u51FA\u53EF\u7528\u7684 LLM \u914D\u7F6E(profile)\uFF1Aid\u3001\u540D\u79F0\u3001\u6A21\u578B\u3001\u683C\u5F0F\u3001\u662F\u5426\u4E3A\u5F53\u524D\u6FC0\u6D3B\u914D\u7F6E\u3002\u7528 id \u7ED9 spawn_task \u7684 llm_profile_id \u53C2\u6570\u6307\u5B9A\u5B50\u4EFB\u52A1\u4E13\u5C5E LLM\uFF08\u5982\u4FA6\u5BDF\u7528\u4FBF\u5B9C\u6A21\u578B\u3001\u5229\u7528\u7528\u5F3A\u6A21\u578B\uFF09\u3002\u4E0D\u542B API Key\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_sessions",
+        "description": "\u67E5\u672C\u4EFB\u52A1\u5DF2\u767B\u8BB0\u7684\u767B\u5F55\u6001\uFF08\u5143\u6570\u636E\uFF0C\u4E0D\u542B\u8BF7\u6C42\u5934\uFF09\u3002\u505A\u5DF2\u8BA4\u8BC1\u6D4B\u8BD5\u524D\u5148\u770B\u8FD9\u91CC\uFF1B\u8981\u590D\u7528\u8BF7\u8C03\u7528 get_session \u53D6\u8BF7\u6C42\u5934\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u53EA\u770B\u8BE5\u8D44\u4EA7\u4E0A\u7684\u4F1A\u8BDD"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_task_findings",
+        "description": "\u8BFB\u6307\u5B9A\u4EFB\u52A1\u7684\u786E\u8BA4\u6F0F\u6D1E(\u542B flag/PoC\uFF1B\u6BCF\u6761\u5E26 id/task_id/intent_id/vulnclass/severity/\u6458\u8981/\u72B6\u6001)\uFF0C\u7528 task_id \u6307\u5B9A\u4EFB\u52A1\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_task_worker_traces",
+        "description": "\u5217\u51FA\u6307\u5B9A\u4EFB\u52A1\u91CC\u8DD1\u8FC7\u54EA\u4E9B work(\u610F\u56FE) + \u5404\u81EA\u6B65\u6570\uFF0C\u7528\u4E8E\u53D1\u73B0\u54EA\u4E9B work \u503C\u5F97\u7FFB\u770B(\u518D\u7528 get_task_worker_trace)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_tasks",
+        "description": "\u5217\u51FA\u6240\u6709\u4EFB\u52A1(id/\u63CF\u8FF0/\u76EE\u6807/\u72B6\u6001/\u8FD0\u884C\u65F6\u957F/\u7236\u4EFB\u52A1/LLM \u914D\u7F6E)\uFF0C\u7F16\u6392 agent \u7528\u5B83\u638C\u63E1\u5168\u5C40\u3001\u770B\u54EA\u4E9B\u4EFB\u52A1\u5361\u592A\u4E45\u3001\u5404\u81EA\u7528\u54EA\u4E2A LLM\u3002\u8FD0\u884C\u65F6\u957F\uFF1A\u8FD0\u884C\u4E2D=\u521B\u5EFA\u2192\u73B0\u5728\uFF0C\u7EC8\u6001=\u521B\u5EFA\u2192\u6700\u540E\u6D3B\u52A8(\u79D2)\u3002llm_profile\uFF1A\u4EFB\u52A1 planner/worker \u7528\u7684\u914D\u7F6E\u540D\uFF0C(\u6FC0\u6D3B\u914D\u7F6E)=\u8DDF\u968F\u5168\u5C40\u6FC0\u6D3B\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_untested_assets",
+        "description": "\u67E5\u8BE2\u3010\u672C\u4EFB\u52A1\u53CA\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u3011\u8303\u56F4\u5185\u3001\u8FD8\u6CA1\u88AB\u4E8B\u5B9E\u951A\u70B9\u8986\u76D6\u7684\u8D44\u4EA7\uFF08\u5173\u8054\u8303\u56F4\u53EA\u8BFB\uFF0C\u4F9B\u4F60\u81EA\u5DF1\u5224\u65AD\u8981\u4E0D\u8981\u8865\u6D4B\uFF0C\u4E0D\u4EE3\u66FF\u4F60\u51B3\u7B56\uFF09\u3002\n\u53EF\u9009\u6309\u8D44\u4EA7\u7C7B\u578B\u8FC7\u6EE4\uFF1Aroot_domain/subdomain/service/app/endpoint/ip\u3002\n\u5206\u9875\uFF1Apage \u4ECE 1 \u8D77\u3001page_size \u9ED8\u8BA4 10\u3002\u8FD4\u56DE {assets:[{id,type,label}], total, page, page_size}\u3002\u4EC5\u4EFB\u52A1\u4E0A\u4E0B\u6587\u53EF\u7528\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "page": {
+              "type": "integer",
+              "description": "\u9875\u7801\uFF0C\u4ECE 1 \u8D77\uFF08\u9ED8\u8BA4 1\uFF09"
+            },
+            "type": {
+              "type": "string",
+              "description": "\u8D44\u4EA7\u7C7B\u578B\u8FC7\u6EE4\uFF08\u53EF\u9009\uFF09\uFF1Aroot_domain/subdomain/service/app/endpoint/ip"
+            },
+            "page_size": {
+              "type": "integer",
+              "description": "\u6BCF\u9875\u6570\u91CF\uFF08\u9ED8\u8BA4 10\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "list_vuln_classes",
+        "description": "\u67E5\u3010\u6F0F\u6D1E\u7C7B\u76EE\u57FA\u7EBF\u3011\uFF1A\u6BCF\u7C7B\u7684\u524D\u7F6E\u6761\u4EF6\u3001\u63A2\u6D4B\u6B65\u9AA4\u3001\u6210\u529F\u5224\u636E(oracle)\u3001payload \u79CD\u5B50\u3001\u7EC8\u6B62\u6761\u4EF6\uFF0C\u5E76\u7528\u672C\u4EFB\u52A1\u5DF2\u786E\u8BA4\u6F0F\u6D1E\u6807\u51FA covered\u3002\u89C4\u5212\u65F6\u7528\u5B83\u5224\u65AD\u67D0\u8D44\u4EA7\u8FD8\u5269\u54EA\u4E9B\u7C7B\u76EE\u6CA1\u6D4B\uFF08\u6BD4\u51ED\u8BB0\u5FC6\u94FA\u65B9\u5411\u66F4\u4E0D\u6613\u6F0F\u6D4B\uFF09\u3002\u53C2\u6570\uFF1Aasset_type(\u53EF\u9009\uFF0C\u6309\u8D44\u4EA7\u7C7B\u578B\u8FC7\u6EE4)\u3001asset_id(\u53EF\u9009\uFF0C\u53EA\u770B\u8BE5\u8D44\u4EA7\u4E0A\u7684\u8986\u76D6)\u3001only_uncovered(\u53EF\u9009\uFF0C\u53EA\u8FD4\u56DE\u672A\u8986\u76D6\u7C7B\u76EE)\u3002\u6CE8\u610F\uFF1A\u8FD9\u662F\u65B9\u5411\u6027\u77E5\u8BC6\uFF0C\u786E\u8BA4\u6F0F\u6D1E\u4ECD\u5FC5\u987B\u771F\u5B9E\u89E6\u53D1\uFF08report_finding \u7684\u7EA2\u7EBF\u4E0D\u53D8\uFF09\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u53EA\u770B\u951A\u5B9A\u5230\u8BE5\u8D44\u4EA7\u7684\u8986\u76D6\u60C5\u51B5\uFF0C\u5E76\u8FC7\u6EE4\u8FD4\u56DE\u7ED3\u679C\u7684 findings"
+            },
+            "asset_type": {
+              "type": "string",
+              "description": "\u8D44\u4EA7\u7C7B\u578B\uFF1Aroot_domain|subdomain|ip|app|service|endpoint\uFF1B\u7559\u7A7A=\u5168\u90E8"
+            },
+            "only_uncovered": {
+              "type": "boolean",
+              "description": "\u53EF\u9009\u3002true=\u53EA\u8FD4\u56DE\u5C1A\u672A\u88AB\u4EFB\u4F55 finding \u8986\u76D6\u7684\u7C7B\u76EE"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "node_detail",
+        "description": "\u6309 id \u53D6\u672C\u4EFB\u52A1\u6216\u76F4\u63A5\u5173\u8054\u4EFB\u52A1\u7684\u3010\u63A2\u7D22\u56FE\u8282\u70B9\u3011\u5B8C\u6574\u5185\u5BB9\u3002\u7EE7\u627F\u8282\u70B9\u5E26 source_task_id/inherited=true \u4E14\u53EA\u8BFB\u3002\u4EC5\u9650 list_facts/list_findings/graph_overview \u8FD4\u56DE\u7684\u63A2\u7D22\u8282\u70B9 id\uFF1B\u8D44\u4EA7\u8BF7\u7528 list_assets/asset_neighbors\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "\u63A2\u7D22\u56FE\u8282\u70B9 id(\u975E\u8D44\u4EA7 id)"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "pause_task",
+        "description": "\u6682\u505C\u6307\u5B9A\u4EFB\u52A1(\u505C\u6B62\u5176 planner/worker \u5FAA\u73AF)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "\u8981\u6682\u505C\u7684\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "prove_goal",
+        "description": "\u5F53\u4F60\u5224\u65AD\u67D0\u4E2A\u53D1\u73B0/\u4E8B\u5B9E\u8BC1\u660E\u4E86\u67D0\u4E2A\u76EE\u6807\u8FBE\u6210\u65F6\u8C03\u7528\uFF1A\u628A\u8BC1\u636E\u8282\u70B9\u8FDE\u5230\u76EE\u6807\u8282\u70B9\uFF0C\u5E76\u6807\u8BB0\u76EE\u6807 met\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "goal_id",
+            "evidence_id"
+          ],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "description": "\u4E3A\u4EC0\u4E48\u8FD9\u4E2A\u8BC1\u636E\u6EE1\u8DB3\u8BE5\u76EE\u6807"
+            },
+            "goal_id": {
+              "type": "integer",
+              "description": "\u76EE\u6807\u8282\u70B9 id"
+            },
+            "evidence_id": {
+              "type": "integer",
+              "description": "\u8BC1\u660E\u5B83\u7684\u53D1\u73B0/\u4E8B\u5B9E\u8282\u70B9 id"
+            }
+          }
+        },
+        "agents": [
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "record_capability",
+        "description": "\u767B\u8BB0\u4E00\u9879\u5DF2\u83B7\u5F97\u7684\u80FD\u529B\uFF08\u5229\u7528\u6210\u529F\u540E\u8C03\u7528\uFF0C\u4E0D\u8981\u7528\u4E8E\u731C\u6D4B\uFF09\u3002\u5FC5\u987B\u7ED9\u51FA\u672C\u6B21\u5B9E\u6D4B\u8BC1\u636E\uFF1B\u540C\u4E00\u8D44\u4EA7\u540C\u4E00\u4F5C\u7528\u57DF\u91CD\u590D\u767B\u8BB0\u4F1A\u66F4\u65B0\u8BC1\u636E\u800C\u4E0D\u662F\u65B0\u589E\u3002\u80FD\u529B\u4F1A\u51FA\u73B0\u5728 list_capabilities \u91CC\uFF0C\u4F9B\u540E\u7EED\u610F\u56FE\u590D\u7528\u767B\u5F55\u6001/\u6587\u4EF6\u8BFB\u5199/\u547D\u4EE4\u6267\u884C\u7B49\u3002\u53C2\u6570\uFF1Akind(\u5FC5\u586B\uFF0C\u89C1\u80FD\u529B\u76EE\u5F55)\u3001evidence(\u5FC5\u586B)\u3001asset_id/scope/strength(\u53EF\u9009)\u3001confidence(0~1\uFF0C\u9ED8\u8BA4 1)\u3001finding_id(\u53EF\u9009\uFF0C\u5173\u8054\u6765\u6E90\u6F0F\u6D1E)\u3001expires_in_seconds(\u53EF\u9009\uFF0C\u4EE4\u724C/\u4F1A\u8BDD\u7C7B\u5EFA\u8BAE\u586B)\u3001attrs(\u53EF\u9009\uFF0Ckind \u4E13\u5C5E\u5C5E\u6027)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "kind",
+            "evidence"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "admin_panel",
+                "cmd_exec",
+                "db_read",
+                "file_read",
+                "file_write",
+                "net_reachable",
+                "token_valid",
+                "weblogin"
+              ],
+              "type": "string",
+              "description": "\u80FD\u529B\u7C7B\u578B"
+            },
+            "attrs": {
+              "type": "object",
+              "description": '\u53EF\u9009\u3002kind \u4E13\u5C5E\u5C5E\u6027\uFF0C\u5982 {"role":"admin"} \u6216 {"db":"app"}'
+            },
+            "scope": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u4F5C\u7528\u57DF\uFF1AURL \u524D\u7F00/\u8D26\u53F7/\u5E93\u8868\uFF0C\u7528\u4E8E\u533A\u5206\u540C\u8D44\u4EA7\u591A\u4EFD\u80FD\u529B"
+            },
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u80FD\u529B\u843D\u5728\u54EA\u4E2A\u8D44\u4EA7\u4E0A\uFF1B\u7701\u7565=\u4EFB\u52A1\u7EA7"
+            },
+            "evidence": {
+              "type": "string",
+              "description": "\u672C\u6B21\u5B9E\u6D4B\u8BC1\u636E\uFF1A\u8BF7\u6C42/\u54CD\u5E94\u3001\u547D\u4EE4\u8F93\u51FA\u3001\u767B\u5F55\u540E\u7684\u9875\u9762\u7279\u5F81\u7B49"
+            },
+            "strength": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u5F3A\u5EA6\uFF1Aread/write/exec/admin/token/outbound \u7B49"
+            },
+            "confidence": {
+              "type": "number",
+              "description": "\u53EF\u9009\uFF0C0~1\uFF0C\u9ED8\u8BA4 1"
+            },
+            "finding_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u6765\u6E90\u6F0F\u6D1E ID\uFF08\u4E0D\u786E\u5B9A\u5C31\u7701\u7565\uFF09"
+            },
+            "expires_in_seconds": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u4EE4\u724C/\u4F1A\u8BDD\u7C7B\u80FD\u529B\u7684\u6709\u6548\u671F"
+            }
+          }
+        },
+        "agents": [
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "record_credential",
+        "description": "\u767B\u8BB0\u4E00\u4EFD\u53EF\u590D\u7528\u51ED\u636E\uFF08\u767B\u5F55\u6210\u529F\u540E\u3001\u8BFB\u5230\u914D\u7F6E/\u5907\u4EFD\u4E2D\u7684\u53E3\u4EE4\u3001\u62FF\u5230 API key \u65F6\u8C03\u7528\uFF09\u3002\u540C\u4E00 task+\u7C7B\u578B+\u8D44\u4EA7+\u4F5C\u7528\u57DF+\u7528\u6237\u540D \u4F1A\u66F4\u65B0\u800C\u4E0D\u662F\u65B0\u589E\u3002\u5FC5\u987B\u7ED9\u51FA secret \u4E0E\u6765\u6E90\u8BF4\u660E\uFF1B\u4E0D\u8981\u767B\u8BB0\u731C\u6D4B\u503C\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "kind",
+            "secret"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "password",
+                "hash",
+                "token",
+                "key",
+                "basic"
+              ],
+              "type": "string",
+              "description": "\u51ED\u636E\u7C7B\u578B\uFF0C\u9ED8\u8BA4 password"
+            },
+            "notes": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u5907\u6CE8\uFF08\u6743\u9650\u8303\u56F4\u3001\u9A8C\u8BC1\u65B9\u5F0F\uFF09"
+            },
+            "scope": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u4F5C\u7528\u57DF\uFF1A\u767B\u5F55\u5165\u53E3/\u57DF\u540D/\u8BBE\u5907"
+            },
+            "secret": {
+              "type": "string",
+              "description": "\u51ED\u636E\u672C\u4F53\uFF08\u53E3\u4EE4/\u54C8\u5E0C/\u4EE4\u724C/\u5BC6\u94A5\uFF09"
+            },
+            "source": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u6765\u6E90\uFF1Abrute/leak/manual/finding"
+            },
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u51ED\u636E\u9002\u7528\u7684\u8D44\u4EA7"
+            },
+            "username": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u7528\u6237\u540D/\u8D26\u53F7"
+            },
+            "source_finding_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u6765\u6E90\u6F0F\u6D1E ID"
+            },
+            "expires_in_seconds": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u6709\u6548\u671F"
+            }
+          }
+        },
+        "agents": [
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "record_fact",
+        "description": "EDITED DESC",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "facts": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "\u3010\u6709\u591A\u6761\u4E0D\u540C\u7ED3\u8BBA\u65F6\u7528\u3011\u4E8B\u5B9E\u6570\u7EC4\uFF0C\u5143\u7D20\u5B57\u6BB5\u540C\u4E0B\u65B9\u9876\u5C42\u5B57\u6BB5\uFF08summary/detail/evidence/confidence/intent_id/asset_ids\uFF09\uFF1B\u7701\u7565 intent_id \u5219\u7528\u9876\u5C42 intent_id\u3002\u8FD4\u56DE ids \u4E0E\u672C\u6570\u7EC4\u7B49\u957F\u3001\u540C\u5E8F\u3002"
+            },
+            "detail": {
+              "type": "string",
+              "description": "\u672C\u4E8B\u5B9E\u7684\u76F8\u5173\u7EC6\u8282\uFF1A\u628A\u8FD9\u6B21\u63A2\u7D22\u7684\u591A\u4E2A\u89C2\u5BDF\u4E8B\u5B9E\u90FD\u5199\u8FDB\u8FD9\u91CC"
+            },
+            "summary": {
+              "type": "string",
+              "description": "\u5BF9\u672C\u6B21\u63A2\u7D22\u7ED3\u8BBA\u7684\u3010\u603B\u7ED3\u6027\u4E00\u53E5\u8BDD\u3011\uFF08\u662F\u5BF9 detail \u7684\u6982\u62EC\uFF09"
+            },
+            "evidence": {
+              "type": "string",
+              "description": "\u3010\u4E00\u884C\u3011\u5173\u952E\u8BC1\u636E\uFF1A\u547D\u4EE4 + \u6700\u80FD\u8BC1\u660E\u7ED3\u8BBA\u7684\u90A3\u4E00\u4E24\u884C\u8F93\u51FA\u3002\u52A1\u5FC5\u7B80\u6D01\uFF0C\u4E0D\u8981\u7C98\u5927\u6BB5\u8F93\u51FA\uFF08\u7EC6\u8282\u653E detail\uFF09\u3002"
+            },
+            "asset_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u76F8\u5173\u8D44\u4EA7 id\uFF08\u53EF\u9009\uFF0C0/1/\u591A\u4E2A\uFF09\uFF1A\u8BE5\u4E8B\u5B9E\u6D89\u53CA\u54EA\u4E9B\u8D44\u4EA7"
+            },
+            "intent_id": {
+              "type": "integer",
+              "description": "\u4EA7\u751F\u672C\u4E8B\u5B9E\u7684\u610F\u56FE id\uFF08\u4F60\u9886\u5230\u7684\u610F\u56FE\uFF1B\u6279\u91CF\u65F6\u4F5C\u4E3A\u5404\u6761\u9ED8\u8BA4\uFF09"
+            },
+            "confidence": {
+              "type": "string",
+              "default": "inferred",
+              "description": "observed\uFF08\u8F93\u51FA\u91CC\u76F4\u63A5\u770B\u5230\uFF09| inferred\uFF08\u636E\u73B0\u8C61\u63A8\u65AD\uFF09\u3002\u5426\u5B9A\u7ED3\u8BBA\u52A1\u5FC5\u5982\u5B9E\u6807\u6CE8\u3002"
+            }
+          }
+        },
+        "agents": [
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "record_finding_retest_result",
+        "description": "\u4E3A\u5F53\u524D\u590D\u6D4B\u4F1A\u8BDD\u4FDD\u5B58\u552F\u4E00\u7ED3\u8BBA\uFF1B\u539F\u6F0F\u6D1E\u8BC1\u636E\u4E0E\u62A5\u544A\u4FDD\u6301\u4E0D\u53D8\u3002\u4F1A\u8BDD\u6210\u529F\u7ED3\u675F\u4E14\u7ED3\u8BBA\u4E3A fixed \u65F6\uFF0C\u7CFB\u7EDF\u81EA\u52A8\u5C06\u6F0F\u6D1E\u72B6\u6001\u6539\u4E3A\u5DF2\u4FEE\u590D\uFF1B\u5176\u4ED6\u7ED3\u8BBA\u4FDD\u7559\u539F\u72B6\u6001\u3002\u5FC5\u987B\u63D0\u4F9B\u672C\u6B21\u5B9E\u9645\u68C0\u67E5\u7684\u8BC1\u636E\uFF0C\u65E0\u6CD5\u786E\u8BA4\u65F6\u5199\u660E\u963B\u585E\u539F\u56E0\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "verdict",
+            "summary",
+            "evidence"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "\u672C\u6B21\u590D\u6D4B\u7ED3\u8BBA\u6458\u8981"
+            },
+            "verdict": {
+              "enum": [
+                "reproduced",
+                "fixed",
+                "inconclusive"
+              ],
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string",
+              "description": "Markdown\uFF1A\u672C\u6B21\u5B9E\u9645\u6B65\u9AA4\u3001\u89C2\u5BDF\u3001\u5BF9\u7167\u3001\u7ED3\u8BBA\u4F9D\u636E\uFF1B\u65E0\u6CD5\u786E\u8BA4\u5219\u5217\u51FA\u5DF2\u68C0\u67E5\u5185\u5BB9\u548C\u963B\u585E\u539F\u56E0"
+            }
+          }
+        },
+        "agents": [
+          "retester"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "record_session",
+        "description": '\u767B\u8BB0\u4E00\u4EFD\u53EF\u590D\u7528\u767B\u5F55\u6001\uFF08\u767B\u5F55\u6210\u529F\u540E\u7ACB\u5373\u8C03\u7528\uFF09\uFF1Aheaders \u4F20\u53EF\u76F4\u63A5\u56DE\u653E\u7684\u8BF7\u6C42\u5934\uFF0C\u5982 {"Cookie":"SESSION=..."} \u6216 {"Authorization":"Bearer ..."}\u3002\u540C\u4E00 task+\u8D44\u4EA7+label \u4F1A\u66F4\u65B0\u3002\u4EE4\u724C/\u4F1A\u8BDD\u7C7B\u8BF7\u586B expires_in_seconds\uFF0C\u8FC7\u671F\u540E\u7CFB\u7EDF\u81EA\u52A8\u4E0D\u518D\u8FD4\u56DE\u3002',
+        "schema": {
+          "type": "object",
+          "required": [
+            "label",
+            "headers"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "cookie",
+                "bearer",
+                "basic",
+                "custom"
+              ],
+              "type": "string",
+              "description": "\u4F1A\u8BDD\u7C7B\u578B\uFF0C\u9ED8\u8BA4 cookie"
+            },
+            "label": {
+              "type": "string",
+              "description": "\u4F1A\u8BDD\u6807\u8BC6\uFF1A\u8D26\u53F7/\u89D2\u8272/\u5165\u53E3\uFF0C\u4F8B\u5982 admin@/login"
+            },
+            "notes": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u5907\u6CE8"
+            },
+            "source": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u6765\u6E90\u8BF4\u660E"
+            },
+            "headers": {
+              "type": "object",
+              "description": "\u53EF\u76F4\u63A5\u56DE\u653E\u7684\u8BF7\u6C42\u5934"
+            },
+            "asset_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u4F1A\u8BDD\u5BF9\u5E94\u7684\u8D44\u4EA7"
+            },
+            "identity": {
+              "type": "string",
+              "description": "\u53EF\u9009\u3002\u767B\u5F55\u8EAB\u4EFD/\u89D2\u8272"
+            },
+            "source_finding_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u6765\u6E90\u6F0F\u6D1E ID"
+            },
+            "expires_in_seconds": {
+              "type": "integer",
+              "description": "\u53EF\u9009\u3002\u6709\u6548\u671F"
+            }
+          }
+        },
+        "agents": [
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "report_finding",
+        "description": "\u8BB0\u5F55\u786E\u8BA4\u7684\u6F0F\u6D1E\uFF0C\u7528 evidence \u63D0\u4F9B\u547D\u4EE4\u8F93\u51FA\u3001\u65E5\u5FD7\u7B49\u53EF\u9A8C\u8BC1\u8BC1\u636E\u3002\u4EFB\u52A1\u4E0A\u4E0B\u6587\u4F20\u5F53\u524D intent_id\u3002\u8FD4\u56DE\u7684 finding_id \u662F\u72EC\u7ACB\u6F0F\u6D1E\u8BB0\u5F55 ID\uFF0Cfinding_node_id \u662F\u63A2\u7D22\u8282\u70B9 ID\uFF08\u7B2C\u4E00\u884C\u4FDD\u7559\u8BE5\u8282\u70B9\u7F16\u53F7\uFF09\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "vulnclass",
+            "severity",
+            "summary"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "\u6F0F\u6D1E\u540D\u79F0"
+            },
+            "summary": {
+              "type": "string",
+              "description": "\u53D1\u73B0\u6458\u8981"
+            },
+            "evidence": {
+              "type": "string",
+              "description": "\u8BC1\u636E/PoC \u6587\u672C"
+            },
+            "severity": {
+              "type": "string",
+              "description": "critical|high|medium|low"
+            },
+            "asset_ids": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "\u53D7\u5F71\u54CD\u8D44\u4EA7 id"
+            },
+            "intent_id": {
+              "type": "integer",
+              "description": "\u5F53\u524D\u4EFB\u52A1\u7684\u610F\u56FE id"
+            },
+            "vulnclass": {
+              "type": "string",
+              "description": "\u6F0F\u6D1E\u7C7B\u522B"
+            },
+            "traffic_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "traffic_id"
+                ],
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "description": "\u8BE5\u6D41\u91CF\u5982\u4F55\u652F\u6301\u6F0F\u6D1E\u7ED3\u8BBA"
+                  },
+                  "role": {
+                    "enum": [
+                      "baseline",
+                      "proof",
+                      "verification",
+                      "supporting"
+                    ],
+                    "type": "string"
+                  },
+                  "traffic_id": {
+                    "type": "string",
+                    "description": "traffic_search \u8FD4\u56DE\u7684\u771F\u5B9E\u6D41\u91CF ID"
+                  }
+                }
+              },
+              "description": "\u53EF\u9009\uFF1BHTTP/HTTPS \u6F0F\u6D1E\u5148\u68C0\u7D22\u5E76\u9010\u6761\u6838\u5B9E\u8BF7\u6C42/\u54CD\u5E94\u786E\u5B9E\u652F\u6301\u6F0F\u6D1E\u7ED3\u8BBA\uFF0C\u518D\u6309\u590D\u73B0\u987A\u5E8F\u586B\u5199\u771F\u5B9E ID\u3002TCP \u7B49\u975E HTTP \u6F0F\u6D1E\u3001\u672A\u91C7\u96C6\u6216\u627E\u4E0D\u5230\u786E\u5207\u8BB0\u5F55\u65F6\u7701\u7565\u6216\u4F20 []\uFF0C\u4E0D\u963B\u6B62\u4E0A\u62A5\uFF1B\u53EF\u5728 evidence \u8BF4\u660E\u539F\u56E0\u5E76\u63D0\u4F9B\u5176\u4ED6\u53EF\u9A8C\u8BC1\u8BC1\u636E\u3002\u4E0D\u8981\u731C\u6D4B ID\u3001\u6309\u57DF\u540D/\u65F6\u95F4\u63A8\u5B9A\u5173\u8054\u6216\u4EC5\u4E3A\u8865\u5305\u91CD\u590D\u63A2\u6D4B\u3002\u7528\u9014 baseline \u6B63\u5E38\u5BF9\u7167 / proof \u6F0F\u6D1E\u8BC1\u660E / verification \u8865\u5145\u9A8C\u8BC1 / supporting \u8F85\u52A9\u8BC1\u636E\u3002"
+            },
+            "evidence_hint_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\uFF1A\u672C\u4EFB\u52A1\u4E2D\u5BF9\u5E94\u6B64\u6F0F\u6D1E\u7684\u63D0\u793A\u8282\u70B9 ID\uFF0C\u81EA\u52A8\u643A\u5E26\u5176\u7ED3\u6784\u5316 traffic_refs\uFF1B\u4E0D\u80FD\u5F15\u7528\u7EE7\u627F\u63D0\u793A\u6216\u5176\u4ED6\u6F0F\u6D1E\u7684\u63D0\u793A"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker",
+          "auto",
+          "pentest"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "search_all_worker_traces",
+        "description": "\u3010\u901A\u5E38\u4E0D\u63A8\u8350\u4F7F\u7528\uFF0C\u56E0\u4E3A\u7CFB\u7EDF\u4E2D\u5DF2\u7ECF\u7ED9\u4E86\u5927\u90E8\u5206\u4FE1\u606F\u4E86\u3011\u5728\u3010\u672C\u4EFB\u52A1\u5176\u4ED6 work \u7684\u6267\u884C\u8FC7\u7A0B\u3011\u91CC\u6309\u5173\u952E\u5B57(q)\u68C0\u7D22\u2014\u2014\u7528\u4E8E\u627E\u56DE\u67D0\u4E2A worker \u89C1\u8FC7\u3001\u5374\u6CA1\u5199\u8FDB fact \u7684\u4E1C\u897F\uFF08\u67D0\u8DEF\u5F84/token/\u62A5\u9519\u7B49\uFF09\u3002\u5DF2\u81EA\u52A8\u6392\u9664\u4F60\u81EA\u5DF1\u8FD9\u6761\u610F\u56FE\u7684\u6B65\u9AA4\uFF08\u90A3\u4E9B\u672C\u5C31\u5728\u4F60\u4E0A\u4E0B\u6587\u91CC\uFF09\u3002\u53EA\u8FD4\u56DE\u547D\u4E2D\u6B65\u9AA4\u7684\u6458\u8981(summary\u2264100\u5B57)\uFF0C\u6BCF\u6761\u5E26 intent_id\uFF1B\u636E\u6B64\u518D\u7528 get_worker_trace(intent_id, step_ids=[...]) \u53D6\u5B8C\u6574\u5185\u5BB9\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "q"
+          ],
+          "properties": {
+            "q": {
+              "type": "string",
+              "description": "\u5173\u952E\u5B57\uFF08\u5728\u6240\u6709 work \u6B65\u9AA4\u7684\u6458\u8981+\u5B8C\u6574\u8F93\u51FA\u91CC\u641C\uFF09"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "\u8FD4\u56DE\u4E0A\u9650\uFF0C\u9ED8\u8BA4 100\uFF08\u53EF\u9009\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner",
+          "worker"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "search_task_worker_traces",
+        "description": "\u5728\u6307\u5B9A\u4EFB\u52A1\u91CC\u6309\u5173\u952E\u5B57\u641C\u7D22\u6240\u6709 work \u7684\u6267\u884C\u8FC7\u7A0B(\u8FD4\u56DE\u547D\u4E2D\u6B65\u9AA4\u6458\u8981 + intent_id)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "task_id",
+            "q"
+          ],
+          "properties": {
+            "q": {
+              "type": "string",
+              "description": "\u641C\u7D22\u5173\u952E\u5B57"
+            },
+            "task_id": {
+              "type": "string",
+              "description": "\u4EFB\u52A1 id"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "set_constraints",
+        "description": "\u7ED9\u3010\u672C\u4EFB\u52A1\u3011\u65B0\u589E\u64CD\u4F5C\u7EA6\u675F,\u7528\u6765\u6846\u5B9A\u63A2\u7D22\u8FB9\u754C:type=allow(\u5141\u8BB8\u505A\u7684\u64CD\u4F5C)\u6216 deny(\u7981\u6B62\u505A\u7684\u64CD\u4F5C)\u3002\n\u7EA6\u675F=\u5BF9\u300E\u53EF\u4EE5/\u4E0D\u53EF\u4EE5\u505A\u54EA\u4E9B\u64CD\u4F5C\u300F\u7684\u89C4\u5B9A(\u5982\u300E\u4EC5\u6D4B\u5F53\u524D\u7AEF\u53E3,\u4E0D\u626B\u5176\u4ED6\u7AEF\u53E3\u300F\u300E\u7981\u6B62\u5BF9\u751F\u4EA7\u5E93\u505A\u5199\u64CD\u4F5C\u300F\u300E\u53EA\u5141\u8BB8\u88AB\u52A8\u4FA6\u5BDF\u300F),\u4E0D\u662F\u76EE\u6807\u3001\u4E5F\u4E0D\u662F\u653B\u51FB\u6B65\u9AA4\u3002\n\u2605\u4F18\u5148\u6279\u91CF:\u591A\u6761\u653E\u8FDB constraints \u6570\u7EC4\u4E00\u6B21\u63D0\u4EA4,\u8FD4\u56DE ids \u4E0E\u4E4B\u7B49\u957F\u540C\u5E8F(\u5931\u8D25\u9879 id=0,\u8BE6\u60C5\u89C1 errors)\u3002\u5355\u6761\u5219\u7701\u7565 constraints \u76F4\u63A5\u7ED9\u9876\u5C42 text/type\u3002\n\u53EA\u767B\u8BB0\u4EFB\u52A1\u76EE\u6807/\u63CF\u8FF0\u91CC\u3010\u660E\u786E\u5199\u51FA\u3011\u7684\u7EA6\u675F,\u4E0D\u8981\u81C6\u9020;\u62FF\u4E0D\u51C6\u7C7B\u578B\u65F6\u7528 deny(\u66F4\u4FDD\u5B88)\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u4E00\u6761\u64CD\u4F5C\u7EA6\u675F\u7684\u5185\u5BB9"
+            },
+            "type": {
+              "type": "string",
+              "description": "[\u5355\u6761] allow(\u5141\u8BB8)\u6216 deny(\u7981\u6B62);\u7F3A\u7701\u6309 deny \u5904\u7406"
+            },
+            "constraints": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "\u3010\u4F18\u5148\u7528\u8FD9\u4E2A\u3011\u8981\u65B0\u589E\u7684\u7EA6\u675F\u6570\u7EC4,\u6309\u987A\u5E8F\u5904\u7406\u3002\u6BCF\u4E2A\u5143\u7D20:text(\u5FC5\u586B,\u4E00\u6761\u7EA6\u675F)+ type(allow|deny)\u3002\u8FD4\u56DE ids \u4E0E\u672C\u6570\u7EC4\u7B49\u957F\u3001\u540C\u5E8F\u3002"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "goals"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "set_goals",
+        "description": "\u7ED9\u3010\u672C\u4EFB\u52A1\u3011\u65B0\u589E\u63A2\u7D22\u76EE\u6807(goal)\u3002\u76EE\u6807=\u6700\u7EC8\u53EF\u4EA4\u4ED8/\u53EF\u6838\u9A8C\u7684\u7ED3\u679C,\u4E0D\u662F\u653B\u51FB\u6B65\u9AA4\u6216\u4FA6\u5BDF\u52A8\u4F5C\u3002\n\u2605\u4F18\u5148\u6279\u91CF:\u591A\u4E2A\u76EE\u6807\u653E\u8FDB goals \u6570\u7EC4\u4E00\u6B21\u63D0\u4EA4,\u8FD4\u56DE ids \u4E0E\u4E4B\u7B49\u957F\u540C\u5E8F(\u5931\u8D25\u9879 id=0,\u8BE6\u60C5\u89C1 errors)\u3002\u5355\u6761\u5219\u7701\u7565 goals \u76F4\u63A5\u7ED9\u9876\u5C42 text\u3002\nvulnclass \u53EF\u9009:\u5BF9\u5E94\u6F0F\u6D1E\u7C7B(\u5982 SQLi/IDOR),\u4E1A\u52A1\u903B\u8F91\u7C7B\u76EE\u6807\u7559\u7A7A\u3002\u76EE\u6807\u662F\u5426\u8FBE\u6210\u7531\u7CFB\u7EDF\u5224\u5B9A\u6807\u8BB0 met,\u672C\u5DE5\u5177\u53EA\u8D1F\u8D23\u65B0\u589E\u3002",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u4E00\u4E2A\u72EC\u7ACB\u53EF\u9A8C\u8BC1\u7684\u6700\u7EC8\u76EE\u6807"
+            },
+            "goals": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "\u3010\u4F18\u5148\u7528\u8FD9\u4E2A\u3011\u8981\u65B0\u589E\u7684\u76EE\u6807\u6570\u7EC4,\u6309\u987A\u5E8F\u5904\u7406\u3002\u6BCF\u4E2A\u5143\u7D20:text(\u5FC5\u586B,\u4E00\u4E2A\u72EC\u7ACB\u53EF\u9A8C\u8BC1\u7684\u6700\u7EC8\u76EE\u6807)+ vulnclass(\u53EF\u9009)\u3002\u8FD4\u56DE ids \u4E0E\u672C\u6570\u7EC4\u7B49\u957F\u3001\u540C\u5E8F\u3002"
+            },
+            "vulnclass": {
+              "type": "string",
+              "description": "[\u5355\u6761] \u5BF9\u5E94\u6F0F\u6D1E\u7C7B(\u82E5\u660E\u786E),\u5982 SQLi/IDOR;\u4E1A\u52A1\u903B\u8F91\u76EE\u6807\u53EF\u7559\u7A7A"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "goals"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "spawn_task",
+        "description": "\u65B0\u5EFA\u4E00\u4E2A\u5B50\u4EFB\u52A1\u5E76\u542F\u52A8\u63A2\u7D22\u5F15\u64CE\uFF0C\u8FD4\u56DE task_id\u3002\u7528\u4E8E\u628A\u4E00\u4EF6\u4E8B(\u5982\u4E00\u9053\u9898/\u4E00\u4E2A\u76EE\u6807)\u6D3E\u6210\u72EC\u7ACB\u4EFB\u52A1\u3002parent_ref \u53EF\u9009\uFF1A\u586B\u5F53\u524D\u7F16\u6392\u5173\u8054\u7684\u7236\u4EFB\u52A1 id \u505A\u7236\u5B50\u5173\u8054\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "description",
+            "goal"
+          ],
+          "properties": {
+            "goal": {
+              "type": "string",
+              "description": "\u4EFB\u52A1\u76EE\u6807(\u8981\u8FBE\u6210\u4EC0\u4E48)"
+            },
+            "parent_ref": {
+              "type": "string",
+              "description": "\u53EF\u9009\uFF1A\u7236\u4EFB\u52A1 id(\u505A\u7236\u5B50\u5173\u8054)"
+            },
+            "description": {
+              "type": "string",
+              "description": "\u4EFB\u52A1\u63CF\u8FF0(\u7B80\u77ED\u6807\u9898)"
+            },
+            "llm_profile_id": {
+              "type": "integer",
+              "description": "\u53EF\u9009\uFF1A\u6307\u5B9A\u672C\u5B50\u4EFB\u52A1 planner/worker \u7528\u7684 LLM \u914D\u7F6E id(\u89C1 list_llm_profiles)\uFF1B\u7559\u7A7A\u5219\u7EE7\u627F\u7236\u4EFB\u52A1\u3001\u518D\u56DE\u9000\u5168\u5C40\u6FC0\u6D3B\u914D\u7F6E"
+            },
+            "source_task_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "\u53EF\u9009\uFF1A\u53EA\u8BFB\u7EE7\u627F\u7684\u6765\u6E90\u4EFB\u52A1 id \u5217\u8868(\u6700\u591A 8 \u4E2A)\u3002\u5B50\u4EFB\u52A1\u53EF\u53EA\u8BFB\u5F15\u7528\u8FD9\u4E9B\u4EFB\u52A1\u5DF2\u63A2\u660E\u7684\u8D44\u4EA7/\u7ED3\u8BBA\u4F5C\u4E3A\u8D77\u70B9\uFF1B\u4E0E parent_ref \u7684\u7EAF\u7236\u5B50\u6307\u9488\u4E0D\u540C\uFF0C\u8FD9\u662F\u5185\u5BB9\u7EE7\u627F\u3002"
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "description": "\u53EF\u9009\uFF1A\u4EFB\u52A1\u7EA7\u8D85\u65F6(\u79D2)\u3002\u5230\u70B9\u540E\u89E6\u53D1\u4F18\u96C5\u6536\u5C3E\u5E76\u8FDB\u5165 timeout \u7EC8\u6001\uFF1B\u7559\u7A7A\u6216 0 = \u4E0D\u9650\u65F6"
+            },
+            "seed_first_intent": {
+              "type": "boolean",
+              "description": "\u53EF\u9009\uFF1A\u5BF9\u4E8E\u7B80\u5355\u4EFB\u52A1\u53EF\u5F00\u542F\uFF0C\u521B\u5EFA\u65F6\u76F4\u63A5\u4E0B\u53D1\u4E00\u6761\u79CD\u5B50\u610F\u56FE(\u5185\u5BB9=\u63CF\u8FF0+\u76EE\u6807)\u8BA9 worker \u514D\u7B49\u9996\u8F6E planner \u76F4\u63A5\u5F00\u8DD1\u6D4B\u8BD5\uFF1B\u9ED8\u8BA4 false(\u8D70\u6807\u51C6\u5148\u89C4\u5212\u518D\u6267\u884C)\u3002"
+            },
+            "plan_heartbeat_seconds": {
+              "type": "integer",
+              "description": "\u53EF\u9009\uFF1Aplanner \u5FC3\u8DF3\u89E6\u53D1\u95F4\u9694(\u79D2)\u3002\u8DDD\u4E0A\u8F6E\u89C4\u5212\u7ED3\u675F/\u4EFB\u52A1\u5F00\u59CB\u6EE1\u8BE5\u503C\u4E14\u671F\u95F4\u65E0\u89E6\u53D1 \u2192 \u89E6\u53D1\u4E00\u8F6E\u89C4\u5212(\u515C\u5E95\u6B7B\u9501 + \u5524\u9192\u53BB\u76D1\u7763\u98DE\u884C\u4E2D\u7684 worker)\u3002\u7559\u7A7A\u6216 0 = \u9ED8\u8BA4 600(10min)\uFF1B"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "steer_work",
+        "description": "\u7ED9\u4E00\u6761\u6B63\u5728\u8FD0\u884C\u7684\u610F\u56FE(work)\u5B9E\u65F6\u6CE8\u5165\u7EA0\u504F\u6307\u4EE4\uFF0C\u4E0D\u6253\u65AD\u5B83\u3001\u4E0D\u4E22\u5DF2\u6709\u8FDB\u5C55\uFF1Aworker \u4F1A\u5728\u4E0B\u4E00\u6B65\u52A8\u4F5C\u524D\u6536\u5230\u4F60\u7684\u6307\u4EE4\u5E76\u636E\u6B64\u8C03\u6574\u3002\u7528\u4E8E'\u522B\u518D\u8D70 X\u3001\u805A\u7126 Y'\u8FD9\u7C7B\u3010\u610F\u56FE\u5185\u3011\u7EA0\u504F\uFF1B\u82E5\u65B9\u5411\u6574\u4E2A\u9519\u4E86\u5E94\u6539\u7528 kill_work \u518D\u4E0B\u65B0\u610F\u56FE\u3002\u5EFA\u8BAE\u5148\u7528 get_worker_output \u770B\u5B83\u5728\u5E72\u561B\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "intent_id",
+            "message"
+          ],
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "\u7ED9 worker \u7684\u7EA0\u504F\u6307\u4EE4\uFF0C\u660E\u786E\u8BA9\u5B83\u505C\u6B62\u4EC0\u4E48\u3001\u8F6C\u5411\u4EC0\u4E48"
+            },
+            "intent_id": {
+              "type": "integer",
+              "description": "\u8981\u7EA0\u504F\u7684\u610F\u56FE id\uFF08= work \u53E5\u67C4\uFF09"
+            }
+          }
+        },
+        "agents": [
+          "mainagent",
+          "planner"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "traffic_blob",
+        "description": "\u5206\u6BB5\u8BFB\u53D6\u8D85\u5927\u8BF7\u6C42/\u54CD\u5E94\u4F53\u7684\u539F\u6587\u3002traffic_get \u91CC\u663E\u793A\u4E3A '\u2026[truncated] @blob sha256:<hash>' \u7684\u90E8\u5206\u5373\u5B58\u653E\u4E8E\u6B64\uFF0C\u628A\u8BE5 hash \u4F20\u8FDB\u6765\u5373\u53EF\u53D6\u5B8C\u6574\u5185\u5BB9\u3002\u5355\u6B21\u6700\u591A\u8FD4\u56DE 8KB\uFF0C\u7528 offset \u7EE7\u7EED\u5F80\u540E\u8BFB\uFF08\u8FD4\u56DE\u7ED3\u679C\u4F1A\u7ED9\u51FA\u603B\u957F\u5EA6\uFF09\u3002\u9002\u5408\u7FFB\u9605\u5907\u4EFD\u6587\u4EF6\u3001\u6E90\u7801\u6CC4\u9732\u3001\u5927 JSON \u5BFC\u51FA\u7B49\u8D85\u8FC7\u5185\u8054\u9608\u503C\u7684\u54CD\u5E94\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "hash"
+          ],
+          "properties": {
+            "hash": {
+              "type": "string",
+              "description": "traffic_get \u4E2D @blob sha256: \u540E\u9762\u7684 64 \u4F4D\u5341\u516D\u8FDB\u5236\u503C"
+            },
+            "length": {
+              "type": "integer",
+              "description": "\u672C\u6B21\u8BFB\u53D6\u5B57\u8282\u6570\uFF0C\u9ED8\u8BA4\u4E14\u6700\u5927 8192"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "\u8D77\u59CB\u5B57\u8282\u504F\u79FB\uFF0C\u9ED8\u8BA4 0"
+            }
+          }
+        },
+        "agents": [
+          "worker",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "traffic_get",
+        "description": "\u6309 id \u53D6\u4E00\u6761\u5DF2\u6293\u6D41\u91CF\u7684\u8BF7\u6C42/\u54CD\u5E94\u539F\u6587\uFF08\u8FC7\u5927\u4F1A\u622A\u65AD\uFF09\u3002\u914D\u5408 traffic_search \u7528\uFF0C\u907F\u514D\u91CD\u590D curl\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "traffic_search \u8FD4\u56DE\u7684 id"
+            }
+          }
+        },
+        "agents": [
+          "worker",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "traffic_search",
+        "description": "\u67E5\u8BE2\u8BB0\u5F55\u4EE3\u7406\u5DF2\u6293\u53D6\u7684\u76EE\u6807\u6D41\u91CF\uFF08\u5FC5\u987B\u6307\u5B9A host\uFF1B\u652F\u6301\u88F8\u4E3B\u673A\u3001\u4E3B\u673A:\u7AEF\u53E3\u6216\u5B8C\u6574 URL\uFF0C\u53EF\u518D\u6309 URL \u5B50\u4E32\u6216\u6B63\u6587\u5173\u952E\u8BCD\u8FC7\u6EE4\uFF09\u3002\u6307\u5B9A\u7AEF\u53E3\u65F6\u53EA\u8FD4\u56DE\u8BE5\u670D\u52A1\u7684\u6D41\u91CF\uFF0C\u907F\u514D\u540C\u4E00 IP \u7684\u4E0D\u540C\u7AEF\u53E3\u4E32\u5305\u3002body_contains \u4F1A\u5728\u5DF2\u6293\u53D6\u7684\u8BF7\u6C42/\u54CD\u5E94\u5934\u4E0E\u6B63\u6587\u4E2D\u505A\u5168\u6587\u641C\u7D22\uFF0C\u652F\u6301\u4EFB\u610F\u5B50\u4E32\u548C\u4E2D\u6587\uFF08\u81F3\u5C11 3 \u4E2A\u5B57\u7B26\uFF09\u3002\u4EC5\u8FD4\u56DE\u6781\u8F7B\u91CF\u7D22\u5F15(id/method/url/status/resp_len)\uFF0C\u4E0D\u542B\u54CD\u5E94\u5185\u5BB9\uFF1B\u7ED3\u679C\u975E\u7A7A\u540E\u5FC5\u987B\u7528 traffic_get \u9010\u6761\u6838\u5B9E\u8BF7\u6C42/\u54CD\u5E94\uFF0C\u518D\u628A\u786E\u5B9E\u652F\u6301\u5F53\u524D\u6F0F\u6D1E\u7684 ID \u4EA4\u7ED9 bind_finding_traffic\u3002\u9ED8\u8BA4\u53EA\u8FD4\u56DE 3 \u6761\u3001\u6BCF\u9875\u6700\u591A 10 \u6761\uFF1B\u7ED3\u679C\u591A\u65F6\u7528 page \u7FFB\u9875\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "\u6309\u4E3B\u673A\u8FC7\u6EE4\uFF08\u5FC5\u586B\uFF1B\u5982 '107.172.96.177'\u3001'107.172.96.177:8082' \u6216 'http://107.172.96.177:8082/path'\uFF09"
+            },
+            "page": {
+              "type": "integer",
+              "description": "\u9875\u7801\uFF0C\u4ECE 0 \u5F00\u59CB\uFF0C\u9ED8\u8BA4 0\uFF08\u6309 ts \u5012\u5E8F\u5206\u9875\uFF09"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "\u6BCF\u9875\u6761\u6570\uFF0C\u9ED8\u8BA4 3\uFF0C\u6700\u5927 10"
+            },
+            "contains": {
+              "type": "string",
+              "description": "URL \u5B50\u4E32\u8FC7\u6EE4\uFF08\u53EF\u9009\uFF0C\u5982 'api' / 'login'\uFF09"
+            },
+            "body_contains": {
+              "type": "string",
+              "description": "\u6B63\u6587\u5168\u6587\u641C\u7D22\uFF08\u53EF\u9009\uFF0C\u81F3\u5C11 3 \u4E2A\u5B57\u7B26\uFF09\uFF0C\u5339\u914D\u8BF7\u6C42/\u54CD\u5E94\u7684\u5934\u4E0E\u6B63\u6587\uFF0C\u5982 'password' / 'root:x:0' / '\u5185\u7F51\u6D4B\u8BD5'"
+            }
+          }
+        },
+        "agents": [
+          "worker",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "update_custom_tool",
+        "description": "\u4FEE\u6539\u4E00\u4E2A\u5DF2\u6709\u7684\u81EA\u5B9A\u4E49\u5DE5\u5177(\u6309 key)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "key",
+            "kind"
+          ],
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "\u8981\u4FEE\u6539\u7684\u81EA\u5B9A\u4E49\u5DE5\u5177 key"
+            },
+            "exec": {
+              "type": "object",
+              "description": "\u6267\u884C\u89C4\u683C(shell \u7C7B\u578B\u4E0D\u9700\u8981): command\u2192{command}; script\u2192{code}; http\u2192{method,url,headers,body,proxy,use_recording_proxy}"
+            },
+            "kind": {
+              "type": "string",
+              "description": "shell | command | script(\u4EC5Python) | http\u3002shell=bash \u73AF\u5883\u58F0\u660E(\u4EC5\u544A\u77E5\u6A21\u578B\u8BE5\u5DE5\u5177\u53EF\u5728 bash \u4E2D\u76F4\u63A5\u8C03\u7528\uFF0C\u65E0\u9700 exec/schema)\uFF1B\u5176\u4F59\u4E09\u79CD\u9700\u63D0\u4F9B exec"
+            },
+            "agents": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "\u7ED1\u5B9A\u7684 agent key(\u53EF\u9009)"
+            },
+            "schema": {
+              "type": "object",
+              "description": "\u53C2\u6570 JSON-Schema(shell/command/script \u53EF\u7559\u7A7A; http \u5FC5\u586B\u4E14\u9700\u542B properties)"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u542F\u7528(\u9ED8\u8BA4 true)"
+            },
+            "deferred": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u5EF6\u8FDF(shell \u7C7B\u578B\u65E0\u6548\uFF1B\u4EC5 command/script/http \u7684\u4E0D\u5E38\u7528\u5DE5\u5177\u624D\u5F00)"
+            },
+            "description": {
+              "type": "string",
+              "description": "\u53D1\u7ED9\u6A21\u578B\u7684\u63CF\u8FF0"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "update_finding_report",
+        "description": '\u4E3A\u5DF2\u767B\u8BB0\u7684\u6F0F\u6D1E\u5199\u5165/\u66F4\u65B0\u3010\u8BE6\u7EC6\u62A5\u544A\u3011(Markdown \u5168\u6587,\u6574\u6BB5\u8986\u76D6\u65E7\u5185\u5BB9)\u3002finding_id \u4F20 report_finding \u8FD4\u56DE\u7684\u90A3\u4E2A id("finding recorded: <id>" \u91CC\u7684\u6570\u5B57)\u3002\u62A5\u544A\u5EFA\u8BAE\u5305\u542B:\u6F0F\u6D1E\u6982\u8FF0\u3001\u5F71\u54CD\u4E0E\u5371\u5BB3\u3001\u590D\u73B0\u6B65\u9AA4\u3001\u8BC1\u636E/PoC\u3001\u4FEE\u590D\u5EFA\u8BAE\u3002',
+        "schema": {
+          "type": "object",
+          "required": [
+            "finding_id",
+            "report"
+          ],
+          "properties": {
+            "report": {
+              "type": "string",
+              "description": "\u8BE6\u7EC6\u62A5\u544A\u5168\u6587,Markdown \u683C\u5F0F"
+            },
+            "finding_id": {
+              "type": "integer",
+              "description": "\u76EE\u6807\u6F0F\u6D1E id(report_finding \u8FD4\u56DE\u7684 id)"
+            },
+            "evidence_version": {
+              "type": "integer",
+              "description": "get_finding_traffic \u8FD4\u56DE\u7684\u8BC1\u636E version\uFF1B\u7528\u4E8E\u9632\u6B62\u62A5\u544A\u8986\u76D6\u65B0\u7684\u8BC1\u636E\u53D8\u66F4"
+            }
+          }
+        },
+        "agents": [
+          "auto",
+          "reporter"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "update_mcp",
+        "description": "\u4FEE\u6539\u4E00\u4E2A\u5DF2\u6709\u7684 MCP \u670D\u52A1\u5668(\u6309 id)\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "transport"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "\u8981\u4FEE\u6539\u7684 MCP \u670D\u52A1\u5668 id"
+            },
+            "env": {
+              "type": "object",
+              "description": "\u73AF\u5883\u53D8\u91CF {KEY:VALUE}"
+            },
+            "url": {
+              "type": "string",
+              "description": "http/sse \u7684 URL"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "\u547D\u4EE4\u53C2\u6570\u6570\u7EC4"
+            },
+            "name": {
+              "type": "string",
+              "description": "MCP \u670D\u52A1\u5668\u540D"
+            },
+            "command": {
+              "type": "string",
+              "description": "stdio \u7684\u542F\u52A8\u547D\u4EE4(\u5982 npx)"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "\u662F\u5426\u542F\u7528(\u9ED8\u8BA4 true)"
+            },
+            "insecure": {
+              "type": "boolean",
+              "description": "http: \u8DF3\u8FC7 TLS \u8BC1\u4E66\u6821\u9A8C(\u81EA\u7B7E\u8BC1\u4E66\u65F6\u7F6E true, \u9ED8\u8BA4 false)"
+            },
+            "transport": {
+              "type": "string",
+              "description": "stdio | http / sse"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      },
+      {
+        "key": "update_skill_file",
+        "description": "\u5199/\u8986\u76D6\u67D0\u4E2A skill \u5185\u7684\u4E00\u4E2A\u6587\u4EF6(\u9ED8\u8BA4 SKILL.md)\u3002\u7528\u4E8E\u4FEE\u6539\u6280\u80FD\u5185\u5BB9\u6216\u52A0\u811A\u672C/\u5F15\u7528\u3002",
+        "schema": {
+          "type": "object",
+          "required": [
+            "name",
+            "content"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "\u76F8\u5BF9\u8DEF\u5F84(\u53EF\u9009\uFF0C\u9ED8\u8BA4 SKILL.md\uFF0C\u5982 scripts/run.py)"
+            },
+            "name": {
+              "type": "string",
+              "description": "skill \u540D"
+            },
+            "content": {
+              "type": "string",
+              "description": "\u6587\u4EF6\u5B8C\u6574\u5185\u5BB9"
+            }
+          }
+        },
+        "agents": [
+          "auto"
+        ],
+        "enabled": true,
+        "kind": "builtin",
+        "exec": {},
+        "deferred": false
+      }
+    ];
+    DEFAULT_SERVERS = [
+      {
+        "name": "browser",
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "@playwright/mcp",
+          "--headless"
+        ],
+        "env": {},
+        "enabled": true,
+        "insecure": false
+      },
+      {
+        "name": "ScopeSentry",
+        "transport": "http",
+        "args": [],
+        "env": {
+          "X-API-Key": ""
+        },
+        "enabled": true,
+        "insecure": false
+      },
+      {
+        "name": "UFOX\u5728\u7EBFAPK\u53CD\u7F16\u8BD1",
+        "transport": "http",
+        "url": "https://ufox.cc/apk/mcp",
+        "args": [],
+        "env": {},
+        "enabled": true,
+        "insecure": false
+      }
+    ];
+  }
+});
+
+// vexnar-core/src/catalog/register.ts
+function rowsOf(tables, name) {
+  const rows = tables[name];
+  if (Array.isArray(rows)) return rows;
+  const fresh = [];
+  tables[name] = fresh;
+  return fresh;
+}
+function settingsOf(tables) {
+  const row = tables.settings;
+  if (row && typeof row === "object" && !Array.isArray(row)) return row;
+  const fresh = {};
+  tables.settings = fresh;
+  return fresh;
+}
+function toolRowFromDefault(def) {
+  return {
+    key: def.key,
+    system: true,
+    description: def.description,
+    schema: def.schema,
+    agents: [...def.agents],
+    enabled: def.enabled,
+    kind: def.kind,
+    ...def.exec === void 0 ? {} : { exec: def.exec },
+    deferred: def.deferred,
+    calls: 0
+  };
+}
+async function registerCatalogDefaults(meta4, options = {}) {
+  const tables = await meta4.load();
+  const tools = rowsOf(tables, "tools");
+  const servers = rowsOf(tables, "mcp");
+  const settings = settingsOf(tables);
+  const firstRunOnly = options.firstRunOnly === true;
+  const seeded = settings[SEED_MARKER] === true;
+  const wantTools = options.only === void 0 || options.only === "tools";
+  const wantServers = options.only === void 0 || options.only === "mcp";
+  const proceed = !firstRunOnly || !seeded;
+  let toolsAdded = 0;
+  let serversAdded = 0;
+  if (proceed && wantTools) {
+    const known = new Set(tools.map((row) => String(row?.key ?? "")));
+    for (const def of DEFAULT_TOOLS) {
+      if (known.has(def.key)) continue;
+      tools.push(toolRowFromDefault(def));
+      known.add(def.key);
+      toolsAdded += 1;
+    }
+  }
+  if (proceed && wantServers) {
+    const known = new Set(servers.map((row) => String(row?.name ?? "").toLowerCase()));
+    let nextId2 = Math.max(0, ...servers.map((row) => Number(row?.id ?? 0))) + 1;
+    for (const def of DEFAULT_SERVERS) {
+      const name = def.name.toLowerCase();
+      if (known.has(name)) continue;
+      servers.push({
+        id: nextId2++,
+        name: def.name,
+        transport: def.transport,
+        ...def.command === void 0 ? {} : { command: def.command },
+        ...def.url === void 0 ? {} : { url: def.url },
+        args: [...def.args],
+        env: { ...def.env },
+        enabled: def.enabled,
+        insecure: def.insecure,
+        tools: []
+      });
+      known.add(name);
+      serversAdded += 1;
+    }
+  }
+  const markNow = proceed && (toolsAdded > 0 || serversAdded > 0 || !seeded);
+  if (markNow) settings[SEED_MARKER] = true;
+  if (markNow || toolsAdded > 0 || serversAdded > 0) {
+    await meta4.save(tables);
+    meta4.reload();
+  }
+  return {
+    toolsAdded,
+    toolsTotal: tools.length,
+    serversAdded,
+    serversTotal: servers.length,
+    seeded
+  };
+}
+function defaultTool(key) {
+  return DEFAULT_TOOLS.find((def) => def.key === key);
+}
+var SEED_MARKER;
+var init_register = __esm({
+  "vexnar-core/src/catalog/register.ts"() {
+    "use strict";
+    init_defaults();
+    SEED_MARKER = "catalogSeeded";
+  }
+});
+
+// vexnar-core/src/context.ts
 var context_exports = {};
 __export(context_exports, {
   blobStore: () => blobStore,
@@ -31769,13 +34237,22 @@ function parseJson2(value) {
 }
 var store, meta3, operations, engine, scheduler, taskQueue, triggerStops, stopSchedules, releaseStoreLock;
 var init_context2 = __esm({
-  async "src/context.ts"() {
+  async "vexnar-core/src/context.ts"() {
     "use strict";
     init_src();
     init_gateway();
     init_dsl();
+    init_register();
     store = await openStore2();
     meta3 = openMeta();
+    try {
+      const seeded = await registerCatalogDefaults(meta3, { firstRunOnly: true });
+      if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
+        console.log(`[catalog] \u9ED8\u8BA4\u76EE\u5F55\u5DF2\u6CE8\u518C\uFF1A\u5DE5\u5177 +${seeded.toolsAdded}\uFF0CMCP server +${seeded.serversAdded}`);
+      }
+    } catch (error62) {
+      console.warn("[catalog] \u9ED8\u8BA4\u76EE\u5F55\u6CE8\u518C\u5931\u8D25\uFF1A", String(error62?.message ?? error62));
+    }
     operations = storeOperations(storeRoot());
     engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
     scheduler = createScheduler({ concurrency: 4 });
@@ -31846,7 +34323,7 @@ var init_context2 = __esm({
   }
 });
 
-// src/routes/exploration.ts
+// vexnar-core/src/routes/exploration.ts
 import { crc32, deflateRawSync } from "node:zlib";
 function err(c, e) {
   return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
@@ -32988,7 +35465,7 @@ data: ${JSON.stringify(activityDto(row))}
 }
 var MAX_FOLLOW_UP_RUNES, MAX_RETEST_NOTES_RUNES, FINDING_RETEST_AGENT_KEY, FINDING_RETEST_TOOLS, RETEST_ACTIVE_STATUSES, GRAPH_NODE_LIMIT, GRAPH_EDGE_LIMIT, ASSET_TREE_MAX_NODES, UNASSIGNED_ASSET, STREAM_POLL_MS, STREAM_PING_MS, EXPORT_SEVERITY_RANK, FINDINGS, NODES, EDGES, ACTIVITY, TASKS, ASSETS, ANCHORS, MAIN_SESSIONS, FINDING_RETESTS, CONVERSATIONS, CONVERSATION_ACTIVITIES, assetKey, companyKey;
 var init_exploration = __esm({
-  async "src/routes/exploration.ts"() {
+  async "vexnar-core/src/routes/exploration.ts"() {
     "use strict";
     await init_context2();
     MAX_FOLLOW_UP_RUNES = 4e3;
@@ -33019,7 +35496,7 @@ var init_exploration = __esm({
   }
 });
 
-// src/routes/conversations.ts
+// vexnar-core/src/routes/conversations.ts
 var conversations_exports = {};
 __export(conversations_exports, {
   register: () => register2
@@ -33611,7 +36088,7 @@ async function exists(path) {
 }
 var CONV, CONV_ACT, maxConversationDeleteBatch, maxConversationAgentKeyRunes, maxConversationTitleRunes, maxChatMentions, safeChatID, busy, cancelMap, liveMap, taskBusy, taskCancel, convKey, taskKey, convIdSeed, actIdSeed, ConvLiveText, TRACE_MASK;
 var init_conversations = __esm({
-  async "src/routes/conversations.ts"() {
+  async "vexnar-core/src/routes/conversations.ts"() {
     "use strict";
     await init_context2();
     CONV = "conversations";
@@ -33668,7 +36145,7 @@ var init_conversations = __esm({
   }
 });
 
-// src/routes/desktop.ts
+// vexnar-core/src/routes/desktop.ts
 var desktop_exports = {};
 __export(desktop_exports, {
   register: () => register3
@@ -34162,7 +36639,7 @@ function register3(api2) {
 }
 var DESKTOP_TOKEN_HEADER, APPROVAL_HEADER, TASK_PAGE_SIZE, HISTORY_SIZE, REASONING_EFFORTS, THINKING_TYPES, ACCESS_MODES, desktopAuth;
 var init_desktop = __esm({
-  async "src/routes/desktop.ts"() {
+  async "vexnar-core/src/routes/desktop.ts"() {
     "use strict";
     init_dist();
     await init_context2();
@@ -34184,7 +36661,7 @@ var init_desktop = __esm({
   }
 });
 
-// src/routes/visibility.ts
+// vexnar-core/src/routes/visibility.ts
 var visibility_exports = {};
 __export(visibility_exports, {
   register: () => register4
@@ -34477,7 +36954,7 @@ function register4(api2) {
 }
 var VIS_TABLE, SKILL_VIS_TABLE, TOOLS_TABLE, kindRe, builtinCommands;
 var init_visibility = __esm({
-  async "src/routes/visibility.ts"() {
+  async "vexnar-core/src/routes/visibility.ts"() {
     "use strict";
     await init_context2();
     VIS_TABLE = "visibility";
@@ -34515,7 +36992,7 @@ var init_visibility = __esm({
   }
 });
 
-// src/routes/llm.ts
+// vexnar-core/src/routes/llm.ts
 var llm_exports = {};
 __export(llm_exports, {
   register: () => register5
@@ -35344,7 +37821,7 @@ function register5(api2) {
 }
 var writer, MAX_RETRY_ATTEMPTS, MAX_RETRY_INTERVAL_MS, TOKEN_FIELDS;
 var init_llm = __esm({
-  async "src/routes/llm.ts"() {
+  async "vexnar-core/src/routes/llm.ts"() {
     "use strict";
     await init_context2();
     writer = operations.writer;
@@ -35354,7 +37831,7 @@ var init_llm = __esm({
   }
 });
 
-// src/routes/intercept.ts
+// vexnar-core/src/routes/intercept.ts
 var intercept_exports = {};
 __export(intercept_exports, {
   register: () => register6
@@ -35994,7 +38471,7 @@ function register6(api2) {
 }
 var TABLE_RULES, TABLE_ASSET_RULES, TABLE_TASK_RULES, TABLE_PENDING, TABLE_TOOL_CONFIG, TABLE_JUDGE_CONFIG, DEFAULT_INTERCEPT_TOOLS, DEFAULT_JUDGE_PROMPT;
 var init_intercept = __esm({
-  async "src/routes/intercept.ts"() {
+  async "vexnar-core/src/routes/intercept.ts"() {
     "use strict";
     await init_context2();
     TABLE_RULES = "intercept_rules";
@@ -36022,7 +38499,7 @@ var init_intercept = __esm({
   }
 });
 
-// src/traffic-scope.ts
+// vexnar-core/src/traffic-scope.ts
 function parseScope(raw2) {
   const text3 = String(raw2 ?? "").trim();
   const global2 = { raw: text3, kind: "global", convId: 0, taskId: 0, intentId: 0 };
@@ -36060,13 +38537,13 @@ function sessionScope(id) {
 }
 var SESSION_ID;
 var init_traffic_scope = __esm({
-  "src/traffic-scope.ts"() {
+  "vexnar-core/src/traffic-scope.ts"() {
     "use strict";
     SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
   }
 });
 
-// src/capture-state.ts
+// vexnar-core/src/capture-state.ts
 function normalize(row) {
   const scope = String(row?.scope ?? "").trim();
   if (!/^(conv-\d+|session-[A-Za-z0-9][A-Za-z0-9_-]{0,127}|task-\d+(-i\d+)?)$/.test(scope)) return null;
@@ -36129,13 +38606,13 @@ async function stopCapture(scope) {
   return next;
 }
 var init_capture_state = __esm({
-  async "src/capture-state.ts"() {
+  async "vexnar-core/src/capture-state.ts"() {
     "use strict";
     await init_context2();
   }
 });
 
-// src/traffic-index.ts
+// vexnar-core/src/traffic-index.ts
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 import { existsSync, statSync } from "node:fs";
 import { dirname as dirname3, join as join8 } from "node:path";
@@ -36254,7 +38731,7 @@ function archivedRaw(id) {
 }
 var here, cached2, TTL_MS, BINARY_TYPES;
 var init_traffic_index = __esm({
-  "src/traffic-index.ts"() {
+  "vexnar-core/src/traffic-index.ts"() {
     "use strict";
     here = dirname3(fileURLToPath(import.meta.url));
     cached2 = null;
@@ -36281,7 +38758,7 @@ var init_traffic_index = __esm({
   }
 });
 
-// src/routes/traffic.ts
+// vexnar-core/src/routes/traffic.ts
 var traffic_exports = {};
 __export(traffic_exports, {
   allExchanges: () => allExchanges,
@@ -36837,7 +39314,7 @@ function register7(api2) {
 }
 var TRAFFIC_ROLES, MAX_INLINE_BODY, BLOB_PREVIEW, BLOB_HASH_RE, BINARY_TYPES2, writer2, blobs, exchangeSeqSeed;
 var init_traffic = __esm({
-  async "src/routes/traffic.ts"() {
+  async "vexnar-core/src/routes/traffic.ts"() {
     "use strict";
     await init_context2();
     init_traffic_scope();
@@ -36872,10 +39349,10 @@ var init_traffic = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/stream.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/stream.js
 var StreamingApi;
 var init_stream = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/stream.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/utils/stream.js"() {
     StreamingApi = class {
       writer;
       encoder;
@@ -36964,10 +39441,10 @@ var init_stream = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/utils.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/utils.js
 var isOldBunVersion;
 var init_utils2 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/utils.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/utils.js"() {
     isOldBunVersion = () => {
       const version2 = typeof Bun !== "undefined" ? Bun.version : void 0;
       if (version2 === void 0) return false;
@@ -36978,18 +39455,18 @@ var init_utils2 = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/stream.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/stream.js
 var init_stream2 = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/stream.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/stream.js"() {
     init_stream();
     init_utils2();
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/sse.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/sse.js
 var SSEStreamingApi, run, contextStash, streamSSE;
 var init_sse = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/sse.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/sse.js"() {
     init_html();
     init_stream();
     init_utils2();
@@ -37047,24 +39524,24 @@ var init_sse = __esm({
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/text.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/text.js
 var init_text = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/text.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/text.js"() {
     init_context();
     init_stream2();
   }
 });
 
-// ../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/index.js
+// node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/index.js
 var init_streaming = __esm({
-  "../node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/index.js"() {
+  "node_modules/.pnpm/hono@4.13.19/node_modules/hono/dist/helper/streaming/index.js"() {
     init_stream2();
     init_sse();
     init_text();
   }
 });
 
-// src/traffic-key.ts
+// vexnar-core/src/traffic-key.ts
 import { randomBytes, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 function trafficIngestAuthorized(headers) {
   const got = Buffer.from(String(headers.get("x-vexnar-ingest-key") ?? "").trim());
@@ -37074,13 +39551,13 @@ function trafficIngestAuthorized(headers) {
 }
 var trafficIngestKey;
 var init_traffic_key = __esm({
-  "src/traffic-key.ts"() {
+  "vexnar-core/src/traffic-key.ts"() {
     "use strict";
     trafficIngestKey = String(process.env.VEXNAR_INGEST_KEY ?? "").trim() || randomBytes(24).toString("hex");
   }
 });
 
-// src/routes/session-traffic.ts
+// vexnar-core/src/routes/session-traffic.ts
 var session_traffic_exports = {};
 __export(session_traffic_exports, {
   register: () => register8,
@@ -37410,7 +39887,7 @@ function yakitHook(scope, origin) {
 }
 var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, RECENT_SAMPLE, SESSION_ID2, yakitMirrorHook;
 var init_session_traffic = __esm({
-  async "src/routes/session-traffic.ts"() {
+  async "vexnar-core/src/routes/session-traffic.ts"() {
     "use strict";
     init_streaming();
     await init_context2();
@@ -37445,7 +39922,7 @@ mirrorFilteredHTTPFlow = func(isHttps, url, req, rsp) {
   }
 });
 
-// src/routes/skills.ts
+// vexnar-core/src/routes/skills.ts
 var skills_exports = {};
 __export(skills_exports, {
   register: () => register9
@@ -38325,7 +40802,7 @@ function pickSkillRoot(roots, sub) {
 }
 var skillsRoot, provFile, maxSkillZipBytes, maxSkillTotalBytes, maxSkillFileBytes, maxSkillEntries, maxSkillPathLen, skillPathBlocked, marketRepoRe;
 var init_skills = __esm({
-  async "src/routes/skills.ts"() {
+  async "vexnar-core/src/routes/skills.ts"() {
     "use strict";
     await init_context2();
     skillsRoot = () => join9(storeRoot(), "skills");
@@ -38340,7 +40817,7 @@ var init_skills = __esm({
   }
 });
 
-// src/routes/market.ts
+// vexnar-core/src/routes/market.ts
 var market_exports = {};
 __export(market_exports, {
   register: () => register10
@@ -38854,7 +41331,7 @@ function register10(api2) {
 }
 var marketSchemaFile, marketMCPFile, marketMaxItems, marketMaxFile, marketMaxDiscover, marketHTTPBudgetMs, marketRepoRe2, builtinCatalog;
 var init_market = __esm({
-  async "src/routes/market.ts"() {
+  async "vexnar-core/src/routes/market.ts"() {
     "use strict";
     await init_context2();
     marketSchemaFile = "market.json";
@@ -38897,7 +41374,7 @@ var init_market = __esm({
   }
 });
 
-// src/routes/tasks-companies.ts
+// vexnar-core/src/routes/tasks-companies.ts
 var tasks_companies_exports = {};
 __export(tasks_companies_exports, {
   register: () => register11
@@ -40024,7 +42501,7 @@ function register11(api2) {
 }
 var writer3, now, text2, runeCount2, MAX_BATCH_IDS, MAX_CATEGORY_BATCH_IDS, TERMINAL_TASK_STATUS, INTENT_TERMINAL_STATES, MAX_SCOPE_RUNES, SCOPE_KINDS, MULTI_PART_SUFFIXES, DOMAIN_ATTRIBUTION_TYPES, NET_ATTRIBUTION_TYPES, SCOPE_MATCH_TYPES;
 var init_tasks_companies = __esm({
-  async "src/routes/tasks-companies.ts"() {
+  async "vexnar-core/src/routes/tasks-companies.ts"() {
     "use strict";
     await init_context2();
     writer3 = () => operations.writer;
@@ -40064,7 +42541,7 @@ var init_tasks_companies = __esm({
   }
 });
 
-// src/routes/notify-mcp.ts
+// vexnar-core/src/routes/notify-mcp.ts
 var notify_mcp_exports = {};
 __export(notify_mcp_exports, {
   register: () => register12
@@ -40910,7 +43387,7 @@ function register12(api2) {
 }
 var DELIVERY_TABLE, SIDE_TABLE, SIDE_SESSION_TABLE, META_CHANNELS, META_MCP, META_SETTINGS, SETTING_NOTIFY_ENABLED, SETTING_NOTIFY_PUBLIC_BASE_URL, SETTING_NOTIFY_DIGEST_MINUTES, NOTIFY_DEFAULT_DIGEST_MINUTES, NOTIFY_MASKED_PREFIX, NOTIFY_ALLOW_LOCAL_ENV, NOTIFY_SEND_TIMEOUT_MS, NOTIFY_MAX_ERROR_CHARS, MCP_DISCOVER_TIMEOUT_MS, MCP_PROTOCOL_VERSION, MCP_MAX_IMPORT_BYTES, SIDE_MAX_QUESTION_RUNES, SIDE_PAGE_DEFAULT, SIDE_PAGE_MAX, rfc33396, truncate, isMasked, LOOPBACK_HOSTS, NOTIFY_CHANNELS, notifyKinds, NOTIFY_STATE_ALIASES, SIDE_CLIENT_ID;
 var init_notify_mcp = __esm({
-  async "src/routes/notify-mcp.ts"() {
+  async "vexnar-core/src/routes/notify-mcp.ts"() {
     "use strict";
     await init_context2();
     DELIVERY_TABLE = "notification_deliveries";
@@ -41107,7 +43584,7 @@ ${msg.summary}`, disable_web_page_preview: true })
   }
 });
 
-// src/routes/agents.ts
+// vexnar-core/src/routes/agents.ts
 var agents_exports = {};
 __export(agents_exports, {
   register: () => register13
@@ -41641,7 +44118,7 @@ function register13(api2) {
 }
 var AGENT_KEY_RE, PROMPT_TABLE, TRIGGER_TABLE, VIS_TABLE2, SKILL_VIS_TABLE2, TRIGGER_RUN_MODES, TRIGGER_MERGE_MODES, BUILTIN_KEYS, builtinPromptSeeds, DEFAULT_ASSISTANT_PROMPT, wrapupDefaults, genericWrapUpDefault, wrapupTurnDefaults, genericWrapupTurns, taskTimeoutWrapupDefaults, builtinPromptVars, TAG_SPLIT, VALUE_TAG, IF_TAG, truthy, promptKey, jsonBody3;
 var init_agents = __esm({
-  async "src/routes/agents.ts"() {
+  async "vexnar-core/src/routes/agents.ts"() {
     "use strict";
     await init_context2();
     AGENT_KEY_RE = /^[a-z][a-z0-9_]*$/;
@@ -41839,7 +44316,7 @@ var init_agents = __esm({
   }
 });
 
-// src/routes/workspace.ts
+// vexnar-core/src/routes/workspace.ts
 var workspace_exports = {};
 __export(workspace_exports, {
   register: () => register14
@@ -42032,7 +44509,7 @@ function register14(api2) {
 }
 var maxWorkspaceRead, maxWorkspaceUpload;
 var init_workspace = __esm({
-  async "src/routes/workspace.ts"() {
+  async "vexnar-core/src/routes/workspace.ts"() {
     "use strict";
     await init_context2();
     maxWorkspaceRead = 2 << 20;
@@ -42040,7 +44517,7 @@ var init_workspace = __esm({
   }
 });
 
-// src/routes/sync.ts
+// vexnar-core/src/routes/sync.ts
 var sync_exports = {};
 __export(sync_exports, {
   register: () => register15
@@ -42442,7 +44919,7 @@ function register15(api2) {
 }
 var scopeSentryMCPName, syncMaxPerType, syncDefaultPage, ScopeSentryClient;
 var init_sync = __esm({
-  async "src/routes/sync.ts"() {
+  async "vexnar-core/src/routes/sync.ts"() {
     "use strict";
     await init_context2();
     scopeSentryMCPName = "ScopeSentry";
@@ -42513,7 +44990,7 @@ var init_sync = __esm({
   }
 });
 
-// src/routes/update.ts
+// vexnar-core/src/routes/update.ts
 var update_exports = {};
 __export(update_exports, {
   register: () => register16,
@@ -42950,7 +45427,7 @@ function restartRequestedForExit() {
 }
 var REPO, latestURL, allowedHosts, releaseTTL, releaseErrTTL, releaseTimeoutDefault, BUILD_VERSION, relCache, updHub, restartRequested;
 var init_update = __esm({
-  async "src/routes/update.ts"() {
+  async "vexnar-core/src/routes/update.ts"() {
     "use strict";
     await init_context2();
     REPO = "zhongxinxuhk/vexnar";
@@ -43033,9 +45510,9 @@ var init_update = __esm({
   }
 });
 
-// ../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js
+// node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js
 var require_safe_buffer = __commonJS({
-  "../node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports, module) {
+  "node_modules/.pnpm/safe-buffer@5.2.1/node_modules/safe-buffer/index.js"(exports, module) {
     var buffer = __require("buffer");
     var Buffer2 = buffer.Buffer;
     function copyProps(src, dst) {
@@ -43091,9 +45568,9 @@ var require_safe_buffer = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js
+// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js
 var require_data_stream = __commonJS({
-  "../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js"(exports, module) {
+  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/data-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var Stream = __require("stream");
     var util = __require("util");
@@ -43139,9 +45616,9 @@ var require_data_stream = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js
+// node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js
 var require_param_bytes_for_alg = __commonJS({
-  "../node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js"(exports, module) {
+  "node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js"(exports, module) {
     "use strict";
     function getParamSize(keySize) {
       var result = (keySize / 8 | 0) + (keySize % 8 === 0 ? 0 : 1);
@@ -43163,9 +45640,9 @@ var require_param_bytes_for_alg = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js
+// node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js
 var require_ecdsa_sig_formatter = __commonJS({
-  "../node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js"(exports, module) {
+  "node_modules/.pnpm/ecdsa-sig-formatter@1.0.11/node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js"(exports, module) {
     "use strict";
     var Buffer2 = require_safe_buffer().Buffer;
     var getParamBytesForAlg = require_param_bytes_for_alg();
@@ -43303,9 +45780,9 @@ var require_ecdsa_sig_formatter = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js
+// node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js
 var require_buffer_equal_constant_time = __commonJS({
-  "../node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js"(exports, module) {
+  "node_modules/.pnpm/buffer-equal-constant-time@1.0.1/node_modules/buffer-equal-constant-time/index.js"(exports, module) {
     "use strict";
     var Buffer2 = __require("buffer").Buffer;
     var SlowBuffer = __require("buffer").SlowBuffer;
@@ -43337,9 +45814,9 @@ var require_buffer_equal_constant_time = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js
+// node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js
 var require_jwa = __commonJS({
-  "../node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports, module) {
+  "node_modules/.pnpm/jwa@2.0.1/node_modules/jwa/index.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var crypto2 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
@@ -43561,9 +46038,9 @@ var require_jwa = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js
+// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js
 var require_tostring = __commonJS({
-  "../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js"(exports, module) {
+  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/tostring.js"(exports, module) {
     var Buffer2 = __require("buffer").Buffer;
     module.exports = function toString(obj) {
       if (typeof obj === "string")
@@ -43575,9 +46052,9 @@ var require_tostring = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js
+// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js
 var require_sign_stream = __commonJS({
-  "../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js"(exports, module) {
+  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/sign-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var DataStream = require_data_stream();
     var jwa = require_jwa();
@@ -43650,9 +46127,9 @@ var require_sign_stream = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js
+// node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js
 var require_verify_stream = __commonJS({
-  "../node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js"(exports, module) {
+  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/lib/verify-stream.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
     var DataStream = require_data_stream();
     var jwa = require_jwa();
@@ -43765,9 +46242,9 @@ var require_verify_stream = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js
+// node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js
 var require_jws = __commonJS({
-  "../node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js"(exports) {
+  "node_modules/.pnpm/jws@4.0.1/node_modules/jws/index.js"(exports) {
     var SignStream = require_sign_stream();
     var VerifyStream = require_verify_stream();
     var ALGORITHMS = [
@@ -43798,9 +46275,9 @@ var require_jws = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js
 var require_decode = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/decode.js"(exports, module) {
     var jws = require_jws();
     module.exports = function(jwt3, options) {
       options = options || {};
@@ -43830,9 +46307,9 @@ var require_decode = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js
 var require_JsonWebTokenError = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/JsonWebTokenError.js"(exports, module) {
     var JsonWebTokenError = function(message, error62) {
       Error.call(this, message);
       if (Error.captureStackTrace) {
@@ -43848,9 +46325,9 @@ var require_JsonWebTokenError = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js
 var require_NotBeforeError = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/NotBeforeError.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var NotBeforeError = function(message, date5) {
       JsonWebTokenError.call(this, message);
@@ -43863,9 +46340,9 @@ var require_NotBeforeError = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js
 var require_TokenExpiredError = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/TokenExpiredError.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var TokenExpiredError = function(message, expiredAt) {
       JsonWebTokenError.call(this, message);
@@ -43878,9 +46355,9 @@ var require_TokenExpiredError = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
+// node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js
 var require_ms = __commonJS({
-  "../node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js"(exports, module) {
+  "node_modules/.pnpm/ms@2.1.3/node_modules/ms/index.js"(exports, module) {
     var s = 1e3;
     var m = s * 60;
     var h = m * 60;
@@ -43994,9 +46471,9 @@ var require_ms = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js
 var require_timespan = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
     var ms = require_ms();
     module.exports = function(time3, iat) {
       var timestamp = iat || Math.floor(Date.now() / 1e3);
@@ -44015,9 +46492,9 @@ var require_timespan = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/constants.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/constants.js
 var require_constants = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/constants.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/constants.js"(exports, module) {
     "use strict";
     var SEMVER_SPEC_VERSION = "2.0.0";
     var MAX_LENGTH = 256;
@@ -44075,9 +46552,9 @@ var require_constants = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/debug.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/debug.js
 var require_debug = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/debug.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/debug.js"(exports, module) {
     "use strict";
     var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
     };
@@ -44085,9 +46562,9 @@ var require_debug = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/re.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/re.js
 var require_re = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/re.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/re.js"(exports, module) {
     "use strict";
     var {
       MAX_SAFE_COMPONENT_LENGTH,
@@ -44173,9 +46650,9 @@ var require_re = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/parse-options.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/parse-options.js
 var require_parse_options = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/parse-options.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/parse-options.js"(exports, module) {
     "use strict";
     var looseOption = Object.freeze({ loose: true });
     var emptyOpts = Object.freeze({});
@@ -44192,9 +46669,9 @@ var require_parse_options = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/identifiers.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/identifiers.js
 var require_identifiers = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/identifiers.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/identifiers.js"(exports, module) {
     "use strict";
     var numeric = /^[0-9]+$/;
     var compareIdentifiers = (a, b) => {
@@ -44217,9 +46694,9 @@ var require_identifiers = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/semver.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/semver.js
 var require_semver = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/semver.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/semver.js"(exports, module) {
     "use strict";
     var debug = require_debug();
     var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
@@ -44509,9 +46986,9 @@ var require_semver = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/parse.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/parse.js
 var require_parse = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/parse.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/parse.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var parse5 = (version2, options, throwErrors = false) => {
@@ -44531,9 +47008,9 @@ var require_parse = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/valid.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/valid.js
 var require_valid = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/valid.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/valid.js"(exports, module) {
     "use strict";
     var parse5 = require_parse();
     var valid = (version2, options) => {
@@ -44544,9 +47021,9 @@ var require_valid = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/clean.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/clean.js
 var require_clean = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/clean.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/clean.js"(exports, module) {
     "use strict";
     var parse5 = require_parse();
     var clean = (version2, options) => {
@@ -44557,9 +47034,9 @@ var require_clean = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/inc.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/inc.js
 var require_inc = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/inc.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/inc.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var inc = (version2, release, options, identifier, identifierBase) => {
@@ -44581,9 +47058,9 @@ var require_inc = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/diff.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/diff.js
 var require_diff = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/diff.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/diff.js"(exports, module) {
     "use strict";
     var parse5 = require_parse();
     var diff = (version1, version2) => {
@@ -44625,9 +47102,9 @@ var require_diff = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/major.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/major.js
 var require_major = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/major.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/major.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var major = (a, loose) => new SemVer(a, loose).major;
@@ -44635,9 +47112,9 @@ var require_major = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/minor.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/minor.js
 var require_minor = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/minor.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/minor.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var minor = (a, loose) => new SemVer(a, loose).minor;
@@ -44645,9 +47122,9 @@ var require_minor = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/patch.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/patch.js
 var require_patch = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/patch.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/patch.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var patch = (a, loose) => new SemVer(a, loose).patch;
@@ -44655,9 +47132,9 @@ var require_patch = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/prerelease.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/prerelease.js
 var require_prerelease = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/prerelease.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/prerelease.js"(exports, module) {
     "use strict";
     var parse5 = require_parse();
     var prerelease = (version2, options) => {
@@ -44668,9 +47145,9 @@ var require_prerelease = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare.js
 var require_compare = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
@@ -44678,9 +47155,9 @@ var require_compare = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rcompare.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rcompare.js
 var require_rcompare = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rcompare.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rcompare.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var rcompare = (a, b, loose) => compare(b, a, loose);
@@ -44688,9 +47165,9 @@ var require_rcompare = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-loose.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-loose.js
 var require_compare_loose = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-loose.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-loose.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var compareLoose = (a, b) => compare(a, b, true);
@@ -44698,9 +47175,9 @@ var require_compare_loose = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-build.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-build.js
 var require_compare_build = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-build.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/compare-build.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var compareBuild = (a, b, loose) => {
@@ -44712,9 +47189,9 @@ var require_compare_build = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/sort.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/sort.js
 var require_sort = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/sort.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/sort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
     var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
@@ -44722,9 +47199,9 @@ var require_sort = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rsort.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rsort.js
 var require_rsort = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rsort.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/rsort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
     var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
@@ -44732,9 +47209,9 @@ var require_rsort = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gt.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gt.js
 var require_gt = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gt.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gt.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var gt = (a, b, loose) => compare(a, b, loose) > 0;
@@ -44742,9 +47219,9 @@ var require_gt = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lt.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lt.js
 var require_lt = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lt.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lt.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var lt = (a, b, loose) => compare(a, b, loose) < 0;
@@ -44752,9 +47229,9 @@ var require_lt = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/eq.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/eq.js
 var require_eq = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/eq.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var eq = (a, b, loose) => compare(a, b, loose) === 0;
@@ -44762,9 +47239,9 @@ var require_eq = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/neq.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/neq.js
 var require_neq = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/neq.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/neq.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var neq = (a, b, loose) => compare(a, b, loose) !== 0;
@@ -44772,9 +47249,9 @@ var require_neq = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gte.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gte.js
 var require_gte = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gte.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var gte = (a, b, loose) => compare(a, b, loose) >= 0;
@@ -44782,9 +47259,9 @@ var require_gte = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lte.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lte.js
 var require_lte = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lte.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/lte.js"(exports, module) {
     "use strict";
     var compare = require_compare();
     var lte = (a, b, loose) => compare(a, b, loose) <= 0;
@@ -44792,9 +47269,9 @@ var require_lte = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/cmp.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/cmp.js
 var require_cmp = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/cmp.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
     var eq = require_eq();
     var neq = require_neq();
@@ -44842,9 +47319,9 @@ var require_cmp = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/coerce.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/coerce.js
 var require_coerce = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/coerce.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/coerce.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var parse5 = require_parse();
@@ -44888,9 +47365,9 @@ var require_coerce = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/truncate.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/truncate.js
 var require_truncate = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/truncate.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/truncate.js"(exports, module) {
     "use strict";
     var parse5 = require_parse();
     var constants = require_constants();
@@ -44929,9 +47406,9 @@ var require_truncate = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/lrucache.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/lrucache.js
 var require_lrucache = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/lrucache.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/lrucache.js"(exports, module) {
     "use strict";
     var LRUCache = class {
       constructor() {
@@ -44967,9 +47444,9 @@ var require_lrucache = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/trim-comparator-whitespace.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/trim-comparator-whitespace.js
 var require_trim_comparator_whitespace = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/trim-comparator-whitespace.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/internal/trim-comparator-whitespace.js"(exports, module) {
     "use strict";
     var {
       MAX_LENGTH,
@@ -45158,9 +47635,9 @@ var require_trim_comparator_whitespace = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/range.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/range.js
 var require_range = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/range.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/range.js"(exports, module) {
     "use strict";
     var SPACE_CHARACTERS = /\s+/g;
     var Range = class _Range {
@@ -45543,9 +48020,9 @@ var require_range = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/comparator.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/comparator.js
 var require_comparator = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/comparator.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/classes/comparator.js"(exports, module) {
     "use strict";
     var ANY = Symbol("SemVer ANY");
     var Comparator = class _Comparator {
@@ -45656,9 +48133,9 @@ var require_comparator = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/satisfies.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/satisfies.js
 var require_satisfies = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/satisfies.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/functions/satisfies.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var satisfies = (version2, range, options) => {
@@ -45673,9 +48150,9 @@ var require_satisfies = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/to-comparators.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/to-comparators.js
 var require_to_comparators = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/to-comparators.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/to-comparators.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
@@ -45683,9 +48160,9 @@ var require_to_comparators = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/max-satisfying.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/max-satisfying.js
 var require_max_satisfying = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -45712,9 +48189,9 @@ var require_max_satisfying = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-satisfying.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-satisfying.js
 var require_min_satisfying = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -45741,9 +48218,9 @@ var require_min_satisfying = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-version.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-version.js
 var require_min_version = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-version.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/min-version.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Range = require_range();
@@ -45800,9 +48277,9 @@ var require_min_version = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/valid.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/valid.js
 var require_valid2 = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/valid.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/valid.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var validRange = (range, options) => {
@@ -45816,9 +48293,9 @@ var require_valid2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/outside.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/outside.js
 var require_outside = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/outside.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/outside.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
     var Comparator = require_comparator();
@@ -45885,9 +48362,9 @@ var require_outside = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/gtr.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/gtr.js
 var require_gtr = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/gtr.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/gtr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
     var gtr = (version2, range, options) => outside(version2, range, ">", options);
@@ -45895,9 +48372,9 @@ var require_gtr = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/ltr.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/ltr.js
 var require_ltr = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/ltr.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/ltr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
     var ltr = (version2, range, options) => outside(version2, range, "<", options);
@@ -45905,9 +48382,9 @@ var require_ltr = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/intersects.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/intersects.js
 var require_intersects = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/intersects.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/intersects.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var intersects = (r1, r2, options) => {
@@ -45919,9 +48396,9 @@ var require_intersects = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/simplify.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/simplify.js
 var require_simplify = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/simplify.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/simplify.js"(exports, module) {
     "use strict";
     var satisfies = require_satisfies();
     var compare = require_compare();
@@ -45969,9 +48446,9 @@ var require_simplify = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/subset.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/subset.js
 var require_subset = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/subset.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/ranges/subset.js"(exports, module) {
     "use strict";
     var Range = require_range();
     var Comparator = require_comparator();
@@ -46131,9 +48608,9 @@ var require_subset = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/semver@7.8.6/node_modules/semver/index.js
+// node_modules/.pnpm/semver@7.8.6/node_modules/semver/index.js
 var require_semver2 = __commonJS({
-  "../node_modules/.pnpm/semver@7.8.6/node_modules/semver/index.js"(exports, module) {
+  "node_modules/.pnpm/semver@7.8.6/node_modules/semver/index.js"(exports, module) {
     "use strict";
     var internalRe = require_re();
     var constants = require_constants();
@@ -46228,25 +48705,25 @@ var require_semver2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
 var require_asymmetricKeyDetailsSupported = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, ">=15.7.0");
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
 var require_rsaPssKeyDetailsSupported = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, ">=16.9.0");
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
 var require_validateAsymmetricKey = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/validateAsymmetricKey.js"(exports, module) {
     var ASYMMETRIC_KEY_DETAILS_SUPPORTED = require_asymmetricKeyDetailsSupported();
     var RSA_PSS_KEY_DETAILS_SUPPORTED = require_rsaPssKeyDetailsSupported();
     var allowedAlgorithmsForKeys = {
@@ -46297,17 +48774,17 @@ var require_validateAsymmetricKey = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js
 var require_psSupported = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/lib/psSupported.js"(exports, module) {
     var semver = require_semver2();
     module.exports = semver.satisfies(process.version, "^6.12.0 || >=8.0.0");
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js
 var require_verify = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/verify.js"(exports, module) {
     var JsonWebTokenError = require_JsonWebTokenError();
     var NotBeforeError = require_NotBeforeError();
     var TokenExpiredError = require_TokenExpiredError();
@@ -46520,9 +48997,9 @@ var require_verify = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js
+// node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js
 var require_lodash = __commonJS({
-  "../node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.includes@4.3.0/node_modules/lodash.includes/index.js"(exports, module) {
     var INFINITY = 1 / 0;
     var MAX_SAFE_INTEGER = 9007199254740991;
     var MAX_INTEGER = 17976931348623157e292;
@@ -46704,9 +49181,9 @@ var require_lodash = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js
+// node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js
 var require_lodash2 = __commonJS({
-  "../node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.isboolean@3.0.3/node_modules/lodash.isboolean/index.js"(exports, module) {
     var boolTag = "[object Boolean]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -46720,9 +49197,9 @@ var require_lodash2 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js
+// node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js
 var require_lodash3 = __commonJS({
-  "../node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.isinteger@4.0.4/node_modules/lodash.isinteger/index.js"(exports, module) {
     var INFINITY = 1 / 0;
     var MAX_INTEGER = 17976931348623157e292;
     var NAN = 0 / 0;
@@ -46784,9 +49261,9 @@ var require_lodash3 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js
+// node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js
 var require_lodash4 = __commonJS({
-  "../node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.isnumber@3.0.3/node_modules/lodash.isnumber/index.js"(exports, module) {
     var numberTag = "[object Number]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -46800,9 +49277,9 @@ var require_lodash4 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js
+// node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js
 var require_lodash5 = __commonJS({
-  "../node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.isplainobject@4.0.6/node_modules/lodash.isplainobject/index.js"(exports, module) {
     var objectTag = "[object Object]";
     function isHostObject(value) {
       var result = false;
@@ -46844,9 +49321,9 @@ var require_lodash5 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js
+// node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js
 var require_lodash6 = __commonJS({
-  "../node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.isstring@4.0.1/node_modules/lodash.isstring/index.js"(exports, module) {
     var stringTag = "[object String]";
     var objectProto = Object.prototype;
     var objectToString = objectProto.toString;
@@ -46861,9 +49338,9 @@ var require_lodash6 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js
+// node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js
 var require_lodash7 = __commonJS({
-  "../node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js"(exports, module) {
+  "node_modules/.pnpm/lodash.once@4.1.1/node_modules/lodash.once/index.js"(exports, module) {
     var FUNC_ERROR_TEXT = "Expected a function";
     var INFINITY = 1 / 0;
     var MAX_INTEGER = 17976931348623157e292;
@@ -46942,9 +49419,9 @@ var require_lodash7 = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js
 var require_sign = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/sign.js"(exports, module) {
     var timespan = require_timespan();
     var PS_SUPPORTED = require_psSupported();
     var validateAsymmetricKey = require_validateAsymmetricKey();
@@ -47167,9 +49644,9 @@ var require_sign = __commonJS({
   }
 });
 
-// ../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js
+// node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js
 var require_jsonwebtoken = __commonJS({
-  "../node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js"(exports, module) {
+  "node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js"(exports, module) {
     module.exports = {
       decode: require_decode(),
       verify: require_verify(),
@@ -47181,7 +49658,7 @@ var require_jsonwebtoken = __commonJS({
   }
 });
 
-// src/routes/auth.ts
+// vexnar-core/src/routes/auth.ts
 var auth_exports = {};
 __export(auth_exports, {
   flushLogPersist: () => flushLogPersist,
@@ -47939,7 +50416,7 @@ function register17(api2) {
 }
 var import_jsonwebtoken, REPO_ROOT, JWT_KEY_PATH, JWT_SUBJECT, JWT_TTL_SECONDS, KEY_ALPHABET, AUTH_PASS_KEY, ACTIVE_TASK_KEY, MIN_PASSWORD_RUNES, MAX_PASSWORD_BYTES, ERR_DATA_SOURCE, LOG_TABLE, LOG_CAP, LOG_STREAM_REPLAY, LOG_RETENTION, LOG_PING_MS, cachedKey, BCRYPT_PI, BCRYPT_ALPHABET, BCRYPT_REVERSE, BCRYPT_PATTERN, piWords, ORPHEAN, metaChain, ring, logSeq, logSubscribers, persistChain, persistSeq, persistReady, capturing;
 var init_auth = __esm({
-  async "src/routes/auth.ts"() {
+  async "vexnar-core/src/routes/auth.ts"() {
     "use strict";
     import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
     init_streaming();
@@ -47981,7 +50458,7 @@ var init_auth = __esm({
   }
 });
 
-// src/routes/gaps.ts
+// vexnar-core/src/routes/gaps.ts
 var gaps_exports = {};
 __export(gaps_exports, {
   register: () => register18
@@ -48172,12 +50649,21 @@ function register18(api2) {
       const tables = await meta3.load();
       const rows = tables.tools ?? [];
       const row = rows.find((r) => r.key === key);
-      if (!row) return c.json({ error: "\u975E\u5185\u7F6E\u5DE5\u5177\u6216\u4E0D\u5B58\u5728: " + key }, 404);
-      if (!row.system) return c.json({ error: "\u975E\u5185\u7F6E\u5DE5\u5177\u6216\u4E0D\u5B58\u5728: " + key }, 404);
-      row.enabled = true;
+      if (!row || !row.system) return c.json({ error: "\u975E\u5185\u7F6E\u5DE5\u5177\u6216\u4E0D\u5B58\u5728: " + key }, 404);
+      const seed = defaultTool(key);
+      if (seed) {
+        row.description = seed.description;
+        row.schema = seed.schema;
+        row.agents = [...seed.agents];
+        row.kind = seed.kind;
+        row.deferred = seed.deferred;
+        if (seed.exec === void 0) delete row.exec;
+        else row.exec = seed.exec;
+      }
+      row.enabled = seed ? seed.enabled : true;
       await meta3.save(tables);
       meta3.reload();
-      return c.json({ ok: true });
+      return c.json({ ok: true, restored: seed !== void 0 });
     } catch (e) {
       return errResponse8(c, e);
     }
@@ -48196,20 +50682,22 @@ function requestId(row) {
 }
 var errResponse8, rfc;
 var init_gaps = __esm({
-  async "src/routes/gaps.ts"() {
+  async "vexnar-core/src/routes/gaps.ts"() {
     "use strict";
     await init_context2();
     await init_exploration();
+    init_register();
     errResponse8 = (c, e) => c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
     rfc = (d) => d.toISOString();
   }
 });
 
-// src/routes.ts
+// vexnar-core/src/routes.ts
 init_dist();
 await init_context2();
 await init_exploration();
 init_task_status();
+init_register();
 import { readFile as readFile9 } from "node:fs/promises";
 import { join as join13 } from "node:path";
 var api = new Hono3();
@@ -48665,6 +51153,22 @@ api.delete("/api/mcp/:id", async (c) => {
     return c.json(result);
   } catch (error62) {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+  }
+});
+api.post("/api/tools/register", async (c) => {
+  try {
+    const result = await registerCatalogDefaults(meta3, { only: "tools" });
+    return c.json({ ...result, tools: await meta3.table("tools") });
+  } catch (error62) {
+    return c.json({ error: String(error62?.message ?? error62) }, 500);
+  }
+});
+api.post("/api/mcp/register", async (c) => {
+  try {
+    const result = await registerCatalogDefaults(meta3, { only: "mcp" });
+    return c.json({ ...result, servers: await meta3.table("mcp") });
+  } catch (error62) {
+    return c.json({ error: String(error62?.message ?? error62) }, 500);
   }
 });
 api.patch("/api/exploration/findings/:id", async (c) => {
@@ -49284,7 +51788,7 @@ api.notFound((c) => c.json({
   hint: "\u9700\u8981\u65E7 Go \u540E\u7AEF\u5BF9\u7167\u65F6\uFF1AVEXNAR_GO=on \u542F\u52A8\u5B83\uFF0C\u5E76\u8BBE VEXNAR_GO_DATA=on \u6253\u5F00\u8F6C\u53D1"
 }, 501));
 
-// src/proxy-contract.ts
+// vexnar-core/src/proxy-contract.ts
 var PROXY_CONTRACT_VERSION = 1;
 var PROXY_CONTRACT_HEADER = "x-vexnar-egress-contract";
 var PROXY_ENDPOINTS = [
@@ -49330,7 +51834,7 @@ function validateProxyState(value) {
   return problems;
 }
 
-// src/proxy-bridge.ts
+// vexnar-core/src/proxy-bridge.ts
 var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
 var PROXY_PREFIX = "/api/proxy";
 var STATE_PATH = "/api/proxy/state";
@@ -49487,7 +51991,7 @@ async function proxyBridge(request, localPeer) {
   }
 }
 
-// src/go-data.ts
+// vexnar-core/src/go-data.ts
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
 var prefixes = [
   "/api/tasks",
@@ -49557,7 +52061,7 @@ async function goData(request, localPeer) {
   }
 }
 
-// src/embedded.ts
+// vexnar-core/src/embedded.ts
 async function handle(request, localPeer) {
   return await goData(request, localPeer) ?? api.fetch(request);
 }

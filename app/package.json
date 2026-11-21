@@ -27,7 +27,9 @@
     "shop:check": "node scripts/shop-update.mjs --check",
     "shop:update": "node scripts/shop-update.mjs",
     "vexnar": "node scripts/vexnar.mjs",
-    "migrate:store": "node scripts/migrate-store.mjs"
+    "migrate:store": "node scripts/migrate-store.mjs",
+    "catalog:gen": "node scripts/gen-catalog-defaults.mjs",
+    "test:catalog": "node --test vexnar-core/test/catalog-register.test.ts"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",

@@ -9728,12 +9728,27 @@ function ToolsTab() {
   const [nonce2, setNonce] = (0, import_react6.useState)(0);
   const [view, setView] = (0, import_react6.useState)({ kind: "list" });
   const [query2, setQuery] = (0, import_react6.useState)("");
+  const [notice, setNotice] = (0, import_react6.useState)("");
+  const [busy, setBusy] = (0, import_react6.useState)(false);
   const tools = useApi("/api/tools", [nonce2]);
   const agents = useApi("/api/agents", []);
   const rows = tools.data?.tools ?? [];
   const agentRows = agents.data?.agents ?? [];
   const refresh = () => {
     setNonce(nonce2 + 1);
+  };
+  const registerDefaults = async () => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await callApi("/api/tools/register", "POST", {});
+      setNotice(`\u5DF2\u91CD\u65B0\u6CE8\u518C\uFF1A\u65B0\u589E ${result.toolsAdded ?? 0} \u4E2A\uFF0C\u5171 ${result.toolsTotal ?? 0} \u4E2A\u5DE5\u5177`);
+      refresh();
+    } catch (cause) {
+      setNotice(`\u6CE8\u518C\u5931\u8D25\uFF1A${errorText(cause)}`);
+    } finally {
+      setBusy(false);
+    }
   };
   if (view.kind === "edit") {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ToolDetail, { tool: view.tool, agents: agentRows, onBack: () => {
@@ -9776,15 +9791,19 @@ function ToolsTab() {
     ] })
   ] }, row.key);
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u7531 Go \u4EE3\u7801\u5B9A\u4E49\uFF08\u7ED3\u6784\u56FA\u5B9A\uFF0C\u53EF\u6539\u63CF\u8FF0\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u9ED8\u8BA4\u503C\u3001\u7ED1\u5B9A Agent\u3001\u542F\u505C\uFF09\uFF0C \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002agent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C\u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u6765\u81EA TS core \u7684\u9ED8\u8BA4\u76EE\u5F55\uFF08\u7ED3\u6784\u56FA\u5B9A\uFF0C\u53EF\u6539\u63CF\u8FF0\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u9ED8\u8BA4\u503C\u3001\u7ED1\u5B9A Agent\u3001\u542F\u505C\uFF09\uFF0C \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002\u5220\u6389\u6216\u7528\u574F\u4E86\u7684\u9ED8\u8BA4\u9879\u53EF\u4EE5\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u8865\u56DE\u6765\uFF1Bagent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C \u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-toolbar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { className: "vx-cat-input vx-cat-search", placeholder: "\u641C\u7D22 key / \u63CF\u8FF0", value: query2, onChange: (event) => {
         setQuery(event.target.value);
       } }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn", disabled: busy, onClick: () => {
+        void registerDefaults();
+      }, children: "\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--primary", onClick: () => {
         setView({ kind: "new" });
       }, children: "+ \u65B0\u5EFA\u5DE5\u5177" })
     ] }),
+    notice ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-notice", children: notice }) : null,
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-section", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-section-head", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: "\u7CFB\u7EDF\u5DE5\u5177" }),
@@ -9963,10 +9982,25 @@ var TRANSPORTS = ["stdio", "streamable-http", "http", "sse"];
 function McpTab() {
   const [nonce2, setNonce] = (0, import_react6.useState)(0);
   const [view, setView] = (0, import_react6.useState)({ kind: "list" });
+  const [notice, setNotice] = (0, import_react6.useState)("");
+  const [busy, setBusy] = (0, import_react6.useState)(false);
   const servers = useApi("/api/mcp", [nonce2]);
   const rows = servers.data?.servers ?? [];
   const refresh = () => {
     setNonce(nonce2 + 1);
+  };
+  const registerDefaults = async () => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await callApi("/api/mcp/register", "POST", {});
+      setNotice(`\u5DF2\u91CD\u65B0\u6CE8\u518C\uFF1A\u65B0\u589E ${result.serversAdded ?? 0} \u4E2A\uFF0C\u5171 ${result.serversTotal ?? 0} \u4E2A server`);
+      refresh();
+    } catch (cause) {
+      setNotice(`\u6CE8\u518C\u5931\u8D25\uFF1A${errorText(cause)}`);
+    } finally {
+      setBusy(false);
+    }
   };
   if (view.kind === "edit") {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ServerDetail, { server: view.server, onBack: () => {
@@ -9995,17 +10029,21 @@ function McpTab() {
     }
   };
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684 MCP server\u3002\u8FD9\u91CC\u7684\u589E\u5220\u6539\u53EA\u52A8 Go \u4FA7\u6CE8\u518C\u8868\uFF1Bdsh \u81EA\u5DF1\u90A3\u5EA7 MCP \u8230\u961F\u5728\u63D2\u4EF6\u9875\u7BA1\u7406\uFF0C \u4E24\u8FB9\u662F\u4E0D\u540C\u5C42\uFF0C\u522B\u628A\u540C\u540D server \u5F53\u6210\u540C\u4E00\u4EFD\u914D\u7F6E\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684 MCP server\uFF0C\u6CE8\u518C\u8868\u5728 TS core \u91CC\uFF08\u5B58\u50A8\u3001\u589E\u5220\u6539\u3001\u5DE5\u5177\u53D1\u73B0\u90FD\u5728\u8FD9\u4E00\u4FA7\uFF09\u3002 \u9ED8\u8BA4\u7684\u4E09\u4E2A server \u53EA\u5728\u9996\u6B21\u542F\u52A8\u65F6\u704C\u5165\uFF1B\u5220\u6389\u5C31\u662F\u5220\u6389\uFF0C\u8981\u6062\u590D\u70B9\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u3002 dsh \u81EA\u5DF1\u90A3\u5EA7 MCP \u8230\u961F\u5728\u63D2\u4EF6\u9875\u7BA1\u7406\uFF0C\u4E24\u8FB9\u662F\u4E0D\u540C\u5C42\uFF0C\u522B\u628A\u540C\u540D server \u5F53\u6210\u540C\u4E00\u4EFD\u914D\u7F6E\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-toolbar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "vx-cat-count", children: [
         rows.length,
         " \u4E2A server"
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "vx-cat-spacer" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn", disabled: busy, onClick: () => {
+        void registerDefaults();
+      }, children: "\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--primary", onClick: () => {
         setView({ kind: "new" });
       }, children: "+ \u65B0\u5EFA server" })
     ] }),
+    notice ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-notice", children: notice }) : null,
     rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-hint", children: "\u8FD8\u6CA1\u6709 MCP server\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-grid", children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-card vx-cat-card--row", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("button", { type: "button", className: "vx-cat-card-main", onClick: () => {
         setView({ kind: "edit", server: row });

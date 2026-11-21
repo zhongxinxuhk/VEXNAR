@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { blobStore, buildReport, buildReportHtml, createNotifier, createRunner, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
 import { register as registerExploration } from './routes/exploration.ts'
 import { summarizeTasks } from '../../vexnar-store/src/task-status.ts'
+import { registerCatalogDefaults } from './catalog/register.ts'
 
 export const api = new Hono()
 
@@ -398,6 +399,23 @@ api.put('/api/mcp/:id/enabled', async (c) => {
 api.delete('/api/mcp/:id', async (c) => {
   try { const result = await operations.deleteMcpServer(c.req.param('id')); meta.reload(); return c.json(result) }
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+// ── 默认目录重新注册 ─────────────────────────────────────────────────────
+// 工具与 MCP 的注册表在 TS core 里，默认清单写在 catalog/defaults.ts。这两个接口把
+// 缺的补回来（删掉的 server、升级后新增的默认项），已有的行不动——重注册不是重置。
+api.post('/api/tools/register', async (c) => {
+  try {
+    const result = await registerCatalogDefaults(meta, { only: 'tools' })
+    return c.json({ ...result, tools: await meta.table('tools') })
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, 500) }
+})
+
+api.post('/api/mcp/register', async (c) => {
+  try {
+    const result = await registerCatalogDefaults(meta, { only: 'mcp' })
+    return c.json({ ...result, servers: await meta.table('mcp') })
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, 500) }
 })
 
 api.patch('/api/exploration/findings/:id', async (c) => {
