@@ -1,0 +1,3 @@
+# The dsh source tree is a vendored upstream checkout, not project code: it is
+# fetched and pinned by scripts/fetch-dsh.sh and never committed (245 MB, MIT).
+dsh/
