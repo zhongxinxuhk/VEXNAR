@@ -7,6 +7,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { pages, pageFromPath, platformAssets, filterCredits, safeGithub } from '../src/content.js';
 import { architectures } from '../src/architecture.js';
+import { contracts as layerContracts, layers, lifecycle } from '../src/architecture/layers.js';
+import { approvals as demoApprovals, conversations, graph, toolCatalog, transcripts } from '../src/console/data.js';
+import { consoleNav } from '../src/console/nav.js';
 const read = path => fs.readFile(new URL(path, import.meta.url), 'utf8');
 
 test('existing public URLs retain page identity, including project base and 404', () => {
@@ -60,7 +63,7 @@ test('source-backed diagrams contain no dangling edges and point to real public 
   }
 });
 test('all pages ship pre-rendered React content, hashed local assets and no private fields', async () => {
-  const titles = { index: '面向安全研究的', downloads: '下载 VEXNAR', releases: '版本与更新', branches: '开发分支', commits: '代码提交', contributors: '项目合作者', credits: 'Open Source Projects' };
+  const titles = { index: '让一支 Agent 团队', console: 'Agent 首页，完整地跑在浏览器里。', architecture: '把系统拆成六层', downloads: '下载 VEXNAR', releases: '版本与更新', branches: '开发分支', commits: '代码提交', contributors: '项目合作者', credits: 'Open Source Projects' };
   for (const page of pages) {
     const html = await read(`../dist/${page.id}.html`);
     assert.ok(html.includes(titles[page.id]), page.id);
@@ -79,4 +82,55 @@ test('all pages ship pre-rendered React content, hashed local assets and no priv
 });
 test('untrusted URL values cannot become executable or off-domain links', () => {
   for (const url of ['javascript:alert(1)', 'https://github.com.evil.invalid/x', 'https://evil.invalid']) assert.equal(safeGithub(url), 'https://github.com/zhongxinxuhk/VEXNAR');
+});
+
+test('3D layers stay source-backed, cross-referenced and free of dangling ids', async () => {
+  assert.equal(layers.length, 6);
+  const layerIds = new Set(layers.map(layer => layer.id));
+  assert.equal(layerIds.size, layers.length);
+  const nodeIds = new Set();
+  for (const layer of layers) {
+    assert.equal(layer.facts.length, 3);
+    assert.ok(layer.contracts.length >= 2);
+    assert.ok(layer.risks.length >= 2);
+    for (const node of layer.nodes) {
+      assert.ok(!nodeIds.has(node.id), `duplicate node id ${node.id}`);
+      nodeIds.add(node.id);
+      const lines = (await fs.readFile(new URL(`../../${node.source}`, import.meta.url), 'utf8')).split('\n');
+      assert.ok(node.line > 0 && node.line <= lines.length, `${node.source}:${node.line}`);
+      assert.ok(node.detail.length > 30 && node.tags.length > 0, node.id);
+    }
+  }
+  for (const step of lifecycle) assert.ok(layerIds.has(step.layer) && nodeIds.has(step.node), step.event);
+  assert.equal(lifecycle.length, 8);
+  for (const row of layerContracts) assert.equal(row.length, 5);
+});
+test('console demo keeps every interactive surface wired to existing data', () => {
+  const items = consoleNav.flatMap(group => group.items);
+  assert.equal(items.length, 21);
+  assert.equal(new Set(items.map(item => item.id)).size, items.length);
+  const conversationIds = new Set(conversations.map(chat => chat.id));
+  for (const chat of conversations) assert.equal(chat.state === 'empty' || Boolean(transcripts[chat.id]), true, chat.id);
+  for (const [id, steps] of Object.entries(transcripts)) {
+    assert.ok(conversationIds.has(id), id);
+    assert.equal(new Set(steps.map(step => step.id)).size, steps.length, id);
+    for (const step of steps) {
+      if (step.kind !== 'tool') continue;
+      assert.ok(toolCatalog.some(tool => tool.name === step.tool), step.tool);
+      assert.ok(step.output.length > 0);
+    }
+  }
+  const approvalIds = new Set(demoApprovals.map(row => row.id));
+  for (const step of transcripts.main.filter(entry => entry.kind === 'approval')) assert.ok(approvalIds.has(step.approval || 'AP-88'));
+  const graphIds = new Set(graph.nodes.map(node => node.id));
+  for (const [from, to] of graph.edges) assert.ok(graphIds.has(from) && graphIds.has(to), `${from}->${to}`);
+});
+test('console and architecture pages ship pre-rendered interactive markup', async () => {
+  const consolePage = await read('../dist/console.html');
+  for (const marker of ['主 Agent · 编排会话', '允许一次', '待办', '⌘J', 'app.vexnar.local', '新建对话']) assert.ok(consolePage.includes(marker), marker);
+  const architecturePage = await read('../dist/architecture.html');
+  for (const marker of ['INTERACTION', 'ORCHESTRATION', 'SUBSTRATE', 'EVENT LIFECYCLE', '层间契约', '剖析导览']) assert.ok(architecturePage.includes(marker), marker);
+  assert.ok(architecturePage.includes('layer-evidence'));
+  const home = await read('../dist/index.html');
+  assert.ok(home.includes('data-theme="light"') && home.includes('3D 架构剖析'));
 });

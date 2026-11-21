@@ -18,7 +18,7 @@ function edgePath(a, b, viewId) {
   return `M ${ax} ${ay + 40 * direction} C ${ax} ${middle}, ${bx} ${middle}, ${bx} ${by - 40 * direction}`;
 }
 
-export default function Architecture() {
+export default function Architecture({ bare = false }) {
   const [viewId, setViewId] = useState('system');
   const [selectedId, setSelectedId] = useState('api');
   const [playing, setPlaying] = useState(false);
@@ -43,8 +43,8 @@ export default function Architecture() {
     event.preventDefault(); chooseView(architectures[next].id);
     document.getElementById(`tab-${architectures[next].id}`).focus();
   }
-  return <section id="architecture" className="architecture-section section reveal">
-    <div className="section-heading"><div><div className="eyebrow">技术架构</div><h2>系统如何运行。</h2></div><p>系统、缓存、工具与双图的实现关系。<br />选择节点查看说明及源码。</p></div>
+  return <section id="architecture" className={`architecture-section section reveal ${bare ? 'is-bare' : ''}`}>
+    {!bare && <div className="section-heading"><div><div className="eyebrow">技术架构</div><h2>系统如何运行。</h2></div><p>系统、缓存、工具与双图的实现关系。<br />选择节点查看说明及源码。</p></div>}
     <div className="architecture-tabs" role="tablist" aria-label="技术架构图">
       {architectures.map((item, index) => <button key={item.id} role="tab" id={`tab-${item.id}`} aria-selected={viewId === item.id} aria-controls="architecture-panel" tabIndex={viewId === item.id ? 0 : -1} onClick={() => chooseView(item.id)} onKeyDown={event => tabKeys(event, index)}><span>{item.label}</span></button>)}
     </div>
