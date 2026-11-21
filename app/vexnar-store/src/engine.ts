@@ -34,7 +34,7 @@ function serialized<T>(key: string, task: () => Promise<T>): Promise<T> {
   return run
 }
 
-export function createEngine(store: Store, ops: Ops) {
+export function createEngine(store: Store, ops: Ops, options: { runner?: import('./exec.js').Runner } = {}) {
   async function plan(taskId: string, complete: Complete, maxIntents = 5) {
     const task = await store.tasks.get(taskId)
     if (!task) throw new Error('task 不存在')
@@ -83,6 +83,7 @@ export function createEngine(store: Store, ops: Ops) {
 - list_assets {"type"?,"limit"?}
 - graph_overview {}
 - report_finding {"vulnclass","severity","summary","evidence"}
+- run_command {"command","args":[...]}（仅限允许列表：nmap/httpx/ffuf/sqlmap/nuclei/curl/dig/whois 等）
 - finish {"summary"}
 只输出 {"tool":"...","args":{...}}，不要解释。` },
           { role: 'user', content: `任务：${task?.goal}\n当前意图：${intent?.text}\n已得事实：${facts.join(' | ') || '无'}` }
@@ -125,6 +126,15 @@ export function createEngine(store: Store, ops: Ops) {
           if (!ids.length) throw new Error('link_assets 缺少 asset_ids')
           const linked = await ops.linkAssets(taskId, String(claimed.id), ids)
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'link_assets', node_id: String(claimed.id), summary: `linked ${linked.linked}` })
+          continue
+        }
+        if (action.tool === 'run_command') {
+          if (!options.runner) throw new Error('run_command 未启用')
+          const result = await options.runner.run(String(action.args?.command ?? ''), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 30000) })
+          const text = `$ ${result.command} ${result.args.join(' ')} → code=${result.code} ${result.truncated ? '[truncated]' : ''}\n${result.stdout.slice(0, 4000)}${result.stderr ? `\n${result.stderr.slice(0, 2000)}` : ''}`
+          await ops.addNode(taskId, { kind: 'fact', payload: { text, command: result.command, code: result.code }, state: 'confirmed', origin: worker, parent_id: String(claimed.id), rel: 'yields' })
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'run_command', node_id: String(claimed.id), is_error: result.code !== 0, summary: `${result.command} code=${result.code}` })
+          facts.push(text.slice(0, 500))
           continue
         }
         if (action.tool === 'report_finding') {

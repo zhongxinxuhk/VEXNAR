@@ -54,6 +54,14 @@
 - `retryBlocked`：重开 blocked 意图后按重开数量并发重跑；
 - 引擎测试 6/6。
 
+## E4 首段
+
+- `createRunner`：命令允许列表（nmap/httpx/ffuf/sqlmap/nuclei/curl/dig/whois…）、
+  硬超时 SIGKILL、输出上限截断、并发上限；
+- worker 新增 `run_command`：执行结果写 fact（命令、退出码、stdout/stderr 摘要）
+  与 activity，失败不污染图谱；
+- 测试：runner 5/5、engine 6/6（含 run_command 回合）。
+
 ## E3 首段
 
 - worker 工具循环新增 `add_asset`、`link_assets`（写资产并锚定到当前意图节点）；

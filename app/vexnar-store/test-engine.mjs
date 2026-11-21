@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
 import { createEngine } from './src/engine.ts'
+import { createRunner } from './src/exec.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-engine-'))
 const ops = storeOperations(root)
@@ -39,7 +40,7 @@ const store = {
     }
   }
 }
-const engine = createEngine(store, ops)
+const engine = createEngine(store, ops, { runner: createRunner({ timeoutMs: 10000 }) })
 const results = []
 const check = (name, ok, detail = '') => results.push({ name, ok, detail })
 
@@ -56,6 +57,7 @@ const workReplies = [
   JSON.stringify({ tool: 'link_assets', args: {} }),
   JSON.stringify({ tool: 'list_assets', args: { limit: 5 } }),
   JSON.stringify({ tool: 'graph_overview', args: {} }),
+  JSON.stringify({ tool: 'run_command', args: { command: 'curl', args: ['--version'] } }),
   JSON.stringify({ tool: 'finish', args: { summary: 'done' } })
 ]
 const work = await engine.work(task.id, async () => workReplies.shift() ?? JSON.stringify({ tool: 'finish', args: {} }), 'work#1', 8)
