@@ -549,9 +549,19 @@ function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
   const url = `/api/tasks?${params.toString()}`
   const { data, error, loading } = useApi(url, [url])
 
-  const rows: any[] = data?.tasks ?? []
-  const total = Number(data?.total ?? rows.length)
+  // 嵌入式 core 与客户端可能短暂不同版本：老 core 不认识 page/size，会把全量塞回来
+  // （没有 total）。这时退回客户端筛选 + 分页，面板照常可用，不会出现"翻页没反应"。
+  const returned: any[] = data?.tasks ?? []
+  const serverPaged = typeof data?.total === 'number'
+  const scoped = serverPaged
+    ? returned
+    : returned
+        .filter((task: any) => status === 'all' || String(task.status) === status)
+        .filter((task: any) => !needle || [task.id, task.name, task.description, task.goal]
+          .some((value) => String(value ?? '').toLowerCase().includes(needle)))
+  const total = serverPaged ? Number(data?.total) : scoped.length
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const rows = serverPaged ? returned : scoped.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE)
 
   return h('div', null,
     h(Toolbar, null,

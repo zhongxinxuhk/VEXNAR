@@ -29352,6 +29352,9 @@ var templates = {
     }
   }
 };
+function toolSpecs() {
+  return Object.values(templates).map(({ name, description }) => ({ name, description }));
+}
 async function runTool(runner, name, target, extra) {
   const spec = templates[name];
   if (!spec) throw Object.assign(new Error(`\u672A\u77E5\u5DE5\u5177: ${name}`), { status: 400 });
@@ -31668,10 +31671,23 @@ var taskDto = (row, metrics) => ({
   company_ids: [],
   coverage_enabled: row.coverage_enabled
 });
+var TASK_PAGE_MAX_SIZE = 200;
 api.get("/api/tasks", async (c) => {
+  const status = (c.req.query("status") ?? "").trim();
+  const needle = (c.req.query("q") ?? "").trim().toLowerCase();
   const rows = await store.tasks.list();
   const metrics = await store.taskMetrics();
-  return c.json({ tasks: rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))) });
+  const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
+  const paged = c.req.query("page") != null || c.req.query("size") != null;
+  if (!paged) return c.json({ tasks: all });
+  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+  const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
+  return c.json({
+    tasks: all.slice((page - 1) * size, (page - 1) * size + size),
+    total: all.length,
+    page,
+    size
+  });
 });
 api.get("/api/tasks/:id", async (c) => {
   const row = await store.tasks.get(c.req.param("id"));
@@ -32395,6 +32411,7 @@ api.get("/api/exploration/findings/:id/traffic", async (c) => {
   const bindings = out.bindings.map((binding) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }));
   return c.json({ ...out, bindings });
 });
+api.get("/api/engine/tools", async (c) => c.json({ tools: toolSpecs() }));
 api.post("/api/engine/tools/run", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const name = String(body.name ?? "");
@@ -32622,6 +32639,7 @@ var routeModules = [
   { file: "./routes/llm.ts", scope: "llm pool/records" },
   { file: "./routes/intercept.ts", scope: "intercept approvals" },
   { file: "./routes/traffic.ts", scope: "traffic evidence" },
+  { file: "./routes/session-traffic.ts", scope: "session traffic" },
   { file: "./routes/skills.ts", scope: "skills" },
   { file: "./routes/market.ts", scope: "market" },
   { file: "./routes/tasks-companies.ts", scope: "tasks/companies" },

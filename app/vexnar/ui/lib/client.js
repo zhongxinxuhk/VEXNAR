@@ -3359,9 +3359,12 @@ function TaskList({ onOpen }) {
   if (needle) params.set("q", needle);
   const url = `/api/tasks?${params.toString()}`;
   const { data, error, loading } = useApi(url, [url]);
-  const rows = data?.tasks ?? [];
-  const total = Number(data?.total ?? rows.length);
+  const returned = data?.tasks ?? [];
+  const serverPaged = typeof data?.total === "number";
+  const scoped = serverPaged ? returned : returned.filter((task) => status === "all" || String(task.status) === status).filter((task) => !needle || [task.id, task.name, task.description, task.goal].some((value) => String(value ?? "").toLowerCase().includes(needle)));
+  const total = serverPaged ? Number(data?.total) : scoped.length;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rows = serverPaged ? returned : scoped.slice((page - 1) * PAGE_SIZE, (page - 1) * PAGE_SIZE + PAGE_SIZE);
   return (0, import_react3.createElement)(
     "div",
     null,
