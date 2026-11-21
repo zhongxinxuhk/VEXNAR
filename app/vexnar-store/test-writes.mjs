@@ -162,6 +162,22 @@ const anchored = await ops.anchorAsset(goalTask.id, fact.id, '500')
 const doneIntent = await ops.setNodeState(goalTask.id, intent.id, 'done')
 check('engine graph', fact.kind === 'fact' && intent.kind === 'intent' && claimed?.id === intent.id && claimed?.state === 'running' && anchored.asset_id === 500 && doneIntent.state === 'done', JSON.stringify({ fact: fact.id, intent: intent.id, claimed: claimed?.id, anchored }))
 
+const leaseIntent = await ops.addNode(goalTask.id, { kind: 'intent', payload: { text: 'lease' }, state: 'open' })
+await ops.claimIntent(goalTask.id, 'work#2', 600)
+const leased = await ops.writer.readRecord('nodes', String(leaseIntent.id))
+const expiredPayload = { ...(typeof leased.payload === 'string' ? JSON.parse(leased.payload) : leased.payload), lease_until: 1 }
+await ops.writer.put({ table: 'nodes', key: String(leaseIntent.id), record: { ...leased, payload: expiredPayload }, expectedRev: Number(leased.rev ?? 0) })
+const reclaimed = await ops.reclaimExpired(goalTask.id)
+const reopened = await ops.writer.readRecord('nodes', String(leaseIntent.id))
+check('intent lease reclaim', reclaimed.includes(Number(leaseIntent.id)) && reopened.state === 'open', JSON.stringify({ reclaimed, state: reopened.state }))
+
+let transitionError = null
+try { await ops.setNodeState(goalTask.id, String(doneIntent.id), 'running') } catch (error) { transitionError = error }
+check('state machine rejects', transitionError?.status === 409, String(transitionError))
+
+const activityRecord = await ops.appendActivity(goalTask.id, { kind: 'event', summary: 'engine test', worker: 'work#1' })
+check('activity append', activityRecord.kind === 'event' && activityRecord.summary === 'engine test', JSON.stringify(activityRecord))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

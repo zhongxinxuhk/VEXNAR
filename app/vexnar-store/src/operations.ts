@@ -914,19 +914,35 @@ export function storeOperations(root: string) {
     return record
   }
 
+  const TRANSITIONS: Record<string, string[]> = {
+    open: ['running', 'paused', 'blocked', 'stopped', 'deleted', 'cancelled'],
+    running: ['done', 'blocked', 'paused', 'stopped', 'deleted', 'cancelled'],
+    paused: ['open', 'running', 'cancelled', 'deleted'],
+    blocked: ['open', 'deleted', 'cancelled'],
+    exhausted: ['open', 'deleted'],
+    stopped: ['open', 'deleted'],
+    done: [],
+    deleted: []
+  }
+
   async function setNodeState(taskId: string, nodeId: string, state: string) {
     const task = await writer.readRecord('tasks', taskId)
     const node = await writer.readRecord('nodes', nodeId)
     if (!task || !node || String(node.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error('node 不存在'), { status: 404 })
+    const allowed = TRANSITIONS[String(node.state)] ?? []
+    if (!allowed.includes(state) && state !== node.state) {
+      throw Object.assign(new Error(`非法状态迁移: ${node.state} → ${state}`), { status: 409 })
+    }
     const next = { ...node, state }
     delete next.rev
     const [written] = await writer.commit([{ table: 'nodes', key: nodeId, record: next, expectedRev: Number(node.rev ?? 0) }])
     return written
   }
 
-  async function claimIntent(taskId: string, worker: string) {
+  async function claimIntent(taskId: string, worker: string, leaseSeconds = 600) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    await reclaimExpired(taskId)
     const rows = []
     try {
       for (const name of await readdir(join(root, 'nodes'))) {
@@ -939,10 +955,62 @@ export function storeOperations(root: string) {
     const next = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'open')
       .sort((a, b) => Number(b.priority) - Number(a.priority) || Number(a.id) - Number(b.id))[0]
     if (!next) return null
-    const record = { ...next, state: 'running', payload: { ...(typeof next.payload === 'string' ? JSON.parse(next.payload) : next.payload), worker } }
+    const leaseUntil = Math.floor(Date.now() / 1000) + Math.max(Number(leaseSeconds) || 600, 1)
+    const record = { ...next, state: 'running', payload: { ...(typeof next.payload === 'string' ? JSON.parse(next.payload) : next.payload), worker, lease_until: leaseUntil } }
     delete record.rev
     const [written] = await writer.commit([{ table: 'nodes', key: String(next.id), record, expectedRev: Number(next.rev ?? 0) }])
     return written
+  }
+
+  async function reclaimExpired(taskId: string) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const now = Math.floor(Date.now() / 1000)
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'nodes'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const expired = rows.filter((row) => {
+      if (Number(row.exploration_id) !== Number(task.exploration_id) || row.kind !== 'intent' || row.state !== 'running') return false
+      const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload
+      return Number(payload?.lease_until ?? 0) > 0 && Number(payload.lease_until) < now
+    })
+    for (const row of expired) {
+      const next = { ...row, state: 'open', payload: { ...(typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload), worker: '', lease_until: 0 } }
+      delete next.rev
+      await writer.commit([{ table: 'nodes', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) }])
+    }
+    return expired.map((row) => Number(row.id))
+  }
+
+  async function appendActivity(taskId: string, input: { kind?: string; node_id?: string; worker?: string; tool?: string; summary?: string; is_error?: boolean; metadata?: any }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'activity'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'activity', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const now = new Date()
+    const record = {
+      id: String(id), exploration_id: Number(task.exploration_id),
+      node_id: input.node_id == null ? null : Number(input.node_id),
+      worker: String(input.worker ?? ''), kind: String(input.kind ?? 'event'),
+      is_error: Boolean(input.is_error), summary: String(input.summary ?? ''),
+      metadata: input.metadata ?? {}, created_at: rfc3339(now), created_unix: Math.floor(now.getTime() / 1000)
+    }
+    await writer.commit([{ table: 'activity', key: String(id), record }])
+    return record
   }
 
   async function anchorAsset(taskId: string, nodeId: string, assetId: string) {
@@ -954,5 +1022,5 @@ export function storeOperations(root: string) {
     return { node_id: Number(nodeId), asset_id: Number(assetId) }
   }
 
-  return { writer, addNode, setNodeState, claimIntent, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  return { writer, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
