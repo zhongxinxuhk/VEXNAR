@@ -424,18 +424,41 @@ function Dashboard() {
     h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自 vexnar-core'))
 }
 
-function TaskList() {
+function TaskList({ onSelect }: { onSelect?: (id: string) => void }) {
   const { data, error, loading } = useApi('/api/tasks')
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626' } }, error)
   const rows = (data?.tasks ?? []).slice(0, 30)
   return h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
     h('thead', null, h('tr', null, ['ID', '名称', '状态', '目标'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
-    h('tbody', null, rows.map((task: any) => h('tr', { key: task.id },
+    h('tbody', null, rows.map((task: any) => h('tr', { key: task.id, onClick: () => onSelect?.(String(task.id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
       h('td', { style: { padding: '6px 8px' } }, task.id),
       h('td', { style: { padding: '6px 8px' } }, task.name || '—'),
       h('td', { style: { padding: '6px 8px' } }, task.status),
       h('td', { style: { padding: '6px 8px', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, task.goal)))))
+}
+
+function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const task = useApi(`/api/tasks/${id}`)
+  const goals = useApi(`/api/tasks/${id}/goals`)
+  const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`)
+  const coverage = useApi(`/api/tasks/${id}/coverage`)
+  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`)
+  const row = task.data ?? {}
+  const section = (title: string, children: ReactNode) => h('div', { style: { marginBottom: 18 } },
+    h('div', { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title), children)
+  if (task.loading) return h('div', null, '加载中…')
+  if (task.error) return h('div', { style: { color: '#dc2626' } }, task.error)
+  return h('div', null,
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 } },
+      h('button', { type: 'button', onClick: onBack, style: { border: '1px solid var(--vx-border, #e5e7eb)', background: 'transparent', borderRadius: 8, padding: '3px 10px', cursor: 'pointer' } }, '← 返回'),
+      h('span', { style: { fontSize: 18, fontWeight: 600 } }, `${row.id} · ${row.name || '未命名任务'}`),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, row.status)),
+    h('div', { style: { fontSize: 13, marginBottom: 14 } }, row.goal),
+    section(`目标（${goals.data?.goals?.length ?? 0}）`, (goals.data?.goals ?? []).map((goal: any) => h('div', { key: goal.id, style: { fontSize: 13, padding: '3px 0' } }, `#${goal.id} [${goal.state}] ${goal.text || '—'}`))),
+    section(`意图（${Array.isArray(intents.data) ? intents.data.length : 0}）`, (Array.isArray(intents.data) ? intents.data : []).map((intent: any) => h('div', { key: intent.id, style: { fontSize: 13, padding: '3px 0' } }, `#${intent.id} [${intent.state}] ${(() => { try { return JSON.parse(intent.payload).text ?? '' } catch { return '' } })()}`))),
+    section('覆盖度', h('div', { style: { fontSize: 13 } }, coverage.data?.enabled === false ? '未启用' : `${coverage.data?.tested ?? 0}/${coverage.data?.denominator ?? 0} · ${coverage.data?.pct == null ? '—' : `${(coverage.data.pct * 100).toFixed(1)}%`}`)),
+    section(`最近节点（${nodes.data?.items?.length ?? 0}）`, (nodes.data?.items ?? []).map((node: any) => h('div', { key: node.id, style: { fontSize: 12, padding: '2px 0', color: 'var(--vx-muted, #6b7280)' } }, `#${node.id} ${node.type} [${node.state}]`))))
 }
 
 function FindingList() {
@@ -457,8 +480,10 @@ function FindingList() {
 
 function VexnarConsole(): ReactNode {
   const [active, setActive] = useState('dashboard')
+  const [taskId, setTaskId] = useState('')
   const items = NAV_GROUPS.flatMap((group) => group.items)
   const current = items.find((item) => item.id === active) ?? items[0]
+  const selectPanel = (id: string) => { setActive(id); if (id !== 'tasks') setTaskId('') }
   return h('div', { style: { display: 'flex', height: '100%', minHeight: 0, background: 'var(--vx-bg, #fff)' } },
     h('aside', { style: { width: 240, flex: '0 0 240px', borderRight: '1px solid var(--vx-border, #e5e7eb)', overflowY: 'auto', padding: '12px 8px' } },
       NAV_GROUPS.map((group) => h('div', { key: group.title, style: { marginBottom: 14 } },
@@ -466,7 +491,7 @@ function VexnarConsole(): ReactNode {
         group.items.map((item) => h('button', {
           key: item.id,
           type: 'button',
-          onClick: () => setActive(item.id),
+          onClick: () => selectPanel(item.id),
           style: {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
             padding: '8px 10px', border: 0, borderRadius: 8, cursor: 'pointer', textAlign: 'left',
@@ -491,7 +516,7 @@ function VexnarConsole(): ReactNode {
         }, '连接 core')),
       h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 20px' } }, current.desc),
       current.id === 'dashboard' ? h(Dashboard)
-        : current.id === 'tasks' ? h(TaskList)
+        : current.id === 'tasks' ? (taskId ? h(TaskDetail, { id: taskId, onBack: () => setTaskId('') }) : h(TaskList, { onSelect: setTaskId }))
         : current.id === 'findings' ? h(FindingList)
         : h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
             '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
