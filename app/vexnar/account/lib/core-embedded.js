@@ -29679,7 +29679,7 @@ ${result.stderr.slice(0, 2e3)}` : ""}`;
 // ../vexnar-store/src/exec.ts
 import { spawn } from "node:child_process";
 var ALLOWED = /* @__PURE__ */ new Set(["nmap", "httpx", "ffuf", "sqlmap", "nuclei", "curl", "dig", "whois", "openssl", "nc", "nikto", "gobuster", "subfinder", "katana"]);
-function createRunner(options = {}) {
+function createRunner2(options = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1);
   const defaultTimeout = options.timeoutMs ?? 3e4;
   const defaultMaxOutput = options.maxOutput ?? 64 * 1024;
@@ -30181,52 +30181,6 @@ async function gatewayComplete(messages) {
   return content;
 }
 
-// src/craft.ts
-import { spawn as spawn2 } from "node:child_process";
-var CLI = process.env.CRAFT_ANYTHING_CLI || `${process.env.HOME}/.dsh/plugins-data/craft-anything/craft-anything-cli`;
-function probe(args, input2, timeoutMs) {
-  return new Promise((resolve) => {
-    const child = spawn2(CLI, args, { stdio: ["pipe", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk;
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk;
-    });
-    const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
-    child.on("error", (error62) => {
-      clearTimeout(timer);
-      resolve({ code: null, stdout, stderr: String(error62) });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ code, stdout, stderr });
-    });
-    child.stdin.end(input2);
-  });
-}
-async function craftStatus() {
-  const versionRun = await probe(["--version"], "", 5e3);
-  const version2 = versionRun.stdout.trim().split(" ").pop() ?? "";
-  const probeRun = await probe(["mcp"], [
-    JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "vexnar", version: "1" } } }),
-    JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
-    ""
-  ].join("\n"), 1e4);
-  const tools = [];
-  for (const line of probeRun.stdout.split("\n")) {
-    if (!line.trim()) continue;
-    try {
-      const message = JSON.parse(line);
-      if (message.id === 2) for (const tool of message.result?.tools ?? []) tools.push(tool.name);
-    } catch {
-    }
-  }
-  return { installed: Boolean(version2), version: version2, path: CLI, tools, error: version2 ? "" : probeRun.stderr.slice(0, 200) };
-}
-
 // src/dsl.ts
 var STRING_FIELDS = /* @__PURE__ */ new Set(["domain", "root_domain", "ip", "url", "page_title", "title", "icp", "service_name", "app_name", "bundle_id", "category", "app_icp", "method", "service_type", "record_type"]);
 var ARRAY_FIELDS = /* @__PURE__ */ new Set(["technology", "technologies", "tech"]);
@@ -30395,7 +30349,7 @@ function queryDSL(assets, dsl) {
   return assets.filter((asset) => evalNode(asset, node2));
 }
 
-// src/routes.ts
+// src/context.ts
 function parseJson2(value) {
   if (typeof value !== "string") return value;
   try {
@@ -30407,7 +30361,7 @@ function parseJson2(value) {
 var store = await openStore2();
 var meta3 = openMeta();
 var operations = storeOperations(storeRoot());
-var engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
+var engine = createEngine(store, operations, { runner: createRunner2({ concurrency: 2 }) });
 var scheduler = createScheduler({ concurrency: 4 });
 var taskQueue = createTaskQueue({ concurrency: Math.max(Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2, 1) });
 var triggerStops = [];
@@ -30471,6 +30425,8 @@ process.once("SIGTERM", () => {
   void releaseStoreLock();
   process.exit(0);
 });
+
+// src/routes.ts
 var api = new Hono3();
 api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
 api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
@@ -31301,7 +31257,6 @@ api.post("/api/engine/work", async (c) => {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
   }
 });
-api.get("/api/craft/status", async (c) => c.json(await craftStatus()));
 api.get("/api/engine/queue", (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }));
 api.post("/api/engine/queue/:taskId", async (c) => {
   const body = await c.req.json().catch(() => ({}));
