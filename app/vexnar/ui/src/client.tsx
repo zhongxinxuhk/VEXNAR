@@ -206,11 +206,12 @@ export function TrafficViewer({ phase, block }: ToolViewProps): ReactNode {
 }
 
 declare const __VEXNAR_LOGO__: string
+const VEXNAR_LOGO = __VEXNAR_LOGO__
 
 function BrandMark({ size }: { size?: number }): ReactNode {
   const px = size ?? 24
   return h('img', {
-    src: __VEXNAR_LOGO__,
+    src: VEXNAR_LOGO,
     width: px,
     height: px,
     alt: 'VEXNAR',
@@ -226,11 +227,46 @@ function BrandName(): ReactNode {
   )
 }
 
+function HeroLogo({ size }: { size?: number }): ReactNode {
+  const px = size ?? 34
+  return h('img', {
+    src: VEXNAR_LOGO,
+    width: px,
+    height: px,
+    alt: 'VEXNAR',
+    style: { display: 'block', borderRadius: 6 }
+  })
+}
+
+/**
+ * The hero headline has no slot, so it is replaced in place: the title group is
+ * located by its class fragment and rewritten when the blank-home hero mounts.
+ */
+function installHeroSlogan(): () => void {
+  const slogan = () =>
+    (navigator.language || 'zh').toLowerCase().startsWith('zh')
+      ? '以智能，破未至之境'
+      : 'Beyond the known attack surface'
+  const rewrite = (): void => {
+    const group = document.querySelector('[class*="titleGroup"]')
+    const title = group?.firstElementChild
+    if (!(title instanceof HTMLElement)) return
+    if (title.dataset.vexnarSlogan === '1') return
+    title.textContent = slogan()
+    title.dataset.vexnarSlogan = '1'
+  }
+  rewrite()
+  const observer = new MutationObserver(rewrite)
+  observer.observe(document.body, { childList: true, subtree: true })
+  return () => observer.disconnect()
+}
+
 export function apply(ctx: {
   slots: {
     inject: (name: string, register: () => unknown) => void
     register: (options: { name: string; key?: string }, component: unknown) => unknown
   }
+  effect?: (fn: () => () => void) => void
 }): void {
   ctx.slots.inject('tool.call.toolview', () =>
     ctx.slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
@@ -242,6 +278,11 @@ export function apply(ctx: {
     ctx.slots.register({ name: 'sidebar.brand.mark' }, BrandMark))
   ctx.slots.inject('sidebar.brand.name', () =>
     ctx.slots.register({ name: 'sidebar.brand.name' }, BrandName))
+  // Chat hero: logo occupies the brand-mark slot; the slogan is rewritten in
+  // place because the headline has no slot of its own.
+  ctx.slots.inject('conversation.hero.brand.mark', () =>
+    ctx.slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
+  ctx.effect?.(installHeroSlogan)
 }
 
 export const inject = ['slots']
