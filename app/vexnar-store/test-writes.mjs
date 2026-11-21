@@ -115,6 +115,15 @@ const mcpDisabled = await ops.setMcpEnabled(String(mcp.id), false)
 const mcpDelete = await ops.deleteMcpServer(String(mcp.id))
 check('mcp lifecycle', mcp.id > 0 && mcpDisabled.ok && mcpDelete.deleted === mcp.id, JSON.stringify({ mcp, mcpDisabled, mcpDelete }))
 
+const archived = await ops.archiveTask(second.id)
+const archives = await ops.listArchives()
+const hiddenByArchive = !(await jsonStore(root).tasks.list()).some((row) => row.id === second.id)
+const restored = await ops.restoreArchive(String(archived.id))
+const visibleAgain = (await jsonStore(root).tasks.list()).some((row) => row.id === second.id)
+const archived2 = await ops.archiveTask(second.id)
+const removedArchive = await ops.deleteArchive(String(archived2.id))
+check('archive lifecycle', archived.state === 'done' && archives.length === 1 && hiddenByArchive && restored.id === archived.id && visibleAgain && removedArchive.id === archived2.id, JSON.stringify({ archived: archived.id, hiddenByArchive, visibleAgain }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

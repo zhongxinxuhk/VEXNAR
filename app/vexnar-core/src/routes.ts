@@ -233,6 +233,46 @@ api.delete('/api/tasks/:id', async (c) => {
   }
 })
 
+api.post('/api/tasks/:id/archive', async (c) => {
+  try { const result = await operations.archiveTask(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.post('/api/tasks/archive/batch', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const ids = Array.isArray(body.task_ids) ? body.task_ids : []
+  const items = []
+  for (const id of ids) {
+    try { items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) }) }
+    catch (error: any) { items.push({ task_id: id, ok: false, error: String(error?.message ?? error) }) }
+  }
+  store.invalidate?.(['tasks'])
+  return c.json({ items })
+})
+
+api.get('/api/task-archives', async (c) => {
+  const page = Math.max(Number(c.req.query('page') ?? 1) || 1, 1)
+  const size = Math.min(Number(c.req.query('size') ?? 20) || 20, 200)
+  const all = await operations.listArchives()
+  return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size })
+})
+
+api.get('/api/task-archives/:id', async (c) => {
+  const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param('id'))
+  if (!one) return c.json({ error: '归档不存在' }, 404)
+  return c.json(one)
+})
+
+api.post('/api/task-archives/:id/restore', async (c) => {
+  try { const result = await operations.restoreArchive(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/task-archives/:id', async (c) => {
+  try { const result = await operations.deleteArchive(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.post('/api/tasks/:id/control', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
