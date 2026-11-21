@@ -154,10 +154,10 @@ describe('toChatMessages', () => {
     const final = step({ kind: 'result', detail: '目录存在。' })
     const [message] = toChatMessages([first, call1, narration, later, call2, result, final], '1')
     expect(message.flow?.map((row) => [row.kind, row.sequence])).toEqual([
-      ['reasoning', first.seq], ['calls', call1.seq], ['text', narration.seq],
-      ['reasoning', later.seq], ['calls', call2.seq], ['text', final.seq]
+      ['reasoning', first.seq], ['call', call1.seq], ['text', narration.seq],
+      ['reasoning', later.seq], ['call', call2.seq], ['text', final.seq]
     ])
-    expect(message.flow?.[1]).toMatchObject({ calls: [{ status: 'done' }] })
+    expect(message.flow?.[1]).toMatchObject({ call: { status: 'done' } })
     expect(JSON.stringify(message.flow)).not.toContain('secret')
   })
 
@@ -413,6 +413,9 @@ describe('describeToolPayload', () => {
     expect(deferred.fields).toContainEqual(expect.objectContaining({ key: 'path', value: 'README.md' }))
     const failed = describeToolPayload('Bash', '{"command":"ls"}', 'not found\n\n[exit code 2]')
     expect(failed.fields).toContainEqual(expect.objectContaining({ key: 'exitCode', value: 2 }))
+    const terminal = describeToolPayload('shell_read', '{"session_id":"pty-1"}', '{"view":"stream","output":"hello","exit_code":0}')
+    expect(terminal.terminalOutput).toBe('hello')
+    expect(terminal.fields).toContainEqual(expect.objectContaining({ key: 'session', value: 'pty-1' }))
     const ordinary = describeToolPayload('Bash', '{"command":"ls"}', 'ordinary output')
     expect(ordinary.fields.some((field) => field.key === 'exitCode')).toBe(false)
   })

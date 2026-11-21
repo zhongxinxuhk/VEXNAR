@@ -11,7 +11,7 @@
  * and no local streaming loop racing the server.
  */
 
-import type { ChatMessage, ToolCall } from '@/store/app'
+import type { ChatMessage, ToolCall, ToolTraceEvent } from '@/store/app'
 import type { ImageAttachment, Session } from '@shared/contracts'
 
 export type BackendConversation = {
@@ -323,11 +323,8 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           status: 'running'
         }
         message.toolCalls?.push(call)
-        const last = message.flow?.at(-1)
-        if (call.name.toLowerCase() === 'todowrite') {
-          message.flow?.push({ kind: 'plan', sequence: item.seq, call })
-        } else if (last?.kind === 'calls') last.calls.push(call)
-        else message.flow?.push({ kind: 'calls', sequence: item.seq, calls: [call] })
+        const kind = call.name.toLowerCase() === 'todowrite' ? 'plan' : 'call'
+        message.flow?.push({ kind, sequence: item.seq, call })
         message.toolEvents?.push({
           ...call.started, tool: call.name, worker: item.worker, outcome: 'invoked'
         })
@@ -351,17 +348,20 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         const outcome = item.is_error ? 'error' : 'done'
         const message = assistant(item)
         if (message.execution) message.execution.phase = 'tools'
-        message.toolEvents?.push({
+        const traceEvent: ToolTraceEvent = {
           ...event,
           tool: item.tool || call?.name || 'tool',
           worker: item.worker,
           outcome,
           relatedCallSequence: call?.started.sequence,
           relation: call ? undefined : candidates.length > 1 ? 'ambiguous' : 'unmatched'
-        })
+        }
+        message.toolEvents?.push(traceEvent)
         if (call) {
           call.status = outcome
           call.finished = event
+        } else {
+          message.flow?.push({ kind: 'result', sequence: item.seq, event: traceEvent })
         }
         break
       }

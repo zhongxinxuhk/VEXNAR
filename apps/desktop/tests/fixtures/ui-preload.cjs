@@ -148,6 +148,8 @@ contextBridge.exposeInMainWorld('__uiFixture', {
       { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
       { kind: 'tool_use', tool: 'Bash', tool_use_id: 'flow-a', detail: '{"command":"ls"}' },
       { kind: 'tool_result', tool: 'Bash', tool_use_id: 'flow-a', detail: 'README.md' },
+      { kind: 'tool_use', tool: 'LS', tool_use_id: 'flow-next', detail: '{"path":"."}' },
+      { kind: 'tool_result', tool: 'LS', tool_use_id: 'flow-next', detail: 'README.md' },
       { kind: 'text', detail: '已核对目录。' },
       { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
       { kind: 'tool_use', tool: 'ExecuteExtraTool', tool_use_id: 'flow-b', detail: '{"tool_name":"mcp__files__read_file","params":{"path":"README.md"}}' },

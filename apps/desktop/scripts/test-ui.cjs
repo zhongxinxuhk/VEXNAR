@@ -167,15 +167,27 @@ app.whenReady().then(async () => {
     await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='搭建 VEXNAR 官网').click()`)
     await wait(`Array.from(document.querySelectorAll('button')).some(e=>e.textContent==='加载更早消息')`)
     await run(`Array.from(document.querySelectorAll('button')).find(e=>e.textContent==='加载更早消息').click()`)
-    const activity = `[...document.querySelectorAll('summary')].find(e=>e.textContent.includes('工具活动 · 120 项'))`
-    await wait(`!!(${activity})`)
     await wait(`document.body.textContent.includes('已经搭好官网骨架')`)
-    await wait(`(${activity}).textContent.includes('回合已完成') && (${activity}).textContent.includes('118 项成功') && /10\\s*秒/.test((${activity}).textContent)`)
     await wait(`document.querySelector('article[aria-label="助手消息"] section[aria-label="最终答复"]').textContent.includes('已经搭好官网骨架')`)
     await wait(`document.querySelector('article[aria-label="助手消息"] header').textContent.includes('observed-model-fixture')`)
 
 
     if (await run(`document.body.textContent.includes('先看目录结构')`)) throw Error('Private reasoning appeared in chat')
+    await wait(`document.querySelectorAll('article[aria-label="助手消息"] [data-flow="call"]').length===119`)
+    if (await run(`[...document.querySelectorAll('article[aria-label="助手消息"] summary')].some(e=>e.textContent.includes('工具活动 ·'))`)) {
+      throw Error('Chat displayed the aggregate tool activity')
+    }
+    const changeDraft = (value) => run(`(()=>{const field=document.querySelector('[data-testid="chat-composer"] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+
+    await changeDraft('保留这份草稿')
+    const showWork = `[...document.querySelectorAll('[aria-label="会话视图"] button')].find(e=>e.textContent==='执行记录').click()`
+    const showChat = `[...document.querySelectorAll('[aria-label="会话视图"] button')].find(e=>e.textContent==='对话').click()`
+    await run(showWork)
+
+    const activity = `[...document.querySelectorAll('section[aria-label="执行记录"] summary')].find(e=>e.textContent.includes('工具活动 · 120 项'))`
+    await wait(`!!(${activity})`)
+    await wait(`(${activity}).textContent.includes('回合已完成') && (${activity}).textContent.includes('118 项成功') && /10\\s*秒/.test((${activity}).textContent)`)
+
     if (await run(`(${activity}).parentElement.querySelector('details') !== null`)) throw Error('Collapsed trace mounted tool rows')
     await wait(`(${activity}).textContent.includes('1 项失败') && (${activity}).textContent.includes('1 项未记录结果')`)
     await run(`(${activity}).click()`)
@@ -236,7 +248,7 @@ app.whenReady().then(async () => {
     await wait(`(${terminalCall})?.querySelector('section[aria-label="终端命令"]')?.textContent.includes('ls')`)
     await wait(`Array.from(document.querySelectorAll('pre')).some(e=>e.textContent.includes('README.md') && e.checkVisibility())`)
     await wait(`window.__uiFixture.snapshot().traceReads===${readsAfterInspection + 2}`)
-    const outputPanel = `[...document.querySelectorAll('article[aria-label="助手消息"] section')].find(e=>e.querySelector('h4')?.textContent==='输出')`
+    const outputPanel = `[...document.querySelectorAll('section[aria-label="执行记录"] article section')].find(e=>e.querySelector('h4')?.textContent==='输出')`
     if (await run(`(${outputPanel}).querySelector('pre').textContent.includes('END_OF_OUTPUT')`)) throw Error('Large output rendered beyond its preview')
     await run(`[...(${outputPanel}).querySelectorAll('button')].find(e=>e.textContent==='下一页').click()`)
     await wait(`(${outputPanel}).textContent.includes('第 8193–16384 项')`)
@@ -265,9 +277,6 @@ app.whenReady().then(async () => {
     await wait(`(${timeline}).lastElementChild.getAttribute('aria-posinset')==='240' && (${timeline}).lastElementChild.querySelector('button')?.title==='未找到对应调用' && (${timeline}).children.length<=19`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 120 项')`)
-    const changeDraft = (value) => run(`(()=>{const field=document.querySelector('[data-testid="chat-composer"] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}))})()`)
-    await changeDraft('保留这份草稿')
-    await run(`[...document.querySelectorAll('[aria-label="会话视图"] button')].find(e=>e.textContent==='执行记录').click()`)
     await wait(`[...document.querySelectorAll('section[aria-label="执行记录"] summary')].some(e=>e.textContent.includes('工具活动 · 120 项'))`)
     const checkpoint = `document.querySelector('section[aria-label="计划检查点（只读）"]')`
     await wait(`!!(${checkpoint})`)
@@ -355,18 +364,18 @@ app.whenReady().then(async () => {
     const openHistoryFixture = `Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`
     await run(`window.__uiFixture.seedOrdered()`)
     await run(openHistoryFixture)
-    await wait(`[...document.querySelectorAll('[data-flow]')].map(row=>row.dataset.flow).join(',')==='reasoning,calls,text,reasoning,calls,text'`)
+    await wait(`[...document.querySelectorAll('[data-flow]')].map(row=>row.dataset.flow).join(',')==='reasoning,call,call,text,reasoning,call,text'`)
     if (await run(`document.body.textContent.includes('PRIVATE_FLOW_FIXTURE')`)) throw Error('Ordered transcript rendered raw reasoning')
-    await run(`document.querySelector('[data-flow="calls"] summary').click()`)
-    await wait(`document.querySelector('[data-flow="calls"] details[data-call-sequence] summary')?.textContent.includes('Bash')`)
-    const inlineTerminal = `document.querySelector('[data-flow="calls"] details[data-call-sequence]')`
+    await run(`document.querySelector('[data-flow="call"] summary').click()`)
+    await wait(`document.querySelector('[data-flow="call"] details[data-call-sequence] summary')?.textContent.includes('Bash')`)
+    const inlineTerminal = `document.querySelector('[data-flow="call"] details[data-call-sequence]')`
     await wait(`(${inlineTerminal}).querySelector('section[aria-label="终端命令"] pre')?.textContent.includes('$ ls') && (${inlineTerminal}).textContent.includes('README.md') && (${inlineTerminal}).querySelector('footer')?.textContent==='成功'`)
     await run(`(${inlineTerminal}).scrollIntoView({block:'center'})`)
     fs.writeFileSync(path.join(output, 'chat-terminal-details.png'), (await w.webContents.capturePage()).toPNG())
-    const delegatedCall = `[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].find(row=>row.querySelector('summary').textContent.includes('ExecuteExtraTool'))`
+    const delegatedCall = `[...document.querySelectorAll('[data-flow="call"] details[data-call-sequence]')].find(row=>row.querySelector('summary').textContent.includes('ExecuteExtraTool'))`
     await run(`(${delegatedCall}).querySelector('summary').click()`)
-    await wait(`[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].some(row=>row.textContent.includes('mcp__files__read_file') && row.textContent.includes('README.md') && row.textContent.includes('无法读取调用详情'))`)
-    const openDelegated = `[...document.querySelectorAll('[data-flow="calls"] details[data-call-sequence]')].find(row=>row.textContent.includes('mcp__files__read_file'))`
+    await wait(`[...document.querySelectorAll('[data-flow="call"] details[data-call-sequence]')].some(row=>row.textContent.includes('mcp__files__read_file') && row.textContent.includes('README.md') && row.textContent.includes('无法读取调用详情'))`)
+    const openDelegated = `[...document.querySelectorAll('[data-flow="call"] details[data-call-sequence]')].find(row=>row.textContent.includes('mcp__files__read_file'))`
     await run(`[...(${openDelegated}).querySelectorAll('button')].find(e=>e.textContent==='重新读取').click()`)
     await wait(`(${openDelegated}).textContent.includes('文档内容') && (${openDelegated}).textContent.includes('README.md')`)
 
@@ -381,6 +390,10 @@ app.whenReady().then(async () => {
     fs.writeFileSync(path.join(output, 'chat-ordered.png'), (await w.webContents.capturePage()).toPNG())
     await run(`window.__uiFixture.seedHistoricalCall()`)
     await run(openHistoryFixture)
+    await wait(`!!document.querySelector('[data-flow="result"] summary')`)
+    await run(`document.querySelector('[data-flow="result"] summary').click()`)
+    await wait(`document.querySelector('[data-flow="result"] pre')?.textContent==='archived result'`)
+    await run(showWork)
     const oldResult = `[...document.querySelectorAll('summary')].find(el=>el.textContent.includes('工具事件 · 1 条'))`
     await wait(`!!(${oldResult})`)
     await run(`(${oldResult}).click()`)
@@ -391,6 +404,7 @@ app.whenReady().then(async () => {
     await run(`(${historicalPanel}).querySelector('summary').click()`)
     await wait(`(${historicalPanel})?.textContent.includes('archived result')`)
     await wait(`(${historicalPanel})?.textContent.includes('archive.md')`)
+    await run(showChat)
     await run(`window.__uiFixture.seedThinking()`)
     await run(openHistoryFixture)
     await wait(`document.querySelector('[data-execution-phase="reasoning"]')?.textContent.includes('正在思考')`)
@@ -401,6 +415,7 @@ app.whenReady().then(async () => {
     await wait(`document.body.textContent.includes('你好，正在生成答复')`)
     await wait(`document.querySelector('aside[aria-label="1 项等待审批"] button')?.textContent==='查看审批'`)
 
+    await run(showWork)
     const liveActivity = `[...document.querySelectorAll('summary')].find(e=>e.textContent.includes('工具活动 · 1 项'))`
     await wait(`(${liveActivity})?.textContent.includes('1 项运行中')`)
     await run(`(${liveActivity}).click()`)
@@ -408,12 +423,13 @@ app.whenReady().then(async () => {
     await selectStatus(liveActivity, 'running')
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
     await run(`window.__uiFixture.finishDraft()`)
-    await wait(`document.body.textContent.includes('你好，已恢复到完整答复。')`)
     await wait(`!document.querySelector('aside[aria-label="1 项等待审批"]')`)
 
     await wait(`(${liveActivity})?.textContent.includes('1 项失败') && (${liveActivity}).parentElement.textContent.includes('没有符合当前状态的调用')`)
     await selectStatus(liveActivity, 'error')
     await wait(`(${liveActivity}).parentElement.querySelector('details')?.textContent.includes('read_file')`)
+    await run(showChat)
+    await wait(`document.body.textContent.includes('你好，已恢复到完整答复。')`)
     await openMenu('通知')
     await wait(`[...document.querySelectorAll('[role="menuitem"]')].some(e=>e.textContent.includes('等待会话审批'))`)
     await run(`[...document.querySelectorAll('[role="menu"] button')].find(e=>e.textContent==='会话摘要').click()`)
@@ -422,7 +438,7 @@ app.whenReady().then(async () => {
     await wait(`JSON.parse(localStorage.getItem('vexnar-chat-notice-read-v1')).length===2`)
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, chat actions and phases, expanded terminal and tool details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: paged chat history, chat actions and phases, individual chronological tool rows and expanded details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

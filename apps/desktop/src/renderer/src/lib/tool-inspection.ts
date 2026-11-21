@@ -55,12 +55,15 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
   additionalTodos: number
   stdout?: string
   stderr?: string
+  terminalOutput?: string
 } {
   const recordedInput = structured(rawInput)
   const delegatedTool = tool === 'ExecuteExtraTool' && typeof recordedInput.tool_name === 'string'
     ? recordedInput.tool_name.trim()
     : ''
-  const { category, source } = executionGroup(delegatedTool || tool)
+  const effectiveTool = delegatedTool || tool
+  const { category, source } = executionGroup(effectiveTool)
+  const terminalSession = /^shell_(open|send|read|close|list)$/.test(effectiveTool)
   const input = delegatedTool ? object(recordedInput.params) : recordedInput
   const output = structured(rawOutput)
   const values: Field[] = []
@@ -89,7 +92,8 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
         const exit = /^\[exit code (-?\d+)\]$/.exec(rawOutput.trimEnd().split('\n').at(-1) ?? '')
         add('exitCode', output.exit_code, exit ? Number(exit[1]) : undefined)
       }
-      add('session', output.shell_session_id, input.shell_session_id)
+      add('session', output.shell_session_id, input.shell_session_id,
+        terminalSession ? output.session_id : undefined, terminalSession ? input.session_id : undefined)
       break
     case 'browser':
       add('action', output.action, input.action)
@@ -129,6 +133,9 @@ export function describeToolPayload(tool: string, rawInput: string, rawOutput: s
     todos,
     additionalTodos: Math.max(0, list.length - MAX_OVERVIEW_TODOS),
     stdout: category === 'terminal' && typeof output.stdout === 'string' ? output.stdout : undefined,
-    stderr: category === 'terminal' && typeof output.stderr === 'string' ? output.stderr : undefined
+    stderr: category === 'terminal' && typeof output.stderr === 'string' ? output.stderr : undefined,
+    terminalOutput: terminalSession
+      ? typeof output.output === 'string' ? output.output : typeof output.screen === 'string' ? output.screen : undefined
+      : undefined
   }
 }

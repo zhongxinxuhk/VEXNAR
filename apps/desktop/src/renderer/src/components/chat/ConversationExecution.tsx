@@ -38,7 +38,7 @@ export function ConversationExecution({
   const phase = message.execution?.phase
   const activeLabel = message.streaming ? t(phase ? phaseLabels[phase] : 'chat.phaseWaiting') : undefined
 
-  if (events.length > 0) {
+  if (workView && events.length > 0) {
     return (
       <div className="mb-2">
         {plans?.length ? (

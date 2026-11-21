@@ -2,62 +2,13 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from 'react'
-import { ChevronRight, SquareTerminal, Wrench } from 'lucide-react'
 import { PlanPreview } from './PlanPreview'
 import { AgentLoading } from '@/components/agent-ui/LoadingMark'
-import { ToolCallRow } from '@/components/agent-ui/ToolCallRow'
+import { ToolCallRow, ToolResultRow } from '@/components/agent-ui/ToolCallRow'
 import { Markdown } from '@/components/Markdown'
-import { executionGroup } from '@/lib/execution-groups'
 import { useT } from '@/lib/i18n'
 import { stripFailureText } from '@/lib/quota-error'
-import type { ChatMessage, ToolCall } from '@/store/app'
-
-const INLINE_TOOL_PAGE = 12
-
-function InlineCallGroup({ calls, running, conversationId }: {
-  calls: ToolCall[]
-  running: boolean
-  conversationId: string
-}): React.JSX.Element {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  const [limit, setLimit] = useState(INLINE_TOOL_PAGE)
-  const terminal = calls.every((call) => executionGroup(call.name).category === 'terminal')
-  const Icon = terminal ? SquareTerminal : Wrench
-  const count = calls.length
-  if (calls.length === 1) {
-    const [call] = calls
-    return <ToolCallRow call={call} status={!running && call.status === 'running' ? 'unreported' : call.status} conversationId={conversationId} />
-  }
-  return (
-    <details className="group/inline-trace" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 rounded-md px-1.5 text-xs text-ink-soft hover:bg-panel-2">
-        <Icon className="size-3.5 text-muted" aria-hidden="true" />
-        <span>{t(terminal ? 'chat.inlineCommands' : 'chat.inlineCalls', { count })}</span>
-        <ChevronRight className="size-3 text-muted transition-transform group-open/inline-trace:rotate-90" aria-hidden="true" />
-      </summary>
-      {open ? (
-        <div className="ml-2.5 border-l border-line pl-2.5">
-          {calls.slice(0, limit).map((call) => (
-            <ToolCallRow
-              key={call.started.sequence}
-              call={call}
-              status={!running && call.status === 'running' ? 'unreported' : call.status}
-              conversationId={conversationId}
-            />
-          ))}
-          {limit < count ? (
-            <button type="button" className="px-2 py-1.5 text-xs text-accent hover:underline"
-              onClick={() => setLimit(limit + INLINE_TOOL_PAGE)}>
-              {t('chat.inlineMoreCalls', { count: Math.min(INLINE_TOOL_PAGE, count - limit) })}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </details>
-  )
-}
+import type { ChatMessage } from '@/store/app'
 
 export function ConversationFlow({ message, quotaFailure }: {
   message: ChatMessage
@@ -86,10 +37,18 @@ export function ConversationFlow({ message, quotaFailure }: {
             </div>
           )
         }
-        if (block.kind === 'calls') {
+        if (block.kind === 'call') {
+          const status = !message.streaming && block.call.status === 'running' ? 'unreported' : block.call.status
           return (
-            <div key={block.sequence} data-flow="calls" data-sequence={block.sequence}>
-              <InlineCallGroup calls={block.calls} running={Boolean(message.streaming)} conversationId={message.sessionId} />
+            <div key={block.sequence} data-flow="call" data-sequence={block.sequence}>
+              <ToolCallRow call={block.call} status={status} conversationId={message.sessionId} />
+            </div>
+          )
+        }
+        if (block.kind === 'result') {
+          return (
+            <div key={block.sequence} data-flow="result" data-sequence={block.sequence}>
+              <ToolResultRow event={block.event} conversationId={message.sessionId} />
             </div>
           )
         }

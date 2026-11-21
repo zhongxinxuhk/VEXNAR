@@ -10,7 +10,7 @@ import { conversations } from '@/lib/conversations'
 import { describeToolPayload } from '@/lib/tool-inspection'
 import { executionCategories, executionGroup } from '@/lib/execution-groups'
 import { useI18n, useT } from '@/lib/i18n'
-import type { ToolCall } from '@/store/app'
+import type { ToolCall, ToolTraceEvent } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { MAX_COPY_TEXT_LENGTH } from '@shared/contracts'
 
@@ -177,7 +177,7 @@ function ToolInspection({ inspection, input, output, status, hasResult, command,
   label: (typeof statusDisplay)[ToolCallStatus]['label']
 }): React.JSX.Element {
   const t = useT()
-  const { category, fields, todos, additionalTodos, stdout, stderr } = inspection
+  const { category, fields, todos, additionalTodos, stdout, stderr, terminalOutput } = inspection
   const overview = fields.filter((field) => field.key !== 'command')
   const outputLabel = t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')
 
@@ -225,8 +225,9 @@ function ToolInspection({ inspection, input, output, status, hasResult, command,
           <p className="px-2.5 py-2 text-xs text-muted">{t('chat.toolInputEmpty')}</p>}
       {hasResult && output.value === undefined ? <PendingPayload payload={output} label={outputLabel} /> :
         output.value ? (
-          stdout !== undefined || stderr !== undefined ? (
+          stdout !== undefined || stderr !== undefined || terminalOutput !== undefined ? (
             <>
+              {terminalOutput ? <ToolPayload label={outputLabel} value={terminalOutput} error={status === 'error'} /> : null}
               {stdout ? <ToolPayload label={t('chat.inspectStdout')} value={stdout} /> : null}
               {stderr ? <ToolPayload label={t('chat.inspectStderr')} value={stderr} error /> : null}
               <details className="px-2.5 py-1 text-xs text-muted">
@@ -242,6 +243,41 @@ function ToolInspection({ inspection, input, output, status, hasResult, command,
         )}
       <footer className={cn('flex justify-end border-t border-line-soft px-3 py-1.5 text-xs', statusDisplay[status].tone)}>{t(label)}</footer>
     </>
+  )
+}
+
+/** A recorded result whose invocation is outside the loaded window or unlinked. */
+export function ToolResultRow({ event, conversationId }: {
+  event: ToolTraceEvent
+  conversationId: string
+}): React.JSX.Element {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const payload = useTracePayload(open, conversationId, event.sequence)
+  const status = event.outcome === 'error' ? 'error' : 'done'
+  const { tone, icon: Icon, label } = statusDisplay[status]
+  const outputLabel = t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')
+  return (
+    <details className="group" onToggle={(toggle) => setOpen(toggle.currentTarget.open)}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-panel-2">
+        <Icon className={cn('size-3.5 shrink-0', tone)} aria-hidden="true" />
+        <span className="min-w-0 truncate text-ink-soft">{t('chat.inlineResult')} · {event.tool}</span>
+        <span className="ml-auto shrink-0 text-muted">#{event.sequence} · {t(label)}</span>
+        <ChevronDown className="size-3 shrink-0 text-muted group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      {open ? (
+        <div className="ml-5 rounded-lg border border-line-soft bg-panel">
+          {event.relation ? (
+            <p className="border-b border-line-soft px-2.5 py-1.5 text-xs text-muted">
+              {t(event.relation === 'ambiguous' ? 'chat.toolRelationAmbiguous' : 'chat.toolRelationMissing')}
+            </p>
+          ) : null}
+          {payload.value === undefined ? <PendingPayload payload={payload} label={outputLabel} /> :
+            payload.value ? <ToolPayload label={outputLabel} value={payload.value} error={status === 'error'} /> :
+              <p className="px-2.5 py-2 text-xs text-muted">{t('chat.toolEmpty')}</p>}
+        </div>
+      ) : null}
+    </details>
   )
 }
 

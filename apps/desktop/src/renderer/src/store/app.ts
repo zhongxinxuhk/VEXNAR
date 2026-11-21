@@ -59,7 +59,8 @@ export type ChatFlowBlock =
   | { kind: 'text'; sequence: number; text: string }
   | { kind: 'reasoning'; sequence: number }
   | { kind: 'plan'; sequence: number; call: ToolCall }
-  | { kind: 'calls'; sequence: number; calls: ToolCall[] }
+  | { kind: 'call'; sequence: number; call: ToolCall }
+  | { kind: 'result'; sequence: number; event: ToolTraceEvent }
 
 export type ChatMessage = Omit<Message, 'toolCalls'> & {
   flow?: ChatFlowBlock[]
