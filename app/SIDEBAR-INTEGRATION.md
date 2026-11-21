@@ -15,7 +15,12 @@
 `sidebar.panellist` 顶级项，系统项进入 dsh 设置页的 `settings.section`。
 
 ```text
+dsh 新会话首屏
+└─ 概览        → conversation.hero.frame（KPI 条 + Token 趋势 + 缓存/漏洞转盘；
+                 实际对话里不渲染，不占高度）
+
 dsh 侧边栏
+├─ 概览        → main: vexnar-overview （Web /dashboard 复刻，整页）
 ├─ 任务        → main: vexnar-tasks    （仪表盘计数 + 列表 + 详情）
 ├─ 发现        → main: vexnar-findings
 ├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
@@ -40,7 +45,7 @@ dsh 设置页
 | 对话 | **dsh 原生会话**（不新建页面） | session 日志 | 复用 |
 | 工作空间 | **dsh 原生 workspace/文件面板** | 本地文件 | 复用 |
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
-| 仪表盘 | `vexnar-console` 首屏 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
+| 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
 | 任务 | 面板内列表 | `/api/tasks` | 骨架 |
 | 发现 | 面板内列表/详情 | `/api/exploration/findings` | 骨架 |
 | 流量 | 面板内证据查看 | `/api/exploration/findings/:id/traffic` | 骨架 |
@@ -56,6 +61,10 @@ dsh 设置页
 
 ## 已实现的数据视图
 
+- 概览：按 Web `/dashboard` 复刻——5 张 KPI、每日 Token 堆叠柱（7/30/90 天）、
+  缓存命中率环、漏洞分布环、活动流、发现列表、任务表、资产分布、状态码与系统状态；
+  图形全部手绘 SVG（无 recharts 依赖），色板走 `--vx-chart-*` 令牌，浅色/深色随皮肤；
+  新会话首屏的卡片在窗口高度 < 780px 时只保留标题栏与 KPI 条，把高度让给输入框；
 - 仪表盘：任务数、发现数、资产数、今日 Token；
 - 任务：最近 30 条任务（id/名称/状态/目标）；
 - 发现：最近 30 条发现（id/漏洞类/严重度/状态/摘要）；
