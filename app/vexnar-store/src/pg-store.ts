@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import pg from 'pg'
-import { assetRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
+import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
 
 /**
  * Optional PostgreSQL adapter. This is the bridge for existing deployments and
@@ -88,6 +88,28 @@ export function pgStore(connection: {
         return Object.fromEntries(rows.map((row) => [row.type, Number(row.n)]))
       }
     },
+    companies: {
+      list: async () => {
+        const rows = await q(`SELECT c.id, c.name, c.nkey, c.created_at::text AS created_at, c.updated_at::text AS updated_at,
+          (SELECT count(*)::int FROM assets a WHERE a.company_id = c.id) AS asset_count
+          FROM companies c ORDER BY c.name`)
+        const scopes = await q('SELECT id, company_id, kind, domain, net, value, raw, reason FROM company_scope')
+        const byCompany = new Map<number, unknown[]>()
+        for (const scope of scopes) {
+          const list = byCompany.get(Number(scope.company_id)) ?? []
+          list.push({
+            id: Number(scope.id), company_id: Number(scope.company_id), kind: scope.kind,
+            ...(scope.domain ? { domain: scope.domain } : {}),
+            ...(scope.net ? { net: scope.net } : {}),
+            ...(scope.value ? { value: scope.value } : {}),
+            raw: scope.raw,
+            ...(scope.reason ? { reason: scope.reason } : {})
+          })
+          byCompany.set(Number(scope.company_id), list)
+        }
+        return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }))
+      }
+    },
     nodes: {
       page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
@@ -111,7 +133,7 @@ export function pgStore(connection: {
         const items = rows.map((row) => nodeRow.parse(row))
         const ids = items.map((row) => row.id)
         const edges = ids.length
-          ? await q('SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $2 AND (src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[]))', [ids, task.exploration_id])
+          ? await q('SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $2 AND (src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[]))', [ids, task.exploration_id])
           : []
         return { items, total: Number(count.n), edges }
       }

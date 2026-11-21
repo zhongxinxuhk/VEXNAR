@@ -183,7 +183,8 @@ meta 表主键即 key
 - seed 修正了两个 PG 别名排序陷阱（`id::text AS id` 会让 `ORDER BY id` 变成字典序），
   并补齐 profiles 的 null 省略、tools 的 `agents: []` 归一。
 
-下一步 M2：assets/companies 进 `vexnar-assets` 域，然后是 activity。
+M2 首步：companies/company_scope 已进 store（`companies.json`），core 不再直连 PG；
+`assets` 仍是单文件，per-record 化与 activity 域是下一步。
 
 ## 10. 待决问题
 

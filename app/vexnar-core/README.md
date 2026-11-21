@@ -26,7 +26,7 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 - **领域数据**（tasks/findings/assets/nodes）：JSON store 的 per-record 文件；
 - **元数据**（agents/tools/mcp/notify/llm/settings/categories/templates）：`meta.json`
   单文件域（`vexnar-meta`）；
-- **companies** 暂读 PG（属于 assets 域，下一步迁移）；
+- **companies** 走 store（assets 域）；core 不再直接连接 PostgreSQL；
 - `VEXNAR_STORE=postgres` + `VEXNAR_PG_URL` 可整体切回 PostgreSQL；存量导入：
   `cd ../vexnar-store && npm run seed`。
 
@@ -52,7 +52,7 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
 
-最近一次对账：元数据 **12/12 PASS**（其中 10 个已走 meta 域，companies 仍走 PG）；
+最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**
 （`node compare-domain.mjs`：tasks 核心字段、assets、findings、findings stats、nodes items/edges）。
 

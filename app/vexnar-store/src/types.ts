@@ -62,6 +62,16 @@ export const nodeRow = z.object({
   created_at: z.string()
 }).passthrough()
 
+export const companyRow = z.object({
+  id: z.number(),
+  name: z.string(),
+  nkey: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  scope: z.array(z.unknown()).default([]),
+  asset_count: z.number().default(0)
+}).passthrough()
+
 export interface Store {
   backend: 'json' | 'postgres'
   init(): Promise<void>
@@ -77,6 +87,9 @@ export interface Store {
   assets: {
     list(options: { type?: string; limit?: number; offset?: number }): Promise<{ rows: any[]; total: number }>
     counts(): Promise<Record<string, number>>
+  }
+  companies: {
+    list(): Promise<any[]>
   }
   nodes: {
     page(options: { taskId: string; page: number; size: number; order?: 'asc' | 'desc'; kinds?: string[]; states?: string[] }): Promise<{ items: any[]; total: number; edges: any[] }>

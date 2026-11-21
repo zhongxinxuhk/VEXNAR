@@ -34,12 +34,13 @@ await mkdir(root, { recursive: true, mode: 0o700 })
 const tasks = await pg.tasks.list()
 const findings = await pg.findings.list(100000)
 const assets = (await pg.assets.list({ limit: 100000 })).rows
+const companies = await pg.companies.list()
 const nodes = (await pg.nodes.page({ taskId: '0', page: 1, size: 1 })).items // shape probe only
 void nodes
 
 // Nodes and edges are exported per exploration in one pass through SQL.
 const allNodes = await pg.pool.query(`SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin,
-  to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') AS created_at
+  to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') || ':00' AS created_at
   FROM exploration_nodes ORDER BY id`)
 const allEdges = await pg.pool.query('SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges')
 
@@ -47,6 +48,7 @@ for (const [name, rows] of [
   ['tasks', tasks],
   ['findings', findings],
   ['assets', assets],
+  ['companies', companies],
   ['nodes', allNodes.rows],
   ['edges', allEdges.rows]
 ]) {
