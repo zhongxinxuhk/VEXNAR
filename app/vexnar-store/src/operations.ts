@@ -318,7 +318,7 @@ export function storeOperations(_root?: string) {
   async function detachAsset(taskId: string, assetId: string) {
     const asset = await writer.readRecord('assets', assetId)
     if (!asset) throw Object.assign(new Error('asset 不存在'), { status: 404 })
-    const ids = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
+    const ids: number[] = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
     if (!ids.includes(Number(taskId))) throw Object.assign(new Error('asset 未关联该任务'), { status: 404 })
     const next = { ...asset, task_ids: ids.filter((id) => id !== Number(taskId)) }
     delete next.rev
