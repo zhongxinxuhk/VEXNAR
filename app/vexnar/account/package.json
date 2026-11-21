@@ -9,8 +9,12 @@
   "license": "AGPL-3.0-or-later",
   "main": "lib/index.js",
   "exports": {
-    ".": { "default": "./lib/index.js" },
-    "./client": { "default": "./lib/client.js" },
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
     "./package.json": "./package.json"
   },
   "dsh": {
@@ -27,5 +31,8 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1"
   }
 }
