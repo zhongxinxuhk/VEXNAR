@@ -14,6 +14,8 @@
     "setup": "node scripts/vexnar.mjs setup",
     "web": "node scripts/vexnar.mjs web",
     "desktop": "node scripts/vexnar.mjs desktop",
+    "go:build": "node scripts/vexnar-go.mjs build",
+    "go:stamp": "node scripts/vexnar-go.mjs stamp",
     "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run build",
     "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/core run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",

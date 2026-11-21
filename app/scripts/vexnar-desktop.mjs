@@ -25,10 +25,10 @@ else {
   }
   app.on('second-instance', () => window?.focus())
   app.on('window-all-closed', () => app.quit())
-  app.on('before-quit', () => host?.kill('SIGTERM'))
+  app.on('before-quit', () => host?.stop())
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => app.quit())
-  app.whenReady().then(() => {
-    host = startWeb(0, url => {
+  app.whenReady().then(async () => {
+    host = await startWeb(0, url => {
       const origin = new URL(url).origin
       const icon = join(appDir, 'vexnar', 'account', 'assets', 'logo.png')
       app.dock?.setIcon(icon)
@@ -55,7 +55,7 @@ else {
       window?.show()
       window?.focus()
     })
-    host.on('error', error => quit(error.message))
-    host.on('exit', code => code === 0 ? app.quit() : quit(`本机客户端服务退出 (${code})`))
+    host.child.on('error', error => quit(error.message))
+    host.child.on('exit', code => code === 0 ? app.quit() : quit(`本机客户端服务退出 (${code})`))
   }).catch(error => quit(error.message))
 }

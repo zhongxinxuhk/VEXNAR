@@ -94,16 +94,34 @@ Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [
 ## 启动和本机数据
 
 ```sh
-# 在两个启动终端中使用相同的一次性随机令牌
-export VEXNAR_DESKTOP_TOKEN="<本机随机令牌>"
-
-# 仓库根目录。按部署配置 VEXNAR_PG_DSN
-go run ./cmd/vexnar -addr 127.0.0.1:8787
-
-# 客户端终端，执行一次 pnpm install、pnpm run build、pnpm run setup
 cd app
+pnpm install && pnpm run build && pnpm run setup
 pnpm run web                 # 或 pnpm run desktop
 ```
+
+Go 后端由 `app/` 自己编译和托管，不用另开终端：
+
+1. `scripts/vexnar-go.mjs` 用 Go 源码算一个指纹（git HEAD + 未提交的 `.go` 改动），
+   编到 `app/.vexnar-bin/vexnar-<指纹>`，并 `-X main.version=<指纹>` 注入版本；
+   源码没变就跳过编译。
+2. 启动前先探 `127.0.0.1:8787`：同版本就复用（避免两个进程写同一份 SQLite），
+   是别的构建就报错并给出 `lsof` 命令，绝不静默连上一个对不上的后端。
+3. 自己起的进程随客户端退出一起回收；`-data`/`-keydir` 仍指回仓库根的 `data/` 与
+   `jwt.key`，不搬家、不产生第二份数据库。
+
+```sh
+pnpm run go:build            # 只编译，不启动
+pnpm run go:stamp            # 打印当前源码指纹
+```
+
+逃生口：
+
+| 变量 | 作用 |
+|---|---|
+| `VEXNAR_GO=off` | 不启动内置后端，改用 `VEXNAR_GO_URL` 指定的外部服务 |
+| `VEXNAR_GO_URL` | 外部 Go 地址；设置后客户端不再自己起 |
+| `VEXNAR_GO_BIN` | 指定现成二进制（打包环境没有 Go 工具链时用，版本不做强校验） |
+| `VEXNAR_GO_PORT` | 内置后端端口，默认 8787 |
 
 `node scripts/vexnar.mjs --help` 查看 VEXNAR CLI 命令。Web 默认绑定
 `127.0.0.1:3099`，桌面通过独立 Electron 进程启动本机页面。
