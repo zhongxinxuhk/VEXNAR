@@ -181,6 +181,9 @@ importers:
       electron:
         specifier: 44.7.0
         version: 44.7.0
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
   spike/p0-db:
     dependencies:

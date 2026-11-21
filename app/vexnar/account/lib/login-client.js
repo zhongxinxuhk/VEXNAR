@@ -4,13 +4,31 @@
 
 const api = '/vexnar-api/platform'
 const entry = document.getElementById('vexnar-sign-in')
+// 响应不一定是 JSON（例如某个反向代理或旧后端回了一段纯文本）。先取文本再解析，
+// 解析失败时给出人话错误，而不是把解析器的 "Unexpected ..." 原文显示到登录页。
 const read = async (path, method = 'GET', data) => {
-  const response = await fetch(api + path, {
-    method, headers: { 'Content-Type': 'application/json' },
-    body: data === undefined ? undefined : JSON.stringify(data)
-  })
-  const body = await response.json()
-  if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`)
+  let response
+  try {
+    response = await fetch(api + path, {
+      method, headers: { 'Content-Type': 'application/json' },
+      body: data === undefined ? undefined : JSON.stringify(data)
+    })
+  } catch {
+    throw new Error('无法连接 VEXNAR 服务，请确认客户端仍在运行')
+  }
+  const raw = await response.text().catch(() => '')
+  let body
+  try {
+    body = raw.trim() === '' ? {} : JSON.parse(raw)
+  } catch {
+    body = undefined
+  }
+  if (!response.ok) {
+    throw new Error(body?.error || (response.status === 404
+      ? 'VEXNAR 服务缺少账号接口（HTTP 404），请重启客户端'
+      : `请求失败（HTTP ${response.status}）`))
+  }
+  if (body === undefined) throw new Error('VEXNAR 服务返回了无法解析的响应，请重启客户端')
   return body
 }
 
@@ -28,8 +46,10 @@ if (entry) {
     notice.textContent = text
     notice.dataset.error = String(error)
   }
+  // 只要有身份就进工作区：模型不可用属于「设置 → 模型」里能修的问题，
+  // 不该把用户挡在登录页上反复登录。
   const present = account => {
-    if (account.ready) {
+    if (account.signed_in) {
       location.replace('/')
       return true
     }

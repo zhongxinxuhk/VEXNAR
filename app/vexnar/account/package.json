@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "VEXNAR account section for the dsh web client: NewAPI login through the Go desktop gateway",
+  "description": "VEXNAR account section for the dsh web client: HXSEC AI Platform sign-in and model providers in TypeScript",
   "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
@@ -28,6 +28,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
+    "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {

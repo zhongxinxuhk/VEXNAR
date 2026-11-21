@@ -182,13 +182,21 @@ export function ModelsSection() {
 
   const deepseek = account.providers.some(provider => provider.id === 'deepseek')
   return <div style={panel}>
-    {account.providers.map(provider => <div key={provider.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <strong>{provider.name}</strong>
-      <span>{provider.models.length} 个模型</span>
-      {provider.id !== 'vexnar' && <button type="button" style={button} disabled={busy} onClick={() => {
-        setBusy(true)
-        void request<Account>('/providers', 'DELETE', { id: provider.id }).then(update, onError).finally(() => setBusy(false))
-      }}>移除</button>}
+    {account.providers.map(provider => <div key={provider.id} style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <strong>{provider.name}</strong>
+        <span>{provider.models.length} 个模型</span>
+        {provider.id !== 'vexnar' && <button type="button" style={button} disabled={busy} onClick={() => {
+          setBusy(true)
+          void request<Account>('/providers', 'DELETE', { id: provider.id }).then(update, onError).finally(() => setBusy(false))
+        }}>移除</button>}
+      </div>
+      <details>
+        <summary style={{ cursor: 'pointer' }}>查看模型</summary>
+        <ul style={{ maxHeight: 160, overflow: 'auto', margin: '6px 0 0', paddingInlineStart: 20 }}>
+          {provider.models.map(model => <li key={model.id}>{model.name || model.id}</li>)}
+        </ul>
+      </details>
     </div>)}
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <button type="button" style={button} disabled={busy} onClick={() => select('deepseek')}>
@@ -196,6 +204,12 @@ export function ModelsSection() {
       </button>
       <button type="button" style={button} disabled={busy} onClick={() => select('custom')}>导入自定义 API</button>
     </div>
+    <span style={{ color: '#8a8f99', fontSize: 12 }}>
+      Key 只存在本机凭据库，模型请求由客户端直接发往对应上游，不经过 VEXNAR 服务端。
+    </span>
+    {!account.ready && <span role="alert" style={{ color: 'var(--dsw-alias-label-danger, #b91c1c)' }}>
+      平台没有签发可用的模型凭据。请退出登录后重新登录，或先添加自己的 API Key。
+    </span>}
     {kind && <form onSubmit={event => void save(event)} style={{ display: 'grid', gap: 8 }}>
       {kind === 'custom' && <>
         <label style={field}>提供方名称
