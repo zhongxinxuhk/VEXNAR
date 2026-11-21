@@ -1,42 +1,23 @@
 # VEXNAR app bundle patch over the dsh web profile.
 #
-# A patch replaces the targeted row's whole `config`, so each row below restates
-# every key it owns. Two rows only:
-#
-#   1. llm-pi-ai — point a route at the Go model gateway. dsh keeps its own
-#      provider catalog; VEXNAR supplies one OpenAI-compatible route. Keys and
-#      upstream URLs never live here: the gateway authenticates the launch with
-#      X-VEXNAR-Desktop-Token and owns the real credentials.
-#   2. mcp-manager — mount the Go domain tool endpoint. The token is the one the
-#      Go service writes to data/mcp.token (or VEXNAR_MCP_TOKEN).
-#
-# Both endpoints are loopback-only by design; this file assumes the Go service
-# listens on 127.0.0.1:8787.
+# Layering rule: this file only targets dsh rows by id. VEXNAR's own code is
+# app/vexnar/*, so an upstream update never collides with it.
 
-# VEXNAR app rows mounted over the dsh web bundle.
+# ── VEXNAR rows ────────────────────────────────────────────────────────────
 - insert:
     - id: vexnar-ui
       name: '@vexnar/dsh-ui'
     - id: vexnar-account
       name: '@vexnar/dsh-account'
 
-- id: llm-pi-ai
-  config:
-    providers:
-      vexnar:
-        displayName: VEXNAR
-        api: openai-completions
-        baseURL: http://127.0.0.1:8787/api/desktop/openai/v1
-        headers:
-          X-VEXNAR-Desktop-Token: !!js "process.env.VEXNAR_DESKTOP_TOKEN || ''"
-        # Replace the id with what GET /api/desktop/openai/v1/models reports for
-        # the active Go LLM profile (deepsec-flash is the local default).
-        models:
-          - id: deepsec-flash
-            name: VEXNAR Default
-            contextWindow: 200000
-            maxTokens: 32000
+# ── Model access: TypeScript → NewAPI directly ─────────────────────────────
+# The provider route is written at login by @vexnar/dsh-account into the
+# llm-pi-ai settings namespace (baseURL + apiKeyEnv + model catalog). Nothing
+# here points at the Go gateway; the key lives in dsh's credential store.
 
+# ── Domain tools (transitional) ────────────────────────────────────────────
+# Task/finding/traffic tools still live in the Go service while the TS
+# migration lands. Remove this row once those tools exist in TypeScript.
 - id: mcp-manager
   config:
     servers:
@@ -46,7 +27,6 @@
         headers:
           Authorization: !!js "'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '')"
         timeoutMs: 60000
-        enabled: true
 
 # ── Brand: VEXNAR replaces the official artwork ─────────────────────────────
 # @vexnar/dsh-ui occupies sidebar.brand.mark / sidebar.brand.name, so the
@@ -55,8 +35,8 @@
   disabled: true
 
 # ── Account: VEXNAR owns sign-in ────────────────────────────────────────────
-# Model access goes through the Go gateway, so the upstream DeepSeek account
-# rows stay disabled. Turn them back on only if the Go gateway is retired.
+# Upstream DeepSeek account rows stay disabled; VEXNAR signs in to NewAPI and
+# routes model traffic itself.
 - id: deepseek-account
   disabled: true
 - id: llm-deepseek-account

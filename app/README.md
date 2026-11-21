@@ -9,11 +9,11 @@
 这里放 **app 端**：DeepSeek Harness（dsh）的本地源码树，加上 VEXNAR 自己的
 bundle 层。Go 服务仍是产品本体，app 只通过两个接口消费它：
 
-| 方向 | 接口 | 鉴权 |
+| 方向 | 走哪条链路 | 说明 |
 |---|---|---|
-| 模型推理 | `POST /api/desktop/openai/v1/chat/completions` | `X-VEXNAR-Desktop-Token` |
-| 模型目录 | `GET /api/desktop/openai/v1/models` | 同上 |
-| 领域工具 | `POST /mcp`（MCP Streamable HTTP） | `Authorization: Bearer <data/mcp.token>` |
+| 模型推理 | **TS 直连 NewAPI** | 登录后由账户插件写入 dsh 凭据库与 `llm-pi-ai` 设置 |
+| 模型目录 | `GET {newapi}/v1/models` | 登录时自动拉取，写入 provider 的 models |
+| 领域工具 | Go `POST /mcp`（过渡） | 任务/漏洞/流量工具尚未迁移到 TS |
 
 ## 目录
 

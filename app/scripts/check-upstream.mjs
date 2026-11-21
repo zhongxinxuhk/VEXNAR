@@ -73,7 +73,7 @@ contains('packages/mcp/mcp-client/src/index.ts', "z.const('streamable-http')", '
 
 // ── 3. VEXNAR artifacts ────────────────────────────────────────────────────
 const patch = readFileSync(join(app, 'vexnar/cordis.patch.yml'), 'utf8')
-for (const row of ['llm-pi-ai', 'mcp-manager', 'ui-brand-official', 'deepseek-account', 'llm-deepseek-account']) {
+for (const row of ['mcp-manager', 'ui-brand-official', 'deepseek-account', 'llm-deepseek-account']) {
   ok(`bundle patch targets ${row}`, patch.includes(`id: ${row}`))
 }
 
@@ -86,6 +86,10 @@ for (const dep of ['@deepseek-ai/dsh-client-ui-tool', '@deepseek-ai/dsh-client-u
 const accountPkg = JSON.parse(readFileSync(join(app, 'vexnar/account/package.json'), 'utf8'))
 const accountInject = accountPkg.dsh?.client?.inject ?? []
 ok('account client injects settings', accountInject.includes('@deepseek-ai/dsh-client-ui-settings'))
+
+const accountHost = readFileSync(join(app, 'vexnar/account/lib/index.js'), 'utf8')
+ok('account host configures pi-ai directly', accountHost.includes("ctx.settings.update('llm-pi-ai'"))
+ok('account host does not call the Go gateway', !accountHost.includes('/api/desktop/llm'))
 
 const accountBundle = join(app, 'vexnar/account/lib/client.js')
 ok('account bundle built', existsSync(accountBundle), 'run npm run build in app/vexnar/account')
