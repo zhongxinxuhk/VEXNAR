@@ -164,7 +164,7 @@ export function pgStore(connection: {
       return out
     },
     nodes: {
-      page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {
+      page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [], before }) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
         if (!task) return { items: [], total: 0, edges: [] }
         const filters: string[] = ['exploration_id = $1']
@@ -176,6 +176,10 @@ export function pgStore(connection: {
         if (states.length) {
           values.push(states)
           filters.push(`state = ANY($${values.length})`)
+        }
+        if (before) {
+          values.push(Number(before))
+          filters.push(`id < $${values.length}`)
         }
         const where = filters.join(' AND ')
         const [count] = await q(`SELECT count(*)::int AS n FROM exploration_nodes WHERE ${where}`, values)

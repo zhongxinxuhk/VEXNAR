@@ -134,13 +134,14 @@ export function jsonStore(root: string): Store {
       return out
     },
     nodes: {
-      page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {
+      page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [], before }) => {
         const tasks = await load('tasks', taskRow)
         const task = tasks.find((row) => String(row.id) === String(taskId))
         if (!task) return { items: [], total: 0, edges: [] }
         let rows = (await load('nodes', nodeRow)).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
         if (kinds.length) rows = rows.filter((row) => kinds.includes(row.kind))
         if (states.length) rows = rows.filter((row) => states.includes(row.state))
+        if (before) rows = rows.filter((row) => Number(row.id) < Number(before))
         rows.sort((a, b) => (order === 'asc' ? Number(a.id) - Number(b.id) : Number(b.id) - Number(a.id)))
         const items = rows.slice((page - 1) * size, (page - 1) * size + size)
         const ids = new Set(items.map((row) => String(row.id)))

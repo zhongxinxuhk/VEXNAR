@@ -65,6 +65,11 @@ check('nodes page items', same(goNodes.items.map(pickNode), tsNodes.items.map(pi
 const sortEdges = (rows) => [...rows].sort((a, b) => (a.src + a.dst + a.rel).localeCompare(b.src + b.dst + b.rel))
 check('nodes page edges', same(sortEdges(goNodes.edges), sortEdges(tsNodes.edges)), `${goNodes.edges.length}/${tsNodes.edges.length}`)
 
+const goIntents = await get(GO, '/api/exploration/intents?task=1823&limit=50')
+const tsIntents = await get(TS, '/api/exploration/intents?task=1823&limit=50')
+const ids = (value) => (Array.isArray(value) ? value : value.items).map((row) => row.id)
+check('intents ids', same(ids(goIntents), ids(tsIntents)), `${ids(goIntents).length}/${ids(tsIntents).length}`)
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)
