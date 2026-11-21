@@ -287,6 +287,12 @@ VEXNAR_STORE=postgres + VEXNAR_PG_URL → 整体切到 PG 适配器（当前只�
 
 写入路径：临时文件 + `rename` 原子替换，文件 0600、目录 0700；`zod` 校验后才落盘。
 
+已落地形态（2026-11-21 实测）：
+
+- graph / assets / companies 已改为 **per-record 目录**（`tasks/<id>.json`、`findings/<id>.json`、`nodes/<id>.json`、`edges/<src>-<rel>-<dst>.json`、`companies/<ordinal>-<id>.json`），单次写只替换一个文档；companies 用 `<ordinal>-<id>` 键保持 PG 的原始顺序。
+- `activity` 域已进 store（`activity/<id>.json`，约 9.6k 条）；任务指标（tokens / goals / in_flight / findings）由 store 从持久化数据计算并与 Go 对账一致。
+- store 与 PG 适配器的对账结果为 **7/7**（tasks / findings / assets / nodes / companies / activity / stats）。
+
 ### 4.4 域划分（一个 domain = 一个存储单元 = 一条写链）
 
 ```text
@@ -302,9 +308,9 @@ dsh home
 
 | domain | 表 | 布局 | 理由 |
 |---|---|---|---|
-| `vexnar-graph` | tasks, findings, nodes, edges | per-record | 写频繁、单条更新多，整文件重写不可接受 |
-| `vexnar-assets` | assets, companies, company_scope | per-record | 资产高频 upsert，3k+ 记录 |
-| `vexnar-activity` | activity, tool_usage, llm_usage | per-record；量大后迁 sqlite | 追加型、量大、读写都重 |
+| `vexnar-graph` | tasks, findings, nodes, edges | per-record（**已落地**） | 写频繁、单条更新多，整文件重写不可接受 |
+| `vexnar-assets` | assets, companies, company_scope | per-record（**已落地**） | 资产高频 upsert，3k+ 记录 |
+| `vexnar-activity` | activity, tool_usage, llm_usage | per-record（activity **已落地**，约 9.6k 条）；量大后迁 sqlite | 追加型、量大、读写都重 |
 | `vexnar-meta` | agents, tools, mcp_servers, notification_channels, llm_profiles, settings(非 secret) | single | 记录少、读多写少，可读性优先 |
 | `vexnar-journal` | commits | per-record | 崩溃恢复，按 key 单写 |
 
@@ -313,13 +319,18 @@ dsh home
 键设计：
 
 ```text
-tasks/<id>            findings/<id>        nodes/<id>
-edges/<src>-<rel>-<dst>            # 复合键，仅 [a-zA-Z0-9_-]+
-activity/<ulid>                    # 时间有序，避免热点
-companies/<id>        scope/<company_id>-<hash>
+# 已落地（seed.mjs 与 per-record.ts）
+tasks/<id>          findings/<id>          nodes/<id>        assets/<id>     activity/<id>
+companies/<4 位序号>-<id>                 # 保持 PG 原始顺序
+edges/<src>-<rel>-<dst>                   # 复合键，仅 [a-zA-Z0-9_-]+
+
+# 规划中
+scope/<company_id>-<hash>                 # company_scope 尚未进 store
 ```
 
 ### 4.5 一致性与并发（JSON 域的真实语义）
+
+> 下表是 **dsh `storage-domain` 的边界**，也就是"VEXNAR 的域成为 dsh 插件之后"必须遵守的语义。当前 `vexnar-store` 还是独立的"每记录一文件 + rename"实现，尚未调用 `defineDomain`/`ctx.storageDomain`；接入前写并发靠单写者锁，接入后由 dsh 的写链承担。
 
 | 能力 | 事实 | 设计后果 |
 |---|---|---|
@@ -338,7 +349,7 @@ companies/<id>        scope/<company_id>-<hash>
 3. `journal.put(commitId, {state:'committed'})`
 4. 崩溃恢复：启动扫描 `prepared` 幂等重放；无法判定则标 `unknown` 并告警
 
-冲突：每条记录带 `rev`，更新时校验，不匹配返回 409，**不做静默合并**。
+冲突（**设计目标，尚未实现**）：每条记录带 `rev`，更新时校验，不匹配返回 409，**不做静默合并**。当前 store 只有读路径，`rev` 随写路径（M3）一起落地。
 
 ### 4.6 性能预算与阈值
 
@@ -368,7 +379,7 @@ cd app/vexnar-core && node compare.mjs && node compare-domain.mjs
 4. 回退只需切回 `VEXNAR_STORE=postgres`（适配器保留只读即够用于回退展示）。
 5. 旧路径在确认零回滚后再删，且保留一次完整导出。
 
-每阶段都必须保留：`seed`（PG→JSON）、`export`（JSON→PG）、计数与抽样校验。
+每阶段都必须保留：`seed`（PG→JSON，已实现）、`export`（JSON→PG，**随写路径一起补**）、计数与抽样校验。PG 适配器目前只读，写回路径未实现前不得对外宣称可导出。
 
 ### 4.8 禁止事项
 
@@ -438,7 +449,8 @@ export interface JournalRepo {
 要求：
 
 - 只有在写路径接管（存储 M3）后，`TaskRepo.upsert` 才允许生产调用；之前一律只读。
-- 派生字段（任务 `status`、`tokens`、`goals_*`、`in_flight`、`findings` 计数）由引擎计算，读路径不得自行推导并写回。
+- 派生字段分两类：`tokens` / `goals_*` / `in_flight` / `findings` 计数可由 store 从持久化数据计算并投影（不写回）；`status` 由引擎状态机决定，`last_activity_unix` 在 Go 侧含引擎内存心跳，读路径口径不完全等价，对账时排除或单列。
+- 任何派生字段都不得为了"看起来一致"被写回域文件。
 - 契约用 zod 表达并从路由生成 OpenAPI，作为双跑对比的机器基线。
 
 ### 5.5 目标：租约与恢复（尚未实现）
@@ -557,6 +569,7 @@ dsh / web / MCP clients
 4. 节点页排序 `priority DESC, id`；JSON 与 PG 不一致会导致分页集合与边集合都不同。
 5. `settings` 不是整表：只暴露固定白名单，`auth.*` 永不出现。
 6. `findings.id` 与探索节点 id 不是同一套编号，不要互相代入。
+7. `last_activity_unix`：store 用 activity 的最大 `created_unix` 近似，Go 侧含引擎内存心跳，二者只在"无新活动"时相等。
 
 ---
 
@@ -748,6 +761,8 @@ POST /mcp                         # MCP Streamable HTTP（JSON-RPC 2.0，2025-06
 | P1-1 只读 API | `app/vexnar-core` | 元数据 12/12、领域 6/6 |
 | 存储 M1 | `vexnar-meta`（`meta.json`） | 元数据端点 12/12 全部走 store |
 | 存储 M2 首步 | `companies.json` | core 不再直连 PG，6/6 保持 |
+| 存储 M2 完成 | graph / assets / companies per-record 目录 | 单次写只替换一个文档；store 对账 7/7 |
+| 存储 M2（activity） | `activity/<id>.json`（约 9.6k 条） | 任务指标由 store 计算，与 Go 一致；`last_activity_unix` 口径差异单列 |
 
 已知结论（写进实施约束）：
 
@@ -758,14 +773,13 @@ POST /mcp                         # MCP Streamable HTTP（JSON-RPC 2.0，2025-06
 
 | 顺序 | 工作 | 出口条件 |
 |---|---|---|
-| 1 | `assets` per-record 化 + `activity` 域 | 读对账不回退，写路径仍 Go |
-| 2 | core 覆盖全部读端点（含派生字段口径） | 与 Go 逐端点对齐 |
-| 3 | 写路径接管（journal + `rev`） | 崩溃恢复演练通过，Go 只读回退可用 |
-| 4 | 20 个 MCP 工具的 TS 化 | 同一会话工具结果与 Go 等价 |
-| 5 | 引擎迁移（planner/worker/暂停/续跑/归档） | 10 个真实任务端到端通过 |
-| 6 | 流量与审批 | 同一目标抓包条数与 body 哈希一致 |
-| 7 | 平台面（通知/报告/技能/市场/更新/鉴权） | 6 通道实发成功 |
-| 8 | 灰度切读切写、Go 下线 | 一周零回滚 |
+| 1 | core 覆盖剩余读端点（session / 审批 / 流量索引以外的域） | 与 Go 逐端点对齐，派生字段口径写进对账脚本 |
+| 2 | 写路径接管（journal + `rev`，存储 M3） | 崩溃恢复演练通过，Go 只读回退可用 |
+| 3 | 20 个 MCP 工具的 TS 化 | 同一会话工具结果与 Go 等价 |
+| 4 | 引擎迁移（planner/worker/暂停/续跑/归档） | 10 个真实任务端到端通过 |
+| 5 | 流量与审批 | 同一目标抓包条数与 body 哈希一致 |
+| 6 | 平台面（通知/报告/技能/市场/更新/鉴权） | 6 通道实发成功 |
+| 7 | 灰度切读切写、Go 下线 | 一周零回滚 |
 
 ### 13.3 明确不在本版范围
 
@@ -795,7 +809,7 @@ cd app && npm run upstream:check                                  # 27 项上游
 4. 流量：同一会话抓包条数与 body 哈希一致，证据绑定版本语义不变。
 5. 通知：6 通道各实发 1 条，签名/掩码/SSRF 防护用例通过。
 6. 性能：列表接口 P95 不高于 Go 基线的 1.2 倍（同机同数据量）。
-7. 存储：JSON 与 PG 适配器输出同一形状；`seed`/`export` 可逆；`rev` 冲突返回 409。
+7. 存储：JSON 与 PG 适配器输出同一形状；`seed` 可重放且幂等；`rev` 冲突返回 409（写路径接管后启用，`export` 同步补齐）。
 
 ### 14.3 不变量（违反即阻断发布）
 
