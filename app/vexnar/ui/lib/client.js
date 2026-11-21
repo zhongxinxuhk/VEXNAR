@@ -919,11 +919,24 @@ function ToolRunPage() {
     (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
   );
 }
+function TrafficExchange({ id, onBack }) {
+  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(id)}`);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)("button", { type: "button", onClick: onBack, style: { marginBottom: 10, cursor: "pointer" } }, "\u2190 \u8FD4\u56DE\u6D41\u91CF\u5217\u8868"),
+    (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 640, overflow: "auto" } }, JSON.stringify(data, null, 2))
+  );
+}
 function TrafficPage() {
   const { data, error, loading } = useApi("/api/traffic?page=1&size=50");
+  const [exchangeId, setExchangeId] = (0, import_react.useState)("");
   if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981\u4EE5 VEXNAR_GO_FALLBACK \u542F\u52A8 core \u624D\u80FD\u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09`);
   const rows = data?.items ?? data?.exchanges ?? [];
+  if (exchangeId) return (0, import_react.createElement)(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId("") });
   return (0, import_react.createElement)(
     "div",
     { style: { fontSize: 13 } },
@@ -934,7 +947,7 @@ function TrafficPage() {
       (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["\u65F6\u95F4", "\u65B9\u6CD5", "URL", "\u72B6\u6001", "\u6765\u6E90"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
       (0, import_react.createElement)("tbody", null, rows.slice(0, 50).map((row, index) => (0, import_react.createElement)(
         "tr",
-        { key: row.id ?? index },
+        { key: row.id ?? index, onClick: () => row.id && setExchangeId(String(row.id)), style: { cursor: row.id ? "pointer" : "default" } },
         (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, String(row.ts ?? row.time ?? "")),
         (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.method ?? ""),
         (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.url ?? row.host ?? ""),

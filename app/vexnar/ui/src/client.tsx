@@ -601,16 +601,27 @@ function ToolRunPage() {
     h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
+function TrafficExchange({ id, onBack }: { id: string; onBack: () => void }) {
+  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(id)}`)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  return h('div', null,
+    h('button', { type: 'button', onClick: onBack, style: { marginBottom: 10, cursor: 'pointer' } }, '← 返回流量列表'),
+    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 640, overflow: 'auto' } }, JSON.stringify(data, null, 2)))
+}
+
 function TrafficPage() {
   const { data, error, loading } = useApi('/api/traffic?page=1&size=50')
+  const [exchangeId, setExchangeId] = useState('')
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要以 VEXNAR_GO_FALLBACK 启动 core 才能代理 Go 流量接口）`)
   const rows = data?.items ?? data?.exchanges ?? []
+  if (exchangeId) return h(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId('') })
   return h('div', { style: { fontSize: 13 } },
     h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? data?.total ?? rows.length} 条抓包`),
     h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
       h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.slice(0, 50).map((row: any, index: number) => h('tr', { key: row.id ?? index },
+      h('tbody', null, rows.slice(0, 50).map((row: any, index: number) => h('tr', { key: row.id ?? index, onClick: () => row.id && setExchangeId(String(row.id)), style: { cursor: row.id ? 'pointer' : 'default' } },
         h('td', { style: { padding: '6px 8px' } }, String(row.ts ?? row.time ?? '')),
         h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
         h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.url ?? row.host ?? ''),
