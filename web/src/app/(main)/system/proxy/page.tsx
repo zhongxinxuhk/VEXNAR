@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +28,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { api, sseUrl } from "@/lib/api";
 import type {
   ProxyNodeView,
   ProxyParseResult,
@@ -100,6 +101,7 @@ export default function ProxyPoolPage() {
 
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState("");
+  const [importURL, setImportURL] = React.useState("");
   const [importPool, setImportPool] = React.useState<string>("0");
   const [importTags, setImportTags] = React.useState("");
   const [preview, setPreview] = React.useState<ProxyParseResult | null>(null);
@@ -110,6 +112,7 @@ export default function ProxyPoolPage() {
   const [binding, setBinding] = React.useState<TaskProxyBinding | null>(null);
   const [bindingSession, setBindingSession] = React.useState<ProxySessionSnapshot | null>(null);
   const [bindingBusy, setBindingBusy] = React.useState(false);
+  const [selected, setSelected] = React.useState<Set<number>>(new Set());
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -125,6 +128,23 @@ export default function ProxyPoolPage() {
 
   React.useEffect(() => {
     void load();
+  }, [load]);
+
+  // 健康/会话/池变更由 SSE 推送；合并 400ms 内的多条事件，避免体检时刷屏。
+  React.useEffect(() => {
+    const es = new EventSource(sseUrl("/proxy/events"));
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    es.onmessage = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        void load();
+      }, 400);
+    };
+    return () => {
+      es.close();
+      if (timer) clearTimeout(timer);
+    };
   }, [load]);
 
   const pools = state?.pools ?? [];
@@ -237,6 +257,37 @@ export default function ProxyPoolPage() {
     }
   }
 
+  function toggleSelect(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === visibleNodes.length ? new Set() : new Set(visibleNodes.map((n) => n.id))));
+  }
+
+  async function batch(action: string) {
+    const ids = [...selected];
+    if (ids.length === 0) {
+      toast.error("先选择节点");
+      return;
+    }
+    try {
+      const res = await api.proxyBatch({ ids, action, pool_id: activePool ?? undefined });
+      toast.success(
+        `批量操作完成：更新 ${res.updated}，删除 ${res.deleted}${res.checked ? `，体检 ${res.checked.length}` : ""}`,
+      );
+      setSelected(new Set());
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "批量操作失败");
+    }
+  }
+
   async function removeFromPool(node: ProxyNodeView) {
     if (!activePool) return;
     try {
@@ -250,7 +301,7 @@ export default function ProxyPoolPage() {
   async function doParse() {
     setParsing(true);
     try {
-      setPreview(await api.proxyParse(importText));
+      setPreview(await api.proxyParse(importText, importURL));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "解析失败");
     } finally {
@@ -265,7 +316,7 @@ export default function ProxyPoolPage() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      const res = await api.proxyImport(importText, Number(importPool) || 0, tags);
+      const res = await api.proxyImport(importText, Number(importPool) || 0, tags, importURL);
       toast.success(`导入完成：新增 ${res.created}，更新 ${res.updated}，入池 ${res.added_to_pool}`);
       if (res.issues?.length) {
         toast.warning(`${res.issues.length} 行未识别，可在预览里查看`);
@@ -378,8 +429,9 @@ export default function ProxyPoolPage() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>会话网关</CardDescription>
+            <CardDescription>会话网关（HTTP）</CardDescription>
             <CardTitle className="font-mono text-sm">{state?.gateway || "—"}</CardTitle>
+            <p className="font-mono text-muted-foreground text-xs">SOCKS5 {state?.socks || "未启动"}</p>
           </CardHeader>
         </Card>
         <Card>
@@ -517,14 +569,49 @@ export default function ProxyPoolPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-xs">已选 {selected.size}</span>
+                  <Button size="sm" variant="outline" onClick={toggleSelectAll}>
+                    全选 / 清空
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void batch("enable")}>
+                    启用
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void batch("disable")}>
+                    禁用
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void batch("check")}>
+                    批量体检
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void batch("add_to_pool")} disabled={!activePool}>
+                    加入当前池
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void batch("remove_from_pool")}
+                    disabled={!activePool}
+                  >
+                    移出当前池
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => void batch("delete")}>
+                    删除
+                  </Button>
+                </div>
                 {visibleNodes.length === 0 ? (
                   <div className="py-8 text-center text-muted-foreground text-sm">
                     该池还没有节点。去「导入节点」并选择这个池，或在全部节点里「加入池」。
                   </div>
                 ) : (
-                  <table className="w-full min-w-[820px] text-sm">
+                  <table className="w-full min-w-[880px] text-sm">
                     <thead className="text-left text-muted-foreground text-xs">
                       <tr className="border-b">
+                        <th className="w-8 py-2 pr-2">
+                          <Checkbox
+                            checked={visibleNodes.length > 0 && selected.size === visibleNodes.length}
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </th>
                         <th className="py-2 pr-2">名称</th>
                         <th className="py-2 pr-2">协议</th>
                         <th className="py-2 pr-2">地址</th>
@@ -541,6 +628,9 @@ export default function ProxyPoolPage() {
                         const isMember = poolMembers.has(n.id);
                         return (
                           <tr key={n.id} className="border-b last:border-0">
+                            <td className="py-2 pr-2">
+                              <Checkbox checked={selected.has(n.id)} onCheckedChange={() => toggleSelect(n.id)} />
+                            </td>
                             <td className="py-2 pr-2">{n.name}</td>
                             <td className="py-2 pr-2">
                               <Badge variant="outline">{n.protocol}</Badge>
@@ -906,6 +996,18 @@ export default function ProxyPoolPage() {
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4 flex flex-col gap-3">
+            <div>
+              <Label>订阅 URL（可选）</Label>
+              <Input
+                value={importURL}
+                onChange={(e) => setImportURL(e.target.value)}
+                placeholder="https://example.com/sub?token=..."
+                className="font-mono text-xs"
+              />
+              <p className="mt-1 text-muted-foreground text-xs">
+                只拉取 http/https；也可以直接粘贴内容。两者都填时以粘贴内容为准。
+              </p>
+            </div>
             <Textarea
               rows={8}
               value={importText}
