@@ -15,6 +15,7 @@ function parseJson(value: unknown): unknown {
 }
 import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
+import { craftStatus } from './craft.ts'
 import { queryDSL } from './dsl.ts'
 
 const store = await openStore()
@@ -770,6 +771,8 @@ api.post('/api/engine/work', async (c) => {
   try { const taskId = String(body.task_id); return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? 'work#1'), 4, { isCancelled: () => taskQueue.isCancelled(taskId) })) }) }
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
+
+api.get('/api/craft/status', async (c) => c.json(await craftStatus()))
 
 api.get('/api/engine/queue', (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }))
 

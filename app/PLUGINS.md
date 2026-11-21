@@ -22,6 +22,7 @@ craft:
 
 - 默认只暴露 **Essentials + 已启用 toolset**，不是全部 320 个工具；
 - 启动器（`dsh-web.mjs` / `dsh-desktop.mjs`）注入 `CRAFT_ANYTHING_CLI`；
+- 侧栏 **Craft** 页展示版本、路径与 MCP 工具清单（`GET /api/craft/status`）；
 - 二进制在 `~/.dsh/plugins-data/craft-anything/`，不进仓库。
 
 更新：
