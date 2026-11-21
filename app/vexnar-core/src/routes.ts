@@ -451,22 +451,50 @@ api.get('/api/exploration/findings/:id', async (c) => {
   })
 })
 
+const goalDto = (row: any) => {
+  const payload = typeof row.payload === 'string' ? parseJson(row.payload) : row.payload ?? {}
+  return {
+    id: String(row.id),
+    text: String((payload as any).text ?? ''),
+    ...((payload as any).vulnclass ? { vulnclass: (payload as any).vulnclass } : {}),
+    state: row.state,
+    ...(row.origin == null ? {} : { origin: row.origin }),
+    ts: String(row.created_at).replace(/\.\d+/, '')
+  }
+}
+
+api.post('/api/tasks/:id/goals', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const row = await operations.addGoal(c.req.param('id'), body)
+    store.invalidate?.(['nodes', 'edges'])
+    return c.json(goalDto(row))
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/tasks/:id/goals/:gid', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const row = await operations.editGoal(c.req.param('id'), c.req.param('gid'), body)
+    store.invalidate?.(['nodes'])
+    return c.json(goalDto(row))
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/tasks/:id/goals/:gid', async (c) => {
+  try {
+    const result = await operations.deleteGoal(c.req.param('id'), c.req.param('gid'))
+    store.invalidate?.(['nodes', 'edges'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.get('/api/tasks/:id/goals', async (c) => {
   const taskId = c.req.param('id')
   const task = await store.tasks.get(taskId)
   if (!task) return c.json({ error: 'task not found' }, 404)
   const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: 'desc', kinds: ['goal'] })
-  const goals = items.map((row: any) => {
-    const payload = typeof row.payload === 'string' ? parseJson(row.payload) : row.payload ?? {}
-    return {
-      id: String(row.id),
-      text: String((payload as any).text ?? ''),
-      ...((payload as any).vulnclass ? { vulnclass: (payload as any).vulnclass } : {}),
-      state: row.state,
-      ...(row.origin == null ? {} : { origin: row.origin }),
-      ts: String(row.created_at).replace(/\.\d+/, '')
-    }
-  })
+  const goals = items.map(goalDto)
   return c.json({ goals })
 })
 

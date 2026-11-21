@@ -656,5 +656,64 @@ export function storeOperations(root: string) {
     return archive
   }
 
-  return { writer, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function addGoal(taskId: string, input: { text?: string; vulnclass?: string }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const text = String(input.text ?? '').trim()
+    if (!text) throw Object.assign(new Error('目标内容不能为空'), { status: 400 })
+    const explorationId = Number(task.exploration_id)
+    const nodes = []
+    try {
+      for (const name of await readdir(join(root, 'nodes'))) {
+        if (!name.endsWith('.json')) continue
+        nodes.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const nodeId = Math.max(0, ...nodes.map((node) => Number(node.id))) + 1
+    const payload: Record<string, unknown> = { text }
+    if (String(input.vulnclass ?? '').trim()) payload.vulnclass = String(input.vulnclass).trim()
+    const record = {
+      id: String(nodeId), exploration_id: explorationId, kind: 'goal', state: 'open',
+      priority: 0, origin: 'human', payload, created_at: rfc3339(new Date())
+    }
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown> }> = [{ table: 'nodes', key: String(nodeId), record }]
+    const rootNode = nodes.filter((node) => Number(node.exploration_id) === explorationId && node.kind === 'fact' && node.state === 'origin').sort((a, b) => Number(a.id) - Number(b.id))[0]
+    if (rootNode) ops.push({ table: 'edges', key: `${rootNode.id}-spawns-${nodeId}`, record: { exploration_id: explorationId, src: String(rootNode.id), dst: String(nodeId), rel: 'spawns' } })
+    await writer.commit(ops)
+    return record
+  }
+
+  async function editGoal(taskId: string, goalId: string, input: { text?: string; vulnclass?: string }) {
+    const text = String(input.text ?? '').trim()
+    if (!text) throw Object.assign(new Error('目标内容不能为空'), { status: 400 })
+    const node = await writer.readRecord('nodes', goalId)
+    if (!node || node.kind !== 'goal') throw Object.assign(new Error('目标不存在'), { status: 404 })
+    const payload = { ...(typeof node.payload === 'string' ? JSON.parse(node.payload) : node.payload), text }
+    if (String(input.vulnclass ?? '').trim()) payload.vulnclass = String(input.vulnclass).trim()
+    const next = { ...node, payload }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'nodes', key: goalId, record: next, expectedRev: Number(node.rev ?? 0) }])
+    return written
+  }
+
+  async function deleteGoal(taskId: string, goalId: string) {
+    const node = await writer.readRecord('nodes', goalId)
+    if (!node || node.kind !== 'goal') throw Object.assign(new Error('目标不存在'), { status: 404 })
+    await rm(join(root, 'nodes', `${goalId}.json`), { force: true })
+    try {
+      for (const name of await readdir(join(root, 'edges'))) {
+        if (!name.endsWith('.json')) continue
+        const path = join(root, 'edges', name)
+        const edge = JSON.parse(await readFile(path, 'utf8')).record
+        if (String(edge.src) === String(goalId) || String(edge.dst) === String(goalId)) await rm(path, { force: true })
+      }
+    } catch {
+      // no edges
+    }
+    return { deleted: Number(goalId) }
+  }
+
+  return { writer, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
