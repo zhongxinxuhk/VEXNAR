@@ -1,20 +1,23 @@
 "use client";
 
-import * as React from "react";
-
 import {
+  ArrowDownLeftIcon,
   ArrowDownWideNarrowIcon,
   ArrowUpNarrowWideIcon,
+  ArrowUpRightIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CopyIcon,
   EraserIcon,
   FilterXIcon,
+  Link2Icon,
   ListChecksIcon,
-  Loader2Icon,
   RadioTowerIcon,
   SearchIcon,
+  ServerIcon,
   Trash2Icon,
 } from "lucide-react";
+import * as React from "react";
 import { toast } from "sonner";
 
 import { HttpCodeBlock } from "@/components/http-code-block";
@@ -37,14 +40,16 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SortableHead } from "@/components/ui/sortable-head";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
+import { methodTone, packetBytes, statusTone } from "@/lib/http-packet";
 import { useStoredSortPreference } from "@/lib/sort-preference";
 import type { TrafficDetail, TrafficExchange, TrafficHost, TrafficResp } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, copyText } from "@/lib/utils";
 
 function fmtTime(ts: string) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -66,16 +71,58 @@ function fmtBytes(n: number) {
   return `${i === 0 ? v : v.toFixed(1)} ${units[i]}`;
 }
 
-function statusTone(status: number) {
-  if (status >= 500) return "text-red-500";
-  if (status >= 400) return "text-amber-500";
-  if (status >= 300) return "text-blue-500";
-  if (status >= 200) return "text-emerald-500";
-  return "text-muted-foreground";
+function MethodBadge({ method }: { method: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("shrink-0 rounded-md px-1.5 font-mono text-[10px] font-semibold tracking-wide", methodTone(method))}
+    >
+      {method}
+    </Badge>
+  );
 }
 
-function MethodBadge({ method }: { method: string }) {
-  return <Badge className="shrink-0 font-mono">{method}</Badge>;
+// 状态码按 2xx/3xx/4xx/5xx 分色，列表与详情共用一个胶囊。
+function StatusBadge({ status }: { status: number }) {
+  const frame =
+    status >= 500
+      ? "border-rose-500/30 bg-rose-500/10"
+      : status >= 400
+        ? "border-amber-500/30 bg-amber-500/10"
+        : status >= 300
+          ? "border-sky-500/30 bg-sky-500/10"
+          : status >= 200
+            ? "border-emerald-500/30 bg-emerald-500/10"
+            : "border-border bg-muted";
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums",
+        frame,
+        statusTone(status),
+      )}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
+      {status || "—"}
+    </span>
+  );
+}
+
+// 报文抽屉的加载骨架：比转圈更接近最终形态，不会在切换条目时闪一下空白。
+function PacketSkeleton() {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="mb-3 flex items-center gap-2">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <div className="space-y-1.5">
+        {[72, 88, 64, 80, 46, 76, 58].map((width, index) => (
+          <Skeleton key={index} className="h-3" style={{ width: `${width}%` }} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // Older captures may predate Host persistence because net/http keeps Host
@@ -330,6 +377,18 @@ export default function TrafficPage() {
         ? { field, direction: prev.direction === "asc" ? "desc" : "asc" }
         : { field, direction: "desc" },
     );
+
+  // 抽屉里的请求报文补齐 Host 后再统计体积、取协议版本，和实际展示的行保持一致。
+  const requestPacket = selected ? requestWithHost(detail?.req ?? "", selected) : "";
+  const requestSize = packetBytes(requestPacket);
+  const requestProtocol = /^[A-Z]+ \S+ (HTTP\/[\d.]+)/.exec(requestPacket)?.[1] ?? "";
+
+  const copyExchangeUrl = async () => {
+    if (!selected) return;
+    const ok = await copyText(selected.url);
+    if (ok) toast.success("已复制 URL");
+    else toast.error("复制失败");
+  };
 
   const exchanges = React.useMemo(() => traffic?.exchanges ?? [], [traffic]);
   const total = traffic?.total ?? exchanges.length;
@@ -671,10 +730,15 @@ export default function TrafficPage() {
                 {exchanges.map((e) => (
                   <TableRow
                     key={e.id}
-                    className={cn("cursor-pointer", selected?.id === e.id && "bg-accent hover:bg-accent")}
+                    className={cn(
+                      "cursor-pointer transition-colors",
+                      selected?.id === e.id ? "bg-accent/70 hover:bg-accent" : "hover:bg-muted/40",
+                    )}
                     onClick={() => setSelected(e)}
                   >
-                    <TableCell>
+                    <TableCell
+                      className={cn("border-l-2 border-l-transparent", selected?.id === e.id && "border-l-primary")}
+                    >
                       <Checkbox
                         aria-label={`选择流量 ${e.id}`}
                         checked={selectedFlows.has(e.id)}
@@ -698,9 +762,7 @@ export default function TrafficPage() {
                       <span className="block truncate font-mono text-xs">{e.url}</span>
                     </TableCell>
                     <TableCell>
-                      <span className={cn("font-mono text-xs font-semibold tabular-nums", statusTone(e.status))}>
-                        {e.status}
-                      </span>
+                      <StatusBadge status={e.status} />
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{e.content_type}</TableCell>
                     <TableCell className="text-right text-xs tabular-nums">{fmtBytes(e.resp_len)}</TableCell>
@@ -727,43 +789,67 @@ export default function TrafficPage() {
         />
       ) : null}
       <Sheet open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent className="w-full! max-w-none! gap-0 p-0 sm:w-[48rem]! sm:max-w-[48rem]!">
+        <SheetContent className="w-full! max-w-none! gap-0 p-0 sm:w-[52rem]! sm:max-w-[52rem]!">
           {selected && (
             <>
-              <SheetHeader className="border-b px-5 py-4">
-                <div className="flex items-center gap-2 pr-8">
+              <SheetHeader className="gap-1.5 border-b bg-gradient-to-b from-muted/60 to-transparent px-5 pt-4 pb-3">
+                <div className="flex items-center gap-2 pr-10">
                   <MethodBadge method={selected.method} />
-                  <Badge variant="secondary" className={cn("font-mono tabular-nums", statusTone(selected.status))}>
-                    {selected.status}
-                  </Badge>
-                  <span className="ml-auto text-xs text-muted-foreground tabular-nums">{fmtTime(selected.ts)}</span>
+                  <StatusBadge status={selected.status} />
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                    {fmtTime(selected.ts)}
+                  </span>
                 </div>
-                <SheetTitle className="break-all font-mono">{selected.host}</SheetTitle>
-                <SheetDescription className="break-all font-mono">{selected.url}</SheetDescription>
+                <SheetTitle className="flex items-center gap-1.5 font-mono text-sm">
+                  <ServerIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{selected.host}</span>
+                </SheetTitle>
+                <SheetDescription className="flex items-start gap-1.5 font-mono text-[11px] leading-relaxed">
+                  <Link2Icon className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 break-all">{selected.url}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="shrink-0"
+                    aria-label="复制 URL"
+                    onClick={() => void copyExchangeUrl()}
+                  >
+                    <CopyIcon />
+                  </Button>
+                </SheetDescription>
               </SheetHeader>
               <Tabs defaultValue="request" className="min-h-0 flex-1 gap-0">
-                <TabsList className="mx-5 mt-4 grid w-auto grid-cols-2">
-                  <TabsTrigger value="request">请求 Request</TabsTrigger>
-                  <TabsTrigger value="response">响应 Response</TabsTrigger>
-                </TabsList>
-                <TabsContent value="request" className="min-h-0 overflow-auto">
-                  {detailLoading ? (
-                    <div className="flex items-center gap-2 p-5 text-xs text-muted-foreground">
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                      加载报文…
-                    </div>
-                  ) : (
-                    <HttpCodeBlock raw={requestWithHost(detail?.req ?? "", selected)} />
-                  )}
+                <div className="flex items-center gap-3 border-b bg-muted/20 px-4 py-2">
+                  <TabsList className="grid h-8 min-w-0 flex-1 grid-cols-2">
+                    <TabsTrigger value="request" className="gap-1 px-3 text-xs">
+                      <ArrowUpRightIcon className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      请求 Request
+                      <span className="rounded bg-background/70 px-1 font-mono text-[10px] text-muted-foreground tabular-nums">
+                        {fmtBytes(requestSize)}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="response" className="gap-1 px-3 text-xs">
+                      <ArrowDownLeftIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                      响应 Response
+                      <span className="rounded bg-background/70 px-1 font-mono text-[10px] text-muted-foreground tabular-nums">
+                        {fmtBytes(selected.resp_len)}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                  {requestProtocol ? (
+                    <span className="shrink-0 rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      {requestProtocol}
+                    </span>
+                  ) : null}
+                </div>
+                <TabsContent value="request" className="min-h-0 overflow-auto p-3">
+                  {detailLoading ? <PacketSkeleton /> : <HttpCodeBlock raw={requestPacket} side="request" />}
                 </TabsContent>
-                <TabsContent value="response" className="min-h-0 overflow-auto">
+                <TabsContent value="response" className="min-h-0 overflow-auto p-3">
                   {detailLoading ? (
-                    <div className="flex items-center gap-2 p-5 text-xs text-muted-foreground">
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                      加载报文…
-                    </div>
+                    <PacketSkeleton />
                   ) : (
-                    <HttpCodeBlock raw={detail?.resp ?? ""} />
+                    <HttpCodeBlock raw={detail?.resp ?? ""} contentType={selected.content_type} side="response" />
                   )}
                 </TabsContent>
               </Tabs>
