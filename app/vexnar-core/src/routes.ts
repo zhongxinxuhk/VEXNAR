@@ -401,11 +401,12 @@ api.get('/api/assets', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 20) || 20, 200)
   const offset = Math.max(Number(c.req.query('offset') ?? 0) || 0, 0)
   const type = c.req.query('type') || undefined
-  const { rows, total } = await store.assets.list({ type, limit, offset })
+  const taskId = c.req.query('task_id') || undefined
+  const { rows, total } = await store.assets.list({ type, taskId, limit, offset })
   return c.json({ assets: rows.map(assetDto), count: rows.length, total })
 })
 
-api.get('/api/assets/counts', async (c) => c.json(await store.assets.counts()))
+api.get('/api/assets/counts', async (c) => c.json(await store.assets.counts(c.req.query('task_id') || undefined)))
 
 // ── findings / nodes ──────────────────────────────────────────────────────
 const findingDto = (row: any) => ({

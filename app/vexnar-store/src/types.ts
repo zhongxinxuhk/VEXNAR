@@ -97,8 +97,8 @@ export interface Store {
     stats(): Promise<{ total: number; pending: number; critical: number; high: number; medium: number; low: number; vulnclasses: string[]; tasks: any[] }>
   }
   assets: {
-    list(options: { type?: string; limit?: number; offset?: number }): Promise<{ rows: any[]; total: number }>
-    counts(): Promise<Record<string, number>>
+    list(options: { type?: string; taskId?: string; limit?: number; offset?: number }): Promise<{ rows: any[]; total: number }>
+    counts(taskId?: string): Promise<Record<string, number>>
   }
   companies: {
     list(): Promise<any[]>

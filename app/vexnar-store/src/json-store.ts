@@ -72,14 +72,16 @@ export function jsonStore(root: string): Store {
       }
     },
     assets: {
-      list: async ({ type, limit = 20, offset = 0 }) => {
+      list: async ({ type, taskId, limit = 20, offset = 0 }) => {
         let rows = await load('assets', assetRow)
         if (type) rows = rows.filter((row) => row.type === type)
+        if (taskId) rows = rows.filter((row) => Array.isArray(row.task_ids) && row.task_ids.map(Number).includes(Number(taskId)))
         rows = [...rows].sort((a, b) => String(b.last_seen ?? '').localeCompare(String(a.last_seen ?? '')) || b.id - a.id)
         return { rows: rows.slice(offset, offset + limit), total: rows.length }
       },
-      counts: async () => {
-        const rows = await load('assets', assetRow)
+      counts: async (taskId?: string) => {
+        let rows = await load('assets', assetRow)
+        if (taskId) rows = rows.filter((row) => Array.isArray(row.task_ids) && row.task_ids.map(Number).includes(Number(taskId)))
         const out: Record<string, number> = {}
         for (const row of rows) out[row.type] = (out[row.type] ?? 0) + 1
         return out

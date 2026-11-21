@@ -83,6 +83,7 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - 目标：`nodes` 中 `kind=goal`，新增时写 `edges` 的 `spawns`；
 - 意图控制：pause/resume 改状态，cancel soft 置 deleted，hard 删节点与边；
 - 意图消息：仅已暂停意图，置 running 并写一条 `kind=message` 活动；
+- 资产列表：`assets.list({ taskId })` 按任务的 `task_ids` 过滤；
 - journal 恢复只重放 `prepared`，`failed` 不重放；
 - 测试：`pnpm --filter @vexnar/store run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
 
