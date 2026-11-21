@@ -5,10 +5,13 @@
 const routes = new Set(['POST /api/yak/history'])
 
 /**
- * 转发给 Go 服务的接口前缀。
+ * 把请求转给 Go 服务——默认关闭。
  *
- * 任务/发现/资产/流量这些领域数据只有 Go 服务持有（PG），core 内嵌的那套 kv 只是
- * dsh 侧的兜底；客户端要和控制台（:3000）看到同一行数据，这些前缀必须由 Go 回答。
+ * 现在客户端由 TypeScript 的 core 自己回答领域接口（248/301 条在 routes* 里），
+ * 数据面走 `vexnar-store` 的 PG 适配器，和 `web/` 控制台读同一份库，所以不再需要
+ * Go 在环。这条转发只在对照验证时打开：`VEXNAR_GO_DATA=on`。
+ *
+ * 打开后这些前缀仍交给 Go：
  */
 const prefixes = [
   '/api/tasks',
@@ -23,6 +26,9 @@ const prefixes = [
   '/api/yak/history'
 ]
 
+/** 只有显式要求时才转发（`VEXNAR_GO_DATA=on|1|true`）。 */
+const forwarding = () => /^(1|on|true|yes)$/i.test(process.env.VEXNAR_GO_DATA ?? '')
+
 /**
  * 必须留在进程内的流量路由：会话抓包的控制面与采集面由 core 自己实现，Go 没有
  * 对应处理器。`/api/traffic` 前缀整体转发的规则会把它们一起送走并得到 404，所以
@@ -35,6 +41,7 @@ function isCoreTraffic(path: string) {
 }
 
 export function isGoDataRequest(method: string, path: string) {
+  if (!forwarding()) return false
   if (isCoreTraffic(path)) return false
   if (routes.has(`${method} ${path}`)) return true
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
