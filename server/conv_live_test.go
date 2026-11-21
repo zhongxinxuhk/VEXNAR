@@ -555,3 +555,42 @@ func TestConversationMessagesDigestReportsOnlyPublicEventMetadata(t *testing.T) 
 		}
 	}
 }
+
+func TestConversationMessagesSidebarListHidesOnlyEmptyRecords(t *testing.T) {
+	s := newLiveTestServer(t)
+	create := func() int64 {
+		t.Helper()
+		conv, err := s.m.pg.CreateConversation("auto", "新聊天", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+		return conv.ID
+	}
+	empty, populated := create(), create()
+	if _, err := s.m.pg.AppendConvActivity(populated, db.Activity{Kind: "user", Detail: "fixture message"}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, query := range []string{"?nonempty=1", "?nonempty=1&unassigned=1", ""} {
+		req := httptest.NewRequest(http.MethodGet, "/api/conversations"+query, nil)
+		rec := httptest.NewRecorder()
+		s.pgListConversations(rec, req)
+		var page struct {
+			Conversations []struct{ ID int64 }
+		}
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &page) != nil {
+			t.Fatalf("invalid sidebar response: %d", rec.Code)
+		}
+		seen := map[int64]bool{}
+		for _, row := range page.Conversations {
+			seen[row.ID] = true
+		}
+		if !seen[populated] || seen[empty] != (query == "") {
+			t.Fatalf("incorrect sidebar membership for query %q", query)
+		}
+	}
+	if row, err := s.m.pg.GetConversation(empty); err != nil || row == nil {
+		t.Fatal("sidebar filtering modified the old empty conversation")
+	}
+}

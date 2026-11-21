@@ -11,7 +11,7 @@ export type SidebarProject = { id: string; name: string; rootPath: string; sessi
 export function sessionNavigation(
   sessions: Session[], catalog: BackendProject[], pinOrder: string[], sortMode: 'recent' | 'name'
 ): { pinned: Session[]; recent: Session[]; projects: SidebarProject[] } {
-  const ordered = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
+  const ordered = sessions.filter((row) => !row.pendingFirstSend).sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id))
   const projects = new Map<string, SidebarProject>()
   for (const project of catalog) {
     projects.set(project.id, {
@@ -63,4 +63,14 @@ export function movePinned(ids: string[], id: string, offset: -1 | 1): string[] 
   const next = [...ids]
   ;[next[index], next[destination]] = [next[destination], next[index]]
   return next
+}
+
+export const SESSION_PREVIEW_SIZE = 5
+
+export function visibleSessionPreview(sessions: Session[], limit: number, activeId: string | null): Session[] {
+  let watermark = limit
+  for (const [index, session] of sessions.entries()) {
+    if (session.id === activeId || (session.running && index < 50)) watermark = Math.max(watermark, index + 1)
+  }
+  return sessions.slice(0, watermark)
 }

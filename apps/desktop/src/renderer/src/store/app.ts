@@ -361,7 +361,13 @@ async function refreshSessions(): Promise<void> {
       conversations.list(),
       projectApi.list().catch(() => useAppStore.getState().projects)
     ])
-    useAppStore.setState({ sessions: rows.map((item) => toSession(item)), projects })
+    const saved = rows.map((item) => toSession(item))
+    useAppStore.setState((state) => ({
+      sessions: [...saved, ...state.sessions.filter((row) =>
+        row.id === state.activeSessionId && row.pendingFirstSend && !saved.some((item) => item.id === row.id)
+      )],
+      projects
+    }))
   } catch {
     // cosmetic refresh — a transient failure must not clear the sidebar
   }
@@ -691,12 +697,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const selection = sessionSelection
     let sessionId = activeSessionId
     const draftKey = draftKeyFor(draftWorkspace)
+    let firstSession: Session | undefined
     const submitted = useDrafts.getState().drafts[draftKey]
     set({ busy: true, agentStatus: 'streaming', error: null })
     try {
       if (!sessionId) {
         const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle(), draftWorkspace)
-        const session = toSession(created)
+        const session = { ...toSession(created), pendingFirstSend: true }
+        firstSession = session
         sessionId = session.id
         if (submitted && selection === sessionSelection) useDrafts.getState().patch(sessionId, submitted)
         set((state) => ({
@@ -712,6 +720,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       const files = await uploadImages(sessionId, attachments)
       await conversations.send(sessionId, trimmed, files)
+      const accepted = get().sessions.find((row) => row.id === sessionId) ?? firstSession
+      if (accepted?.pendingFirstSend) {
+        const session = { ...accepted, running: true, pendingFirstSend: false }
+        set((state) => ({ sessions: [session, ...state.sessions.filter((row) => row.id !== session.id)] }))
+      }
       if (selection === sessionSelection) {
         if (!activeSessionId) useDrafts.getState().patch(sessionId, { text: '', images: [] })
         pollUntilDone(sessionId)

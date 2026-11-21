@@ -72,16 +72,27 @@ func (s *Server) pgListConversations(w http.ResponseWriter, r *http.Request) {
 		err error
 	)
 	query := r.URL.Query()
+	nonempty := query.Get("nonempty") == "1"
+	listProject := func(projectID int64) ([]*db.Conversation, error) {
+		if nonempty {
+			return pg.ListNonemptyConversations(&projectID, false)
+		}
+		return pg.ListConversationsByProject(projectID)
+	}
 	switch {
 	case strings.TrimSpace(query.Get("unassigned")) == "1":
-		cs, err = pg.ListUnassignedConversations()
+		if nonempty {
+			cs, err = pg.ListNonemptyConversations(nil, true)
+		} else {
+			cs, err = pg.ListUnassignedConversations()
+		}
 	case query.Get("project_id") != "":
 		projectID, parseErr := strconv.ParseInt(query.Get("project_id"), 10, 64)
 		if parseErr != nil || projectID <= 0 {
 			writeErr(w, 400, "无效的 project_id")
 			return
 		}
-		cs, err = pg.ListConversationsByProject(projectID)
+		cs, err = listProject(projectID)
 	case strings.TrimSpace(query.Get("workspace")) != "":
 		project, lookupErr := s.projectForWorkspace(r, strings.TrimSpace(query.Get("workspace")))
 		if lookupErr != nil {
@@ -91,10 +102,14 @@ func (s *Server) pgListConversations(w http.ResponseWriter, r *http.Request) {
 		if project == nil {
 			cs, err = []*db.Conversation{}, nil
 		} else {
-			cs, err = pg.ListConversationsByProject(project.ID)
+			cs, err = listProject(project.ID)
 		}
 	default:
-		cs, err = pg.ListConversations()
+		if nonempty {
+			cs, err = pg.ListNonemptyConversations(nil, false)
+		} else {
+			cs, err = pg.ListConversations()
+		}
 	}
 	if err != nil {
 		writeErr(w, 500, err.Error())

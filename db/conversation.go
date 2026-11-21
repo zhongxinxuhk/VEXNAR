@@ -181,6 +181,16 @@ func (d *DB) ListUnassignedConversations() ([]*Conversation, error) {
 	return d.queryConversations(`SELECT ` + convCols + ` FROM conversations WHERE project_id IS NULL` + convOrderBy)
 }
 
+// ListNonemptyConversations returns saved chats with at least one activity.
+// The desktop sidebar uses this view to leave legacy empty rows out of navigation.
+func (d *DB) ListNonemptyConversations(projectID *int64, unassigned bool) ([]*Conversation, error) {
+	return d.queryConversations(`SELECT `+convCols+` FROM conversations
+WHERE (NOT $1 OR project_id IS NULL)
+  AND ($2::bigint IS NULL OR project_id=$2)
+  AND EXISTS (SELECT 1 FROM conversation_activities WHERE conversation_id=conversations.id)`+convOrderBy,
+		unassigned, projectID)
+}
+
 func (d *DB) queryConversations(query string, args ...any) ([]*Conversation, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {

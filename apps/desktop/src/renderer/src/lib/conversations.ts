@@ -126,12 +126,10 @@ export type ConversationScope = {
 
 export const conversations = {
   list: (scope?: ConversationScope) => {
-    const query = scope?.unassigned
-      ? '?unassigned=1'
-      : scope?.projectId
-        ? `?project_id=${encodeURIComponent(scope.projectId)}`
-        : ''
-    return request<{ conversations?: BackendConversation[] }>(`/conversations${query}`, 'GET').then(
+    const query = new URLSearchParams({ nonempty: '1' })
+    if (scope?.unassigned) query.set('unassigned', '1')
+    else if (scope?.projectId) query.set('project_id', scope.projectId)
+    return request<{ conversations?: BackendConversation[] }>(`/conversations?${query}`, 'GET').then(
       (r) => (Array.isArray(r?.conversations) ? r.conversations : [])
     )
   },
@@ -204,6 +202,7 @@ export function toSession(conversation: BackendConversation): Session {
     workspace: conversation.workspace ?? '',
     projectId: conversation.project_id != null ? String(conversation.project_id) : null,
     pinned: Boolean(conversation.pinned ?? conversation.pinned_at),
+    ...(conversation.running ? { running: true } : {}),
     ...(conversation.pinned_at && Number.isFinite(Date.parse(conversation.pinned_at))
       ? { pinnedAt: Date.parse(conversation.pinned_at) }
       : {}),

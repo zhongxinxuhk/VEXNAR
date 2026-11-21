@@ -100,6 +100,14 @@ const conversationActivities = {
   ]
 }
 
+conversationActivities[2] = [{ seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T09:00:00Z', kind: 'user', detail: '检查模型网关' }]
+for (const title of ['空会话夹具A', '空会话夹具B', ...Array.from({ length: 6 }, (_, i) => `旧会话 ${i + 1}`)]) {
+  const id = ++conversationSeq
+  const vacant = title.startsWith('空会话夹具')
+  conversations.push({ id, title, workspace: '', project_id: null, pinned: false, updated_at: '2026-10-01T09:00:00Z' })
+  if (!vacant) conversationActivities[id] = [{ seq: ++activitySeq, worker: 'auto', ts: '2026-10-01T09:00:00Z', kind: 'user', detail: title }]
+}
+
 const sessionList = [
   {
     id: 'test',
@@ -437,8 +445,9 @@ contextBridge.exposeInMainWorld('vexnar', {
           { key: 'turn:fixture', conversation_id: 2, title: '检查 LLM 网关', kind: 'completed', at: '2026-11-20T10:11:00Z' }
         ] })
       }
-      if (path === '/conversations' && method === 'GET') {
-        return ok({ conversations })
+      if (path.startsWith('/conversations?') && method === 'GET') {
+        const nonempty = new URLSearchParams(path.split('?')[1]).get('nonempty') === '1'
+        return ok({ conversations: nonempty ? conversations.filter(row => conversationActivities[row.id]?.length > 0) : conversations })
       }
       if (path === '/conversations' && method === 'POST') {
         const workspace = typeof body?.workspace === 'string' ? body.workspace : ''

@@ -345,7 +345,7 @@ function ProjectSessions(): React.JSX.Element {
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const newSession = useAppStore((state) => state.newSession)
-  const visible = useMemo(() => sessions.filter((session) => projectId !== undefined && session.projectId === projectId)
+  const visible = useMemo(() => sessions.filter((session) => !session.pendingFirstSend && projectId !== undefined && session.projectId === projectId)
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt), [sessions, projectId])
 
   return (

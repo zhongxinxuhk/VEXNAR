@@ -4,9 +4,9 @@
 
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ArrowDown, ArrowUp, Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Loader2, Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
 import type { Session } from '@shared/contracts'
-import { useT } from '@/lib/i18n'
+import { useI18n, useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app'
 
@@ -33,6 +33,15 @@ export function SessionRow({
   moveDown?: () => void
 }): React.JSX.Element {
   const t = useT()
+  const locale = useI18n((state) => state.locale)
+  const activeBusy = useAppStore((state) => active && state.busy)
+  const running = active ? activeBusy : session.running
+  const timestamp = new Date(session.updatedAt)
+  const minutes = Math.floor(Math.max(0, Date.now() - session.updatedAt) / 60_000)
+  const relative = minutes < 1 ? t('app.chatJustNow') :
+    minutes < 60 ? new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-minutes, 'minute') :
+      minutes < 1440 ? new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(-Math.floor(minutes / 60), 'hour') :
+        timestamp.toLocaleDateString(locale, { month: 'numeric', day: 'numeric' })
   const selectSession = useAppStore((state) => state.selectSession)
   const setView = useAppStore((state) => state.setView)
   const pinSession = useAppStore((state) => state.pinSession)
@@ -63,6 +72,16 @@ export function SessionRow({
             {showWorkspace ? <span className="block truncate text-[10px] leading-3 text-muted">{session.workspace || t('app.unassigned')}</span> : null}
           </button>
 
+          {sidebar && running ? (
+            <span role="status" aria-label={t('chat.executionRunning')} className="mr-1 shrink-0 text-accent">
+              <Loader2 className="size-3 motion-safe:animate-spin" aria-hidden="true" />
+            </span>
+          ) : sidebar && !pinned && Number.isFinite(timestamp.getTime()) ? (
+            <time dateTime={timestamp.toISOString()} title={timestamp.toLocaleString(locale)}
+              className="mr-0.5 shrink-0 text-[10px] text-muted">
+              {relative}
+            </time>
+          ) : null}
           {pinned ? (
             <Pin className="mr-1 h-3 w-3 shrink-0 text-muted/70" strokeWidth={1.8} />
           ) : null}

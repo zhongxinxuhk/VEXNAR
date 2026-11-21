@@ -21,7 +21,7 @@ import { useLayout } from '@/store/layout'
 import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
 import { SessionRow } from './SessionRow'
-import { movePinned, sessionNavigation } from '@/lib/session-navigation'
+import { movePinned, SESSION_PREVIEW_SIZE, sessionNavigation, visibleSessionPreview } from '@/lib/session-navigation'
 
 const menuContent =
   'z-50 min-w-[168px] rounded-xl border border-line bg-bg p-1 codex-popover outline-none'
@@ -58,6 +58,7 @@ export function Sidebar(): React.JSX.Element {
   const projectRows = useAppStore((state) => state.projects)
   const [projectsCollapsed, setProjectsCollapsed] = useState(false)
   const [pinOrder, setPinOrder] = useState(readPinOrder)
+  const [previewSizes, setPreviewSizes] = useState<Record<string, number>>({})
   const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
   const searchRef = useRef<HTMLInputElement>(null)
   const lastAutoExpand = useRef<string | null>(null)
@@ -89,10 +90,11 @@ export function Sidebar(): React.JSX.Element {
     const value = query.trim().toLowerCase()
     if (!value) return []
     return sessions.filter(
-      (session) =>
+      (session) => !session.pendingFirstSend && (
         session.title.toLowerCase().includes(value) ||
         session.workspace.toLowerCase().includes(value) ||
         projectRows.some((project) => project.id === session.projectId && project.name.toLowerCase().includes(value))
+      )
     )
   }, [sessions, projectRows, query])
 
@@ -112,6 +114,21 @@ export function Sidebar(): React.JSX.Element {
       setExpanded((previous) => new Set(previous).add(project.id))
     }
   }
+
+  const previewControl = (id: string, total: number, shown: number): React.JSX.Element | null => {
+    if (total <= SESSION_PREVIEW_SIZE) return null
+    const manuallyExpanded = (previewSizes[id] ?? SESSION_PREVIEW_SIZE) > SESSION_PREVIEW_SIZE
+    if (shown === total && !manuallyExpanded) return null
+    return (
+      <button type="button" className="ml-6 mt-1 rounded px-1.5 py-1 text-xs text-muted hover:bg-panel-2"
+        onClick={() => setPreviewSizes((state) => ({
+          ...state, [id]: shown < total ? shown + SESSION_PREVIEW_SIZE : SESSION_PREVIEW_SIZE
+        }))}>
+        {shown < total ? t('app.showMoreChats', { count: total - shown }) : t('app.showFewerChats')}
+      </button>
+    )
+  }
+  const recent = visibleSessionPreview(looseSessions, previewSizes.recent ?? SESSION_PREVIEW_SIZE, activeSessionId)
 
   if (!sidebarOpen) return <></>
 
@@ -298,7 +315,7 @@ export function Sidebar(): React.JSX.Element {
             ) : (
               visibleProjects.map((project) => {
                 const open = expanded.has(project.id)
-                const visible = project.sessions
+                const visible = visibleSessionPreview(project.sessions, previewSizes[project.id] ?? SESSION_PREVIEW_SIZE, activeSessionId)
                 return (
                   <div key={project.id} className="mb-0.5" data-project-id={project.id}>
                     <div className="group/project flex items-center gap-0.5">
@@ -343,6 +360,7 @@ export function Sidebar(): React.JSX.Element {
                             active={view === 'chat' && session.id === activeSessionId}
                           />
                         ))}
+                        {previewControl(project.id, project.sessions.length, visible.length)}
                       </div>
                     ) : null}
                   </div>
@@ -356,7 +374,7 @@ export function Sidebar(): React.JSX.Element {
                 <div className="flex items-center gap-1 px-2 pb-1 pt-4">
                   <span className="text-[11px] font-medium text-muted">{t('app.recentChats')}</span>
                 </div>
-                {looseSessions.map((session) => (
+                {recent.map((session) => (
                   <SessionRow
                     key={session.id}
                     sidebar
@@ -364,6 +382,7 @@ export function Sidebar(): React.JSX.Element {
                     active={view === 'chat' && session.id === activeSessionId}
                   />
                 ))}
+                {previewControl('recent', looseSessions.length, recent.length)}
               </div>
             ) : null}
 

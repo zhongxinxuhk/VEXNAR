@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { Session } from '@shared/contracts'
-import { movePinned, sessionNavigation } from '@/lib/session-navigation'
+import { movePinned, sessionNavigation, visibleSessionPreview } from '@/lib/session-navigation'
 
 const row = (id: string, fields: Partial<Session> = {}): Session => ({
   id, title: id, workspace: '', projectId: null, createdAt: 0, updatedAt: 0, pinned: false, ...fields
@@ -41,4 +41,13 @@ describe('project sidebar navigation', () => {
     const order = movePinned(initial, 'second', -1)
     expect(sessionNavigation(sessions, [], order, 'recent').pinned.map((item) => item.id)).toEqual(['second', 'first'])
   })
+})
+
+it('previews five chats and keeps the active or running row visible', () => {
+  const rows = Array.from({ length: 8 }, (_, index) => row(String(index)))
+  expect(visibleSessionPreview(rows, 5, null)).toHaveLength(5)
+  expect(visibleSessionPreview(rows, 5, '6').map((item) => item.id)).toContain('6')
+  rows[7].running = true
+  expect(visibleSessionPreview(rows, 5, null)).toHaveLength(8)
+  expect(sessionNavigation([row('draft', { pendingFirstSend: true })], [], [], 'recent').recent).toEqual([])
 })

@@ -439,6 +439,16 @@ app.whenReady().then(async () => {
     await run(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`)
     await wait(`!document.querySelector('[role="menu"]')`)
     const listSize = await run(`window.__uiFixture.sessionIndex().length`)
+    const sidebar = `document.querySelector('[data-testid="chat-sidebar"]')`
+    if (await run(`(${sidebar}).textContent.includes('空会话夹具')`)) throw Error('Legacy blank chats are visible')
+    const expandRecent = `[...(${sidebar}).querySelectorAll('button')].find(el=>el.textContent.includes('展开其余'))`
+    await wait(`!!(${expandRecent})`)
+    await run(`(${expandRecent}).click()`)
+    await wait(`[...(${sidebar}).querySelectorAll('button')].filter(el=>el.title?.startsWith('旧会话 ')).length===6`)
+    const newLooseDraft = `[...(${sidebar}).querySelectorAll('button')].find(el=>el.textContent.trim()==='新聊天').click()`
+    for (let i = 0; i < 4; i++) await run(newLooseDraft)
+    await wait(`window.__uiFixture.sessionIndex().length===${listSize}`)
+
     await run(`document.querySelector('[data-testid="chat-sidebar"] button[aria-label="新建项目"]').click()`)
     await wait(`[...document.querySelectorAll('[data-project-id]')].some(e=>e.textContent.includes('empty-project') && e.textContent.includes('暂无聊天'))`)
     await run(`document.querySelector('button[aria-label="在 empty-project 中新聊天"]').click()`)
