@@ -120,6 +120,25 @@ export default function ProxyPoolPage() {
   const [fanoutBusy, setFanoutBusy] = React.useState(false);
   const [fanoutResult, setFanoutResult] = React.useState<import("@/lib/types").ProxyFanoutResult | null>(null);
 
+  const [nodeOpen, setNodeOpen] = React.useState(false);
+  const [editingNode, setEditingNode] = React.useState<ProxyNodeView | null>(null);
+  const [nodeForm, setNodeForm] = React.useState({
+    name: "",
+    protocol: "socks5",
+    server: "",
+    port: 1080,
+    username: "",
+    password: "",
+    uuid: "",
+    configText: "",
+    tags: "",
+    weight: 1,
+    max_conns: 32,
+    enabled: true,
+    note: "",
+  });
+  const [savingNode, setSavingNode] = React.useState(false);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -242,6 +261,111 @@ export default function ProxyPoolPage() {
     } finally {
       setSavingPool(false);
     }
+  }
+
+  function openNodeForm(node?: ProxyNodeView) {
+    setEditingNode(node ?? null);
+    if (node) {
+      const cfg = node.config ?? {};
+      setNodeForm({
+        name: node.name,
+        protocol: node.protocol,
+        server: node.server,
+        port: node.port,
+        username: "",
+        password: "",
+        uuid: "",
+        configText: Object.keys(cfg).length ? JSON.stringify(cfg, null, 2) : "",
+        tags: (node.tags ?? []).join(","),
+        weight: node.weight,
+        max_conns: node.max_conns,
+        enabled: node.enabled,
+        note: node.note ?? "",
+      });
+    } else {
+      setNodeForm({
+        name: "",
+        protocol: "socks5",
+        server: "",
+        port: 1080,
+        username: "",
+        password: "",
+        uuid: "",
+        configText: "",
+        tags: "",
+        weight: 1,
+        max_conns: 32,
+        enabled: true,
+        note: "",
+      });
+    }
+    setNodeOpen(true);
+  }
+
+  async function saveNode() {
+    if (!nodeForm.name.trim() || !nodeForm.server.trim()) {
+      toast.error("名称与服务器地址必填");
+      return;
+    }
+    let config: Record<string, unknown> = {};
+    if (nodeForm.configText.trim()) {
+      try {
+        config = JSON.parse(nodeForm.configText);
+      } catch {
+        toast.error("附加配置不是合法 JSON");
+        return;
+      }
+    }
+    if (nodeForm.username.trim()) config.username = nodeForm.username.trim();
+    const secrets: Record<string, string> = {};
+    if (nodeForm.password) secrets.password = nodeForm.password;
+    if (nodeForm.uuid.trim()) secrets.uuid = nodeForm.uuid.trim();
+    const tags = nodeForm.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    setSavingNode(true);
+    try {
+      if (editingNode) {
+        await api.updateProxyNode(editingNode.id, {
+          name: nodeForm.name.trim(),
+          tags,
+          weight: nodeForm.weight,
+          max_conns: nodeForm.max_conns,
+          enabled: nodeForm.enabled,
+          note: nodeForm.note,
+          config,
+          ...(Object.keys(secrets).length ? { secrets } : {}),
+        });
+        toast.success("节点已更新");
+      } else {
+        await api.createProxyNode({
+          name: nodeForm.name.trim(),
+          protocol: nodeForm.protocol,
+          server: nodeForm.server.trim(),
+          port: nodeForm.port,
+          config,
+          secrets,
+          tags,
+          weight: nodeForm.weight,
+          max_conns: nodeForm.max_conns,
+          enabled: nodeForm.enabled,
+          note: nodeForm.note,
+        });
+        toast.success("节点已添加");
+      }
+      setNodeOpen(false);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "保存节点失败");
+    } finally {
+      setSavingNode(false);
+    }
+  }
+
+  function nodeSaveLabel() {
+    if (savingNode) return "保存中…";
+    return editingNode ? "保存修改" : "添加节点";
   }
 
   async function toggleNode(node: ProxyNodeView, enabled: boolean) {
@@ -442,6 +566,9 @@ export default function ProxyPoolPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCwIcon className="size-4" /> 刷新
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openNodeForm()}>
+            <PlusIcon className="size-4" /> 自定义节点
           </Button>
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <ImportIcon className="size-4" /> 导入节点
@@ -683,6 +810,9 @@ export default function ProxyPoolPage() {
                               <div className="flex justify-end gap-1">
                                 <Button size="sm" variant="ghost" onClick={() => checkNode(n.id)}>
                                   体检
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => openNodeForm(n)}>
+                                  编辑
                                 </Button>
                                 {activePool && isMember && (
                                   <Button size="sm" variant="ghost" onClick={() => removeFromPool(n)}>
@@ -1099,6 +1229,139 @@ export default function ProxyPoolPage() {
             </div>
             <Button onClick={() => void savePool()} disabled={savingPool}>
               {poolSaveLabel()}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 自定义 / 编辑节点 */}
+      <Sheet open={nodeOpen} onOpenChange={setNodeOpen}>
+        <SheetContent className="w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>{editingNode ? "编辑节点" : "自定义节点"}</SheetTitle>
+            <SheetDescription>
+              口令/uuid 编辑时留空表示保持不变；附加配置是 clash proxies 条目（不含口令），用于 ws-opts/reality
+              等高级参数。
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>名称</Label>
+                <Input value={nodeForm.name} onChange={(e) => setNodeForm((f) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <Label>协议</Label>
+                <Select
+                  value={nodeForm.protocol}
+                  onValueChange={(v) => setNodeForm((f) => ({ ...f, protocol: v }))}
+                  disabled={!!editingNode}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["socks5", "ss", "ssr", "vmess", "vless", "trojan", "http", "hysteria2", "tuic", "anytls"].map(
+                      (p) => (
+                        <SelectItem key={p} value={p}>
+                          {p}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>服务器</Label>
+                <Input
+                  value={nodeForm.server}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, server: e.target.value }))}
+                  disabled={!!editingNode}
+                  placeholder="example.com 或 1.2.3.4"
+                />
+              </div>
+              <div>
+                <Label>端口</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={nodeForm.port}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, port: Number(e.target.value) || 0 }))}
+                  disabled={!!editingNode}
+                />
+              </div>
+              <div>
+                <Label>用户名（可选）</Label>
+                <Input
+                  value={nodeForm.username}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, username: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>密码（{editingNode ? "留空保持不变" : "可选"}）</Label>
+                <Input
+                  type="password"
+                  value={nodeForm.password}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, password: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>UUID（vmess/vless/tuic，{editingNode ? "留空保持不变" : "可选"}）</Label>
+                <Input value={nodeForm.uuid} onChange={(e) => setNodeForm((f) => ({ ...f, uuid: e.target.value }))} />
+              </div>
+              <div>
+                <Label>标签（逗号分隔）</Label>
+                <Input
+                  value={nodeForm.tags}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, tags: e.target.value }))}
+                  placeholder="hk,residential"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>附加配置（JSON，clash proxies 条目）</Label>
+              <Textarea
+                rows={5}
+                className="font-mono text-xs"
+                value={nodeForm.configText}
+                onChange={(e) => setNodeForm((f) => ({ ...f, configText: e.target.value }))}
+                placeholder={'{"sni":"cdn.example.com","network":"ws","ws-opts":{"path":"/ray"}}'}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>权重</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={nodeForm.weight}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, weight: Number(e.target.value) || 1 }))}
+                />
+              </div>
+              <div>
+                <Label>并发上限</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={nodeForm.max_conns}
+                  onChange={(e) => setNodeForm((f) => ({ ...f, max_conns: Number(e.target.value) || 1 }))}
+                />
+              </div>
+              <div className="flex items-end justify-between">
+                <Label>启用</Label>
+                <Switch
+                  checked={nodeForm.enabled}
+                  onCheckedChange={(v) => setNodeForm((f) => ({ ...f, enabled: v }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>备注</Label>
+              <Input value={nodeForm.note} onChange={(e) => setNodeForm((f) => ({ ...f, note: e.target.value }))} />
+            </div>
+            <Button onClick={() => void saveNode()} disabled={savingNode}>
+              {nodeSaveLabel()}
             </Button>
           </div>
         </SheetContent>

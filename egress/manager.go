@@ -972,6 +972,7 @@ func (m *Manager) loop() {
 		case <-checkTicker.C:
 			m.runDueChecks()
 			m.evictIdleSessions()
+			m.runSubscriptions()
 		}
 	}
 }

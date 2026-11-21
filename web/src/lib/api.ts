@@ -79,8 +79,10 @@ import type {
   ProxyNodeView,
   ProxyParseResult,
   ProxyPool,
+  ProxyRefreshResult,
   ProxySessionSnapshot,
   ProxyState,
+  ProxySubscription,
   SessionTokenUsage,
   Settings,
   Severity,
@@ -1463,4 +1465,13 @@ export const api = {
     body?: string;
     k?: number;
   }) => post<ProxyFanoutResult>(`/proxy/fanout`, p),
+  // ---- 代理池订阅（设置页维护）----
+  proxySubscriptions: () => get<ProxySubscription[]>(`/proxy/subscriptions`),
+  saveProxySubscription: (sub: Partial<ProxySubscription>) =>
+    sub.id
+      ? patch<ProxySubscription>(`/proxy/subscriptions/${sub.id}`, sub)
+      : post<ProxySubscription>(`/proxy/subscriptions`, sub),
+  deleteProxySubscription: (id: number) => del<{ deleted: number }>(`/proxy/subscriptions/${id}`),
+  refreshProxySubscription: (id: number) => post<ProxyRefreshResult>(`/proxy/subscriptions/${id}/refresh`),
+  previewProxySubscription: (url: string) => post<ProxyParseResult>(`/proxy/subscriptions/preview`, { url }),
 };
