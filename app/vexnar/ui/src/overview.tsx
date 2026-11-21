@@ -169,7 +169,9 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
     getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal)
   ])
 
-  const rejected = settled.filter((item) => item.status === 'rejected')[0] as PromiseRejectedResult | undefined
+  // 只有主数据源（任务/发现/资产/Token）失败才算“数据不可用”。流量与活动流走 Go
+  // 回退接口，未配置回退时降级为空图，不影响其余指标。
+  const rejected = settled.slice(0, 5).filter((item) => item.status === 'rejected')[0] as PromiseRejectedResult | undefined
   const failure = rejected === undefined ? undefined : (rejected.reason as Error | undefined)
   const error = failure === undefined ? '' : String(failure.message ?? failure)
 
@@ -411,7 +413,8 @@ function TrendChart({ points, height }: { points: TrendPoint[]; height: number }
   const slot = plotW / Math.max(points.length, 1)
   const barW = Math.max(2, Math.min(18, slot * 0.58))
   const baseY = pad.top + plotH
-  const ticks = [0, 0.25, 0.5, 0.75, 1]
+  // 20% 一档：50M 这类最大值读成 10M/20M/30M，而不是 13M/38M。
+  const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1]
   const labelStep = Math.max(1, Math.ceil(points.length / 6))
   const active = hover !== null ? points[hover] : undefined
   const tipLeft = hover !== null ? Math.min(Math.max(pad.left + slot * hover + slot / 2, 74), w - 74) : 0
@@ -482,17 +485,22 @@ function TrendChart({ points, height }: { points: TrendPoint[]; height: number }
             </g>
           )
         })}
-        {points.map((point, index) => (index % labelStep === 0 || index === points.length - 1 ? (
-          <text
-            key={`label-${point.day}`}
-            x={pad.left + slot * index + slot / 2}
-            y={height - 4}
-            textAnchor="middle"
-            className="vx-ov-axis"
-          >
-            {point.day.slice(5)}
-          </text>
-        ) : null))}
+        {points.map((point, index) => {
+          const last = index === points.length - 1
+          // 末端标签右对齐：既不与前一个标签挤在一起，也不会被右边框裁掉。
+          if (!last && index % labelStep !== 0) return null
+          return (
+            <text
+              key={`label-${point.day}`}
+              x={pad.left + slot * index + (last ? slot - 2 : slot / 2)}
+              y={height - 4}
+              textAnchor={last ? 'end' : index === 0 ? 'start' : 'middle'}
+              className="vx-ov-axis"
+            >
+              {point.day.slice(5)}
+            </text>
+          )
+        })}
         {hover !== null && (
           <line
             x1={pad.left + slot * hover + slot / 2}
@@ -540,10 +548,9 @@ function TrendChart({ points, height }: { points: TrendPoint[]; height: number }
 }
 
 /** 环形仪表：一条渐变进度弧 + 中心数值。 */
-function Dial({ value, caption, sub }: { value: number; caption: string; sub: string }): ReactNode {
+function Dial({ value, caption, sub, size = 84 }: { value: number; caption: string; sub: string; size?: number }): ReactNode {
   const uid = useId().replace(/:/g, '')
-  const size = 84
-  const thickness = 9
+  const thickness = size >= 80 ? 9 : 7.5
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
   const ratio = Math.max(0, Math.min(1, value / 100))
@@ -587,9 +594,8 @@ function Dial({ value, caption, sub }: { value: number; caption: string; sub: st
 }
 
 /** 严重度环形图：按档位分段，中心是总数。 */
-function SeverityDonut({ counts }: { counts: SevCounts }): ReactNode {
-  const size = 84
-  const thickness = 9
+function SeverityDonut({ counts, size = 84 }: { counts: SevCounts; size?: number }): ReactNode {
+  const thickness = size >= 80 ? 9 : 7.5
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
   const total = counts.critical + counts.high + counts.medium + counts.low
@@ -597,7 +603,9 @@ function SeverityDonut({ counts }: { counts: SevCounts }): ReactNode {
   return (
     <div className="vx-ov-dial">
       <div className="vx-ov-dial-ring" style={{ width: size, height: size }}>
-        <svg width={size} height={size} aria-hidden="true" transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+        <svg width={size} height={size} aria-hidden="true">
+          {/* 旋转放在子组上：根 svg 的 transform 在部分引擎里会移动盒子本身。 */}
+          <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--vx-chart-grid)" strokeWidth={thickness} />
           {SEVERITY_META.map((meta) => {
             const value = counts[meta.key]
@@ -623,6 +631,7 @@ function SeverityDonut({ counts }: { counts: SevCounts }): ReactNode {
             offset += length
             return segment
           })}
+          </g>
         </svg>
         <span className="vx-ov-dial-value">{counts.total || total}<em>个</em></span>
       </div>
@@ -633,7 +642,7 @@ function SeverityDonut({ counts }: { counts: SevCounts }): ReactNode {
 }
 
 /** 迷你趋势线：KPI 卡片里的火花图。 */
-function Spark({ values }: { values: number[] }): ReactNode {
+function Spark({ values, height = 16 }: { values: number[]; height?: number }): ReactNode {
   const uid = useId().replace(/:/g, '')
   const w = 74
   const h = 24
@@ -644,7 +653,14 @@ function Spark({ values }: { values: number[] }): ReactNode {
   const line = points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(' ')
   const area = `${line} L${w},${h} L0,${h} Z`
   return (
-    <svg className="vx-ov-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+    <svg
+      className="vx-ov-spark"
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id={`${uid}-spark`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" style={{ stopColor: 'var(--vx-tone, var(--vx-chart-1))', stopOpacity: 0.34 }} />
@@ -805,9 +821,9 @@ function Kpi({
           {value}
           {unit !== undefined && unit !== '' ? <em>{unit}</em> : null}
         </span>
-        {spark !== undefined ? <Spark values={spark} /> : null}
       </div>
       <div className="vx-ov-kpi-foot">{detail}</div>
+      {spark !== undefined ? <Spark values={spark} /> : null}
     </article>
   )
 }
@@ -969,7 +985,9 @@ export function HeroOverviewLayer({ hero, children }: { hero: boolean; children?
 /** 概览卡片本体：标题栏 + 指标条 + 趋势/质量图形。 */
 function OverviewCard(): ReactNode {
   // 矮窗口默认收起，避免概览把新会话的首屏挤没；用户手动开合后以存储为准。
-  const [open, setOpen] = useStoredFlag('vexnar.overview.open', window.innerHeight >= 720)
+  // 默认展开；矮屏由样式表收起图表行（见 styles.ts 的 max-height 规则），
+  // 用户手动收起后以存储为准。
+  const [open, setOpen] = useStoredFlag('vexnar.overview.open', true)
   const [rangeKey, setRangeKey] = useState<RangeKey>(() => {
     const raw = storeGet('vexnar.overview.range')
     return raw === '7' || raw === '30' || raw === '90' ? raw : '30'
@@ -1101,8 +1119,8 @@ function OverviewCard(): ReactNode {
                 <span className="vx-ov-sub">{data.updated === 0 ? '加载中' : `近 ${rangeLabel(rangeKey)}`}</span>
               </div>
               <div className="vx-ov-dials">
-                <Dial value={view.hitRate} caption="缓存命中率" sub={`${fmtNum(view.totals.cache)} / ${fmtNum(view.totals.input)}`} />
-                <SeverityDonut counts={view.sev} />
+                <Dial value={view.hitRate} size={72} caption="缓存命中率" sub={`${fmtNum(view.totals.cache)} / ${fmtNum(view.totals.input)}`} />
+                <SeverityDonut counts={view.sev} size={72} />
               </div>
             </article>
           </div>

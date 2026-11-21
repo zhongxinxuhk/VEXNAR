@@ -359,6 +359,11 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
+.vx-ov,
+.vx-ov *,
+.vx-ov-page,
+.vx-ov-page * { box-sizing: border-box; }
+
 .vx-ov {
   container-type: inline-size;
   box-sizing: border-box;
@@ -602,7 +607,13 @@ body[data-ds-dark-theme] {
   color: var(--vx-text-faint);
 }
 
-.vx-ov-spark { margin-left: auto; flex: none; opacity: 0.92; overflow: visible; }
+.vx-ov-spark {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  opacity: 0.8;
+  pointer-events: none;
+}
 
 .vx-ov-kpi-foot {
   margin-top: 2px;
@@ -647,6 +658,8 @@ body[data-ds-dark-theme] {
 
 .vx-ov-card--trend,
 .vx-ov-card--dials { display: flex; flex-direction: column; min-height: 0; }
+
+.vx-ov-card--dials { overflow: hidden; }
 
 .vx-ov-h {
   display: flex;
@@ -738,13 +751,15 @@ body[data-ds-dark-theme] {
   border-top: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
 }
 
+/* Anchor both dials to the top of the row instead of centring them in whatever
+   height the taller trend card dictates: caption and rate line stay inside. */
 .vx-ov-dials {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: space-around;
-  gap: 6px;
-  padding-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  justify-items: center;
+  gap: 4px;
+  padding-top: 8px;
 }
 
 .vx-ov-dial {
@@ -759,6 +774,7 @@ body[data-ds-dark-theme] {
   position: relative;
   display: grid;
   place-items: center;
+  flex: none;
 }
 
 .vx-ov-dial-ring > svg { position: absolute; inset: 0; }
@@ -780,14 +796,16 @@ body[data-ds-dark-theme] {
 }
 
 .vx-ov-dial-caption {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--vx-text-dim);
 }
 
 .vx-ov-dial-sub {
-  max-width: 112px;
-  font-size: 9px;
+  max-width: 108px;
+  font-size: 8.5px;
+  line-height: 1.25;
   color: var(--vx-text-faint);
   text-align: center;
   white-space: nowrap;
@@ -1189,6 +1207,14 @@ body[data-ds-dark-theme] {
   .vx-ov-kpi { flex-basis: 100%; }
 }
 
+/* \u77EE\u5C4F\uFF08\u7B14\u8BB0\u672C\u534A\u5C4F\u7A97\u53E3\uFF09\uFF1A\u6982\u89C8\u53EA\u7559\u6807\u9898\u680F\u4E0E\u6307\u6807\u6761\uFF0C\u628A\u9AD8\u5EA6\u8BA9\u7ED9\u8F93\u5165\u6846\uFF1B
+   \u56FE\u8868\u5728\u4FA7\u8FB9\u680F\u300C\u6982\u89C8\u300D\u6574\u9875\u91CC\u5B8C\u6574\u5448\u73B0\u3002 */
+@media (max-height: 780px) {
+  .vx-ov-charts { display: none; }
+  .vx-ov-kpi { padding: 8px 9px 7px; }
+  .vx-ov-num { font-size: 20px; }
+}
+
 @media (max-width: 900px) {
   .vx-ov-split { grid-template-columns: 1fr; }
 }
@@ -1303,7 +1329,7 @@ async function loadOverview(signal) {
     getJson("/api/mcp", signal),
     getJson("/api/tools", signal)
   ]);
-  const rejected = settled.filter((item) => item.status === "rejected")[0];
+  const rejected = settled.slice(0, 5).filter((item) => item.status === "rejected")[0];
   const failure = rejected === void 0 ? void 0 : rejected.reason;
   const error = failure === void 0 ? "" : String(failure.message ?? failure);
   const tasks = pick(settled[0], {});
@@ -1507,7 +1533,7 @@ function TrendChart({ points, height }) {
   const slot = plotW / Math.max(points.length, 1);
   const barW = Math.max(2, Math.min(18, slot * 0.58));
   const baseY = pad.top + plotH;
-  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
   const labelStep = Math.max(1, Math.ceil(points.length / 6));
   const active = hover !== null ? points[hover] : void 0;
   const tipLeft = hover !== null ? Math.min(Math.max(pad.left + slot * hover + slot / 2, 74), w - 74) : 0;
@@ -1567,17 +1593,21 @@ function TrendChart({ points, height }) {
           );
         }) }, point.day);
       }),
-      points.map((point, index) => index % labelStep === 0 || index === points.length - 1 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "text",
-        {
-          x: pad.left + slot * index + slot / 2,
-          y: height - 4,
-          textAnchor: "middle",
-          className: "vx-ov-axis",
-          children: point.day.slice(5)
-        },
-        `label-${point.day}`
-      ) : null),
+      points.map((point, index) => {
+        const last = index === points.length - 1;
+        if (!last && index % labelStep !== 0) return null;
+        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          "text",
+          {
+            x: pad.left + slot * index + (last ? slot - 2 : slot / 2),
+            y: height - 4,
+            textAnchor: last ? "end" : index === 0 ? "start" : "middle",
+            className: "vx-ov-axis",
+            children: point.day.slice(5)
+          },
+          `label-${point.day}`
+        );
+      }),
       hover !== null && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "line",
         {
@@ -1624,10 +1654,9 @@ function TrendChart({ points, height }) {
     ] })
   ] });
 }
-function Dial({ value, caption, sub }) {
+function Dial({ value, caption, sub, size = 84 }) {
   const uid = (0, import_react.useId)().replace(/:/g, "");
-  const size = 84;
-  const thickness = 9;
+  const thickness = size >= 80 ? 9 : 7.5;
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const ratio = Math.max(0, Math.min(1, value / 100));
@@ -1674,16 +1703,15 @@ function Dial({ value, caption, sub }) {
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-sub", children: sub })
   ] });
 }
-function SeverityDonut({ counts }) {
-  const size = 84;
-  const thickness = 9;
+function SeverityDonut({ counts, size = 84 }) {
+  const thickness = size >= 80 ? 9 : 7.5;
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const total = counts.critical + counts.high + counts.medium + counts.low;
   let offset = 0;
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dial-ring", style: { width: size, height: size }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { width: size, height: size, "aria-hidden": "true", transform: `rotate(-90 ${size / 2} ${size / 2})`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { width: size, height: size, "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { transform: `rotate(-90 ${size / 2} ${size / 2})`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: size / 2, cy: size / 2, r: radius, fill: "none", stroke: "var(--vx-chart-grid)", strokeWidth: thickness }),
         SEVERITY_META.map((meta) => {
           const value = counts[meta.key];
@@ -1708,7 +1736,7 @@ function SeverityDonut({ counts }) {
           offset += length;
           return segment;
         })
-      ] }),
+      ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-dial-value", children: [
         counts.total || total,
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: "\u4E2A" })
@@ -1718,7 +1746,7 @@ function SeverityDonut({ counts }) {
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-dial-sub", children: total === 0 ? "\u6682\u65E0\u53D1\u73B0" : `\u4E25\u91CD ${counts.critical} \xB7 \u9AD8\u5371 ${counts.high}` })
   ] });
 }
-function Spark({ values }) {
+function Spark({ values, height = 16 }) {
   const uid = (0, import_react.useId)().replace(/:/g, "");
   const w = 74;
   const h2 = 24;
@@ -1728,14 +1756,25 @@ function Spark({ values }) {
   const points = data.map((value, index) => [index * step, h2 - 2 - value / max * (h2 - 5)]);
   const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(" ");
   const area = `${line} L${w},${h2} L0,${h2} Z`;
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "vx-ov-spark", width: w, height: h2, viewBox: `0 0 ${w} ${h2}`, "aria-hidden": "true", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-spark`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0.34 } }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0 } })
-    ] }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: area, fill: `url(#${uid}-spark)` }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: line, fill: "none", stroke: "var(--vx-tone, var(--vx-chart-1))", strokeWidth: "1.4", strokeLinejoin: "round", strokeLinecap: "round" })
-  ] });
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    "svg",
+    {
+      className: "vx-ov-spark",
+      width: "100%",
+      height,
+      viewBox: `0 0 ${w} ${h2}`,
+      preserveAspectRatio: "none",
+      "aria-hidden": "true",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("linearGradient", { id: `${uid}-spark`, x1: "0", y1: "0", x2: "0", y2: "1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "0%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0.34 } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("stop", { offset: "100%", style: { stopColor: "var(--vx-tone, var(--vx-chart-1))", stopOpacity: 0 } })
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: area, fill: `url(#${uid}-spark)` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: line, fill: "none", stroke: "var(--vx-tone, var(--vx-chart-1))", strokeWidth: "1.4", strokeLinejoin: "round", strokeLinecap: "round" })
+      ]
+    }
+  );
 }
 function AssetRows({ rows, total }) {
   if (rows.length === 0) return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-empty", children: "\u6682\u65E0\u8D44\u4EA7\u6570\u636E" });
@@ -1832,14 +1871,12 @@ function Kpi({
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, { name: icon, size: 13 }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: label })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-kpi-mid", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-num", children: [
-        value,
-        unit !== void 0 && unit !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: unit }) : null
-      ] }),
-      spark !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spark, { values: spark }) : null
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-kpi-foot", children: detail })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-kpi-mid", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "vx-ov-num", children: [
+      value,
+      unit !== void 0 && unit !== "" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: unit }) : null
+    ] }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "vx-ov-kpi-foot", children: detail }),
+    spark !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spark, { values: spark }) : null
   ] });
 }
 function SeverityChips({ counts }) {
@@ -1937,7 +1974,7 @@ function HeroOverviewLayer({ hero, children }) {
   ] });
 }
 function OverviewCard() {
-  const [open, setOpen] = useStoredFlag("vexnar.overview.open", window.innerHeight >= 720);
+  const [open, setOpen] = useStoredFlag("vexnar.overview.open", true);
   const [rangeKey, setRangeKey] = (0, import_react.useState)(() => {
     const raw = storeGet("vexnar.overview.range");
     return raw === "7" || raw === "30" || raw === "90" ? raw : "30";
@@ -2094,8 +2131,8 @@ function OverviewCard() {
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "vx-ov-sub", children: data.updated === 0 ? "\u52A0\u8F7D\u4E2D" : `\u8FD1 ${rangeLabel(rangeKey)}` })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "vx-ov-dials", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dial, { value: view.hitRate, caption: "\u7F13\u5B58\u547D\u4E2D\u7387", sub: `${fmtNum(view.totals.cache)} / ${fmtNum(view.totals.input)}` }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SeverityDonut, { counts: view.sev })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Dial, { value: view.hitRate, size: 72, caption: "\u7F13\u5B58\u547D\u4E2D\u7387", sub: `${fmtNum(view.totals.cache)} / ${fmtNum(view.totals.input)}` }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SeverityDonut, { counts: view.sev, size: 72 })
           ] })
         ] })
       ] }),
