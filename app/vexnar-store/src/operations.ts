@@ -1165,7 +1165,7 @@ export function storeOperations(root: string) {
     const current = await writer.readRecord('agent_triggers', id)
     if (!current || current.agent_key !== agentKey) throw Object.assign(new Error('触发器不存在'), { status: 404 })
     const next = { ...current }
-    for (const field of ['enabled', 'interval_sec', 'on_finding', 'on_goal_met', 'on_task_timeout', 'on_tool_call', 'on_task_create', 'interval_message', 'finding_message', 'goal_message', 'task_timeout_message', 'tool_call_message', 'task_create_message', 'tool_names']) {
+    for (const field of ['enabled', 'interval_sec', 'on_finding', 'on_goal_met', 'on_task_timeout', 'on_tool_call', 'on_task_create', 'interval_message', 'finding_message', 'goal_message', 'task_timeout_message', 'tool_call_message', 'task_create_message', 'tool_names', 'last_fire']) {
       if (input[field] !== undefined) next[field] = input[field]
     }
     delete next.rev
