@@ -49,7 +49,8 @@ const env = {
   VEXNAR_MCP_TOKEN: process.env.VEXNAR_MCP_TOKEN || readToken('mcp.token'),
   DSH_CLIENT_TITLE: 'VEXNAR',
     DSH_CLIENT_TITLE: 'VEXNAR',
-  VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken')
+  VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken'),
+  CRAFT_ANYTHING_CLI: process.env.CRAFT_ANYTHING_CLI || join(process.env.HOME || '', '.dsh', 'plugins-data', 'craft-anything', 'craft-anything-cli')
 }
 
 let child
