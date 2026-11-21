@@ -1,7 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { storeWriter } from './writer.js'
 import { metaStore } from './meta-store.js'
@@ -312,5 +312,123 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate }
+  async function attachAssets(taskId: string, assetIds: Array<string | number>, sourceSummary = '') {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const requested = assetIds.map(Number).filter((id) => Number.isFinite(id) && id > 0)
+    let attached = 0
+    let existing = 0
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown>; expectedRev?: number }> = []
+    for (const assetId of requested) {
+      const asset = await writer.readRecord('assets', String(assetId))
+      if (!asset) throw Object.assign(new Error(`asset ${assetId} 不存在`), { status: 404 })
+      const ids = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
+      if (ids.includes(Number(task.id))) {
+        existing += 1
+      } else {
+        const next = { ...asset, task_ids: [...ids, Number(task.id)] }
+        delete next.rev
+        ops.push({ table: 'assets', key: String(assetId), record: next, expectedRev: Number(asset.rev ?? 0) })
+        attached += 1
+      }
+      const link = await writer.readRecord('task_asset_links', `${task.id}-${assetId}`)
+      if (!link) {
+        ops.push({
+          table: 'task_asset_links',
+          key: `${task.id}-${assetId}`,
+          record: { task_id: String(task.id), asset_id: Number(assetId), source: 'manual', source_summary: sourceSummary, created_at_text: rfc3339(new Date()) }
+        })
+      }
+    }
+    if (ops.length) await writer.commit(ops)
+    return { requested: requested.length, attached, existing }
+  }
+
+  async function detachAsset(taskId: string, assetId: string) {
+    const asset = await writer.readRecord('assets', assetId)
+    if (!asset) throw Object.assign(new Error('asset 不存在'), { status: 404 })
+    const ids = Array.isArray(asset.task_ids) ? asset.task_ids.map(Number) : []
+    if (!ids.includes(Number(taskId))) throw Object.assign(new Error('asset 未关联该任务'), { status: 404 })
+    const next = { ...asset, task_ids: ids.filter((id) => id !== Number(taskId)) }
+    delete next.rev
+    await writer.commit([{ table: 'assets', key: assetId, record: next, expectedRev: Number(asset.rev ?? 0) }])
+    await rm(join(root, 'task_asset_links', `${taskId}-${assetId}.json`), { force: true })
+    return { detached: Number(assetId) }
+  }
+
+  async function addScope(taskId: string, input: { kind?: string; value?: string; reason?: string }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    const kind = String(input.kind ?? '').trim()
+    const value = String(input.value ?? '').trim()
+    if (!kind || !value) throw Object.assign(new Error('kind 和 value 不能为空'), { status: 400 })
+    let scopesAdded = 0
+    let scopesExisting = 0
+    let assetsLinked = 0
+    let assetsExisting = 0
+    const existing = []
+    try {
+      for (const name of await readdir(join(root, 'task_scope'))) {
+        if (!name.endsWith('.json')) continue
+        existing.push(JSON.parse(await readFile(join(root, 'task_scope', name), 'utf8')).record)
+      }
+    } catch {
+      // empty
+    }
+    const duplicate = existing.some((row) => String(row.task_id) === String(task.id) && row.kind === kind && row.value === value)
+    const scopeId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown> }> = []
+    if (duplicate) {
+      scopesExisting += 1
+    } else {
+      ops.push({
+        table: 'task_scope',
+        key: String(scopeId),
+        record: { id: scopeId, task_id: String(task.id), kind, value, reason: String(input.reason ?? ''), source: 'manual', created_at_text: rfc3339(new Date()) }
+      })
+      scopesAdded += 1
+    }
+    if (kind === 'domain' || kind === 'ip') {
+      const assets = await (async () => {
+        const rows = []
+        for (const name of await readdir(join(root, 'assets'))) {
+          if (!name.endsWith('.json')) continue
+          rows.push(JSON.parse(await readFile(join(root, 'assets', name), 'utf8')).record)
+        }
+        return rows
+      })()
+      const found = assets.find((asset) => (kind === 'domain' ? asset.domain === value : asset.ip === value))
+      if (found) {
+        assetsExisting += 1
+      } else {
+        const assetId = Math.max(0, ...assets.map((asset) => Number(asset.id))) + 1
+        ops.push({
+          table: 'assets',
+          key: String(assetId),
+          record: { id: assetId, type: kind, [kind]: value, task_ids: [Number(task.id)], last_seen: rfc3339(new Date()), company_id: null }
+        })
+        assetsLinked += 1
+      }
+    }
+    if (ops.length) await writer.commit(ops)
+    return { requested: 1, assets_linked: assetsLinked, assets_existing: assetsExisting, scopes_added: scopesAdded, scopes_existing: scopesExisting }
+  }
+
+  async function deleteScope(taskId: string, scopeId: string) {
+    let rows = []
+    try {
+      for (const name of await readdir(join(root, 'task_scope'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'task_scope', name), 'utf8')).record)
+      }
+    } catch {
+      // empty
+    }
+    const row = rows.find((item) => String(item.id) === String(scopeId) && String(item.task_id) === String(taskId))
+    if (!row) throw Object.assign(new Error('scope 不存在'), { status: 404 })
+    await rm(join(root, 'task_scope', `${scopeId}.json`), { force: true })
+    return { deleted: Number(scopeId) }
+  }
+
+  return { writer, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope }
 }

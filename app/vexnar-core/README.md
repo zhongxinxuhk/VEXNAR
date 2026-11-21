@@ -75,6 +75,8 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 npm start
 | `POST/PATCH/DELETE /api/task-categories` | ✅ 分类增改删；删除时自动解绑任务 |
 | `PATCH /api/tasks/:id/category` | ✅ 任务归入/移出分类 |
 | `POST/PATCH/DELETE /api/task-templates` | ✅ 模板增改删 |
+| `POST/DELETE /api/tasks/:id/assets` | ✅ 资产挂载/卸载（幂等计数） |
+| `POST/DELETE /api/tasks/:id/scope` | ✅ 任务范围增删（域名/IP 同时建资产） |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**
