@@ -20,6 +20,7 @@ export { createNotifier } from './notify.js'
 export { startTriggers, spawnTriggerTask } from './triggers.js'
 export { startSchedules } from './schedules.js'
 export { createTaskQueue } from './queue.js'
+export { buildReport } from './report.js'
 export { storeWriter, StoreConflict } from './writer.js'
 
 export function storeRoot() {

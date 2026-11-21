@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -807,6 +807,15 @@ api.get('/api/tasks/:id/coverage', async (c) => {
     return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] })
   }
   return c.json({ enabled: true, ...(await store.coverage(c.req.param('id'))) })
+})
+
+api.get('/api/tasks/:id/report', async (c) => {
+  const task = await store.tasks.get(c.req.param('id'))
+  if (!task) return c.json({ error: 'task not found' }, 404)
+  const findings = (await store.findings.list(100000)).filter((row: any) => String(row.task_id ?? '') === String(task.id))
+  const assets = (await store.assets.list({ taskId: String(task.id), limit: 1000, offset: 0 })).rows
+  const overview = await operations.graphOverview(String(task.id))
+  return c.json(buildReport({ task, findings, assets, overview }))
 })
 
 api.get('/api/tasks/:id/goals', async (c) => {
