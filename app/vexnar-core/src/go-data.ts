@@ -2,6 +2,8 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { isProxyPath, proxyBridge } from './proxy-bridge.ts'
+
 const routes = new Set(['POST /api/yak/history'])
 
 /**
@@ -51,6 +53,8 @@ const loopback = new Set(['127.0.0.1', '[::1]', 'localhost'])
 
 export async function goData(request: Request, localPeer: boolean): Promise<Response | undefined> {
   const url = new URL(request.url)
+  // 代理池控制面走专用桥：显式端点清单、SSE 直通、契约头校验，而不是通用前缀转发。
+  if (isProxyPath(url.pathname)) return proxyBridge(request, localPeer)
   if (!isGoDataRequest(request.method, url.pathname)) return undefined
 
   const host = request.headers.get('host') ?? ''
