@@ -677,7 +677,7 @@ function Dashboard() {
     (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, tasks.error || findings.error || assets.error || tokens.error || "\u6570\u636E\u6765\u81EA vexnar-core")
   );
 }
-function TaskList() {
+function TaskList({ onSelect }) {
   const { data, error, loading } = useApi("/api/tasks");
   if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
@@ -688,12 +688,50 @@ function TaskList() {
     (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u72B6\u6001", "\u76EE\u6807"].map((title) => (0, import_react.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
     (0, import_react.createElement)("tbody", null, rows.map((task) => (0, import_react.createElement)(
       "tr",
-      { key: task.id },
+      { key: task.id, onClick: () => onSelect?.(String(task.id)), style: { cursor: onSelect ? "pointer" : "default" } },
       (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.id),
       (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.name || "\u2014"),
       (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, task.status),
       (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, task.goal)
     )))
+  );
+}
+function TaskDetail({ id, onBack }) {
+  const task = useApi(`/api/tasks/${id}`);
+  const goals = useApi(`/api/tasks/${id}/goals`);
+  const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`);
+  const coverage = useApi(`/api/tasks/${id}/coverage`);
+  const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`);
+  const row = task.data ?? {};
+  const section = (title, children) => (0, import_react.createElement)(
+    "div",
+    { style: { marginBottom: 18 } },
+    (0, import_react.createElement)("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title),
+    children
+  );
+  if (task.loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (task.error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, task.error);
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 } },
+      (0, import_react.createElement)("button", { type: "button", onClick: onBack, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "3px 10px", cursor: "pointer" } }, "\u2190 \u8FD4\u56DE"),
+      (0, import_react.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, `${row.id} \xB7 ${row.name || "\u672A\u547D\u540D\u4EFB\u52A1"}`),
+      (0, import_react.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, row.status)
+    ),
+    (0, import_react.createElement)("div", { style: { fontSize: 13, marginBottom: 14 } }, row.goal),
+    section(`\u76EE\u6807\uFF08${goals.data?.goals?.length ?? 0}\uFF09`, (goals.data?.goals ?? []).map((goal) => (0, import_react.createElement)("div", { key: goal.id, style: { fontSize: 13, padding: "3px 0" } }, `#${goal.id} [${goal.state}] ${goal.text || "\u2014"}`))),
+    section(`\u610F\u56FE\uFF08${Array.isArray(intents.data) ? intents.data.length : 0}\uFF09`, (Array.isArray(intents.data) ? intents.data : []).map((intent) => (0, import_react.createElement)("div", { key: intent.id, style: { fontSize: 13, padding: "3px 0" } }, `#${intent.id} [${intent.state}] ${(() => {
+      try {
+        return JSON.parse(intent.payload).text ?? "";
+      } catch {
+        return "";
+      }
+    })()}`))),
+    section("\u8986\u76D6\u5EA6", (0, import_react.createElement)("div", { style: { fontSize: 13 } }, coverage.data?.enabled === false ? "\u672A\u542F\u7528" : `${coverage.data?.tested ?? 0}/${coverage.data?.denominator ?? 0} \xB7 ${coverage.data?.pct == null ? "\u2014" : `${(coverage.data.pct * 100).toFixed(1)}%`}`)),
+    section(`\u6700\u8FD1\u8282\u70B9\uFF08${nodes.data?.items?.length ?? 0}\uFF09`, (nodes.data?.items ?? []).map((node) => (0, import_react.createElement)("div", { key: node.id, style: { fontSize: 12, padding: "2px 0", color: "var(--vx-muted, #6b7280)" } }, `#${node.id} ${node.type} [${node.state}]`)))
   );
 }
 function FindingList() {
@@ -723,8 +761,13 @@ function FindingList() {
 }
 function VexnarConsole() {
   const [active, setActive] = (0, import_react.useState)("dashboard");
+  const [taskId, setTaskId] = (0, import_react.useState)("");
   const items = NAV_GROUPS.flatMap((group) => group.items);
   const current = items.find((item) => item.id === active) ?? items[0];
+  const selectPanel = (id) => {
+    setActive(id);
+    if (id !== "tasks") setTaskId("");
+  };
   return (0, import_react.createElement)(
     "div",
     { style: { display: "flex", height: "100%", minHeight: 0, background: "var(--vx-bg, #fff)" } },
@@ -738,7 +781,7 @@ function VexnarConsole() {
         group.items.map((item) => (0, import_react.createElement)("button", {
           key: item.id,
           type: "button",
-          onClick: () => setActive(item.id),
+          onClick: () => selectPanel(item.id),
           style: {
             display: "flex",
             alignItems: "center",
@@ -777,7 +820,7 @@ function VexnarConsole() {
         }, "\u8FDE\u63A5 core")
       ),
       (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
-      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? (0, import_react.createElement)(TaskList) : current.id === "findings" ? (0, import_react.createElement)(FindingList) : (0, import_react.createElement)(
+      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? (0, import_react.createElement)(FindingList) : (0, import_react.createElement)(
         "div",
         { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
         "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"
