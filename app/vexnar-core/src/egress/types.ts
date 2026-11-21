@@ -27,8 +27,10 @@ export interface StoredNode extends NodeConfig {
   enabled: boolean
   note: string
   egressIp: string
-  /** '' = 手动添加；'sub:<id>' = 订阅导入。 */
+  /** '' = 手动添加；'sub:<id>' = 订阅导入；'pivot' = 渗透中登记的跳板。 */
   source: string
+  /** 链式代理：先经该节点建立连接，再与该节点握手（0/undefined = 直连该节点）。 */
+  viaNodeId?: number
   createdAt: number
   updatedAt: number
 }

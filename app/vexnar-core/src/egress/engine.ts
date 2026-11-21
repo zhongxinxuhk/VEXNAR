@@ -24,6 +24,7 @@ import type { NodeConfig } from './types.ts'
 
 export interface EngineNode extends NodeConfig {
   id: number
+  viaNodeId?: number
 }
 
 export interface EngineOptions {
@@ -100,7 +101,7 @@ export class ProtocolEngine {
       const proxyName = `vx-${node.id}`
       const listenerName = `n${node.id}`
       listeners.push({ name: listenerName, type: 'socks', port, listen: '127.0.0.1', udp: false })
-      proxies.push(clashProxy(node, proxyName))
+      proxies.push(clashProxy(node, proxyName, node.viaNodeId))
       rules.push(`IN-NAME,${listenerName},${proxyName}`)
       port++
     }
@@ -165,14 +166,15 @@ export class ProtocolEngine {
 }
 
 /** 把节点配置变成 mihomo 的 proxies 条目；密钥字段合并回去。 */
-export function clashProxy(node: NodeConfig, name: string): Record<string, unknown> {
+export function clashProxy(node: NodeConfig, name: string, viaNodeId?: number): Record<string, unknown> {
   return {
     ...node.config,
     ...node.secrets,
     name,
     type: node.protocol,
     server: node.server,
-    port: node.port
+    port: node.port,
+    ...(viaNodeId ? { 'dialer-proxy': `vx-${viaNodeId}` } : {})
   }
 }
 

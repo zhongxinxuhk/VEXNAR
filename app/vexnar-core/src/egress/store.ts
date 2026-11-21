@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   note TEXT NOT NULL DEFAULT '',
   egress_ip TEXT NOT NULL DEFAULT '',
   source TEXT NOT NULL DEFAULT '',
+  via_node_id INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -153,6 +154,7 @@ interface NodeRow {
   note: string
   egress_ip: string
   source: string
+  via_node_id: number
   created_at: number
   updated_at: number
 }
@@ -192,7 +194,15 @@ export class EgressStore {
   }
 
   static open(dir: string): EgressStore {
-    return new EgressStore(dir)
+    const store = new EgressStore(dir)
+    store.ensureColumn('nodes', 'via_node_id', 'INTEGER NOT NULL DEFAULT 0')
+    return store
+  }
+
+  private ensureColumn(table: string, column: string, ddl: string): void {
+    const rows = this.db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (rows.some((row) => row.name === column)) return
+    this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
   }
 
   close(): void {
@@ -224,10 +234,10 @@ export class EgressStore {
     const now = Math.floor(Date.now() / 1000)
     const find = this.db.prepare('SELECT id FROM nodes WHERE fingerprint=?')
     const insert = this.db.prepare(`INSERT INTO nodes
-      (name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      (name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,source,via_node_id,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     const update = this.db.prepare(`UPDATE nodes SET name=?,protocol=?,server=?,port=?,config=?,secrets=?,
-      source=CASE WHEN ?<>'' THEN ? ELSE source END, updated_at=? WHERE id=?`)
+      source=CASE WHEN ?<>'' THEN ? ELSE source END, via_node_id=?, updated_at=? WHERE id=?`)
     this.tx(() => {
       for (const node of nodes) {
         const existing = find.get(node.fingerprint) as { id: number } | undefined
@@ -248,6 +258,7 @@ export class EgressStore {
             node.note,
             node.egressIp,
             node.source,
+            node.viaNodeId ?? 0,
             now,
             now
           )
@@ -262,6 +273,7 @@ export class EgressStore {
             sealed,
             node.source,
             node.source,
+            node.viaNodeId ?? 0,
             now,
             existing.id
           )
@@ -275,7 +287,7 @@ export class EgressStore {
   updateNode(node: StoredNode): void {
     this.db
       .prepare(`UPDATE nodes SET name=?,protocol=?,server=?,port=?,config=?,secrets=?,tags=?,weight=?,
-        max_conns=?,enabled=?,note=?,egress_ip=?,source=?,updated_at=? WHERE id=?`)
+        max_conns=?,enabled=?,note=?,egress_ip=?,source=?,via_node_id=?,updated_at=? WHERE id=?`)
       .run(
         node.name,
         node.protocol,
@@ -290,6 +302,7 @@ export class EgressStore {
         node.note,
         node.egressIp,
         node.source,
+        node.viaNodeId ?? 0,
         Math.floor(Date.now() / 1000),
         node.id
       )
@@ -614,6 +627,7 @@ export class EgressStore {
       note: row.note,
       egressIp: row.egress_ip,
       source: row.source,
+      viaNodeId: Number(row.via_node_id) || undefined,
       createdAt: Number(row.created_at),
       updatedAt: Number(row.updated_at)
     }

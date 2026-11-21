@@ -15,7 +15,7 @@ import type { Context, Hono } from 'hono'
 import { storeRoot } from '../context.ts'
 import { EgressGateway } from './gateway.ts'
 import { EgressManager, EgressError, FANOUT_BUDGET_PER_HOUR, fingerprint, sanitizeKey } from './manager.ts'
-import { nodeFromClashMap, parseInput } from './parse.ts'
+import { nodeFromClashMap, parseInput, parseUri } from './parse.ts'
 import type { Binding, Pool, StoredNode, Subscription } from './types.ts'
 
 let runtime: Promise<{ manager: EgressManager; gateway: EgressGateway }> | undefined
@@ -66,6 +66,106 @@ export function registerEgress(api: Hono): void {
       return c.json(mgr.state())
     })
   )
+  // 渗透中登记跳板：拿到一个 SOCKS5/HTTP 出口（如 SSH -D、CS socks）后立即入池，
+  // 并可选择经现有节点链式拨号（via_node_id）。
+  api.post(
+    '/api/proxy/pivots',
+    wrap(async (c) => {
+      const mgr = await manager()
+      const body = (await c.req.json()) as Record<string, unknown>
+      const protocol = String(body.protocol ?? 'socks5')
+      if (protocol !== 'socks5' && protocol !== 'http') return c.json({ error: '跳板只支持 socks5/http' }, 400)
+      const server = String(body.server ?? '').trim()
+      const port = Number(body.port ?? 0)
+      if (!server || !Number.isInteger(port) || port <= 0) return c.json({ error: 'server/port 无效' }, 400)
+      const username = body.username == null ? '' : String(body.username)
+      const password = body.password == null ? '' : String(body.password)
+      const auth = username ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : ''
+      let config
+      try {
+        config = parseUri(`${protocol}://${auth}${server}:${port}#${encodeURIComponent(String(body.name ?? `pivot-${server}:${port}`))}`)
+      } catch (error) {
+        return c.json({ error: (error as Error).message }, 400)
+      }
+      const viaNodeId = Number(body.via_node_id ?? body.viaNodeId ?? 0) || undefined
+      if (viaNodeId && !mgr.nodeById(viaNodeId)) return c.json({ error: '上游节点不存在' }, 400)
+      const node: StoredNode = {
+        ...config,
+        fingerprint: fingerprint(config),
+        tags: Array.isArray(body.tags) ? body.tags.map(String) : ['pivot'],
+        weight: 1,
+        maxConns: Number(body.max_conns ?? 8) || 8,
+        enabled: true,
+        note: String(body.note ?? '渗透跳板'),
+        egressIp: '',
+        source: 'pivot',
+        viaNodeId,
+        createdAt: 0,
+        updatedAt: 0,
+        id: 0
+      }
+      mgr.store.upsertNodes([node])
+      await mgr.reload()
+      const stored = mgr.store.listNodes().find((item) => item.fingerprint === node.fingerprint)
+      const created = stored ? (mgr.state() as { nodes: NodeDto[] }).nodes.find((item) => item.id === stored.id) : undefined
+      const poolId = Number(body.pool_id ?? 0) || mgr.settings.defaultPool
+      if (created && poolId) {
+        const pool = mgr.store.pool(poolId)
+        if (pool) mgr.store.setPoolNodes(poolId, [...new Set([...mgr.store.poolNodes(poolId), created.id])])
+      }
+      await mgr.reload()
+      return c.json({ node: created ?? null, pool_id: poolId })
+    })
+  )
+
+  // 会话出口：给 dsh 工具/浏览器返回带凭据的代理 URL（凭证只在本进程内）。
+  api.post(
+    '/api/proxy/session',
+    wrap(async (c) => {
+      const mgr = await manager()
+      const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+      const taskId = Number(body.task_id ?? 0) || 0
+      const scope = String(body.scope ?? '').trim()
+      const key = sanitizeKey(scope || (taskId ? `task-${taskId}-worker` : `dsh-${crypto.randomUUID()}`))
+      const endpoint = mgr.endpoint({
+        key,
+        taskId: taskId || undefined,
+        poolId: Number(body.pool_id ?? 0) || undefined,
+        mode: (body.mode as 'sticky' | 'rotate' | 'fanout' | undefined) ?? 'sticky',
+        fallback: body.fallback as 'block' | 'direct' | undefined,
+        maxConns: Number(body.max_conns ?? 8) || 8,
+        fanoutK: Number(body.fanout_k ?? 3) || 3
+      })
+      const state = mgr.state() as { socks?: string }
+      return c.json({ proxy: endpoint.url, socks: state.socks ?? '', session: key, pool_id: endpoint.poolId })
+    })
+  )
+
+  // 浏览器固定端口：只能配置静态代理的客户端（Playwright MCP）用；无认证、仅回环。
+  api.post(
+    '/api/proxy/fixed',
+    wrap(async (c) => {
+      const { gateway } = await egressRuntime()
+      const mgr = await manager()
+      const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+      const taskId = Number(body.task_id ?? 0) || 0
+      const scope = String(body.scope ?? '').trim()
+      const key = sanitizeKey(scope || (taskId ? `task-${taskId}-worker` : `dsh-${crypto.randomUUID()}`))
+      mgr.endpoint({ key, taskId: taskId || undefined, poolId: Number(body.pool_id ?? 0) || undefined, mode: 'rotate', maxConns: 16 })
+      const port = await gateway.openFixed(key)
+      return c.json({ proxy: `http://127.0.0.1:${port}`, session: key })
+    })
+  )
+  api.delete(
+    '/api/proxy/fixed/:key',
+    wrap(async (c) => {
+      const { gateway } = await egressRuntime()
+      const key = sanitizeKey(c.req.param('key') ?? '')
+      gateway.closeFixed(key)
+      return c.json({ closed: key })
+    })
+  )
+
   api.get(
     '/api/proxy/_bridge',
     wrap(async (c) => {

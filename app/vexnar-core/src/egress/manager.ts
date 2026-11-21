@@ -10,9 +10,10 @@
 import { EventEmitter } from 'node:events'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { connect as tlsConnect, type TLSSocket } from 'node:tls'
+import { connect as netConnect } from 'node:net'
 import type { Socket } from 'node:net'
 
-import { dialNode, type Dialed } from './dialer.ts'
+import { httpOver, socks5Connect, socks5Over, type Dialed } from './dialer.ts'
 import { ProtocolEngine } from './engine.ts'
 import { fingerprint, parseInput } from './parse.ts'
 import { EgressStore } from './store.ts'
@@ -218,6 +219,15 @@ export class EgressManager {
     for (const pool of pools) members.set(pool.id, this.store.poolNodes(pool.id))
 
     this.nodes = new Map()
+    const viaIds = new Set<number>()
+    for (const node of nodeList) {
+      if (node.viaNodeId) viaIds.add(node.viaNodeId)
+    }
+    // 链式代理的“上游节点”即使协议是 socks5/http 也要进引擎配置，mihomo 的
+    // dialer-proxy 才能在协议层完成链式拨号；闭包补全多跳。
+    for (const node of nodeList) {
+      if (node.viaNodeId && viaIds.has(node.id) && node.viaNodeId) viaIds.add(node.viaNodeId)
+    }
     const engineNodes: { id: number; node: StoredNode }[] = []
     for (const node of nodeList) {
       const h = health.get(node.id) ?? {
@@ -240,7 +250,9 @@ export class EgressManager {
         sem: new Semaphore(Math.max(1, node.maxConns))
       })
       const member = [...members.values()].some((ids) => ids.includes(node.id))
-      if (node.enabled && member && node.protocol !== 'socks5' && node.protocol !== 'http') {
+      const native = node.protocol === 'socks5' || node.protocol === 'http'
+      const needsEngine = !native || Boolean(node.viaNodeId) || viaIds.has(node.id)
+      if (node.enabled && needsEngine && (member || viaIds.has(node.id))) {
         engineNodes.push({ id: node.id, node })
       }
     }
@@ -268,7 +280,8 @@ export class EgressManager {
           server: node.server,
           port: node.port,
           config: node.config,
-          secrets: node.secrets
+          secrets: node.secrets,
+          viaNodeId: node.viaNodeId
         }))
       )
     }
@@ -343,6 +356,14 @@ export class EgressManager {
     }
     session.lastSeen = Date.now()
     return { session, mode, pin }
+  }
+
+  /** 固定端口监听（浏览器）用：凭 key 取路由，不校验密码。 */
+  fixedRoute(key: string): Route {
+    const session = this.sessions.get(sanitizeKey(key))
+    if (!session) throw new EgressError('EGRESS_SESSION_REVOKED', 407, '会话已撤销')
+    session.lastSeen = Date.now()
+    return { session }
   }
 
   hasSession(key: string): boolean {
@@ -438,6 +459,39 @@ export class EgressManager {
     return this.nodes.get(id)
   }
 
+  /**
+   * 经节点（含链式）拨到目标。引擎节点由 mihomo 负责（含 dialer-proxy 链），
+   * socks5/http 节点在 TS 侧做多跳握手。
+   */
+  async dialTarget(node: StoredNode, host: string, port: number, depth = 0, timeoutMs = 20_000): Promise<Dialed> {
+    if (depth > 5) throw new Error('代理链超过 5 跳')
+    const enginePort = this.engine.portFor(node.id)
+    if (enginePort) {
+      return socks5Connect({ proxyHost: '127.0.0.1', proxyPort: enginePort, host, port, timeoutMs })
+    }
+    let base: Dialed
+    if (node.viaNodeId) {
+      const via = this.nodes.get(node.viaNodeId)?.node
+      if (!via) throw new Error(`链式代理的上游节点 ${node.viaNodeId} 不存在`)
+      base = await this.dialTarget(via, node.server, node.port, depth + 1, timeoutMs)
+    } else {
+      base =
+        node.protocol === 'http' && node.config.tls === true
+          ? tlsConnect({ host: node.server, port: node.port, servername: node.server, rejectUnauthorized: false })
+          : netConnect({ host: node.server, port: node.port })
+      await connectedSocket(base)
+    }
+    const username = typeof node.config.username === 'string' ? node.config.username : undefined
+    const password = node.secrets.password
+    if (node.protocol === 'socks5') {
+      return socks5Over(base as Socket, { host, port, username, password, timeoutMs })
+    }
+    if (node.protocol === 'http') {
+      return httpOver(base, { host, port, username, password, timeoutMs })
+    }
+    throw new Error(`协议 ${node.protocol} 需要协议引擎，无法在 TS 侧链式拨号`)
+  }
+
   poolState(id: number): PoolState | undefined {
     return this.pools.get(id)
   }
@@ -471,7 +525,7 @@ export class EgressManager {
       lastError: ''
     }
     try {
-      const socket = await dialNode(state.node, this.engine, target.hostname, Number(target.port || 80), 10_000)
+      const socket = await this.dialTarget(state.node, target.hostname, Number(target.port || 80), 0, 10_000)
       const status = await httpProbe(socket, target)
       socket.destroy()
       health = {
@@ -597,7 +651,7 @@ export class EgressManager {
     try {
       const acquired = await this.acquire({ session: this.internalSession(state), pin: state.node.id, poolId })
       if (acquired.direct) throw new Error('节点不可用')
-      const socket = await dialNode(state.node, this.engine, target.hostname, Number(target.port || 80), timeout)
+      const socket = await this.dialTarget(state.node, target.hostname, Number(target.port || 80), 0, timeout)
       const response = await httpRequest(socket, target, method, options.headers ?? {}, options.body)
       socket.destroy()
       acquired.release(response.status, response.body.length, (options.body ?? '').length, undefined)
@@ -724,6 +778,7 @@ export class EgressManager {
       egress_ip: state.node.egressIp || undefined,
       note: state.node.note || undefined,
       source: state.node.source || undefined,
+      via_node_id: state.node.viaNodeId ?? 0,
       config: state.node.config,
       state: state.health.state,
       latency_ms: state.health.latencyMs,
@@ -956,6 +1011,14 @@ export class EgressError extends Error {
 }
 
 // ---------- shared helpers ----------
+
+function connectedSocket(socket: Dialed): Promise<void> {
+  if (!('connecting' in socket) || !socket.connecting) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    socket.once('connect', () => resolve())
+    socket.once('error', reject)
+  })
+}
 
 export function sanitizeKey(key: string): string {
   return key.trim().replaceAll(':', '-').replaceAll('@', '-').replaceAll('/', '-').replaceAll(' ', '-')
