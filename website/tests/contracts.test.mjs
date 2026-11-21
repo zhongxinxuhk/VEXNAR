@@ -63,12 +63,13 @@ test('source-backed diagrams contain no dangling edges and point to real public 
   }
 });
 test('all pages ship pre-rendered React content, hashed local assets and no private fields', async () => {
-  const titles = { index: '让一支 Agent 团队', console: 'Agent 首页，完整地跑在浏览器里。', architecture: '把系统拆成六层', downloads: '下载 VEXNAR', releases: '版本与更新', branches: '开发分支', commits: '代码提交', contributors: '项目合作者', credits: 'Open Source Projects' };
+  const titles = { index: '让一支 Agent 团队', console: 'VEXNAR 客户端', architecture: '把系统拆成六层', downloads: '下载 VEXNAR', releases: '版本与更新', branches: '开发分支', commits: '代码提交', contributors: '项目合作者', credits: 'Open Source Projects' };
   for (const page of pages) {
     const html = await read(`../dist/${page.id}.html`);
     assert.ok(html.includes(titles[page.id]), page.id);
     assert.ok(!html.includes('<!--app-html-->'));
-    assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
+    const expectedCurrent = page.id === 'console' ? 0 : 1;
+    assert.equal((html.match(/aria-current="page"/g) || []).length, expectedCurrent, page.id);
     for (const [, asset] of html.matchAll(/(?:src|href)="(\.\/assets\/[^"?]+)(?:\?[^\"]*)?"/g)) {
       await fs.access(new URL(`../dist/${asset}`, import.meta.url));
     }
@@ -125,14 +126,18 @@ test('console demo keeps every interactive surface wired to existing data', () =
   const graphIds = new Set(graph.nodes.map(node => node.id));
   for (const [from, to] of graph.edges) assert.ok(graphIds.has(from) && graphIds.has(to), `${from}->${to}`);
 });
-test('console and architecture pages ship pre-rendered interactive markup', async () => {
+test('client page is a bare application shell, architecture ships interactive markup', async () => {
   const consolePage = await read('../dist/console.html');
-  for (const marker of ['主 Agent · 编排会话', '允许一次', '待办', '⌘J', 'app.vexnar.local', '新建对话']) assert.ok(consolePage.includes(marker), marker);
+  for (const marker of ['cx-titlebar', 'is-client', '主 Agent · 编排会话', '允许一次', '待办', '⌘J', '新建对话', '返回官网']) assert.ok(consolePage.includes(marker), marker);
+  assert.ok(!consolePage.includes('class="header'), 'client page must not render the site header');
+  assert.ok(!consolePage.includes('footer-top'), 'client page must not render the site footer');
+  assert.ok(!consolePage.includes('class="skip"'), 'client page must not render site chrome');
   const architecturePage = await read('../dist/architecture.html');
   for (const marker of ['INTERACTION', 'ORCHESTRATION', 'SUBSTRATE', 'EVENT LIFECYCLE', '层间契约', '剖析导览']) assert.ok(architecturePage.includes(marker), marker);
   assert.ok(architecturePage.includes('layer-evidence'));
   const home = await read('../dist/index.html');
-  assert.ok(home.includes('data-theme="light"') && home.includes('3D 架构剖析'));
+  assert.ok(home.includes('assets/client/console-chat') && home.includes('打开客户端体验'));
+  assert.ok(!home.includes('cx-window'), 'the client must not be embedded in the website');
 });
 
 test('exploration graph demo keeps typed nodes, legend tones and bounded coordinates', () => {

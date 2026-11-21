@@ -5,7 +5,7 @@
 export const REPO = 'https://github.com/zhongxinxuhk/VEXNAR';
 export const pages = [
   { id: 'index', label: '总览' },
-  { id: 'console', label: '交互体验', title: 'Agent 控制台 · 交互演示', description: '在浏览器里操作 Agent 首页：对话、工具调用、审批、探索图与系统配置。' },
+  { id: 'console', label: '客户端', title: 'VEXNAR 客户端', description: '全屏 Agent 客户端：对话、工具调用、审批、探索图与系统配置。' },
   { id: 'architecture', label: '架构剖析', title: '技术架构剖析', description: '六层结构、层间契约与四套节点级架构图，每个节点链接到公开源码。' },
   { id: 'downloads', label: '下载中心', title: '下载 VEXNAR', description: '选择平台，查看公开发行包与安装方式。' },
   { id: 'releases', label: '版本更新', title: '版本与更新', description: '公开发行记录、版本说明与预发布信息。' },

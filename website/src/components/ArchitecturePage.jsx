@@ -19,7 +19,7 @@ export default function ArchitecturePage() {
       <p className="lead">从浏览器表面到 PostgreSQL，每一层都写清楚职责、输入输出、失败语义和对应源码。3D 视图可以旋转与逐层剖析，下面的四套节点级图则展开系统、缓存、工具调用与双图关联。</p>
       <div className="v-actions">
         <a className="v-btn v-btn-primary" href="#layer-orchestration"><Icon name="orbit" size={15} />从编排层开始</a>
-        <a className="v-btn v-btn-secondary" href="console.html"><Icon name="chat" size={15} />交互控制台</a>
+        <a className="v-btn v-btn-secondary" href="console.html"><Icon name="chat" size={15} />打开客户端</a>
         <External href={`${REPO}/tree/${sourceRevision}`} className="v-btn v-btn-ghost"><Icon name="github" size={15} />源码快照</External>
       </div>
       <div className="v-meta">
@@ -77,9 +77,9 @@ export default function ArchitecturePage() {
       <div className="v-cta" style={{ margin: 0 }}>
         <div>
           <h2>结构看完了，回到操作面。</h2>
-          <p>控制台演示把同样的流程做成可以点击的界面：对话、工具调用、审批、探索图与系统配置。</p>
+          <p>客户端把同样的流程做成可以点击的界面：对话、工具调用、审批、探索图与系统配置，且不加载官网外壳。</p>
         </div>
-        <div className="v-cta-actions"><a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />打开控制台</a><a className="v-btn v-btn-secondary" href="downloads.html">下载服务端</a></div>
+        <div className="v-cta-actions"><a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />打开客户端</a><a className="v-btn v-btn-secondary" href="downloads.html">下载服务端</a></div>
       </div>
       <p className="v-note">架构图依据公开提交 <code style={{ fontFamily: 'SFMono-Regular, Consolas, monospace' }}>{sourceRevision}</code> 的源码绘制，不读取未发布提交，也不代表已完成部署验收。</p>
     </section>

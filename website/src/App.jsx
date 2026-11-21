@@ -71,6 +71,9 @@ export default function App({ initialPage = 'index' }) {
     return () => observer.disconnect();
   }, [route]);
   const page = pages.find(item => item.id === route), Page = content[route];
+  // The client route renders the application shell alone: no website header,
+  // footer, quick search or max-width wrapper around it.
+  if (route === 'console' && Page) return <Page />;
   return <>
     <a className="skip" href="#main">跳转到正文</a>
     <header className={`header ${scrolled ? 'scrolled' : ''}`}>
@@ -101,7 +104,7 @@ export default function App({ initialPage = 'index' }) {
       <div className="footer-top">
         <div><Brand /><p>AI 自主渗透测试系统</p></div>
         <div className="footer-links">
-          <a href="console.html">交互体验</a>
+          <a href="console.html">客户端</a>
           <a href="architecture.html">架构剖析</a>
           <a href="downloads.html">下载与安装</a>
           <a href="credits.html">开源致谢</a>

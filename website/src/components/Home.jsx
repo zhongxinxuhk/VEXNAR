@@ -5,7 +5,6 @@
 import React from 'react';
 import { External, Icon } from './UI.jsx';
 import { REPO } from '../content.js';
-import AgentConsole from '../console/Console.jsx';
 import Architecture3D from '../architecture/Arch3D.jsx';
 import ArchitectureLab from '../Architecture.jsx';
 
@@ -35,7 +34,7 @@ export default function Home() {
         <h1>让一支 Agent 团队，<br /><em>完成可复核的渗透测试。</em></h1>
         <p className="lead">配置目标与模型，启动探索。任务、工具调用、资产关系与验证证据留在同一个工作区；每个结论都能回到源码、流量与复现步骤。</p>
         <div className="v-actions">
-          <a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />进入交互控制台</a>
+          <a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />打开客户端</a>
           <a className="v-btn v-btn-secondary" href="architecture.html"><Icon name="cube" size={15} />3D 架构剖析</a>
           <External href={REPO} className="v-btn v-btn-ghost"><Icon name="github" size={15} />查看源码</External>
         </div>
@@ -64,29 +63,40 @@ export default function Home() {
       <div><b>0</b><span>浏览器内模型密钥</span><small>网关只监听回环地址</small></div>
     </div>
 
-    <section className="v-section v-console-section" id="console">
+    <section className="v-section v-console-section" id="client">
       <div className="v-head">
         <div>
-          <span className="v-eyebrow">AGENT CONSOLE</span>
-          <h2>Agent 首页，原样搬进来。</h2>
+          <span className="v-eyebrow">CLIENT · AGENT HOME</span>
+          <h2>客户端 Agent 首页，打开就是完整界面。</h2>
         </div>
-        <p>侧边栏、会话列表、工具调用、审批卡片、待办、模型选择都可以点击。演示脚本在浏览器内运行，不会发出网络请求。</p>
+        <p>官网只放截图，不把客户端塞进网页里。点开就是全屏应用外壳：会话、工具调用、审批、探索图与系统配置，全部可以点击。</p>
       </div>
-      <div className="v-console-shell">
-        <div className="v-console-bar">
-          <div className="v-console-tags">
-            <span><Icon name="chat" size={12} />对话</span>
-            <span><Icon name="graph" size={12} />探索图</span>
-            <span><Icon name="shield" size={12} />审批</span>
-            <span><Icon name="moon" size={12} />深色外观</span>
+      <div className="v-client-grid">
+        <figure className="v-client-frame">
+          <img src="assets/client/console-chat.jpg" alt="VEXNAR 客户端 Agent 首页：主 Agent 编排会话、工具调用与审批卡片" width="1600" height="1000" loading="eager" />
+          <img className="v-client-mobile" src="assets/client/console-chat-mobile.jpg" alt="客户端在窄屏下的会话列表" width="390" height="844" loading="lazy" />
+          <figcaption>
+            <span>客户端真实界面截图 · 演示数据 · 不连接服务端</span>
+            <a href="console.html">打开客户端体验<Icon name="chevronRight" size={12} /></a>
+          </figcaption>
+        </figure>
+        <div className="v-client-side">
+          <div className="v-client-list">
+            {[
+              ['chat', '对话与工具', '主 Agent、Planner 与 5 个 Worker 的会话；工具调用可以展开输入与输出。'],
+              ['shield', '审批与拦截', '允许或拒绝会同步到审批记录与侧边栏角标；拦截规则可以启停。'],
+              ['graph', '探索图与资产', '13 节点的探索链路、资产树、流量证据，都可以点开查看。'],
+              ['settings', '系统装配', 'LLM、Agent、MCP、Skill、工具策略、日志与系统配置。']
+            ].map(([icon, title, text]) => <div className="v-client-row" key={title}>
+              <i><Icon name={icon} size={15} /></i>
+              <div><b>{title}</b><p>{text}</p></div>
+            </div>)}
           </div>
-          <span className="v-console-note">演示数据 · 保留域名 .test · 不执行任何工具</span>
-        </div>
-        <AgentConsole initialView="chat" />
-        <div className="v-console-links">
-          <a href="console.html"><Icon name="expand" size={13} />在独立页面打开控制台</a>
-          <a href="architecture.html#architecture-lab"><Icon name="layers" size={13} />查看四套节点级图</a>
-          <a href="downloads.html"><Icon name="download" size={13} />下载与安装</a>
+          <div className="v-client-actions">
+            <a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={14} />打开客户端</a>
+            <a className="v-btn v-btn-secondary" href="architecture.html"><Icon name="cube" size={14} />看背后的架构</a>
+          </div>
+          <p className="v-client-note">客户端页面不加载官网导航与页脚；窗口标题栏提供「返回官网」。演示状态只停留在当前页面，刷新即回到初始快照。</p>
         </div>
       </div>
     </section>
@@ -140,7 +150,7 @@ export default function Home() {
     <section className="v-section">
       <div className="v-head"><div><span className="v-eyebrow">PROJECT</span><h2>开源项目正在发生的变化。</h2></div><p>版本、分支、提交与贡献者来自公开 GitHub 仓库；官网只展示公开字段。</p></div>
       <div className="v-link-grid">
-        <a href="console.html"><Icon name="chat" size={17} /><b>交互体验</b><p>完整的 Agent 控制台演示：对话、审批、探索图与系统配置。</p></a>
+        <a href="console.html"><Icon name="chat" size={17} /><b>客户端</b><p>全屏 Agent 首页：对话、工具调用、审批、探索图与系统配置。</p></a>
         <a href="architecture.html"><Icon name="cube" size={17} /><b>架构剖析</b><p>3D 分层、层间契约、设计取舍与四套节点级架构图。</p></a>
         <a href="releases.html"><Icon name="book" size={17} /><b>版本更新</b><p>公开发行说明、平台安装包与预发布信息。</p></a>
         <a href="credits.html"><Icon name="users" size={17} /><b>开源致谢</b><p>使用到的开源项目、交互参考与许可证来源。</p></a>
