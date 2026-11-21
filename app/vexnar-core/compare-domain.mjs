@@ -108,6 +108,15 @@ const goDaily = await get(GO, '/api/tokens/daily?days=30')
 const tsDaily = await get(TS, '/api/tokens/daily?days=30')
 check('daily tokens', same(goDaily, tsDaily), `${goDaily.length}/${tsDaily.length}`)
 
+for (const taskId of ['1137', '657']) {
+  const goCoverage = await get(GO, `/api/tasks/${taskId}/coverage`)
+  const tsCoverage = await get(TS, `/api/tasks/${taskId}/coverage`)
+  check(`coverage ${taskId}`, same(goCoverage, tsCoverage), `${goCoverage.denominator}/${tsCoverage.denominator}`)
+}
+const goTraffic = await get(GO, '/api/exploration/findings/2976/traffic')
+const tsTraffic = await get(TS, '/api/exploration/findings/2976/traffic')
+check('finding traffic', same(goTraffic, tsTraffic), `${goTraffic.bindings.length}/${tsTraffic.bindings.length}`)
+
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }
 process.exit(failed ? 1 : 0)

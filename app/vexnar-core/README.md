@@ -29,7 +29,8 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 
 - 已迁移的 14 组路由由 TS 处理；
 - 其余 `/api/*` 原样转发给 Go（方法、body、Authorization/cookie、状态码）；
-- `VEXNAR_FALLBACK_METHODS=GET` 可只放行读请求，未迁移的写请求直接 501；
+- `VEXNAR_FALLBACK_METHODS=GET` 可只放行读请求；
+- `VEXNAR_FALLBACK_ALLOW=/api/llm,/api/chat` 只放行指定前缀，其余 501；
 - 未配置 fallback 时返回 `501 {"error":"route not migrated"}`；
 - `GET /api/_migration` 返回原生路由清单与当前 fallback 地址。
 
@@ -61,11 +62,13 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/notify/channels` | ✅ |
 | `GET /api/settings` | ✅（只暴露 Go 的 20 个白名单键） |
 | `GET /api/assets/counts` | ✅ |
+| `GET /api/tasks/:id/coverage` | ✅ 范围/已测/by_type/pct，含直接来源任务上下文 |
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |
 | `GET /api/tasks`、`/api/tasks/:id` | ✅ 核心字段 + tokens/goals/in_flight/findings 已对账；`last_activity_unix` 为引擎内存值，暂不比较 |
 | `GET /api/tasks/:id/metrics` | 🟡 漏洞计数已填，其余验证类指标待迁移 |
 | `GET /api/assets` | ✅ `task_id` 过滤、完整 DTO、DSL 搜索（AND/OR/括号/比较）已对账 |
-| `GET /api/exploration/findings`、`/:id` | 🟡 分页 + severity/status/vulnclass/task_id/q 过滤已对账；traffic 版本字段暂为 0 |
+| `GET /api/exploration/findings`、`/:id` | ✅ 分页/过滤已对账 |
+| `GET /api/exploration/findings/:id/traffic` | ✅ 绑定 + 快照摘要（正文头清空）已对账 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
 | `GET /api/tasks/:id/goals` | ✅ 目标列表（id/text/vulnclass/state/origin/ts） |
 | `POST/PATCH/DELETE /api/tasks/:id/goals` | ✅ 目标新增/修改/删除；新增挂到根事实 `spawns` 边 |

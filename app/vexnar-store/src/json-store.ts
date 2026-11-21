@@ -97,6 +97,72 @@ export function jsonStore(root: string): Store {
     companies: {
       list: async () => [...(await load('companies', companyRow))]
     },
+    traffic: async (findingId) => {
+      const finding = (await load('findings', findingRow)).find((row) => String(row.id) === String(findingId))
+      if (!finding) return null
+      const bindings = (await load('finding_traffic_bindings', { parse: (value) => value })).filter((row) => String(row.finding_id) === String(findingId)).sort((a, b) => Number(a.position) - Number(b.position) || Number(a.id) - Number(b.id))
+      const snapshots = await load('traffic_evidence_snapshots', { parse: (value) => value })
+      const byId = new Map(snapshots.map((row) => [String(row.id), row.snapshot]))
+      return {
+        finding_id: String(finding.id),
+        version: Number(finding.evidence_version ?? 0),
+        report_version: Number(finding.report_evidence_version ?? 0),
+        bindings: bindings.map((row) => ({
+          id: String(row.id), finding_id: String(row.finding_id), snapshot_id: String(row.snapshot_id),
+          role: row.role, note: row.note ?? '', position: Number(row.position), created_at: row.created_at,
+          snapshot: byId.get(String(row.snapshot_id)) ?? null
+        }))
+      }
+    },
+    coverage: async (taskId) => {
+      const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
+      if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] }
+      const relations = await load('task_relations', { parse: (value) => value })
+      const contextIds = new Set([String(taskId), ...relations.filter((row) => String(row.task_id) === String(taskId)).map((row) => String(row.source_task_id))])
+      const tasks = await load('tasks', taskRow)
+      const contextExplorations = new Set(tasks.filter((row) => contextIds.has(String(row.id))).map((row) => Number(row.exploration_id)))
+      const scopes = (await load('task_scope', { parse: (value) => value })).filter((row) => contextIds.has(String(row.task_id)))
+      const assets = await load('assets', assetRow)
+      const nodes = await load('nodes', nodeRow)
+      const anchors = await load('anchors', { parse: (value) => value })
+      const contextNodes = new Map(nodes.filter((node) => contextExplorations.has(Number(node.exploration_id))).map((node) => [String(node.id), node]))
+      const factIds = new Set([...contextNodes.values()].filter((node) => node.kind === 'fact').map((node) => String(node.id)))
+      const testedIds = new Set(anchors.filter((anchor) => factIds.has(String(anchor.node_id))).map((anchor) => Number(anchor.asset_id)))
+      const inCidr = (ip: string, cidr: string) => {
+        const [network, bitsRaw] = cidr.split('/')
+        const bits = Number(bitsRaw)
+        const toInt = (value: string) => value.split('.').reduce((acc, part) => ((acc << 8) + Number(part)) >>> 0, 0)
+        if (!ip || !network || !Number.isFinite(bits) || !ip.includes('.') || !network.includes('.')) return false
+        const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0
+        return (toInt(ip) & mask) === (toInt(network) & mask)
+      }
+      const normalizeIcp = (value: unknown) => String(value ?? '').toLowerCase().replace(/\s+/g, '')
+      const targets = new Map<number, string>()
+      for (const asset of assets) {
+        const anchored = anchors.some((anchor) => Number(anchor.asset_id) === Number(asset.id) && contextNodes.has(String(anchor.node_id)))
+        if (anchored) targets.set(Number(asset.id), asset.type)
+        const matched = scopes.some((scope) => {
+          if (scope.kind === 'company') return asset.company_id != null && Number(asset.company_id) === Number(scope.company_id)
+          if (scope.kind === 'root_domain') return String(asset.root_domain ?? '') === String(scope.domain)
+          if (scope.kind === 'subdomain') return String(asset.domain ?? '') === String(scope.domain)
+          if (scope.kind === 'ip' || scope.kind === 'cidr') return inCidr(String(asset.ip ?? ''), String(scope.net))
+          if (scope.kind === 'icp') return normalizeIcp(asset.icp) === normalizeIcp(scope.value) || normalizeIcp(asset.app_icp) === normalizeIcp(scope.value)
+          return false
+        })
+        if (matched) targets.set(Number(asset.id), asset.type)
+      }
+      const byType = new Map<string, { type: string; total: number; tested: number }>()
+      for (const [id, type] of targets) {
+        const entry = byType.get(type) ?? { type, total: 0, tested: 0 }
+        entry.total += 1
+        if (testedIds.has(id)) entry.tested += 1
+        byType.set(type, entry)
+      }
+      const list = [...byType.values()].sort((a, b) => a.type.localeCompare(b.type))
+      const denominator = list.reduce((sum, item) => sum + item.total, 0)
+      const tested = list.reduce((sum, item) => sum + item.tested, 0)
+      return { scope_rows: scopes.length, denominator, tested, pct: denominator > 0 ? tested / denominator : null, by_type: list }
+    },
     constraints: {
       list: async (taskId) => {
         const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))

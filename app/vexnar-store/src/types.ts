@@ -107,6 +107,8 @@ export interface Store {
   constraints: {
     list(taskId: string): Promise<any[]>
   }
+  coverage(taskId: string): Promise<{ scope_rows: number; denominator: number; tested: number; pct: number | null; by_type: any[] }>
+  traffic(findingId: string): Promise<any | null>
   activity: {
     history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
     tokenStats(taskId: string): Promise<{ workers: any[]; sessions: any[]; total: any }>

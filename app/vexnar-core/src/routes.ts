@@ -589,6 +589,39 @@ api.post('/api/tasks/:id/intents/:iid/control', async (c) => {
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.get('/api/exploration/findings/:id/traffic', async (c) => {
+  const out = await store.traffic(c.req.param('id'))
+  if (!out) return c.json({ error: 'finding not found' }, 404)
+  const snapshotDto = (snap: any) => {
+    if (!snap) return snap
+    return {
+      id: snap.id,
+      source_traffic_id: snap.source_traffic_id ?? '',
+      captured_at: Number(snap.captured_at ?? 0),
+      url: snap.url ?? '',
+      method: snap.method ?? '',
+      status: Number(snap.status ?? 0),
+      content_type: snap.content_type ?? '',
+      req_hash: snap.req_hash ?? '',
+      resp_hash: snap.resp_hash ?? '',
+      req_len: Number(snap.req_len ?? 0),
+      resp_len: Number(snap.resp_len ?? 0),
+      created_at: String(snap.created_at ?? '')
+    }
+  }
+  const bindings = out.bindings.map((binding: any) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }))
+  return c.json({ ...out, bindings })
+})
+
+api.get('/api/tasks/:id/coverage', async (c) => {
+  const task = await store.tasks.get(c.req.param('id'))
+  if (!task) return c.json({ error: 'task not found' }, 404)
+  if (task.coverage_enabled === false) {
+    return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] })
+  }
+  return c.json({ enabled: true, ...(await store.coverage(c.req.param('id'))) })
+})
+
 api.get('/api/tasks/:id/goals', async (c) => {
   const taskId = c.req.param('id')
   const task = await store.tasks.get(taskId)

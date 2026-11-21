@@ -49,13 +49,13 @@ export function pgStore(connection: {
     },
     findings: {
       list: async (limit = 500) => {
-        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence,
+        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, evidence_version, report_evidence_version,
           task_id::text AS task_id, ${rfc('created_at')} AS created_at_text
           FROM findings ORDER BY created_at DESC LIMIT $1`, [limit])
         return rows.map((row) => findingRow.parse(row))
       },
       get: async (id) => {
-        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, report,
+        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, report, evidence_version, report_evidence_version,
           task_id::text AS task_id, ${rfc('created_at')} AS created_at_text
           FROM findings WHERE id = $1 OR node_id = $1 LIMIT 1`, [id])
         return rows[0] ? findingRow.parse(rows[0]) : undefined
@@ -120,6 +120,52 @@ export function pgStore(connection: {
         }
         return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }))
       }
+    },
+    traffic: async (findingId) => {
+      const [finding] = await q('SELECT id, evidence_version, report_evidence_version FROM findings WHERE id = $1', [findingId])
+      if (!finding) return null
+      const rows = await q(`SELECT b.id, b.finding_id, b.snapshot_id, b.role, b.note, b.position,
+        to_char(b.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(b.created_at, 'OF') || ':00' AS created_at,
+        to_jsonb(s) AS snapshot FROM finding_traffic_bindings b JOIN traffic_evidence_snapshots s ON s.id=b.snapshot_id
+        WHERE b.finding_id=$1 ORDER BY b.position, b.id`, [findingId])
+      return {
+        finding_id: String(finding.id), version: Number(finding.evidence_version), report_version: Number(finding.report_evidence_version),
+        bindings: rows.map((row) => ({ id: String(row.id), finding_id: String(row.finding_id), snapshot_id: String(row.snapshot_id), role: row.role, note: row.note ?? '', position: Number(row.position), created_at: row.created_at, snapshot: row.snapshot }))
+      }
+    },
+    coverage: async (taskId) => {
+      const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
+      if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] }
+      const [scope] = await q(`SELECT count(*)::int AS n FROM task_scope ts JOIN (SELECT $1::bigint AS task_id UNION ALL SELECT source_task_id FROM task_relations WHERE task_id=$1) ctx ON ctx.task_id=ts.task_id`, [taskId])
+      const rows = await q(`WITH context_tasks AS (
+        SELECT t.id AS task_id, t.exploration_id FROM tasks t WHERE t.id=$1 AND t.deleted_at IS NULL
+        UNION ALL
+        SELECT source.id, source.exploration_id FROM task_relations relation
+        JOIN tasks source ON source.id=relation.source_task_id AND source.deleted_at IS NULL WHERE relation.task_id=$1),
+        target AS (
+          SELECT DISTINCT a.id, a.type FROM assets a JOIN task_scope ts ON (
+            (ts.kind='company' AND a.company_id = ts.company_id)
+            OR (ts.kind='root_domain' AND a.root_domain = ts.domain)
+            OR (ts.kind='subdomain' AND a.domain = ts.domain)
+            OR (ts.kind IN ('ip','cidr') AND ts.net >>= try_inet(a.ip))
+            OR (ts.kind='icp' AND (lower(regexp_replace(COALESCE(a.icp,''), '[[:space:]]+', '', 'g')) = ts.value
+              OR lower(regexp_replace(COALESCE(a.app_icp,''), '[[:space:]]+', '', 'g')) = ts.value)))
+          JOIN context_tasks ctx ON ctx.task_id=ts.task_id
+          UNION
+          SELECT a.id, a.type FROM assets a
+          JOIN exploration_anchors ea ON ea.asset_id=a.id
+          JOIN exploration_nodes en ON en.id=ea.node_id
+          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id),
+        tested AS (
+          SELECT DISTINCT ea.asset_id FROM exploration_anchors ea
+          JOIN exploration_nodes en ON en.id=ea.node_id AND en.kind='fact'
+          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id)
+        SELECT t.type, count(*)::int AS total, count(*) FILTER (WHERE t.id IN (SELECT asset_id FROM tested))::int AS tested
+        FROM target t GROUP BY t.type ORDER BY t.type`, [taskId])
+      const denominator = rows.reduce((sum, row) => sum + Number(row.total), 0)
+      const tested = rows.reduce((sum, row) => sum + Number(row.tested), 0)
+      return { scope_rows: Number(scope.n), denominator, tested, pct: denominator > 0 ? tested / denominator : null,
+        by_type: rows.map((row) => ({ type: row.type, total: Number(row.total), tested: Number(row.tested) })) }
     },
     constraints: {
       list: async (taskId) => {
