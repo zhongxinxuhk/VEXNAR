@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { WorkspaceProjectRow } from './chat/WorkspaceProjectRow'
 import { ConversationNotifications } from './chat/ConversationNotifications'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -10,6 +11,7 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
+  FolderOpen,
   Folder,
   Plus,
   Search,
@@ -42,6 +44,7 @@ export function Sidebar(): React.JSX.Element {
   const t = useT()
   const sidebarWidth = useLayout((state) => state.sidebarWidth)
   const sidebarOpen = useLayout((state) => state.sidebarOpen)
+  const initializing = useAppStore((state) => state.initializing)
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const draftWorkspace = useAppStore((state) => state.draftWorkspace)
@@ -57,6 +60,7 @@ export function Sidebar(): React.JSX.Element {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const projectRows = useAppStore((state) => state.projects)
   const [projectsCollapsed, setProjectsCollapsed] = useState(false)
+  const [recentCollapsed, setRecentCollapsed] = useState(false)
   const [pinOrder, setPinOrder] = useState(readPinOrder)
   const [previewSizes, setPreviewSizes] = useState<Record<string, number>>({})
   const [sortMode, setSortMode] = useState<'recent' | 'name'>('recent')
@@ -227,14 +231,16 @@ export function Sidebar(): React.JSX.Element {
           setView('chat')
           void newSession()
         }}
-        className="mx-2 mt-4 flex h-8 shrink-0 items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-medium text-ink-soft transition-colors hover:bg-[var(--codex-hover)] hover:text-ink"
+        className="mx-2.5 mt-3 flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-line-soft bg-bg/70 px-3 text-[13px] font-medium text-ink transition-colors hover:bg-panel-2"
       >
         <SquarePen className="h-[16px] w-[16px] text-muted" strokeWidth={1.8} />
         {t('app.newChat')}
       </button>
 
       <div className="mt-1 min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-        {query.trim() ? (
+        {initializing && sessions.length === 0 && projectRows.length === 0 ? (
+          <p role="status" className="px-3 py-4 text-xs text-muted">{t('app.workspaceLoading')}</p>
+        ) : query.trim() ? (
           <div className="pt-3">
             <div className="px-2 pb-1.5 text-[11px] font-medium text-muted">{t('app.threads')}</div>
             {filtered.length === 0 ? (
@@ -274,10 +280,11 @@ export function Sidebar(): React.JSX.Element {
             <div className="flex items-center gap-1 px-2 pb-1 pt-4">
               <button
                 type="button"
+                aria-expanded={!projectsCollapsed}
                 onClick={() => setProjectsCollapsed((value) => !value)}
                 className="flex items-center gap-1 text-[11px] font-medium text-muted transition-colors hover:text-ink-soft"
               >
-                {t('app.projects')}
+                {t('app.workspaceSection')}
                 <ChevronDown
                   className={cn(
                     'h-3 w-3 strokeWidth-2 transition-transform',
@@ -287,15 +294,28 @@ export function Sidebar(): React.JSX.Element {
                 />
               </button>
               <div className="ml-auto flex items-center gap-0.5">
-                <button
-                  type="button"
-                  aria-label={t('app.sortProjects')}
-                  title={t('app.sortProjects')}
-                  onClick={() => setSortMode((value) => (value === 'recent' ? 'name' : 'recent'))}
-                  className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-panel-3 hover:text-ink"
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" strokeWidth={1.8} />
-                </button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button type="button" aria-label={t('app.sortProjects')} title={t('app.sortProjects')}
+                      className="grid size-6 place-items-center rounded-md text-muted hover:bg-panel-3 hover:text-ink">
+                      <ArrowUpDown className="size-3.5" strokeWidth={1.8} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content align="end" sideOffset={5} className={menuContent}>
+                      <DropdownMenu.RadioGroup value={sortMode} onValueChange={(mode) => {
+                        if (mode === 'recent' || mode === 'name') setSortMode(mode)
+                      }}>
+                        {(['recent', 'name'] as const).map((mode) => (
+                          <DropdownMenu.RadioItem key={mode} value={mode} className={menuItem}>
+                            <span className="w-3"><DropdownMenu.ItemIndicator>✓</DropdownMenu.ItemIndicator></span>
+                            {t(mode === 'recent' ? 'app.projectSortRecent' : 'app.projectSortName')}
+                          </DropdownMenu.RadioItem>
+                        ))}
+                      </DropdownMenu.RadioGroup>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
                 <button
                   type="button"
                   aria-label={t('app.newProject')}
@@ -310,7 +330,7 @@ export function Sidebar(): React.JSX.Element {
 
             {projectsCollapsed ? null : visibleProjects.length === 0 ? (
               <div className="px-2 py-6 text-center text-[12px] leading-5 text-muted">
-                {t('app.noChats')}
+                {t('app.noWorkspaceProjects')}
               </div>
             ) : (
               visibleProjects.map((project) => {
@@ -318,37 +338,16 @@ export function Sidebar(): React.JSX.Element {
                 const visible = visibleSessionPreview(project.sessions, previewSizes[project.id] ?? SESSION_PREVIEW_SIZE, activeSessionId)
                 return (
                   <div key={project.id} className="mb-0.5" data-project-id={project.id}>
-                    <div className="group/project flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      title={project.rootPath}
-                      onClick={() => toggleProject(project.id)}
-                      className={cn(
-                        'group flex h-[31px] w-full items-center gap-2 rounded-[7px] px-2 text-left transition-colors',
-                        open && sessions.some((row) => row.projectId === project.id && row.id === activeSessionId)
-                          ? 'bg-panel-3/80 text-ink'
-                          : 'text-ink-soft hover:bg-[var(--codex-hover)] hover:text-ink'
-                      )}
-                    >
-                      <Folder className="h-[15px] w-[15px] shrink-0 text-muted" strokeWidth={1.7} />
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{project.name}</span>
-                      <ChevronRight
-                        className={cn(
-                          'h-3 w-3 shrink-0 text-muted/60 opacity-0 transition-all group-hover:opacity-100',
-                          open && 'rotate-90'
-                        )}
-                      />
-                    </button>
-                    <button type="button" aria-label={t('app.newProjectChat', { project: project.name })}
-                      className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-panel-3"
-                      onClick={() => {
+                    <WorkspaceProjectRow
+                      project={project}
+                      expanded={open}
+                      active={sessions.some((row) => row.projectId === project.id && row.id === activeSessionId)}
+                      toggle={() => toggleProject(project.id)}
+                      create={() => {
                         setExpanded((previous) => new Set(previous).add(project.id))
                         void newSession(project.rootPath)
-                      }}>
-                      <SquarePen className="size-3.5" aria-hidden="true" />
-                    </button>
-                    </div>
+                      }}
+                    />
                     {open ? (
                       <div className="mt-0.5">
                         {visible.length === 0 ? <p className="px-6 py-1 text-xs text-muted">{t('app.noChats')}</p> : null}
@@ -368,13 +367,16 @@ export function Sidebar(): React.JSX.Element {
               })
             )}
 
-            {/* 最近：无工作区的单次聊天，独立于「项目」分组（ChatGPT 的顶层会话） */}
             {looseSessions.length > 0 ? (
-              <div className="mt-1">
-                <div className="flex items-center gap-1 px-2 pb-1 pt-4">
-                  <span className="text-[11px] font-medium text-muted">{t('app.recentChats')}</span>
-                </div>
-                {recent.map((session) => (
+              <section aria-label={t('app.recentChats')} className="mb-2 mt-3">
+                <button type="button" aria-expanded={!recentCollapsed}
+                  onClick={() => setRecentCollapsed((value) => !value)}
+                  className="flex h-8 w-full items-center gap-1.5 rounded-lg px-2 text-left text-[13px] text-ink-soft hover:bg-panel-2">
+                  <ChevronRight className={cn('size-3 text-muted transition-transform', !recentCollapsed && 'rotate-90')} />
+                  {recentCollapsed ? <Folder className="size-3.5 text-muted" /> : <FolderOpen className="size-3.5 text-muted" />}
+                  {t('app.defaultConversationWorkspace')}
+                </button>
+                {recentCollapsed ? null : recent.map((session) => (
                   <SessionRow
                     key={session.id}
                     sidebar
@@ -382,8 +384,8 @@ export function Sidebar(): React.JSX.Element {
                     active={view === 'chat' && session.id === activeSessionId}
                   />
                 ))}
-                {previewControl('recent', looseSessions.length, recent.length)}
-              </div>
+                {!recentCollapsed ? previewControl('recent', looseSessions.length, recent.length) : null}
+              </section>
             ) : null}
 
             {sessions.length === 0 ? (

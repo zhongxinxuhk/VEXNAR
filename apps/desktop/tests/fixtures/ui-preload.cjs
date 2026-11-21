@@ -541,6 +541,9 @@ contextBridge.exposeInMainWorld('vexnar', {
           createdAt: Date.now()
         })
         const list = conversationActivities[id] || (conversationActivities[id] = [])
+        const conversation = conversations.find((row) => String(row.id) === id)
+        if (conversation?.title === '新对话') conversation.title = [...(body?.message || '附件消息')].slice(0, 40).join('')
+
         list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'user', summary: (body?.message || '图片').slice(0, 40), detail: body?.message || '图片' })
         list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'text', summary: '收到', detail: '收到，这条回答来自 Go 后端会话活动流。' })
         list.push({ seq: ++activitySeq, worker: 'auto', ts: new Date().toISOString(), kind: 'result', summary: '完成', detail: '完成', input_tokens: 42 })

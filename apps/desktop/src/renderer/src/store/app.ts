@@ -157,8 +157,9 @@ type AppState = {
   openProjectTask: (focus: ProjectTaskFocus) => void
   setProjectTaskSession: (sessionKey: string, sessionTitle?: string) => void
   closeProjectTask: () => void
-  removeSession: (id: string) => Promise<void>
+  removeSession: (id: string) => Promise<boolean>
   pinSession: (id: string, pinned: boolean) => Promise<void>
+  renameSession: (id: string, title: string) => Promise<void>
   contextUsage: Record<string, { model: string; promptTokens: number }>
   send: (text: string, attachments?: ImageAttachment[]) => Promise<boolean>
   cancel: () => Promise<void>
@@ -192,7 +193,6 @@ const emptySettings: PublicSettings = {
 }
 
 const api = window.vexnar
-const newChatTitle = (): string => translate(useI18n.getState().locale, 'app.newThread')
 
 /**
  * Live transcript buffer for the open conversation. The Go backend is the only
@@ -676,17 +676,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  removeSession: async (id) => {
+  renameSession: async (id, title) => {
+    const updated = toSession(await conversations.rename(id, title))
+    set((state) => ({
+      sessions: state.sessions.map((row) => row.id === id
+        ? { ...updated, running: row.running, pendingFirstSend: row.pendingFirstSend }
+        : row)
+    }))
+  },
 
+  removeSession: async (id) => {
     try {
       await conversations.remove(id)
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) })
-      return
+      return false
     }
     const sessions = get().sessions.filter((session) => session.id !== id)
     set({ sessions })
     if (id === get().activeSessionId) await get().newSession()
+    return true
   },
 
   send: async (text, attachments = []) => {
@@ -702,7 +711,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ busy: true, agentStatus: 'streaming', error: null })
     try {
       if (!sessionId) {
-        const created = await conversations.create(DEFAULT_AGENT_KEY, newChatTitle(), draftWorkspace)
+        const created = await conversations.create(DEFAULT_AGENT_KEY, '', draftWorkspace)
         const session = { ...toSession(created), pendingFirstSend: true }
         firstSession = session
         sessionId = session.id
@@ -724,6 +733,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (accepted?.pendingFirstSend) {
         const session = { ...accepted, running: true, pendingFirstSend: false }
         set((state) => ({ sessions: [session, ...state.sessions.filter((row) => row.id !== session.id)] }))
+        void refreshSessions()
       }
       if (selection === sessionSelection) {
         if (!activeSessionId) useDrafts.getState().patch(sessionId, { text: '', images: [] })

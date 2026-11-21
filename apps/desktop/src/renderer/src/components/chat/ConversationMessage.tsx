@@ -69,11 +69,12 @@ export function ConversationMessage({
   const actionClass = 'inline-flex min-h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-muted transition-colors hover:bg-panel-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent'
   return (
     <motion.article
+      data-chat-message={message.id}
+      className={cn('scroll-mt-4 flex w-full items-start gap-2.5', isUser ? 'justify-end' : 'justify-start')}
       aria-label={t(isUser ? 'chat.userMessage' : 'chat.assistantMessage')}
       initial={reducedMotion ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className={cn('flex w-full items-start gap-2.5', isUser ? 'justify-end' : 'justify-start')}
     >
       {!isUser ? (
         <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-[9px] border border-accent/15 bg-accent/8 text-accent">
@@ -83,7 +84,7 @@ export function ConversationMessage({
       <div
         className={cn(
           'min-w-0',
-          isUser ? 'max-w-[78%]' : 'w-full max-w-[760px]'
+          isUser ? 'max-w-[74%]' : 'w-full'
         )}
       >
         <header className={cn('mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-muted', isUser && 'justify-end px-1')}>

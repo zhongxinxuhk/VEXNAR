@@ -272,7 +272,7 @@ export function ContextBar({
   return (
     <div
       data-testid="composer-context"
-      className="mx-3 -mb-2 flex min-h-11 items-center gap-1 rounded-t-2xl bg-panel-2 px-2 pb-2 text-xs text-ink-soft"
+      className="mb-1 flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-line-soft bg-panel/75 px-1.5 py-0.5 text-xs text-ink-soft"
     >
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>

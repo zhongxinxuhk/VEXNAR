@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+ * Repository: https://github.com/zhongxinxuhk/VEXNAR
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+.vex-chat-workspace {
+  container: vexnar-chat / inline-size;
+  --chat-reading-width: clamp(680px, 64cqw, 920px);
+  --chat-side-pad: clamp(12px, 2.8cqw, 32px);
+}
+
+.vex-workspace-transcript {
+  overflow-anchor: none;
+  overscroll-behavior-y: contain;
+}
+
+.vex-workspace-column {
+  margin-inline: auto;
+  width: min(100%, var(--chat-reading-width));
+}
+
+.vex-workspace-composer {
+  margin-inline: auto;
+  width: min(100%, calc(var(--chat-reading-width) + 32px));
+}
+
+.vex-workspace-transcript, .vex-workspace-composer-zone {
+  padding-inline: var(--chat-side-pad);
+}
+
+.vex-workspace-card {
+  border-color: var(--color-line);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--color-ink) 5%, transparent);
+}
+
+.vex-workspace-card:focus-within {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-line));
+}
+
+.vex-workspace-turns {
+  align-content: center;
+  display: grid;
+  justify-items: center;
+  padding-block: 12px;
+  position: absolute;
+  right: 3px;
+  top: 24%;
+  z-index: 5;
+}
+
+@container vexnar-chat (max-width: 780px) {
+  .vex-workspace-turns {
+    display: none;
+  }
+}

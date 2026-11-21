@@ -471,6 +471,46 @@ app.whenReady().then(async () => {
     await wait(`window.__uiFixture.snapshot().lastSend?.message==='独立草稿'`)
     await wait(`window.__uiFixture.sessionIndex().length===${listSize + 2} && window.__uiFixture.sessionIndex().some(row=>String(row.id)===window.__uiFixture.snapshot().lastSend.sessionId && row.workspace==='' && row.project_id==null)`)
     await wait(`window.__uiFixture.sessionIndex().find(row=>row.id===1).project_id===1`)
+    await wait(`[...(${sidebar}).querySelectorAll('button')].some(el=>el.title==='独立草稿')`)
+    w.setSize(1440, 1000)
+    await wait(`document.querySelector('[data-chat-workspace]').getBoundingClientRect().width > 780`)
+    await wait(`!!document.querySelector('button[aria-label="发送"]')`)
+    await changeDraft('第二轮核对')
+    await run(`document.querySelector('button[aria-label="发送"]').click()`)
+    await wait(`window.__uiFixture.snapshot().lastSend?.message==='第二轮核对' && document.querySelectorAll('[data-workspace-turn]').length===2`)
+    await run(`document.querySelector('[data-workspace-turn]').click()`)
+    await wait(`document.querySelector('article[aria-label="用户消息"]').textContent.includes('独立草稿')`)
+    await wait(`!!document.querySelector('button[aria-label="发送"]')`)
+    await new Promise(resolve => setTimeout(resolve, 220))
+    fs.writeFileSync(path.join(output, 'dsh-workspace-conversation.png'), (await w.webContents.capturePage()).toPNG())
+    const createdRow = `[...(${sidebar}).querySelectorAll('button')].find(el=>el.title==='独立草稿')`
+    await run(`(${createdRow}).dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`)
+    await wait(`!!document.querySelector('[role="dialog"] input[aria-label="会话标题"]')`)
+    await run(`(()=>{const input=document.querySelector('[role="dialog"] input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'验收会话');input.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+    await run(`document.querySelector('[role="dialog"] button[type="submit"]').click()`)
+    await wait(`!document.querySelector('[role="dialog"]') && [...(${sidebar}).querySelectorAll('button')].some(el=>el.title==='验收会话')`)
+    const renamedRow = `[...(${sidebar}).querySelectorAll('button')].find(el=>el.title==='验收会话')`
+    const askDelete = async () => {
+      await run(`(${renamedRow}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,button:2}))`)
+      await wait(`[...document.querySelectorAll('[role="menuitem"]')].some(el=>el.textContent.trim()==='删除')`)
+      await clickMenu('删除')
+      await wait(`document.querySelector('[role="dialog"]')?.textContent.includes('验收会话')`)
+    }
+    await askDelete()
+    await run(`[...document.querySelectorAll('[role="dialog"] button')].find(el=>el.textContent==='取消').click()`)
+    await wait(`!document.querySelector('[role="dialog"]') && !!(${renamedRow})`)
+    await askDelete()
+    await run(`document.querySelector('[role="dialog"] button[type="submit"]').click()`)
+    await wait(`!document.querySelector('[role="dialog"]') && !(${renamedRow}) && window.__uiFixture.sessionIndex().length===${listSize + 1}`)
+    await wait(`!!document.querySelector('[data-chat-workspace] h1')`)
+    await new Promise(resolve => setTimeout(resolve, 220))
+    fs.writeFileSync(path.join(output, 'dsh-workspace-empty.png'), (await w.webContents.capturePage()).toPNG())
+    const lightSurface = await run(`getComputedStyle(document.querySelector('[data-testid="chat-composer"]')).backgroundColor`)
+    await run(`document.documentElement.dataset.theme='dark'`)
+    await wait(`getComputedStyle(document.querySelector('[data-testid="chat-composer"]')).backgroundColor!==${JSON.stringify(lightSurface)}`)
+    fs.writeFileSync(path.join(output, 'dsh-workspace-dark.png'), (await w.webContents.capturePage()).toPNG())
+    await run(`document.documentElement.dataset.theme='light'`)
+
     const stopCount = await run(`window.__uiFixture.snapshot().stopConversationCalls`)
     await run(`window.__uiFixture.seedThinking()`)
     await run(openHistoryFixture)
@@ -483,7 +523,7 @@ app.whenReady().then(async () => {
 
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: paged chat history, chat actions and phases, individual chronological tool rows and expanded details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, project and loose draft lifecycle, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: chat workspace, rename and confirmed deletion, turn navigation, paged chat history, chat actions and phases, individual chronological tool rows and expanded details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, project and loose draft lifecycle, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

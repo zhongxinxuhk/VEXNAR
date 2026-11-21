@@ -2,9 +2,11 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useState } from 'react'
+import { SessionDialog, type SessionAction } from './chat/SessionDialog'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { ArrowDown, ArrowUp, Loader2, Copy, MoreHorizontal, Pin, PinOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Loader2, Copy, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from 'lucide-react'
 import type { Session } from '@shared/contracts'
 import { useI18n, useT } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -45,22 +47,23 @@ export function SessionRow({
   const selectSession = useAppStore((state) => state.selectSession)
   const setView = useAppStore((state) => state.setView)
   const pinSession = useAppStore((state) => state.pinSession)
-  const removeSession = useAppStore((state) => state.removeSession)
+  const [action, setAction] = useState<SessionAction | null>(null)
 
-  return (
+  return (<>
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>
         <div
           className={cn(
             showWorkspace && 'min-h-10',
-            sidebar && 'pl-6',
             'group relative flex min-h-[30px] items-center rounded-[7px] pl-2 pr-1',
+            sidebar && 'pl-[31px]',
             active ? 'bg-[var(--codex-active)] text-ink' : 'text-ink-soft hover:bg-[var(--codex-hover)]'
           )}
         >
           <button
             type="button"
             aria-current={active ? 'page' : undefined}
+            onDoubleClick={() => setAction('rename')}
             onClick={() => {
               if (sidebar) setView('chat')
               void selectSession(session.id)
@@ -108,12 +111,15 @@ export function SessionRow({
                   {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                   {session.pinned ? t('app.unpin') : t('app.pin')}
                 </DropdownMenu.Item>
+                <DropdownMenu.Item className={menuItem} onSelect={() => setAction('rename')}>
+                  <Pencil className="size-3.5" />{t('app.renameSessionTitle')}
+                </DropdownMenu.Item>
                 {moveUp ? <DropdownMenu.Item className={menuItem} onSelect={moveUp}><ArrowUp className="size-3.5" />{t('app.movePinUp')}</DropdownMenu.Item> : null}
                 {moveDown ? <DropdownMenu.Item className={menuItem} onSelect={moveDown}><ArrowDown className="size-3.5" />{t('app.movePinDown')}</DropdownMenu.Item> : null}
                 <DropdownMenu.Separator className="my-1 h-px bg-line-soft" />
                 <DropdownMenu.Item
                   className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
-                  onSelect={() => void removeSession(session.id)}
+                  onSelect={() => setAction('delete')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   {t('app.delete')}
@@ -132,6 +138,9 @@ export function SessionRow({
             {session.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
             {session.pinned ? t('app.unpin') : t('app.pin')}
           </ContextMenu.Item>
+          <ContextMenu.Item className={menuItem} onSelect={() => setAction('rename')}>
+            <Pencil className="size-3.5" />{t('app.renameSessionTitle')}
+          </ContextMenu.Item>
           <ContextMenu.Item
             className={menuItem}
             onSelect={() => void window.vexnar.app.copyText(session.title)}
@@ -142,7 +151,7 @@ export function SessionRow({
           <ContextMenu.Separator className="my-1 h-px bg-line-soft" />
           <ContextMenu.Item
             className={cn(menuItem, 'text-danger data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger')}
-            onSelect={() => void removeSession(session.id)}
+            onSelect={() => setAction('delete')}
           >
             <Trash2 className="h-3.5 w-3.5" />
             {t('app.delete')}
@@ -150,5 +159,6 @@ export function SessionRow({
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
-  )
+    {action ? <SessionDialog key={action} action={action} session={session} close={() => setAction(null)} /> : null}
+  </>)
 }

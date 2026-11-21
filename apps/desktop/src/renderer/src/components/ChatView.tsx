@@ -2,6 +2,8 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { WorkspaceTurns } from './chat/WorkspaceTurns'
+import './chat/workspace.css'
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
@@ -89,9 +91,9 @@ function EmptyState(): React.JSX.Element {
     : t('chat.buildTitleNoProject')
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 pb-0 pt-14">
-      <CloudMark className="h-[52px] w-[52px] text-[#c6c7cb]" />
-      <h1 className="mt-6 max-w-[760px] text-center text-[26px] font-normal leading-snug tracking-[-0.015em] text-ink">
+    <div className="flex flex-col items-center justify-center gap-3 px-5 pb-5 text-center">
+      <CloudMark className="size-9 text-muted/75" />
+      <h1 className="max-w-[720px] text-center text-[23px] font-medium leading-snug tracking-[-0.018em] text-ink">
         {project ? (
           <>
             {title.split(project)[0]}
@@ -370,8 +372,8 @@ function Composer(): React.JSX.Element {
   }
 
   return (
-    <div className="shrink-0 px-6 pb-4 pt-2">
-      <div className="mx-auto w-full max-w-[800px]">
+    <div className="vex-workspace-composer-zone shrink-0 pb-3 pt-1.5">
+      <div className="vex-workspace-composer">
         {showContext && (
           <ContextBar
             disabled={busy || submitting}
@@ -380,7 +382,7 @@ function Composer(): React.JSX.Element {
         )}
         <div
           data-testid="chat-composer"
-          className="relative overflow-hidden rounded-[20px] border border-line-soft bg-bg codex-composer-shadow"
+          className="vex-workspace-card relative overflow-hidden rounded-[18px] border bg-bg transition-colors"
           onDragOver={(event) => {
             if (event.dataTransfer.types.includes('Files'))
               event.preventDefault()
@@ -648,6 +650,12 @@ export function ChatView(): React.JSX.Element {
   const loadOlderMessages = useAppStore((state) => state.loadOlderMessages)
   const scroll = useRef<HTMLDivElement>(null)
   const following = useRef(true)
+  const historyAnchor = useRef<{
+    id: string | null
+    top: number
+    height: number
+    message?: { id: string; top: number }
+  } | null>(null)
   const [away, setAway] = useState(false)
   const [workView, setWorkView] = useState(false)
   const executionMessages = useMemo(() => messages.filter((message) =>
@@ -667,6 +675,7 @@ export function ChatView(): React.JSX.Element {
 
   useLayoutEffect(() => {
     following.current = true
+    historyAnchor.current = null
     setAway(false)
     setWorkView(false)
   }, [activeSessionId])
@@ -674,30 +683,58 @@ export function ChatView(): React.JSX.Element {
   const jumpToLatest = (): void => {
     const view = scroll.current
     if (view) view.scrollTop = view.scrollHeight
+    following.current = true
+    setAway(false)
   }
 
   useLayoutEffect(() => {
-    if (following.current) jumpToLatest()
-  }, [messages, activeSessionId, workView])
+    const anchor = historyAnchor.current
+    if (anchor && !loadingOlderMessages && anchor.id === activeSessionId && scroll.current) {
+      const node = scroll.current
+      const previous = anchor.message
+      const row = previous ? node.querySelector<HTMLElement>(`[data-chat-message="${CSS.escape(previous.id)}"]`) : null
+      node.scrollTop = previous && row
+        ? node.scrollTop + row.getBoundingClientRect().top - previous.top
+        : anchor.top + Math.max(0, node.scrollHeight - anchor.height)
+      historyAnchor.current = null
+    } else if (following.current) jumpToLatest()
+  }, [messages, activeSessionId, workView, loadingOlderMessages])
+
+  const loadOlder = (): void => {
+    const node = scroll.current
+    if (!node || loadingOlderMessages) return
+    following.current = false
+    const viewportTop = node.getBoundingClientRect().top
+    const first = [...node.querySelectorAll<HTMLElement>('[data-chat-message]')].find(
+      (row) => row.getBoundingClientRect().bottom > viewportTop
+    )
+    const message = first?.dataset.chatMessage
+      ? { id: first.dataset.chatMessage, top: first.getBoundingClientRect().top } : undefined
+    historyAnchor.current = { id: activeSessionId, top: node.scrollTop, height: node.scrollHeight, message }
+    void loadOlderMessages()
+  }
+
+  const jumpToTurn = (id: string): void => {
+    const node = scroll.current?.querySelector<HTMLElement>(`[data-chat-message="${CSS.escape(id)}"]`)
+    if (!node) return
+    following.current = false
+    historyAnchor.current = null
+    node.scrollIntoView({ block: 'start' })
+  }
 
   return (
     <section
+      data-chat-workspace=""
       className={cn(
-        'relative flex min-w-0 flex-1 flex-col overflow-hidden bg-bg',
+        'vex-chat-workspace relative flex min-w-0 flex-1 flex-col overflow-hidden bg-bg',
         // 侧栏展开时内容区是带圆角的“卡片”，收起时与图标栏齐平（同 ChatGPT）
         sidebarOpen && 'rounded-l-[18px] border-l border-line'
       )}
     >
       <header
         className={cn(
-          // 整条顶栏可拖动窗口；交互控件各自 no-drag。
-          // 侧栏收起时顶栏从开关右侧 (x=130) 起——物理上不与窗口控件重叠，
-          // 不再依赖透明安全区：透明元素在原生拖动区计算里不可靠，会把点击吃成拖动。
-          // 顶层 no-drag + 只在标题/中段空白放 drag-region：
-          // 拖动区与按钮彻底分离，避免按钮被原生拖动区吞掉点击
-          'chat-glass no-drag absolute top-0 z-20 flex h-11 items-center gap-2 px-4',
-          'transition-[left] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
-          sidebarOpen ? 'inset-x-0' : 'left-[130px] right-0'
+          'no-drag relative z-20 flex h-11 shrink-0 items-center gap-2 border-b border-line-soft bg-bg px-4',
+          !sidebarOpen && 'pl-[136px]'
         )}
         aria-label="会话工具栏"
       >
@@ -720,29 +757,10 @@ export function ChatView(): React.JSX.Element {
             className="truncate text-[13px] font-semibold"
             title={session?.title}
           >
-            {session?.title || '新聊天'}
+            {session?.title || t('app.newChat')}
           </div>
         </div>
         <div className="drag-region h-full min-w-6 flex-1" aria-hidden="true" />
-        {activeSessionId && messages.length > 0 ? (
-          <div role="group" aria-label={t('chat.conversationViews')} className="no-drag flex shrink-0 gap-0.5 rounded-lg bg-panel/80 p-0.5">
-            {([false, true] as const).map((execution) => (
-              <button
-                key={String(execution)}
-                type="button"
-                aria-pressed={workView === execution}
-                onClick={() => {
-                  following.current = true
-                  setAway(false)
-                  setWorkView(execution)
-                }}
-                className="rounded-md px-2 py-1 text-[11px] text-muted hover:bg-panel-2 aria-pressed:bg-bg aria-pressed:text-ink"
-              >
-                {t(execution ? 'chat.workView' : 'chat.conversationView')}
-              </button>
-            ))}
-          </div>
-        ) : null}
         {rightOpen ? null : (
           <button
             type="button"
@@ -755,81 +773,101 @@ export function ChatView(): React.JSX.Element {
           </button>
         )}
       </header>
-      {messages.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div
-          ref={scroll}
-          className="min-h-0 flex-1 overflow-y-auto"
-          onScroll={(event) => {
-            const view = event.currentTarget
-            following.current =
-              view.scrollHeight - view.scrollTop - view.clientHeight < 52
-            setAway(!following.current)
-          }}
-        >
-          <div className="mx-auto flex w-full max-w-[860px] flex-col gap-8 px-4 pb-8 pt-16 sm:px-8">
-            {hasOlderMessages ? (
-              <button
-                type="button"
-                disabled={loadingOlderMessages}
-                onClick={() => {
-                  following.current = false
-                  void loadOlderMessages()
-                }}
-                className="self-center rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:bg-panel-2 disabled:opacity-50"
-              >
-                {t(loadingOlderMessages ? 'chat.loadingHistory' : 'chat.loadHistory')}
-              </button>
-            ) : null}
-            {pendingApprovals > 0 ? (
-              <aside aria-label={t('chat.pendingApprovals', { count: pendingApprovals })}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/25 bg-warn/7 px-3 py-2 text-xs text-ink">
-                <span role="status" className="flex items-center gap-2 font-medium">
-                  <ShieldAlert className="size-4 text-warn" aria-hidden="true" />
-                  {t('chat.pendingApprovals', { count: pendingApprovals })}
-                </span>
-                <button type="button" onClick={() => setView('approvals')}
-                  className="rounded-md px-2 py-1 text-warn hover:bg-warn/10 focus-visible:outline-2 focus-visible:outline-accent">
-                  {t('chat.viewApprovals')}
-                </button>
-              </aside>
-            ) : null}
-            {workView ? (
-              <section aria-label={t('chat.workView')} className="grid gap-4">
-                {executionMessages.length > 0 ? executionMessages.map((message) => (
-                  <article key={message.id} className="rounded-xl border border-line-soft bg-panel/25 px-3 py-2.5">
-                    <header className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-ink-soft">
-                      <h2 className="font-medium">{message.execution?.worker || t('chat.assistantMessage')}</h2>
-                      {message.execution?.model ? (
-                        <span className="max-w-56 truncate text-muted" title={message.execution.model}>{message.execution.model}</span>
-                      ) : null}
-                      {message.execution?.startedAt !== undefined ? (
-                        <ToolEventTime timestamp={new Date(message.execution.startedAt).toISOString()} />
-                      ) : null}
-                    </header>
-                    <ConversationExecution message={message} workView />
-                  </article>
-                )) : <p className="py-12 text-center text-sm text-muted">{t('chat.workViewEmpty')}</p>}
-              </section>
-            ) : messages.map((message) => (
-              <ConversationMessage key={message.id} message={message} retryUser={message === lastMessage ? retryUser : undefined} />
-            ))}
-          </div>
+      {activeSessionId && messages.length > 0 ? (
+        <div role="group" aria-label={t('chat.conversationViews')} className="no-drag z-10 flex shrink-0 gap-4 border-b border-line-soft bg-bg px-4">
+          {([false, true] as const).map((execution) => (
+            <button
+              key={String(execution)}
+              type="button"
+              aria-pressed={workView === execution}
+              onClick={() => {
+                following.current = true
+                setAway(false)
+                setWorkView(execution)
+              }}
+              className="border-b-2 border-transparent px-1 py-2 text-xs text-muted hover:text-ink aria-pressed:border-accent aria-pressed:font-medium aria-pressed:text-accent"
+            >
+              {t(execution ? 'chat.workView' : 'chat.conversationView')}
+            </button>
+          ))}
         </div>
-      )}
-      <div className="relative shrink-0">
-        {away && (
-          <button
-            type="button"
-            aria-label="回到最新消息"
-            onClick={jumpToLatest}
-            className="absolute -top-9 left-1/2 z-10 grid size-8 -translate-x-1/2 place-items-center rounded-full border border-line bg-bg shadow-sm hover:bg-panel-2"
+      ) : null}
+
+      <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden', messages.length === 0 && 'justify-center')}>
+        {messages.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div
+            ref={scroll}
+            className="vex-workspace-transcript min-h-0 flex-1 overflow-y-auto"
+            onScroll={(event) => {
+              const view = event.currentTarget
+              following.current =
+                view.scrollHeight - view.scrollTop - view.clientHeight < 52
+              setAway(!following.current)
+            }}
           >
-            <ArrowDown className="size-4" />
-          </button>
+            <div className="vex-workspace-column flex flex-col gap-7 pb-6 pt-5">
+              {hasOlderMessages ? (
+                <button
+                  type="button"
+                  disabled={loadingOlderMessages}
+                  onClick={loadOlder}
+                  className="self-center rounded-lg border border-line px-3 py-1.5 text-xs text-ink-soft hover:bg-panel-2 disabled:opacity-50"
+                >
+                  {t(loadingOlderMessages ? 'chat.loadingHistory' : 'chat.loadHistory')}
+                </button>
+              ) : null}
+              {pendingApprovals > 0 ? (
+                <aside aria-label={t('chat.pendingApprovals', { count: pendingApprovals })}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/25 bg-warn/7 px-3 py-2 text-xs text-ink">
+                  <span role="status" className="flex items-center gap-2 font-medium">
+                    <ShieldAlert className="size-4 text-warn" aria-hidden="true" />
+                    {t('chat.pendingApprovals', { count: pendingApprovals })}
+                  </span>
+                  <button type="button" onClick={() => setView('approvals')}
+                    className="rounded-md px-2 py-1 text-warn hover:bg-warn/10 focus-visible:outline-2 focus-visible:outline-accent">
+                    {t('chat.viewApprovals')}
+                  </button>
+                </aside>
+              ) : null}
+              {workView ? (
+                <section aria-label={t('chat.workView')} className="grid gap-4">
+                  {executionMessages.length > 0 ? executionMessages.map((message) => (
+                    <article key={message.id} className="rounded-xl border border-line-soft bg-panel/25 px-3 py-2.5">
+                      <header className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-ink-soft">
+                        <h2 className="font-medium">{message.execution?.worker || t('chat.assistantMessage')}</h2>
+                        {message.execution?.model ? (
+                          <span className="max-w-56 truncate text-muted" title={message.execution.model}>{message.execution.model}</span>
+                        ) : null}
+                        {message.execution?.startedAt !== undefined ? (
+                          <ToolEventTime timestamp={new Date(message.execution.startedAt).toISOString()} />
+                        ) : null}
+                      </header>
+                      <ConversationExecution message={message} workView />
+                    </article>
+                  )) : <p className="py-12 text-center text-sm text-muted">{t('chat.workViewEmpty')}</p>}
+                </section>
+              ) : messages.map((message) => (
+                <ConversationMessage key={message.id} message={message} retryUser={message === lastMessage ? retryUser : undefined} />
+              ))}
+            </div>
+          </div>
         )}
-        {workView ? null : <Composer />}
+        {!workView && messages.length > 0 ? <WorkspaceTurns messages={messages} jump={jumpToTurn} /> : null}
+        <div className="relative shrink-0">
+          {away && (
+            <button
+              type="button"
+              aria-label="回到最新消息"
+              onClick={jumpToLatest}
+              className="absolute -top-9 left-1/2 z-10 grid size-8 -translate-x-1/2 place-items-center rounded-full border border-line bg-bg shadow-sm hover:bg-panel-2"
+            >
+              <ArrowDown className="size-4" />
+            </button>
+          )}
+          {workView ? null : <Composer />}
+        </div>
       </div>
     </section>
   )
