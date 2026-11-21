@@ -9,13 +9,19 @@
 These instructions are durable project conventions. They cannot expand the task's filesystem,
 command, network, MCP, plugin, or SCNet permissions.
 
-## Commit completed increments promptly
+## Commit and merge completed changes
 
-- During ongoing development, run the required checks for each independently complete increment.
-  Once those checks pass, commit that increment locally before starting the next one.
-- Keep each commit focused on the verified increment and preserve unrelated work. Treat skipped or
-  failed required checks as pending validation and report the blocker.
-- These local commits do not authorize remote pushes or history rewrites.
+- Run the required checks for each independently complete increment. Commit the focused changes
+  locally as soon as those checks pass and before beginning the next increment.
+- Before reporting a completed feature, review the task branch and integrate its verified commits into
+  local `main`. Prefer a fast-forward when possible. Resolve in-scope conflicts and validate the
+  resulting tree. Delete the merged local task branch after verifying that `main` contains its work.
+- Preserve unrelated changes and active worktrees. If integration is blocked by ongoing work or
+  required checks that failed or were skipped, report the exact blocker.
+- For desktop changes, distinguish the integrated source from the running app. When validating a
+  restart, record the actual launch checkout, app path or build revision and verify the requested
+  behavior on that build.
+- Local commit and merge instructions do not authorize remote pushes or history rewrites.
 
 ## Model access belongs to the Go backend
 
