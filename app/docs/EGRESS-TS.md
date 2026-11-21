@@ -84,7 +84,7 @@ src/egress/
 | 节点/池/订阅/健康/租约/对抗 | ✅ | 与 Go 版行为对齐（含 fanout 预算 600/小时、host 记忆） |
 | HTTP/SOCKS5 入口 | ✅ | 鉴权/失败码一致 |
 | 浏览器固定端口 | ⚠️ 未提供 | 需要 Chromium 免认证端口；当前 dsh 的浏览器 MCP 仍由 Go/外部管理 |
-| MITM 抓包 + 流量落库 | ❌ | 属于 Go 的 traffic 子系统；TS egress 不做中间人录制 |
+| MITM 抓包 + 流量落库 | ✅ 独立模块 | `src/traffic-proxy/`（见 [`TRAFFIC-MITM-TS.md`](./TRAFFIC-MITM-TS.md)）；与代理池解耦 |
 | 把出口注入 Go Agent 的 bash/WebFetch | ❌ | dsh Agent 的工具出口由 dsh 侧决定；TS egress 暴露 `state.gateway/socks` 供其配置 |
 | Agent 工具 `fanout_fetch` / `egress_status` | ❌ | Go Agent 专用；dsh 工具面不在本包 |
 

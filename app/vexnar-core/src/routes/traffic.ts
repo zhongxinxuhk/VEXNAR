@@ -9,6 +9,7 @@ import { blobStore, operations, store, storeRoot } from '../context.ts'
 import { parseScope } from '../traffic-scope.ts'
 import { activeCaptures, readCaptures } from '../capture-state.ts'
 import { archivedExchanges, archivedRaw } from '../traffic-index.ts'
+import { mitmProxy } from '../traffic-proxy/index.ts'
 
 /**
  * 流量证据路由层：在 dsh 进程内以 Hono 前缀 /vexnar-api 挂载，持久层为 SQLite
@@ -565,6 +566,18 @@ function findingMarkdown(finding: any): string {
 
 // ── 路由注册 ───────────────────────────────────────────────────────────────
 export function register(api: Hono) {
+  // TS MITM 采集面状态与 CA 证书（工具需要信任这个 CA 才能解开 HTTPS）。
+  api.get('/api/traffic/mitm', (c) => c.json(mitmProxy().status()))
+  api.get('/api/traffic/mitm/ca.pem', (c) =>
+    new Response(mitmProxy().certPem(), {
+      headers: {
+        'content-type': 'application/x-pem-file',
+        'content-disposition': 'attachment; filename="vexnar-mitm-ca.pem"',
+        'cache-control': 'no-store'
+      }
+    })
+  )
+
   // 采集流量列表（过滤 host/method/keyword 等）
   api.get('/api/traffic', async (c) => {
     try {

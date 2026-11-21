@@ -128,12 +128,12 @@ export function SessionTrafficPanel({
 
   React.useEffect(() => {
     if (pinned.current && viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight;
-  }, [items.length]);
+  }, []);
 
   React.useEffect(() => {
     setSelected(null);
     setDetail(null);
-  }, [convId]);
+  }, []);
 
   React.useEffect(() => {
     if (!selected) return;
@@ -202,6 +202,30 @@ export function SessionTrafficPanel({
         </Button>
       </div>
 
+      {traffic.proxy && (
+        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-1.5 text-xs">
+          <span className="text-muted-foreground">MITM 代理</span>
+          <code className="font-mono">{traffic.proxy}</code>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void copyText(traffic.proxy).then((ok) =>
+                ok ? toast.success("已复制代理地址") : toast.error("复制失败"),
+              );
+            }}
+          >
+            <CopyIcon className="size-3.5" /> 复制
+          </Button>
+          {traffic.caPemUrl && (
+            <a className="text-primary underline underline-offset-2" href={traffic.caPemUrl} download>
+              下载 CA
+            </a>
+          )}
+          <span className="text-muted-foreground">工具设置 HTTP_PROXY 并信任 CA 即可抓到本会话流量</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-1.5 border-b px-2 py-1.5">
         <Button variant={filter === "all" ? "secondary" : "ghost"} size="sm" onClick={() => setFilter("all")}>
           全部
@@ -213,7 +237,7 @@ export function SessionTrafficPanel({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="筛选 method / url"
-          className="border-input bg-background h-7 min-w-0 flex-1 rounded-md border px-2 text-xs outline-none focus-visible:ring-1"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-1"
         />
       </div>
 
@@ -226,12 +250,12 @@ export function SessionTrafficPanel({
         className="min-h-0 flex-1 overflow-y-auto"
       >
         {traffic.loading && (
-          <div className="text-muted-foreground flex items-center justify-center gap-2 p-6 text-sm">
+          <div className="flex items-center justify-center gap-2 p-6 text-muted-foreground text-sm">
             <Spinner /> 加载中…
           </div>
         )}
         {!traffic.loading && items.length === 0 && (
-          <div className="text-muted-foreground flex flex-col items-center gap-3 px-4 py-8 text-center text-sm">
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center text-muted-foreground text-sm">
             {traffic.enabled ? (
               <span>本会话已发起抓包，还没有回传的请求/响应。</span>
             ) : (
@@ -284,17 +308,19 @@ export function SessionTrafficPanel({
                 selected === f.id && "bg-muted",
               )}
             >
-              <span className="text-muted-foreground w-14 shrink-0 tabular-nums">{fmtTime(f.ts)}</span>
+              <span className="w-14 shrink-0 text-muted-foreground tabular-nums">{fmtTime(f.ts)}</span>
               <span className={cn("w-11 shrink-0 font-mono font-semibold", methodTone(f.method))}>{f.method}</span>
               <span className="min-w-0 flex-1 truncate font-mono" title={f.url}>
                 {pathOf(f)}
               </span>
               {pending ? (
-                <Loader2Icon className="text-muted-foreground size-3.5 shrink-0 animate-spin" aria-label="等待响应" />
+                <Loader2Icon className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="等待响应" />
               ) : (
-                <span className={cn("w-8 shrink-0 text-right tabular-nums", statusTone(f.status))}>{f.status || "-"}</span>
+                <span className={cn("w-8 shrink-0 text-right tabular-nums", statusTone(f.status))}>
+                  {f.status || "-"}
+                </span>
               )}
-              <span className="text-muted-foreground w-12 shrink-0 text-right tabular-nums">
+              <span className="w-12 shrink-0 text-right text-muted-foreground tabular-nums">
                 {failed ? "失败" : fmtBytes(f.resp_len)}
               </span>
             </button>
@@ -314,7 +340,7 @@ export function SessionTrafficPanel({
               </Badge>
             )}
             {selectedFlow && selectedFlow.duration_ms > 0 && (
-              <span className="text-muted-foreground shrink-0 text-xs tabular-nums">{selectedFlow.duration_ms}ms</span>
+              <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{selectedFlow.duration_ms}ms</span>
             )}
             <Button variant="ghost" size="icon-sm" onClick={copyCurl} aria-label="复制 cURL" title="复制 cURL">
               <CopyIcon />
@@ -335,11 +361,11 @@ export function SessionTrafficPanel({
           </div>
           <div className="min-h-0 flex-1 overflow-hidden border-t">
             {detailLoading && (
-              <div className="text-muted-foreground flex items-center justify-center gap-2 p-6 text-sm">
+              <div className="flex items-center justify-center gap-2 p-6 text-muted-foreground text-sm">
                 <Spinner /> 读取报文…
               </div>
             )}
-            {detailErr && <p className="text-destructive p-3 text-xs">{detailErr}</p>}
+            {detailErr && <p className="p-3 text-destructive text-xs">{detailErr}</p>}
             {detail && !detailLoading && (
               <Tabs defaultValue="request" className="flex h-full min-h-0 flex-col">
                 <TabsList className="mx-3 mt-2 w-fit">

@@ -80,6 +80,7 @@ socks5/http 用原生拨号。设计见 [`../docs/EGRESS-TS.md`](../docs/EGRESS-
 | `GET /api/notify/channels` | ✅ |
 | `GET /api/settings` | ✅（只暴露 Go 的 20 个白名单键） |
 | `/api/proxy/*` | ✅ TS 原生（SQLite/网关/订阅/对抗）+ 可选 mihomo 协议引擎 |
+| `/api/traffic/mitm*`、`.../traffic/capture` | ✅ TS 原生 MITM（每 scope 回环端口 + 本地 CA + 落库） |
 | `GET /api/assets/counts` | ✅ |
 | `GET /api/tasks/:id/coverage` | ✅ 范围/已测/by_type/pct，含直接来源任务上下文 |
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |
