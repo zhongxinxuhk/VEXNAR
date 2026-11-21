@@ -5,7 +5,7 @@
 import { createElement as h, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
-import { HeroOverviewLayer, OverviewPanel } from './overview.js'
+import { OverviewPanel } from './overview.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -958,10 +958,6 @@ export function apply(ctx: {
   // place because the headline has no slot of its own.
   slots.inject('conversation.hero.brand.mark', () =>
     slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
-  // 概览：hero 层在空白新会话首屏的最上方渲染仪表盘卡片，进入正常对话后只透传
-  // children，不占任何高度。
-  slots.inject('conversation.hero.frame', () =>
-    slots.register({ name: 'conversation.hero.frame', id: 'vexnar-overview', order: 20 }, HeroOverviewLayer))
   ctx.effect?.(() => installSkinBrandGuard())
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())

@@ -333,205 +333,14 @@ body[data-ds-dark-theme] {
   --vx-chart-grid: var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.08));
 }
 
-/* The hero-frame layer wraps the conversation scroll body; in hero it stacks the
-   overview card above the transcript and keeps the scroll body flexed below. */
-.vx-ov-frame {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.vx-ov-frame[data-hero="1"] { padding-top: 12px; }
-
 .vx-ov-tone-blue { --vx-tone: var(--vx-chart-1); }
 .vx-ov-tone-violet { --vx-tone: var(--vx-chart-2); }
 .vx-ov-tone-green { --vx-tone: var(--vx-chart-3); }
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
-.vx-ov,
-.vx-ov *,
 .vx-ov-page,
 .vx-ov-page * { box-sizing: border-box; }
-
-.vx-ov {
-  container-type: inline-size;
-  box-sizing: border-box;
-  position: relative;
-  flex: none;
-  margin: 0 auto 10px;
-  width: calc(
-    100% -
-    var(--dsh-composer-side-clearance) -
-    var(--dsh-composer-side-clearance) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset)
-  );
-  max-width: calc(
-    var(--dsh-composer-card-max-width) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset) -
-    var(--dsh-composer-dock-inset)
-  );
-  border: 1px solid var(--vx-border);
-  border-radius: var(--dsw-radius-lg, 16px);
-  background: var(--vx-glass);
-  box-shadow: var(--dsw-elevation-panel, var(--vx-elevation));
-  color: var(--vx-text);
-  font-size: 12px;
-  line-height: 1.4;
-  overflow: hidden;
-  animation: vx-ov-in 0.3s var(--vx-ease) both;
-}
-
-/* One hairline of the chart hue along the top edge: reads as an instrument
-   panel rather than another message bubble. */
-.vx-ov::before,
-.vx-ov-page::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1.5px;
-  background: linear-gradient(90deg, transparent, var(--vx-chart-1), var(--vx-chart-2), transparent);
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.vx-ov-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
-}
-
-.vx-ov[data-open="0"] .vx-ov-head { border-bottom: 0; }
-
-.vx-ov-brand {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.vx-ov-brand h2 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--vx-text);
-}
-
-.vx-ov-glyph {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: 7px;
-  color: var(--vx-chart-1);
-  background: color-mix(in srgb, var(--vx-chart-1) 13%, transparent);
-}
-
-.vx-ov-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-live i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--vx-chart-3);
-  animation: vx-ov-pulse 2.6s ease-out infinite;
-}
-
-.vx-ov-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.vx-ov-updated {
-  font-size: 9.5px;
-  color: var(--vx-text-faint);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.vx-ov-seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--vx-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--vx-text) 4%, transparent);
-}
-
-.vx-ov-seg > button {
-  border: 0;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--vx-text-dim);
-  font: inherit;
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 16px;
-  cursor: pointer;
-  transition: background var(--vx-dur-fast) var(--vx-ease), color var(--vx-dur-fast) var(--vx-ease);
-}
-
-.vx-ov-seg > button:hover { color: var(--vx-text); }
-
-.vx-ov-seg > button[aria-pressed="true"] {
-  background: var(--vx-surface);
-  color: var(--vx-text);
-  box-shadow: var(--dsw-shadow-lv1, 0 1px 2px rgba(0, 0, 0, 0.1));
-}
-
-.vx-ov-icon {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--vx-text-dim);
-  cursor: pointer;
-  transition: background var(--vx-dur-fast) var(--vx-ease), color var(--vx-dur-fast) var(--vx-ease);
-}
-
-.vx-ov-icon:hover { background: var(--vx-surface-sunken); color: var(--vx-text); }
-
-.vx-ov[data-open="0"] .vx-ov-icon svg { transform: rotate(-90deg); }
-.vx-ov-icon svg { transition: transform var(--vx-dur) var(--vx-ease); }
-
-.vx-ov-icon:focus-visible,
-.vx-ov-seg > button:focus-visible,
-.vx-ov-error button:focus-visible {
-  outline: 2px solid var(--vx-accent);
-  outline-offset: 1px;
-}
-
-.vx-ov-body {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 10px 12px 12px;
-}
 
 .vx-ov-kpis {
   display: flex;
@@ -631,12 +440,6 @@ body[data-ds-dark-theme] {
   flex: none;
   border-radius: 50%;
   vertical-align: middle;
-}
-
-.vx-ov-charts {
-  display: grid;
-  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
-  gap: 8px;
 }
 
 .vx-ov-card {
@@ -741,70 +544,6 @@ body[data-ds-dark-theme] {
   padding-top: 3px;
   border-top: 1px solid color-mix(in srgb, var(--vx-border) 70%, transparent);
 }
-
-/* Anchor both dials to the top of the row instead of centring them in whatever
-   height the taller trend card dictates: caption and rate line stay inside. */
-.vx-ov-dials {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: start;
-  justify-items: center;
-  gap: 4px;
-  padding-top: 8px;
-}
-
-.vx-ov-dial {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
-
-.vx-ov-dial-ring {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-
-.vx-ov-dial-ring > svg { position: absolute; inset: 0; }
-
-.vx-ov-dial-value {
-  font-size: 16px;
-  font-weight: 680;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-  color: var(--vx-text);
-}
-
-.vx-ov-dial-value em {
-  margin-left: 1px;
-  font-style: normal;
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--vx-text-faint);
-}
-
-.vx-ov-dial-caption {
-  font-size: 9.5px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--vx-text-dim);
-}
-
-.vx-ov-dial-sub {
-  max-width: 108px;
-  font-size: 8.5px;
-  line-height: 1.25;
-  color: var(--vx-text-faint);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vx-ov-dial-arc { transition: stroke-dasharray 0.7s var(--vx-ease), stroke-dashoffset 0.7s var(--vx-ease); }
 
 .vx-ov-error {
   display: flex;
@@ -1187,44 +926,14 @@ body[data-ds-dark-theme] {
 .vx-ov-sys li b { font-family: var(--vx-mono); font-size: 10px; color: var(--vx-text); font-weight: 600; }
 .vx-ov-sys li b[data-on="1"] { color: var(--vx-chart-3); }
 
-@container (max-width: 560px) {
-  .vx-ov-charts { grid-template-columns: 1fr; }
-  .vx-ov-updated { display: none; }
-  .vx-ov-kpi { flex-basis: 132px; }
-}
-
-@container (max-width: 400px) {
-  .vx-ov-legend { display: none; }
-  .vx-ov-kpi { flex-basis: 100%; }
-}
-
-/* 矮屏（笔记本半屏窗口）：概览只留标题栏与指标条，把高度让给输入框；
-   图表在侧边栏「概览」整页里完整呈现。 */
-@media (max-height: 780px) {
-  .vx-ov-charts { display: none; }
-  .vx-ov-kpi { padding: 8px 9px 7px; }
-  .vx-ov-num { font-size: 20px; }
-}
-
 @media (max-width: 900px) {
   .vx-ov-split { grid-template-columns: 1fr; }
 }
 
 /* ── motion ─────────────────────────────────────────────────────────────── */
-@keyframes vx-ov-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-
 @keyframes vx-ov-grow {
   from { transform: scaleY(0.03); opacity: 0.2; }
   to { transform: scaleY(1); opacity: 1; }
-}
-
-@keyframes vx-ov-pulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--vx-chart-3) 55%, transparent); }
-  70% { box-shadow: 0 0 0 5px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 @keyframes vx-card-in {
@@ -1241,11 +950,8 @@ body[data-ds-dark-theme] {
   .vx-loading::before { animation: none; }
   .vx-chip--action,
   .vx-seg > button { transition: none; }
-  .vx-ov,
-  .vx-ov-bar,
-  .vx-ov-live i { animation: none; }
+  .vx-ov-bar { animation: none; }
   .vx-ov-icon svg,
-  .vx-ov-dial-arc,
   .vx-ov-meter-track i,
   .vx-ov-row-track i,
   .vx-ov-code-track i { transition: none; }
