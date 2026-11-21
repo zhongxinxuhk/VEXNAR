@@ -10,18 +10,28 @@
  * provider and MCP wiring apply.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dshHome, readToken, resolveRuntime } from './dsh-runtime.mjs'
+
+const repoRoot = join(import.meta.dirname, '..', '..')
 
 
 /** Profile plugins are pnpm deps: restore them when node_modules was pruned. */
 function ensureProfileDeps(profile) {
   const required = ['@vexnar/dsh-ui', '@vexnar/dsh-account']
   const missing = required.some((name) => !existsSync(join(profile, 'node_modules', name, 'package.json')))
-  if (!missing) return true
-  console.log('[dsh] profile plugins missing; running pnpm install --frozen-lockfile')
-  const result = spawnSync('pnpm', ['install', '--frozen-lockfile'], { cwd: profile, stdio: 'inherit' })
+  const stale = !missing && [['vexnar/ui', '@vexnar/dsh-ui'], ['vexnar/account', '@vexnar/dsh-account']]
+    .some(([dir, name]) => {
+      const source = join(repoRoot, 'app', dir, 'lib', 'client.js')
+      const copy = join(profile, 'node_modules', name, 'lib', 'client.js')
+      if (!existsSync(source) || !existsSync(copy)) return false
+      return !readFileSync(source).equals(readFileSync(copy))
+    })
+  if (!missing && !stale) return true
+  console.log(`[dsh] ${missing ? 'profile plugins missing' : 'plugin bundles changed'}; syncing profile`)
+  const args = missing ? ['install', '--frozen-lockfile'] : ['install', '--force']
+  const result = spawnSync('pnpm', args, { cwd: profile, stdio: 'inherit' })
   if (result.status !== 0) {
     console.error('[dsh] restore failed; run the "Setup app profile" run configuration once')
     return false

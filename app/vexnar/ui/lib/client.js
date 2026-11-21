@@ -232,6 +232,37 @@ function installHeroSlogan() {
   observer.observe(document.body, { childList: true, subtree: true });
   return () => observer.disconnect();
 }
+var FULL_ACCESS_LABELS = /* @__PURE__ */ new Set([
+  "\u5B8C\u5168\u6743\u9650",
+  "Full access",
+  "\u30D5\u30EB\u30A2\u30AF\u30BB\u30B9",
+  "Acceso completo",
+  "Acc\xE8s complet",
+  "Voller Zugriff",
+  "\u041F\u043E\u043B\u043D\u044B\u0439 \u0434\u043E\u0441\u0442\u0443\u043F",
+  "Acesso total"
+]);
+function installPermissionWarning() {
+  const sweep = () => {
+    document.querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]').forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const full = FULL_ACCESS_LABELS.has((node.textContent ?? "").trim());
+      if (full && node.dataset.vexnarFull !== "1") {
+        node.dataset.vexnarFull = "1";
+        node.style.color = "#dc2626";
+        node.style.fontWeight = "600";
+      } else if (!full && node.dataset.vexnarFull === "1") {
+        delete node.dataset.vexnarFull;
+        node.style.color = "";
+        node.style.fontWeight = "";
+      }
+    });
+  };
+  sweep();
+  const observer = new MutationObserver(sweep);
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  return () => observer.disconnect();
+}
 function apply(ctx) {
   ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
@@ -239,6 +270,7 @@ function apply(ctx) {
   ctx.slots.inject("sidebar.brand.name", () => ctx.slots.register({ name: "sidebar.brand.name" }, BrandName));
   ctx.slots.inject("conversation.hero.brand.mark", () => ctx.slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
   ctx.effect?.(installHeroSlogan);
+  ctx.effect?.(installPermissionWarning);
 }
 var inject = ["slots"];
 var client_default = { name: "@vexnar/dsh-ui", inject, apply };

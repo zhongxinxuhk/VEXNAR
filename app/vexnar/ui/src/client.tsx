@@ -261,6 +261,39 @@ function installHeroSlogan(): () => void {
   return () => observer.disconnect()
 }
 
+const FULL_ACCESS_LABELS = new Set([
+  '完全权限', 'Full access', 'フルアクセス', 'Acceso completo', 'Accès complet',
+  'Voller Zugriff', 'Полный доступ', 'Acesso total'
+])
+
+/**
+ * Full-access mode is the dangerous preset: paint its trigger and menu entry
+ * red so the current state cannot be mistaken for the sandboxed default.
+ */
+function installPermissionWarning(): () => void {
+  const sweep = (): void => {
+    document
+      .querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]')
+      .forEach((node) => {
+        if (!(node instanceof HTMLElement)) return
+        const full = FULL_ACCESS_LABELS.has((node.textContent ?? '').trim())
+        if (full && node.dataset.vexnarFull !== '1') {
+          node.dataset.vexnarFull = '1'
+          node.style.color = '#dc2626'
+          node.style.fontWeight = '600'
+        } else if (!full && node.dataset.vexnarFull === '1') {
+          delete node.dataset.vexnarFull
+          node.style.color = ''
+          node.style.fontWeight = ''
+        }
+      })
+  }
+  sweep()
+  const observer = new MutationObserver(sweep)
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+  return () => observer.disconnect()
+}
+
 export function apply(ctx: {
   slots: {
     inject: (name: string, register: () => unknown) => void
@@ -283,6 +316,7 @@ export function apply(ctx: {
   ctx.slots.inject('conversation.hero.brand.mark', () =>
     ctx.slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
   ctx.effect?.(installHeroSlogan)
+  ctx.effect?.(installPermissionWarning)
 }
 
 export const inject = ['slots']
