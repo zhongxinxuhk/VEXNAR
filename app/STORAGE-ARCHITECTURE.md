@@ -206,7 +206,7 @@ M3 第一段：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理，未迁移路由�
 会同时建资产。写入测试 **22/22**。通知渠道增改删、agent 名称/描述、tool 配置已迁；写入测试 **24/24**。
 归档已迁（27/27 写测试）。M4 读路径：intents、activity/history、tokens 的 workers/total 已由 store 提供；
 activity 的 session 过滤、seq/ts DTO、升序页与 snapshot 游标与 Go 一致（domain 9/9）。
-tokens 的 `sessions` 需要 completed-run 口径，暂空。
+tokens 的 workers/sessions/total 均已对齐（sessions 按 main/plan/intent 聚合）。
 引擎类接口继续走 fallback。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。

@@ -91,7 +91,7 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 `activity.history` 支持 `session`（`main`/`plan`/`main:N`/`intent:ID`）、
 `before` 与 `limit`；返回最新一页按 id 升序，`snapshot` 为该探索的最大活动 id。
 
-`activity.tokenStats` 按 worker 聚合 `kind='result'` 的 token 用量，空 worker 排在最后。
+`activity.tokenStats` 按 worker 与会话（main/plan/intent）聚合 `kind='result'` 的 token 用量，空 worker 排在最后。
 
 ## 与 dsh 的关系
 

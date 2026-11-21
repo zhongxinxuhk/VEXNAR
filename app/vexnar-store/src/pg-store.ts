@@ -132,7 +132,7 @@ export function pgStore(connection: {
       },
       tokenStats: async (taskId) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
-        if (!task) return { workers: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
+        if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
         const workers = await q(`SELECT COALESCE(worker,'') AS worker,
           COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
           COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
@@ -141,7 +141,19 @@ export function pgStore(connection: {
           FROM activity WHERE exploration_id = $1 AND kind = 'result' GROUP BY worker ORDER BY worker`, [task.exploration_id])
         const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
         for (const row of workers) for (const key of Object.keys(total) as (keyof typeof total)[]) total[key] += Number(row[key])
-        return { workers: workers.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), total }
+        const sessions = await q(`SELECT CASE
+            WHEN COALESCE(a.worker,'')='mainagent' THEN 'main:' || COALESCE(a.main_seg,0)::text
+            WHEN COALESCE(a.worker,'')='planner' THEN 'plan'
+            WHEN n.id IS NOT NULL THEN 'intent:' || n.id::text
+            ELSE '' END AS session,
+          COALESCE(SUM(a.input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(a.output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(a.cache_read_tokens),0)::bigint AS cache_read_tokens,
+          COALESCE(SUM(a.cache_write_tokens),0)::bigint AS cache_write_tokens
+          FROM activity a LEFT JOIN exploration_nodes n ON n.id=a.node_id AND n.exploration_id=a.exploration_id AND n.kind='intent'
+          WHERE a.exploration_id=$1 AND a.kind='result' AND (COALESCE(a.worker,'') IN ('mainagent','planner') OR n.id IS NOT NULL)
+          GROUP BY session ORDER BY session`, [task.exploration_id])
+        return { workers: workers.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), sessions: sessions.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), total }
       }
     },
     async taskMetrics() {

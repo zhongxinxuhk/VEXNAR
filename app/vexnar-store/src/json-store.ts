@@ -104,7 +104,7 @@ export function jsonStore(root: string): Store {
       },
       tokenStats: async (taskId) => {
         const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
-        if (!task) return { workers: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
+        if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
         const rows = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'result')
         const byWorker = new Map<string, any>()
         const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
@@ -123,7 +123,17 @@ export function jsonStore(root: string): Store {
           if (b.worker === '') return -1
           return String(a.worker).localeCompare(String(b.worker))
         })
-        return { workers, total }
+        const intentIds = new Set((await load('nodes', nodeRow)).filter((node) => Number(node.exploration_id) === Number(task.exploration_id) && node.kind === 'intent').map((node) => String(node.id)))
+        const bySession = new Map<string, any>()
+        for (const row of rows) {
+          const key = row.worker === 'mainagent' ? `main:${Number(row.main_seg ?? 0)}` : row.worker === 'planner' ? 'plan' : row.node_id != null && intentIds.has(String(row.node_id)) ? `intent:${row.node_id}` : ''
+          if (!key) continue
+          const entry = bySession.get(key) ?? { session: key, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
+          for (const field of ['input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens'] as const) entry[field] += Number(row[field] ?? 0)
+          bySession.set(key, entry)
+        }
+        const sessions = [...bySession.values()].sort((a, b) => String(a.session).localeCompare(String(b.session)))
+        return { workers, sessions, total }
       }
     },
     async taskMetrics() {
