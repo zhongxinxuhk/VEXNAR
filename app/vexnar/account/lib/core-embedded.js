@@ -48170,18 +48170,21 @@ for (const { load, scope } of routeModules) {
 }
 
 // app/vexnar-core/src/go-data.ts
-var routes = /* @__PURE__ */ new Set([
-  "GET /api/traffic",
-  "GET /api/traffic/exchange",
-  "POST /api/traffic/import/yakit",
-  "POST /api/traffic/promote",
-  "GET /api/assets",
-  "GET /api/assets/counts",
-  "POST /api/assets",
-  "POST /api/yak/history"
-]);
+var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
+var prefixes = [
+  "/api/tasks",
+  "/api/exploration",
+  "/api/assets",
+  "/api/traffic",
+  "/api/report",
+  "/api/stats",
+  "/api/llm/records",
+  "/api/commands",
+  "/api/yak/history"
+];
 function isGoDataRequest(method, path) {
-  return routes.has(`${method} ${path}`);
+  if (routes.has(`${method} ${path}`)) return true;
+  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
 async function goData(request, localPeer) {
@@ -48209,7 +48212,8 @@ async function goData(request, localPeer) {
     if (contentType) headers.set("content-type", contentType);
     const upstream = await fetch(new URL(url2.pathname + url2.search, backend2.origin), {
       method: request.method,
-      body: request.method === "POST" ? await request.arrayBuffer() : void 0,
+      // PATCH/PUT/DELETE 也带正文（改发现状态、改拦截规则都走 PATCH），不能只转发 POST。
+      body: request.method === "GET" || request.method === "HEAD" ? void 0 : await request.arrayBuffer(),
       headers,
       redirect: "error",
       signal: AbortSignal.timeout(6e4)

@@ -69,6 +69,13 @@
   主题与状态管理，要么带 HAR 解析器；这里只取无头原语（两个依赖均 MIT，合计约 30 KB 打包），
   配色仍走 dsh 主题 token。
 
+- **任务面板复刻 Web 控制台的任务页**：清单（搜索 / 状态筛选 / 分页 / 新建）加上详情十页
+  ——会话、总览、探索链路、播报板、发现、复测、测试资产、资产覆盖图、拦截审批、报告，逐条对齐
+  `/function/tasks` 与 `/function/tasks/detail`。数据改由 Go 服务回答：`go-data.ts` 的自由名单
+  扩成前缀集合（tasks / exploration / assets / traffic / report / stats / llm/records / commands /
+  intercept），PATCH/PUT/DELETE 的正文也一并转发（原先只转 POST，改发现状态会丢 body）。
+  代码在 `app/vexnar/ui/src/tasks/`（api / hooks / ui / sections / workspace）。
+
 ### Web 控制台（执行台）
 
 #### 新增的功能
