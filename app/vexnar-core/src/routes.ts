@@ -920,7 +920,8 @@ const routeModules: Array<{ file: string; scope: string }> = [
   { file: './routes/skills.ts', scope: 'skills' },
   { file: './routes/market.ts', scope: 'market' },
   { file: './routes/tasks-companies.ts', scope: 'tasks/companies' },
-  { file: './routes/notify-mcp.ts', scope: 'notify/mcp/side-questions' }
+  { file: './routes/notify-mcp.ts', scope: 'notify/mcp/side-questions' },
+  { file: './routes/agents.ts', scope: 'agents' }
 ]
 for (const { file, scope } of routeModules) {
   try {
