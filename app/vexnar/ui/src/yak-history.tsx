@@ -4,6 +4,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+
 import {
   detectBodyKind,
   hexDump,
@@ -332,6 +335,21 @@ function exportRows(rows: Flow[]) {
   setTimeout(() => URL.revokeObjectURL(href), 1000)
 }
 
+const COLUMNS = '92px 62px 72px minmax(220px, 1.4fr) 152px 156px 76px 108px minmax(120px, 0.9fr)'
+const ROW_HEIGHT = 30
+/** 列表列定义：label + 可排序字段（与服务端 order_by 同名）。 */
+const COLUMN_DEFS: Array<{ label: string; field?: 'id' | 'status_code' | 'body_length' | 'created_at'; align?: 'end' }> = [
+  { label: '时间', field: 'created_at' },
+  { label: '方法' },
+  { label: '状态', field: 'status_code' },
+  { label: 'URL' },
+  { label: '响应大小', field: 'body_length', align: 'end' },
+  { label: '类型' },
+  { label: '来源' },
+  { label: 'IP' },
+  { label: '标题' }
+]
+
 export function YakHistory({ sessionId }: { sessionId?: string }) {
   const [sourceOverride, setSource] = useState('')
   const [revision, setRevision] = useState(0)
@@ -346,16 +364,35 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
   const available = Boolean(sessionId || source)
   const list = useHistory<Page>(available ? JSON.stringify({ action: 'list', ...scope, ...search, ...order, page }) : null, revision)
   const detail = useHistory<Exchange>(available && selected ? JSON.stringify({ action: 'detail', ...scope, id: selected }) : null, revision)
+
+  const rows = list.data?.rows ?? []
   const sites: Record<string, number> = Object.create(null)
-  for (const row of list.data?.rows ?? []) {
+  for (const row of rows) {
     const site = siteName(row.url)
     if (site) sites[site] = (sites[site] ?? 0) + 1
   }
   const pages = list.data ? Math.max(1, Math.ceil(list.data.total / list.data.size)) : 1
+  const maxBytes = rows.reduce((max, row) => Math.max(max, row.bytes), 0) || 1
+
+  // 一页 50 条也要顺手支持更大的 page size：行固定高，虚拟滚动让长列表保持流畅。
+  const listRef = useRef<HTMLDivElement>(null)
+  const virtual = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12
+  })
 
   function apply(next: typeof emptyFilters) {
     setSearch(next)
     setFilters(next)
+    setPage(1)
+    setSelected('')
+  }
+
+  function sortBy(field: (typeof COLUMN_DEFS)[number]['field']) {
+    if (!field) return
+    setOrder({ order_by: field, ascending: order.order_by === field && !order.ascending })
     setPage(1)
     setSelected('')
   }
@@ -371,6 +408,7 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
       >
         {!sessionId && (
           <select
+            className="vx-yak-source"
             aria-label="Yak 项目"
             value={source}
             onChange={(event) => {
@@ -384,7 +422,13 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
             {sources.data?.sources.map((name) => <option key={name}>{name}</option>)}
           </select>
         )}
-        <input aria-label="URL" placeholder="URL" value={filters.url} onChange={(event) => setFilters({ ...filters, url: event.target.value })} />
+        <input
+          className="vx-yak-filter-url"
+          aria-label="URL"
+          placeholder="URL / Host"
+          value={filters.url}
+          onChange={(event) => setFilters({ ...filters, url: event.target.value })}
+        />
         <select aria-label="方法" value={filters.method} onChange={(event) => setFilters({ ...filters, method: event.target.value })}>
           <option value="">全部方法</option>
           {['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'].map((method) => (
@@ -417,94 +461,101 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
           </button>
         </div>
       </form>
+
       {sources.error && <p role="alert" className="vx-yak-alert">{sources.error}</p>}
       {!sessionId && sources.data?.sources.length === 0 && <p className="vx-yak-hint">尚未配置 Yak 流量来源。</p>}
       {list.loading && <p role="status" className="vx-yak-hint">读取流量…</p>}
       {list.error && <p role="alert" className="vx-yak-alert">{list.error}</p>}
+
       {list.data && (
         <div className="vx-yak-grid">
           <aside aria-label="本页站点">
-            <strong>本页站点</strong>
-            {Object.entries(sites).map(([site, count]) => (
-              <button key={site} type="button" title={site} onClick={() => apply({ ...search, url: site })}>
-                {site} <small>{count}</small>
-              </button>
-            ))}
-            {Object.keys(sites).length === 0 && <small className="vx-yak-hint">本页无站点</small>}
+            <div className="vx-yak-aside-head">
+              <strong>本页站点</strong>
+              <small>{Object.keys(sites).length}</small>
+            </div>
+            <div className="vx-yak-aside-list">
+              {Object.entries(sites).map(([site, count]) => (
+                <button key={site} type="button" title={site} onClick={() => apply({ ...search, url: site })}>
+                  <span>{site}</span>
+                  <small>{count}</small>
+                </button>
+              ))}
+              {Object.keys(sites).length === 0 && <small className="vx-yak-hint">本页无站点</small>}
+            </div>
           </aside>
+
           <section className="vx-yak-list">
-            <div className="vx-yak-table">
-              <table>
-                <thead>
-                  <tr>
-                    {(
-                      [
-                        ['ID', 'id'],
-                        ['方法'],
-                        ['状态', 'status_code'],
-                        ['URL'],
-                        ['响应大小', 'body_length'],
-                        ['类型'],
-                        ['来源'],
-                        ['IP'],
-                        ['标题'],
-                        ['标签'],
-                        ['时间', 'created_at']
-                      ] as const
-                    ).map(([label, field]) => (
-                      <th key={label} aria-sort={field && order.order_by === field ? (order.ascending ? 'ascending' : 'descending') : undefined}>
-                        {field ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrder({ order_by: field, ascending: order.order_by === field && !order.ascending })
-                              setPage(1)
-                              setSelected('')
-                            }}
-                          >
-                            {label}
-                            {order.order_by === field ? (order.ascending ? ' ↑' : ' ↓') : ''}
-                          </button>
-                        ) : (
-                          label
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.data.rows.map((row) => (
-                    <tr key={row.id} data-selected={row.id === selected}>
-                      <td className="vx-yak-id">{row.id}</td>
-                      <td>
+            <div className="vx-yak-table" ref={listRef}>
+              <div className="vx-yak-head" style={{ gridTemplateColumns: COLUMNS }}>
+                {COLUMN_DEFS.map((column) => (
+                  <button
+                    key={column.label}
+                    type="button"
+                    className={column.align === 'end' ? 'vx-yak-th--end' : undefined}
+                    aria-sort={
+                      column.field && order.order_by === column.field ? (order.ascending ? 'ascending' : 'descending') : undefined
+                    }
+                    onClick={() => sortBy(column.field)}
+                    disabled={!column.field}
+                  >
+                    {column.label}
+                    {column.field && order.order_by === column.field ? (order.ascending ? ' ↑' : ' ↓') : ''}
+                  </button>
+                ))}
+              </div>
+              <div className="vx-yak-body" style={{ height: virtual.getTotalSize() }}>
+                {virtual.getVirtualItems().map((item) => {
+                  const row = rows[item.index]
+                  if (!row) return null
+                  return (
+                    <div
+                      key={row.id}
+                      className="vx-yak-row"
+                      data-selected={row.id === selected}
+                      style={{ gridTemplateColumns: COLUMNS, height: ROW_HEIGHT, transform: `translateY(${item.start}px)` }}
+                      onClick={() => setSelected(row.id)}
+                    >
+                      <span className="vx-yak-dim vx-yak-time" title={row.time ? new Date(row.time * 1000).toLocaleString() : ''}>
+                        {row.time ? new Date(row.time * 1000).toLocaleTimeString() : '—'}
+                      </span>
+                      <span>
                         <span className={`vx-method vx-method--${methodClass(row.method)}`}>{row.method}</span>
-                      </td>
-                      <td>
+                      </span>
+                      <span>
                         <span className={`vx-status vx-status--${statusClass(row.status)}`}>{row.status || '—'}</span>
-                      </td>
-                      <td>
-                        <button type="button" className="vx-yak-url" title={row.url} onClick={() => setSelected(row.id)}>
-                          {row.url}
-                        </button>
-                      </td>
-                      <td className="vx-yak-num">{row.bytes} B</td>
-                      <td className="vx-yak-type">{row.websocket ? 'WebSocket' : row.content_type}</td>
-                      <td className="vx-yak-dim">{row.source}</td>
-                      <td className="vx-yak-dim">{row.ip}</td>
-                      <td className="vx-yak-dim">{row.title}</td>
-                      <td className="vx-yak-dim">{row.tags}</td>
-                      <td className="vx-yak-dim">{row.time ? new Date(row.time * 1000).toLocaleString() : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {list.data.rows.length === 0 && <p className="vx-yak-hint">暂无匹配流量</p>}
+                      </span>
+                      <button type="button" className="vx-yak-url" title={row.url} onClick={() => setSelected(row.id)}>
+                        {row.url}
+                      </button>
+                      <span className="vx-yak-size-cell">
+                        {/* 对数刻度：一页里 577 B 和 45 KB 并存时，线性刻度只剩一条线。 */}
+                        <span className="vx-yak-sizebar" data-tone={statusClass(row.status)} title={`${row.bytes} B`}>
+                          <i
+                            style={{
+                              width: `${Math.max(4, Math.round((Math.log10(Math.max(row.bytes, 1)) / Math.log10(Math.max(maxBytes, 10))) * 100))}%`
+                            }}
+                          />
+                        </span>
+                        <span className="vx-yak-num">{row.bytes} B</span>
+                      </span>
+                      <span className="vx-yak-type">{row.websocket ? 'WebSocket' : row.content_type}</span>
+                      <span className="vx-yak-dim">{row.source}</span>
+                      <span className="vx-yak-dim">{row.ip}</span>
+                      <span className="vx-yak-dim" title={row.tags || row.title}>
+                        {row.title || row.tags || '—'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              {rows.length === 0 && <p className="vx-yak-hint">暂无匹配流量</p>}
             </div>
             <div className="vx-yak-pages">
               <span>
-                共 {list.data.total} 条 · 第 {page} / {pages} 页
+                共 {list.data.total} 条 · 第 {page} / {pages} 页 · 本页 {rows.length} 条
               </span>
-              <button type="button" disabled={list.data.rows.length === 0} onClick={() => exportRows(list.data?.rows ?? [])}>
+              <button type="button" disabled={rows.length === 0} onClick={() => exportRows(rows)}>
                 导出本页 CSV
               </button>
               <button
@@ -531,6 +582,7 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
           </section>
         </div>
       )}
+
       {detail.loading && <p role="status" className="vx-yak-hint">读取报文…</p>}
       {detail.error && <p role="alert" className="vx-yak-alert">{detail.error}</p>}
       {detail.data && (
@@ -544,10 +596,15 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
               关闭详情
             </button>
           </header>
-          <div className="vx-yak-split">
-            <PacketPane label="请求" packet={detail.data.request} side="request" />
-            <PacketPane label="响应" packet={detail.data.response} side="response" />
-          </div>
+          <PanelGroup direction="horizontal" className="vx-yak-split" autoSaveId="vexnar-yak-detail-split">
+            <Panel defaultSize={50} minSize={20}>
+              <PacketPane label="请求" packet={detail.data.request} side="request" />
+            </Panel>
+            <PanelResizeHandle className="vx-yak-resize" />
+            <Panel defaultSize={50} minSize={20}>
+              <PacketPane label="响应" packet={detail.data.response} side="response" />
+            </Panel>
+          </PanelGroup>
         </section>
       )}
     </div>

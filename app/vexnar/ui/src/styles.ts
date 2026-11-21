@@ -1358,58 +1358,72 @@ body[data-ds-dark-theme] {
 
 /* ── 列表 ───────────────────────────────────────────────── */
 .vx-yak-grid {
-  background: var(--vx-surface);
   display: grid;
-  grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
   border: 1px solid var(--vx-border);
   border-radius: 10px;
   overflow: hidden;
+  background: var(--vx-surface);
 }
 
 .vx-yak-grid aside {
-  padding: 10px;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--vx-surface-sunken);
   border-inline-end: 1px solid var(--vx-border);
 }
 
-.vx-yak-grid aside strong {
-  display: block;
-  margin-bottom: 4px;
+.vx-yak-aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vx-border);
+  color: var(--vx-muted);
   font-size: 11px;
   font-weight: 600;
-  color: var(--vx-muted);
   letter-spacing: 0.02em;
 }
 
-.vx-yak-grid aside button,
-.vx-yak-url {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: start;
+.vx-yak-aside-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  overflow: auto;
+  max-height: 46vh;
 }
 
-.vx-yak-grid aside button {
-  margin-top: 2px;
+.vx-yak-aside-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   padding: 3px 6px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--vx-text);
-  font-size: 12px;
+  font-size: 11.5px;
+  text-align: start;
   cursor: pointer;
 }
 
-.vx-yak-grid aside button:hover {
-  background: var(--vx-surface);
+.vx-yak-aside-list button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.vx-yak-grid aside button small {
-  margin-inline-start: 4px;
+.vx-yak-aside-list button small {
   color: var(--vx-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-aside-list button:hover {
+  background: var(--vx-surface);
 }
 
 .vx-yak-list {
@@ -1419,56 +1433,105 @@ body[data-ds-dark-theme] {
 }
 
 .vx-yak-table {
+  position: relative;
   overflow: auto;
   max-height: 46vh;
   background: var(--vx-surface);
 }
 
-.vx-yak-table table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-.vx-yak-table th,
-.vx-yak-table td {
-  text-align: start;
-  padding: 6px 9px;
-  border-bottom: 1px solid color-mix(in oklab, var(--vx-border) 60%, transparent);
-}
-
-.vx-yak-table th {
+.vx-yak-head {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--vx-border);
   background: var(--vx-surface-sunken);
+}
+
+.vx-yak-head button {
+  padding: 7px 9px;
+  border: 0;
+  background: none;
   color: var(--vx-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
-}
-
-.vx-yak-table th button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
+  text-align: start;
   cursor: pointer;
 }
 
-.vx-yak-table tbody tr:hover {
+.vx-yak-head button:disabled {
+  cursor: default;
+}
+
+.vx-yak-head .vx-yak-th--end {
+  text-align: end;
+}
+
+.vx-yak-body {
+  position: relative;
+}
+
+.vx-yak-row {
+  position: absolute;
+  inset-inline: 0;
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--vx-border) 55%, transparent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vx-yak-row > * {
+  padding-inline: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.vx-yak-row:hover {
   background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
 }
 
-.vx-yak-table tr[data-selected="true"] {
+.vx-yak-row[data-selected="true"] {
   background: var(--vx-surface-sunken);
-}
-
-.vx-yak-table tr[data-selected="true"] td:first-child {
   box-shadow: inset 2px 0 0 0 var(--vx-text);
 }
+
+.vx-yak-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-size-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.vx-yak-sizebar {
+  flex: 1;
+  min-width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--vx-border) 80%, transparent);
+}
+
+.vx-yak-sizebar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--vx-syn-punct);
+}
+
+.vx-yak-sizebar[data-tone="success"] i { background: var(--vx-status-success); }
+.vx-yak-sizebar[data-tone="redirect"] i { background: var(--vx-status-redirect); }
+.vx-yak-sizebar[data-tone="warn"] i { background: var(--vx-status-warn); }
+.vx-yak-sizebar[data-tone="error"] i { background: var(--vx-status-error); }
+.vx-yak-sizebar[data-tone="info"] i { background: var(--vx-syn-punct); }
 
 .vx-yak-id,
 .vx-yak-num {
@@ -1478,24 +1541,26 @@ body[data-ds-dark-theme] {
 
 .vx-yak-dim {
   color: var(--vx-muted);
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .vx-yak-type {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--vx-mono);
   font-size: 11px;
   color: var(--vx-muted);
 }
 
 .vx-yak-url {
-  max-width: 420px;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 0;
   background: none;
   color: var(--vx-text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--vx-mono);
   font-size: 11.5px;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -1590,13 +1655,49 @@ body[data-ds-dark-theme] {
 }
 
 .vx-yak-split {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  gap: 0;
+  min-height: 240px;
+}
+
+.vx-yak-split > [data-panel] {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 拖拽分隔条：视觉上一条竖线，命中区 8px。 */
+.vx-yak-resize {
+  position: relative;
+  width: 9px;
+  flex: 0 0 9px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.vx-yak-resize::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: var(--vx-border);
+}
+
+.vx-yak-resize:hover::after,
+.vx-yak-resize[data-resize-handle-state="drag"]::after,
+.vx-yak-resize[data-resize-handle-state="hover"]::after {
+  background: var(--vx-accent);
 }
 
 .vx-yak-packet {
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-inline: 4px;
   border: 1px solid var(--vx-border);
   border-radius: 10px;
   overflow: hidden;
