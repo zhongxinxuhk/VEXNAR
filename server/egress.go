@@ -998,3 +998,58 @@ func (s *Server) egressEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+// POST /api/proxy/fanout — manual adversarial request for diagnostics/UI.
+// {task_id, url, method?, headers?, body?, k?}
+func (s *Server) egressFanout(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	var req struct {
+		TaskID  int64             `json:"task_id"`
+		URL     string            `json:"url"`
+		Method  string            `json:"method"`
+		Headers map[string]string `json:"headers"`
+		Body    string            `json:"body"`
+		K       int               `json:"k"`
+	}
+	if err := decodeLimited(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.TaskID <= 0 || strings.TrimSpace(req.URL) == "" {
+		writeErr(w, http.StatusBadRequest, "task_id 与 url 必填")
+		return
+	}
+	key := taskSessionKey(req.TaskID, "worker")
+	// Ensure the session exists (bound pool, else the server default pool).
+	poolID := int64(0)
+	if b, err := mgr.Store().Binding(r.Context(), req.TaskID); err == nil && b != nil {
+		poolID = b.PoolID
+	} else if def := s.m.EgressPoolID(); def > 0 {
+		poolID = def
+	}
+	if poolID == 0 {
+		writeErr(w, http.StatusBadRequest, "该任务没有代理池（先绑定或设置默认池）")
+		return
+	}
+	if _, err := mgr.Endpoint(egress.SessionSpec{Key: key, TaskID: req.TaskID, Role: "worker", PoolID: poolID}); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	res, err := mgr.Fanout(ctx, key, req.Method, req.URL, egress.FanoutOptions{
+		K: req.K, Headers: req.Headers, Body: []byte(req.Body),
+	})
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	out := map[string]any{
+		"status": res.Status, "blocked": res.Blocked, "winner_node": res.Winner,
+		"attempts": res.Attempts, "body": res.BodyText,
+	}
+	writeJSON(w, http.StatusOK, out)
+}

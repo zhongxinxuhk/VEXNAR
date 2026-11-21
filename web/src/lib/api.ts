@@ -25,6 +25,9 @@ import type {
   CompanyScopeMutation,
   CompanyScopeRule,
   Conversation,
+  ConversationTrafficCapture,
+  ConversationTrafficEndpoint,
+  ConversationTrafficResp,
   ConvTokenSummary,
   CoverageAssetRefs,
   CoverageGraphData,
@@ -71,6 +74,7 @@ import type {
   NotificationMeta,
   PromptVar,
   PromptVersion,
+  ProxyFanoutResult,
   ProxyHealth,
   ProxyNodeView,
   ProxyParseResult,
@@ -102,9 +106,6 @@ import type {
   TokenUsage,
   Tool,
   ToolStat,
-  ConversationTrafficCapture,
-  ConversationTrafficEndpoint,
-  ConversationTrafficResp,
   TrafficCaptureSummary,
   TrafficDetail,
   TrafficEvidenceRef,
@@ -852,13 +853,9 @@ export const api = {
   // These five talk to the TS core (see coreHttp) — the Go API has no per-session
   // capture: capture is armed by the chat conversation in the core.
   conversationTraffic: (convId: number, afterSeq = 0, limit = 200) =>
-    coreGet<ConversationTrafficResp>(
-      `/api/conversations/${convId}/traffic?after_seq=${afterSeq}&limit=${limit}`,
-    ),
+    coreGet<ConversationTrafficResp>(`/api/conversations/${convId}/traffic?after_seq=${afterSeq}&limit=${limit}`),
   conversationTrafficExchange: (convId: number, flowId: string) =>
-    coreGet<TrafficDetail>(
-      `/api/conversations/${convId}/traffic/exchange?id=${encodeURIComponent(flowId)}`,
-    ),
+    coreGet<TrafficDetail>(`/api/conversations/${convId}/traffic/exchange?id=${encodeURIComponent(flowId)}`),
   conversationTrafficEndpoint: (convId: number) =>
     coreGet<ConversationTrafficEndpoint>(`/api/conversations/${convId}/traffic/endpoint`),
   conversationTrafficCapture: (convId: number, action: "start" | "stop") =>
@@ -1458,4 +1455,12 @@ export const api = {
     put<TaskProxyBinding>(`/tasks/${taskId}/proxy`, b),
   deleteProxyTaskBinding: (taskId: number) => del<{ task_id: number; binding: null }>(`/tasks/${taskId}/proxy`),
   proxyResetLeases: (task_id = 0) => post<{ reset: boolean; task_id: number }>(`/proxy/leases/reset`, { task_id }),
+  proxyFanout: (p: {
+    task_id: number;
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    k?: number;
+  }) => post<ProxyFanoutResult>(`/proxy/fanout`, p),
 };

@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -149,6 +150,12 @@ CREATE TABLE IF NOT EXISTS usage (
   bytes_in  INTEGER NOT NULL DEFAULT 0,
   bytes_out INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (task_id, node_id, bucket)
+);
+CREATE TABLE IF NOT EXISTS fanout_usage (
+  task_id INTEGER NOT NULL,
+  bucket  INTEGER NOT NULL,
+  used    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (task_id, bucket)
 );
 CREATE INDEX IF NOT EXISTS idx_pool_members_node ON pool_members(node_id);
 CREATE INDEX IF NOT EXISTS idx_usage_bucket ON usage(bucket);
@@ -554,6 +561,26 @@ func (s *Store) AddUsage(ctx context.Context, taskID, nodeID int64, requests, fa
 		ON CONFLICT(task_id,node_id,bucket) DO UPDATE SET requests=requests+excluded.requests,
 		failures=failures+excluded.failures, bytes_in=bytes_in+excluded.bytes_in, bytes_out=bytes_out+excluded.bytes_out`,
 		taskID, nodeID, bucket, requests, failures, bytesIn, bytesOut)
+	return err
+}
+
+// FanoutUsed reads the adversarial attempts already spent in one hour bucket.
+func (s *Store) FanoutUsed(ctx context.Context, taskID int64, bucket int64) (int64, error) {
+	var used int64
+	err := s.db.QueryRowContext(ctx, `SELECT used FROM fanout_usage WHERE task_id=? AND bucket=?`, taskID, bucket).Scan(&used)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	return used, err
+}
+
+// AddFanout records spent adversarial attempts.
+func (s *Store) AddFanout(ctx context.Context, taskID int64, bucket int64, n int64) error {
+	if n <= 0 {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO fanout_usage(task_id,bucket,used) VALUES (?,?,?)
+ON CONFLICT(task_id,bucket) DO UPDATE SET used=used+excluded.used`, taskID, bucket, n)
 	return err
 }
 

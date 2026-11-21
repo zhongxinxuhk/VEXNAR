@@ -1799,3 +1799,23 @@ export interface TaskProxyBinding {
   fallback: "block" | "direct";
   max_conns: number;
 }
+
+/** 对抗模式单路尝试。 */
+export interface ProxyFanoutAttempt {
+  node_id: number;
+  node_name?: string;
+  egress_ip?: string;
+  status?: number;
+  verdict: "pass" | "block" | "unknown";
+  ms?: number;
+  bytes?: number;
+  error?: string;
+}
+
+export interface ProxyFanoutResult {
+  status: number;
+  blocked: boolean;
+  winner_node: number;
+  attempts: ProxyFanoutAttempt[] | null;
+  body?: string;
+}

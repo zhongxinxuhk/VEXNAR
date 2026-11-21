@@ -114,6 +114,12 @@ export default function ProxyPoolPage() {
   const [bindingBusy, setBindingBusy] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<number>>(new Set());
 
+  const [fanoutTask, setFanoutTask] = React.useState("");
+  const [fanoutURL, setFanoutURL] = React.useState("");
+  const [fanoutK, setFanoutK] = React.useState(3);
+  const [fanoutBusy, setFanoutBusy] = React.useState(false);
+  const [fanoutResult, setFanoutResult] = React.useState<import("@/lib/types").ProxyFanoutResult | null>(null);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -391,6 +397,26 @@ export default function ProxyPoolPage() {
     }
   }
 
+  async function runFanout() {
+    const id = Number(fanoutTask);
+    if (!id || !fanoutURL.trim()) {
+      toast.error("需要任务 ID 与目标 URL");
+      return;
+    }
+    setFanoutBusy(true);
+    try {
+      const res = await api.proxyFanout({ task_id: id, url: fanoutURL.trim(), k: fanoutK });
+      setFanoutResult(res);
+      toast[res.blocked ? "error" : "success"](
+        res.blocked ? "全部出口被判定为拦截" : `成功：节点 ${res.winner_node} · HTTP ${res.status}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "对抗请求失败");
+    } finally {
+      setFanoutBusy(false);
+    }
+  }
+
   async function resetLeases() {
     try {
       await api.proxyResetLeases(Number(bindingTask) || 0);
@@ -466,6 +492,7 @@ export default function ProxyPoolPage() {
           <TabsTrigger value="pools">池与节点</TabsTrigger>
           <TabsTrigger value="sessions">会话出口</TabsTrigger>
           <TabsTrigger value="binding">任务绑定</TabsTrigger>
+          <TabsTrigger value="fanout">对抗测试</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pools" className="mt-3">
@@ -882,6 +909,97 @@ export default function ProxyPoolPage() {
                   worker 会话：{bindingSession.session} · 节点{" "}
                   {bindingSession.node_name || bindingSession.node_id || "—"} · 请求 {bindingSession.requests} · 失败{" "}
                   {bindingSession.failures}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="fanout" className="mt-3">
+          <Card className="max-w-3xl">
+            <CardHeader>
+              <CardTitle className="text-sm">对抗测试（fanout）</CardTitle>
+              <CardDescription>
+                同一请求从 K 个出口同时发出，取第一个未被 WAF
+                拦截的响应；结果按节点列出判定，用于验证池的"对抗"效果。会消耗该任务本小时预算。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div className="grid gap-3 sm:grid-cols-[1fr_2fr_100px_auto]">
+                <div>
+                  <Label>任务 ID</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={fanoutTask}
+                    onChange={(e) => setFanoutTask(e.target.value)}
+                    placeholder="12"
+                  />
+                </div>
+                <div>
+                  <Label>目标 URL</Label>
+                  <Input
+                    value={fanoutURL}
+                    onChange={(e) => setFanoutURL(e.target.value)}
+                    placeholder="https://target.example.com/login"
+                  />
+                </div>
+                <div>
+                  <Label>K</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={fanoutK}
+                    onChange={(e) => setFanoutK(Number(e.target.value) || 3)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={() => void runFanout()} disabled={fanoutBusy}>
+                    {fanoutBusy ? "请求中…" : "发起"}
+                  </Button>
+                </div>
+              </div>
+
+              {fanoutResult && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant={fanoutResult.blocked ? "destructive" : "secondary"}>
+                      {fanoutResult.blocked ? "全部被拦" : `胜出节点 ${fanoutResult.winner_node}`}
+                    </Badge>
+                    <span className="text-muted-foreground text-xs">HTTP {fanoutResult.status}</span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-muted-foreground text-xs">
+                      <tr className="border-b">
+                        <th className="py-2 pr-2">节点</th>
+                        <th className="py-2 pr-2">出口 IP</th>
+                        <th className="py-2 pr-2">状态</th>
+                        <th className="py-2 pr-2">判定</th>
+                        <th className="py-2 pr-2">耗时</th>
+                        <th className="py-2 pr-2">错误</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(fanoutResult.attempts ?? []).map((a) => (
+                        <tr key={a.node_id} className="border-b last:border-0">
+                          <td className="py-2 pr-2">{a.node_name || a.node_id}</td>
+                          <td className="py-2 pr-2 font-mono text-xs">{a.egress_ip || "—"}</td>
+                          <td className="py-2 pr-2 text-xs">{a.status || "—"}</td>
+                          <td className="py-2 pr-2">
+                            <Badge variant={a.verdict === "pass" ? "secondary" : "outline"}>{a.verdict}</Badge>
+                          </td>
+                          <td className="py-2 pr-2 text-xs">{a.ms ? `${a.ms}ms` : "—"}</td>
+                          <td className="max-w-[220px] truncate py-2 pr-2 text-muted-foreground text-xs">
+                            {a.error || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {fanoutResult.body && (
+                    <pre className="max-h-48 overflow-auto rounded-md border p-2 text-xs">
+                      {fanoutResult.body.slice(0, 2000)}
+                    </pre>
+                  )}
                 </div>
               )}
             </CardContent>
