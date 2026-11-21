@@ -29,9 +29,12 @@
     }
   },
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "@types/react": "^18.3.31",
+    "esbuild": "^0.25.0",
+    "typescript": "^6.0.3"
   }
 }
