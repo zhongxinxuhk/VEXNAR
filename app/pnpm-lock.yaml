@@ -275,12 +275,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  vexnar/craft:
-    devDependencies:
-      esbuild:
-        specifier: ^0.25.0
-        version: 0.25.12
-
   vexnar/ui:
     devDependencies:
       '@types/react':

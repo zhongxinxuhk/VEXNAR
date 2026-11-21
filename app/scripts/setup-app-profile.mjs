@@ -32,7 +32,7 @@ await mkdir(profile, { recursive: true })
 await mkdir(join(repo, 'app', 'vexnar', 'account', 'assets'), { recursive: true })
 await copyFile(join(repo, 'assets', 'logo.png'), join(repo, 'app', 'vexnar', 'account', 'assets', 'logo.png'))
 
-for (const pkg of ['ui', 'account', 'craft']) {
+for (const pkg of ['ui', 'account']) {
   const dir = join(repo, 'app', 'vexnar', pkg)
   const install = spawnSync(
     process.execPath,
