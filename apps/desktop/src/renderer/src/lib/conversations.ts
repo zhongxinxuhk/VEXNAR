@@ -166,6 +166,11 @@ export const conversations = {
     request<{ detail?: string }>(`/conversations/${id}/messages/${seq}`, 'GET').then(
       (r) => r.detail ?? ''
     ),
+  relatedTraceCall: (id: string, seq: number) =>
+    request<{
+      call: { seq: number; tool: string; worker: string; ts: string } | null
+      relation: 'linked' | 'ambiguous' | 'unmatched'
+    }>(`/conversations/${id}/messages/${seq}?trace=1&related_call=1`, 'GET'),
   traceDetail: (id: string, seq: number) =>
     request<{ detail: string }>(`/conversations/${id}/messages/${seq}?trace=1`, 'GET').then(
       (r) => r.detail

@@ -514,6 +514,16 @@ func (s *Server) pgConversationMsgDetail(w http.ResponseWriter, r *http.Request)
 		writeErr(w, 400, "bad seq")
 		return
 	}
+	if r.URL.Query().Get("trace") == "1" && r.URL.Query().Get("related_call") == "1" {
+		events, err := pg.ConvToolResultTrace(c.ID, seq)
+		if err != nil {
+			writeErr(w, 500, "could not read call relationship")
+			return
+		}
+		call, relation := relatedToolCall(events, seq)
+		writeJSON(w, 200, map[string]any{"call": call, "relation": relation})
+		return
+	}
 	if r.URL.Query().Get("trace") == "1" {
 		detail, err := pg.ConvToolTraceDetail(c.ID, seq)
 		if err == sql.ErrNoRows {

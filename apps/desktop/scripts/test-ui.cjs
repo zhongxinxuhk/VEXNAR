@@ -243,7 +243,7 @@ app.whenReady().then(async () => {
     await run(`[...(${timeline}).querySelectorAll('button')].find(e=>e.textContent==='对应调用 #8').click()`)
     await wait(`document.activeElement.matches('ol > li') && document.activeElement.firstElementChild.textContent==='#8'`)
     await run(`(${viewport}).scrollTop=(${viewport}).scrollHeight`)
-    await wait(`(${timeline}).lastElementChild.getAttribute('aria-posinset')==='240' && (${timeline}).lastElementChild.textContent.includes('未找到对应调用') && (${timeline}).children.length<=19`)
+    await wait(`(${timeline}).lastElementChild.getAttribute('aria-posinset')==='240' && (${timeline}).lastElementChild.querySelector('button')?.title==='未找到对应调用' && (${timeline}).children.length<=19`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项，共 120 项')`)
     const changeDraft = (value) => run(`(()=>{const field=document.querySelector('[data-testid="chat-composer"] textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}))})()`)
@@ -321,6 +321,18 @@ app.whenReady().then(async () => {
     w.setSize(1000,760)
     await new Promise((resolve)=>setTimeout(resolve,200))
     if(await run(`document.querySelector('[data-testid="chat-composer"]').scrollWidth>document.querySelector('[data-testid="chat-composer"]').clientWidth`)) throw Error('Composer overflows at minimum window width')
+    await run(`window.__uiFixture.seedHistoricalCall()`)
+    const openHistoryFixture = `Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`
+    await run(openHistoryFixture)
+    const oldResult = `[...document.querySelectorAll('summary')].find(el=>el.textContent.includes('工具事件 · 1 条'))`
+    await wait(`!!(${oldResult})`)
+    await run(`(${oldResult}).click()`)
+    await wait(`!!(${oldResult}).parentElement.querySelector('ol button')`)
+    await run(`(${oldResult}).parentElement.querySelector('ol button').click()`)
+    const historicalPanel = `document.querySelector('section[aria-label="历史调用"]')`
+    await wait(`(${historicalPanel})?.textContent.includes('archivist')`)
+    await run(`(${historicalPanel}).querySelector('summary').click()`)
+    await wait(`(${historicalPanel})?.textContent.includes('archive.md') && (${historicalPanel})?.textContent.includes('archived result')`)
     await run(`window.__uiFixture.startDraft()`)
     await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`)
     await wait(`document.body.textContent.includes('你好，正在生成答复')`)

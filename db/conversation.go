@@ -436,3 +436,38 @@ func (d *DB) ConvActivityDetail(convID, id int64) (string, error) {
 	}
 	return s.String, err
 }
+
+// ConvToolResultTrace reads the target result and its same-ID events within the
+// owning turn. It deliberately projects only activity metadata.
+func (d *DB) ConvToolResultTrace(convID, resultID int64) ([]Activity, error) {
+	rows, err := d.Query(`
+WITH target AS (
+    SELECT id, tool_use_id
+    FROM conversation_activities
+    WHERE conversation_id=$1 AND id=$2 AND kind='tool_result' AND tool_use_id IS NOT NULL
+)
+SELECT a.id, COALESCE(a.worker,''), a.kind, COALESCE(a.tool,''), a.created_at
+FROM target
+JOIN conversation_activities a
+  ON a.conversation_id=$1 AND a.tool_use_id=target.tool_use_id AND a.id<=target.id
+WHERE a.kind IN ('tool_use','tool_result')
+  AND a.id>COALESCE((
+    SELECT max(boundary.id) FROM conversation_activities boundary
+    WHERE boundary.conversation_id=$1 AND boundary.id<target.id
+      AND boundary.kind IN ('user','result')
+  ), 0)
+ORDER BY a.id`, convID, resultID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var events []Activity
+	for rows.Next() {
+		var event Activity
+		if err := rows.Scan(&event.ID, &event.Worker, &event.Kind, &event.Tool, &event.CreatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	return events, rows.Err()
+}

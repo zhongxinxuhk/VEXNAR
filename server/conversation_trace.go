@@ -9,6 +9,9 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/zhongxinxuhk/vexnar/db"
 )
 
 const traceMask = "[REDACTED]"
@@ -76,4 +79,55 @@ func redactTraceJSON(value any) (any, bool) {
 		return redacted, v != redacted
 	}
 	return value, changed
+}
+
+type traceCallMetadata struct {
+	Seq    int64  `json:"seq"`
+	Tool   string `json:"tool"`
+	Worker string `json:"worker"`
+	TS     string `json:"ts"`
+}
+
+func relatedToolCall(events []db.Activity, resultID int64) (*traceCallMetadata, string) {
+	pending := map[string][]db.Activity{}
+	openCount := 0
+	for _, event := range events {
+		if event.Kind == "tool_use" {
+			pending[event.Worker] = append(pending[event.Worker], event)
+			openCount++
+			continue
+		}
+
+		worker := event.Worker
+		candidates := pending[worker]
+		if worker == "" {
+			if openCount > 1 {
+				if event.ID == resultID {
+					return nil, "ambiguous"
+				}
+				continue
+			}
+			for key, rows := range pending {
+				if len(rows) > 0 {
+					worker, candidates = key, rows
+					break
+				}
+			}
+		} else if len(candidates) == 0 {
+			worker, candidates = "", pending[""]
+		}
+		if len(candidates) != 1 {
+			if event.ID == resultID && len(candidates) > 1 {
+				return nil, "ambiguous"
+			}
+			continue
+		}
+		call := candidates[0]
+		if event.ID == resultID {
+			return &traceCallMetadata{Seq: call.ID, Tool: call.Tool, Worker: call.Worker, TS: call.CreatedAt.Format(time.RFC3339Nano)}, "linked"
+		}
+		delete(pending, worker)
+		openCount--
+	}
+	return nil, "unmatched"
 }

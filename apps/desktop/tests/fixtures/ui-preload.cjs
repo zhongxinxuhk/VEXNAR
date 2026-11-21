@@ -125,8 +125,17 @@ const sessionList = [
 let resumeDraft = false
 let copiedTrace = ''
 let traceReads = 0
+let historicalCall = null
 contextBridge.exposeInMainWorld('__uiFixture', {
   snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads }),
+  seedHistoricalCall: () => {
+    historicalCall = { seq: ++activitySeq, tool: 'read_file', worker: 'archivist', ts: '2026-11-20T10:09:00Z' }
+    conversationActivities[2] = [
+      { ...historicalCall, kind: 'tool_use', tool_use_id: 'historical', detail: '{"path":"archive.md"}' },
+      ...Array.from({ length: 200 }, () => ({ seq: ++activitySeq, worker: 'archivist', ts: '2026-11-20T10:09:01Z', kind: 'usage', summary: '' })),
+      { seq: ++activitySeq, tool: 'read_file', worker: 'archivist', ts: '2026-11-20T10:09:02Z', kind: 'tool_result', tool_use_id: 'historical', detail: 'archived result' }
+    ]
+  },
   startDraft: () => {
     resumeDraft = true
     conversationActivities[2] = [
@@ -418,6 +427,10 @@ contextBridge.exposeInMainWorld('vexnar', {
         const detail = path.match(/\/messages\/(\d+)(?:\?|$)/)
         if (detail) {
           const row = conversationActivities[id]?.find((item) => item.seq === Number(detail[1]))
+          if (path.includes('related_call=1')) {
+            const related = id === '2' && row?.tool_use_id === 'historical' ? historicalCall : null
+            return ok({ call: related, relation: related ? 'linked' : 'unmatched' })
+          }
           if (path.endsWith('?trace=1')) traceReads++
           return ok({ detail: row?.detail || '' })
         }

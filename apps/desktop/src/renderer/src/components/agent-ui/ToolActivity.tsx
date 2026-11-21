@@ -222,7 +222,7 @@ export function ToolActivity({
             </div>
           ) : null}
           {timeline ? (
-            <ExecutionTimeline events={events} />
+            <ExecutionTimeline conversationId={conversationId} events={events} />
           ) : visible.length === 0 ? (
             <p role="status" className="px-2 py-2 text-[11px] text-muted">
               {t('chat.toolFilterEmpty')}

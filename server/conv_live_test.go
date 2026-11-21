@@ -402,3 +402,69 @@ func TestConversationMessagesRecordsExplicitStopBeforeExecution(t *testing.T) {
 		t.Fatalf("unexpected recorded stop: %+v", terminal)
 	}
 }
+
+func TestConversationMessagesTraceFindsOlderCallAcrossHistoryPages(t *testing.T) {
+	s := newLiveTestServer(t)
+	conv, err := s.m.pg.CreateConversation("auto", "older tool relationship", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.m.pg.DeleteConversation(conv.ID) })
+	appendEvent := func(event db.Activity) int64 {
+		t.Helper()
+		id, err := s.m.pg.AppendConvActivity(conv.ID, event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	lookup := func(resultID int64) map[string]any {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet,
+			fmt.Sprintf("/api/conversations/%d/messages/%d?trace=1&related_call=1", conv.ID, resultID), nil)
+		req.SetPathValue("id", fmt.Sprint(conv.ID))
+		req.SetPathValue("seq", fmt.Sprint(resultID))
+		rec := httptest.NewRecorder()
+		s.pgConversationMsgDetail(rec, req)
+		var response map[string]any
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &response) != nil {
+			t.Fatalf("invalid relationship response: status=%d", rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), "private-test-data") {
+			t.Fatal("relationship lookup disclosed tool payload")
+		}
+		return response
+	}
+
+	appendEvent(db.Activity{Kind: "user"})
+	other := appendEvent(db.Activity{Kind: "tool_use", Worker: "other", ToolUseID: "shared"})
+	start := appendEvent(db.Activity{Kind: "tool_use", Worker: "auto", Tool: "read_file",
+		ToolUseID: "shared", Detail: "private-test-data"})
+	result := appendEvent(db.Activity{Kind: "tool_result", Worker: "auto", ToolUseID: "shared"})
+	page := readLivePage(t, s, conv.ID, "trace=1&limit=1")
+	if rows := page["items"].([]any); len(rows) != 1 || rows[0].(map[string]any)["seq"] != float64(result) {
+		t.Fatal("test setup did not place the call outside the visible history page")
+	}
+	match := lookup(result)
+	call, ok := match["call"].(map[string]any)
+	if match["relation"] != "linked" || !ok || call["seq"] != float64(start) || call["tool"] != "read_file" {
+		t.Fatalf("wrong historical relationship: %+v", match)
+	}
+	otherResult := appendEvent(db.Activity{Kind: "tool_result", Worker: "", ToolUseID: "shared"})
+	if call := lookup(otherResult)["call"].(map[string]any); call["seq"] != float64(other) {
+		t.Fatalf("unique open call should match a legacy blank worker: %+v", call)
+	}
+
+	appendEvent(db.Activity{Kind: "result"})
+	unrelated := appendEvent(db.Activity{Kind: "tool_result", Worker: "other", ToolUseID: "shared"})
+	if match := lookup(unrelated); match["relation"] != "unmatched" || match["call"] != nil {
+		t.Fatalf("found a call across terminal boundary: %+v", match)
+	}
+	for range 2 {
+		appendEvent(db.Activity{Kind: "tool_use", Worker: "auto", ToolUseID: "duplicate"})
+	}
+	ambiguous := appendEvent(db.Activity{Kind: "tool_result", Worker: "auto", ToolUseID: "duplicate"})
+	if match := lookup(ambiguous); match["relation"] != "ambiguous" || match["call"] != nil {
+		t.Fatalf("ambiguous calls should not be linked: %+v", match)
+	}
+}
