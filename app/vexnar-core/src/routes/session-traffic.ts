@@ -19,6 +19,7 @@ import type { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { operations, store } from '../context.ts'
 import { activeCaptures, captureOf, readCaptures, startCapture, stopCapture } from '../capture-state.ts'
+import { mitmProxy } from '../traffic-proxy/index.ts'
 import { trafficIngestAuthorized, trafficIngestKey } from '../traffic-key.ts'
 import { convScope, sessionScope } from '../traffic-scope.ts'
 import { exchangeDto, getExchangeRaw, listScopedExchanges, recordExchange, allExchanges } from './traffic.ts'
@@ -266,7 +267,8 @@ function mountScopeTraffic(api: Hono, base: string, resolve: ScopeResolver) {
       return c.json({
         enabled: capture !== null && capture.started_at > 0 && capture.stopped_at === 0,
         scope,
-        proxy: '',
+        proxy: mitmProxy().proxyFor(scope),
+        ca_pem_url: mitmProxy().status().ca_pem_url,
         capture: capturePayload(capture, sample),
         ingest_url: `${origin}/api/traffic/ingest`,
         hook: yakitHook(scope, origin)
@@ -284,15 +286,24 @@ function mountScopeTraffic(api: Hono, base: string, resolve: ScopeResolver) {
       const body = await c.req.json().catch(() => ({} as any))
       const action = String(body?.action ?? 'start')
       if (action !== 'start' && action !== 'stop') return c.json({ error: 'action 只能是 start 或 stop' }, 400)
-      const capture = action === 'start'
-        ? await startCapture(scope, String(body?.source ?? 'yakit'))
-        : await stopCapture(scope)
+      let endpoint: { proxy: string; ca_pem_url: string } | undefined
+      if (action === 'start') {
+        const opened = await mitmProxy().openScope(scope)
+        endpoint = { proxy: opened.proxy, ca_pem_url: opened.caPemUrl }
+        await startCapture(scope, String(body?.source ?? 'yakit'))
+      } else {
+        mitmProxy().closeScope(scope)
+        await stopCapture(scope)
+      }
+      const capture = await captureOf(scope)
       const sample = await scopeSample(scope)
       const origin = originOf(c)
       return c.json({
         ok: true,
         enabled: capture !== null && capture.started_at > 0 && capture.stopped_at === 0,
         scope,
+        proxy: endpoint?.proxy ?? mitmProxy().proxyFor(scope),
+        ca_pem_url: endpoint?.ca_pem_url ?? mitmProxy().status().ca_pem_url,
         capture,
         summary: capturePayload(capture, sample),
         ingest_url: `${origin}/api/traffic/ingest`,
@@ -335,8 +346,10 @@ export function register(api: Hono) {
         byScope.set(scope, entry)
       }
       const captures = await readCaptures()
+      const mitm = mitmProxy().status()
       const sessions = activeCaptures(captures).map((row) => ({
         scope: row.scope,
+        proxy: mitmProxy().proxyFor(row.scope),
         conv_id: row.conv_id,
         session_id: row.session_id,
         source: row.source,
@@ -353,6 +366,7 @@ export function register(api: Hono) {
         sessions,
         total: rows.length,
         last_ts: lastTs,
+        mitm,
         ingest_url: `${origin}/api/traffic/ingest`,
         recent
       })
