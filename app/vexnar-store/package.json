@@ -13,7 +13,8 @@
     "test:writes": "tsx test-writes.mjs",
     "test:engine": "tsx test-engine.mjs",
     "test:exec": "tsx test-exec.mjs",
-    "test:tools": "tsx test-tools.mjs"
+    "test:tools": "tsx test-tools.mjs",
+    "test:blobs": "tsx test-blobs.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",

@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { createEngine, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -590,6 +590,47 @@ api.post('/api/tasks/:id/intents/:iid/control', async (c) => {
     return c.json(result)
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
+
+api.get('/api/exploration/findings/:id/traffic/:bindingId/body', async (c) => {
+  const traffic = await store.traffic(c.req.param('id'))
+  if (!traffic) return c.json({ error: 'finding not found' }, 404)
+  const binding = traffic.bindings.find((row: any) => String(row.id) === c.req.param('bindingId'))
+  if (!binding?.snapshot) return c.json({ error: '绑定不存在' }, 404)
+  const side = c.req.query('side') || 'response'
+  if (side !== 'request' && side !== 'response') return c.json({ error: 'side 只能是 request 或 response' }, 400)
+  const hash = side === 'request' ? binding.snapshot.req_hash : binding.snapshot.resp_hash
+  if (!hash) return c.json({ error: '该侧没有正文' }, 404)
+  const blobs = blobStore(storeRoot())
+  let buffer: Buffer
+  try { buffer = await blobs.read(hash) } catch { return c.json({ error: '正文不存在' }, 404) }
+  if (c.req.query('download') === '1') {
+    return new Response(buffer, { headers: {
+      'content-type': 'application/octet-stream',
+      'content-disposition': `attachment; filename="evidence-${binding.id}-${side}.bin"`,
+      'content-length': String(buffer.length),
+      'x-content-type-options': 'nosniff'
+    } })
+  }
+  const total = buffer.length
+  const offset = Math.max(Number(c.req.query('offset') ?? 0) || 0, 0)
+  let length = Number(c.req.query('length') ?? 8192) || 8192
+  if (length <= 0 || length > 8192) length = 8192
+  if (offset > total) return c.json({ error: 'offset 超出正文长度' }, 400)
+  let raw = buffer.subarray(offset, offset + length)
+  if (offset + raw.length < total && raw.length >= 4) {
+    let start = raw.length - 1
+    while (start > 0 && (raw[start] & 0xc0) === 0x80) start--
+    try { new TextDecoder('utf-8', { fatal: true }).decode(raw.subarray(start)) } catch { raw = raw.subarray(0, start) }
+  }
+  const binary = raw.includes(0) || (offset === 0 && !isValidUtf8(raw))
+  const next = offset + raw.length
+  return c.json({ offset, total, next_offset: next, truncated: next < total, binary,
+    content: binary ? `[二进制正文，${total} 字节；请下载查看]` : raw.toString('utf8') })
+})
+
+function isValidUtf8(raw: Uint8Array) {
+  try { new TextDecoder('utf-8', { fatal: true }).decode(raw); return true } catch { return false }
+}
 
 api.get('/api/exploration/findings/:id/traffic', async (c) => {
   const out = await store.traffic(c.req.param('id'))
