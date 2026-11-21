@@ -16,6 +16,12 @@ registerExploration(api)
 
 api.get('/api/health', (c) => c.json({ ok: true, service: 'vexnar', version: process.env.VEXNAR_VERSION ?? 'dev' }))
 
+// 底座自述：数据面跑的是 TS 原生还是 Go 代理、store 后端、后台循环起了几个。
+api.get('/api/_runtime', async (c) => {
+  const { runtimeInfo } = await import('./runtime.ts')
+  return c.json(runtimeInfo())
+})
+
 // ── agents / profiles / categories / templates (vexnar-meta) ─────────────
 api.get('/api/agents', async (c) => c.json({ agents: await meta.table('agents') }))
 
@@ -969,3 +975,7 @@ for (const { load, scope } of routeModules) {
     console.error(`[vexnar] failed to load route module ${scope}:`, error)
   }
 }
+
+// 未覆盖的路径统一回 JSON：客户端按 JSON 解析错误，拿到 Hono 的纯文本 404 只会
+// 变成"解析失败"，看不出到底缺了哪条路由。
+api.notFound((c) => c.json({ error: 'route not migrated', path: c.req.path, method: c.req.method }, 404))

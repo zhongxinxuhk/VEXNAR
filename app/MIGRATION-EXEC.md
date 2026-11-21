@@ -176,3 +176,35 @@
   `ingestTrafficEvidence` / `recordExchange` 供 sidecar 接入）；
 - UI 样式对齐 `web/` 观感（`app/vexnar/ui` 卡片/面板）；
 - 与 Go 的逐端点运行时对账（当前为路由+自检级覆盖，非逐字段对账）。
+
+## 5. 运行时底座 TS 化（2026-11-22）
+
+路由迁完之后，**底座本身**还是 Go 的：客户端启动要编译并拉起 Go，数据面前缀整段转发给
+8787，模型走 Go 回环网关。这一段把底座换掉，Go 退成回退路径。
+
+| 项 | 改动 | 文件 |
+|---|---|---|
+| 生命周期收敛 | store/引擎/队列只创建不启动；触发器、定时任务、`recover()` 与独占锁改在 `startRuntime()` 里执行一次 | `src/runtime.ts`（新）、`src/context.ts` |
+| 进程入口 | 独立进程启动时显式起底座并注册 SIGINT/SIGTERM | `src/server.ts` |
+| 宿主入口 | dsh 宿主第一次请求时惰性起底座，不再在 `import` 阶段锁库 | `src/embedded.ts` |
+| 数据面切换 | `goData()` 只在 `VEXNAR_RUNTIME_MODE=go` 时转发；默认由原生路由回答。`isGoDataRequest` 语义改成「数据面来源校验」，宿主插件的本机来源检查不变 | `src/go-data.ts` |
+| 模型通道 | `ts` 模式引擎在进程内 `api.fetch` 打自己的 `/api/desktop/openai/v1/*`，不开端口；`go` 模式仍打 `VEXNAR_GO_URL` | `src/gateway.ts`（`gatewayAvailable()`） |
+| 自述接口 | `GET /api/_runtime` 返回 mode / store / triggers / 是否持锁；未覆盖路径统一 JSON 404 | `src/routes.ts` |
+| 启动链 | 默认不再编译、不再拉起 Go，只把 `VEXNAR_RUNTIME_MODE` 注进客户端环境 | `scripts/vexnar-web.mjs` |
+
+验收（本机实测）：
+
+- `tsx src/server.ts` → `runtime=ts store=sqlite triggers=10`；
+- 数据面 `tasks / traffic / intercept/rules / exploration/findings / assets/counts / stats /
+  report / commands` 全部 200，读的是 SQLite store；
+- 内嵌产物 `vexnar/account/lib/core-embedded.js` 重建后 `handle()` 直调：`mode=ts`、
+  `isGoDataRequest('/api/tasks')=true`（保留来源校验）、未知路径 404 JSON；
+- 进程内网关：`gatewayComplete()` 打到桌面网关并返回 `409 模型服务尚未配置`
+  （未配置 profile 时的预期面），证明不依赖 8787；
+- `vexnar-core/*.test.mjs` 15/15 PASS（用 `tsx` 跑）；`tsc -p tsconfig.json` 0 错误。
+
+未完成（下一步）：
+
+- MITM 采集本体仍在 Go（`traffic/`），core 侧只有 ingest 面；
+- `agent/` 的上下文压缩、多轮编排高级语义尚未逐条对账；
+- 与 `web/`（Next.js 控制台）共用 PG 的旧路径仍在，切 SQLite 单源需一次数据终态确认。

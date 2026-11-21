@@ -6,6 +6,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { auth, serviceToken } from './auth.js'
 import { api } from './routes.js'
+import { runtimeInfo, runtimeMode, startRuntime } from './runtime.ts'
 
 const app = new Hono()
 const fallback = (process.env.VEXNAR_GO_FALLBACK || '').replace(/\/$/, '')
@@ -29,7 +30,10 @@ const NATIVE = [
   '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes'
 ]
 
-app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null, methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all' }))
+app.get('/api/_migration', (c) => c.json({
+  mode: runtimeMode(), native: NATIVE, fallback: fallback || null,
+  methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all'
+}))
 
 // M3 transition: unported routes fall through to the Go service, so the web
 // console can point at the TS core before every write is migrated.
@@ -62,6 +66,8 @@ app.all('/api/*', async (c) => {
 })
 
 const port = Number(process.env.PORT ?? 8790)
+await startRuntime({ signals: true })
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port }, (info) => {
-  console.log(`vexnar-core listening on http://127.0.0.1:${info.port}`)
+  const runtime = runtimeInfo()
+  console.log(`vexnar-core listening on http://127.0.0.1:${info.port} (runtime=${runtime.mode} store=${runtime.store} triggers=${runtime.triggers})`)
 })

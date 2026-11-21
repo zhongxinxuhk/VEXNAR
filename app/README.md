@@ -6,13 +6,15 @@
 
 # VEXNAR 客户端工作区
 
-VEXNAR Web 和桌面客户端共用隔离的运行时和本机 Go 服务。
+VEXNAR Web 和桌面客户端共用隔离的运行时；运行时底座是 TypeScript（`vexnar-core`），
+Go 服务只是回退路径。
 
 | 方向 | 走哪条链路 | 说明 |
 |---|---|---|
 | 账户登录 | HXSEC AI Platform | 客户端启动时验证。密码和两步验证码可在 App 输入，第三方认证使用独立平台窗口 |
-| 模型目录与推理 | Go 回环网关 | 自动签发凭据、读取模型。平台推理使用 Responses |
-| 领域工具 | Go `POST /mcp`（过渡） | 任务/漏洞/流量工具尚未迁移到 TS |
+| 模型目录与推理 | core 桌面网关（进程内） | 契约与 Go 的回环网关相同，引擎直接 `api.fetch` 调用，不开端口、不依赖 Go |
+| 领域工具 | core 原生路由 | 任务/漏洞/流量/资产/拦截/用量全部读本地 SQLite store |
+| 回退 | Go 服务 | `VEXNAR_RUNTIME_MODE=go` 时数据面整段转发回 Go（含模型走 8787 网关） |
 
 ## 目录
 
@@ -99,7 +101,15 @@ pnpm install && pnpm run build && pnpm run setup
 pnpm run web                 # 或 pnpm run desktop
 ```
 
-Go 后端由 `app/` 自己编译和托管，不用另开终端：
+默认不需要 Go：数据面（任务/漏洞/流量/资产/拦截/用量）与模型网关都由 `pnpm run web` 拉起的
+dsh 客户端内的 `vexnar-core` 直接回答。要看底座当前跑的是哪一套：
+
+```sh
+curl -s -H "x-vexnar-token: $VEXNAR_API_TOKEN" http://127.0.0.1:3099/vexnar-api/api/_runtime
+# {"mode":"ts","store":"sqlite","started":true,"triggers":10,...}
+```
+
+`VEXNAR_RUNTIME_MODE=go` 回到旧路径：由 `app/` 自己编译和托管 Go 后端（不用另开终端）：
 
 1. `scripts/vexnar-go.mjs` 用 Go 源码算一个指纹（git HEAD + 未提交的 `.go` 改动），
    编到 `app/.vexnar-bin/vexnar-<指纹>`，并 `-X main.version=<指纹>` 注入版本；
@@ -118,6 +128,7 @@ pnpm run go:stamp            # 打印当前源码指纹
 
 | 变量 | 作用 |
 |---|---|
+| `VEXNAR_RUNTIME_MODE=go` | 数据面与模型回到 Go：拉起内置后端，请求整段转发 |
 | `VEXNAR_GO=off` | 不启动内置后端，改用 `VEXNAR_GO_URL` 指定的外部服务 |
 | `VEXNAR_GO_URL` | 外部 Go 地址；设置后客户端不再自己起 |
 | `VEXNAR_GO_BIN` | 指定现成二进制（打包环境没有 Go 工具链时用，版本不做强校验） |

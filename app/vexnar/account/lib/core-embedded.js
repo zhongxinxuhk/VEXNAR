@@ -144,7 +144,7 @@ var init_body = __esm({
       } else if (!key.endsWith("[]")) form[key] = value;
       else form[key] = [value];
     };
-    handleParsingNestedValues = (form, key, value, state) => {
+    handleParsingNestedValues = (form, key, value, state2) => {
       if (/(?:^|\.)__proto__\./.test(key)) return;
       let nestedForm = form;
       const keys = key.split(".", 34);
@@ -153,7 +153,7 @@ var init_body = __esm({
         if (index === keys.length - 1) nestedForm[key2] = value;
         else {
           if (!nestedForm[key2] || typeof nestedForm[key2] !== "object" || Array.isArray(nestedForm[key2]) || nestedForm[key2] instanceof File) {
-            if (state.count++ >= MAX_NESTED_OBJECTS) throwNestingLimitExceeded();
+            if (state2.count++ >= MAX_NESTED_OBJECTS) throwNestingLimitExceeded();
             nestedForm[key2] = /* @__PURE__ */ Object.create(null);
           }
           nestedForm = nestedForm[key2];
@@ -12083,11 +12083,11 @@ function settle(inst, answer) {
 function isRecursiveSchema(inst) {
   return isRecursive(inst, /* @__PURE__ */ new Set(), true) !== NONE;
 }
-function bucketFor(state, inst) {
-  let bucket = state.buckets.get(inst);
+function bucketFor(state2, inst) {
+  let bucket = state2.buckets.get(inst);
   if (!bucket) {
     bucket = /* @__PURE__ */ new WeakMap();
-    state.buckets.set(inst, bucket);
+    state2.buckets.set(inst, bucket);
   }
   return bucket;
 }
@@ -12167,16 +12167,16 @@ var init_memoizer = __esm({
             const input2 = payload.value;
             if (!isRef(input2))
               return base(payload, ctx);
-            let state = ctx[STATE];
-            if (!state) {
-              state = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
-              ctx[STATE] = state;
+            let state2 = ctx[STATE];
+            if (!state2) {
+              state2 = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
+              ctx[STATE] = state2;
             }
             let bucket;
             if (lastCtx === ctx) {
               bucket = lastBucket;
             } else {
-              bucket = bucketFor(state, inst);
+              bucket = bucketFor(state2, inst);
               lastCtx = ctx;
               lastBucket = bucket;
             }
@@ -12188,8 +12188,8 @@ var init_memoizer = __esm({
                   payload.issues.push(...cloneIssues(hit.issues));
               } else {
                 payload.memo = true;
-                state.backEdges ?? (state.backEdges = /* @__PURE__ */ new WeakSet());
-                state.backEdges.add(hit.value);
+                state2.backEdges ?? (state2.backEdges = /* @__PURE__ */ new WeakSet());
+                state2.backEdges.add(hit.value);
               }
               return payload;
             }
@@ -29787,15 +29787,15 @@ function storeOperations(_root) {
     const [written] = await writer4.commit([{ table: "nodes", key: nodeId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
     return written;
   }
-  async function setNodeState(taskId, nodeId, state) {
+  async function setNodeState(taskId, nodeId, state2) {
     const task = await writer4.readRecord("tasks", taskId);
     const node2 = await writer4.readRecord("nodes", nodeId);
     if (!task || !node2 || String(node2.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error("node \u4E0D\u5B58\u5728"), { status: 404 });
     const allowed = TRANSITIONS[String(node2.state)] ?? [];
-    if (!allowed.includes(state) && state !== node2.state) {
-      throw Object.assign(new Error(`\u975E\u6CD5\u72B6\u6001\u8FC1\u79FB: ${node2.state} \u2192 ${state}`), { status: 409 });
+    if (!allowed.includes(state2) && state2 !== node2.state) {
+      throw Object.assign(new Error(`\u975E\u6CD5\u72B6\u6001\u8FC1\u79FB: ${node2.state} \u2192 ${state2}`), { status: 409 });
     }
-    const next = { ...node2, state };
+    const next = { ...node2, state: state2 };
     delete next.rev;
     const [written] = await writer4.commit([{ table: "nodes", key: nodeId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
     return written;
@@ -29860,9 +29860,9 @@ function storeOperations(_root) {
     const byState = {};
     for (const node2 of scoped) {
       const kind = String(node2.kind);
-      const state = String(node2.state);
+      const state2 = String(node2.state);
       byKind[kind] = (byKind[kind] ?? 0) + 1;
-      byState[state] = (byState[state] ?? 0) + 1;
+      byState[state2] = (byState[state2] ?? 0) + 1;
     }
     const edges = (await writer4.list("edges")).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length;
     const anchors = (await (async () => {
@@ -30907,7 +30907,7 @@ async function spawnTriggerTask(ops, agentKey, fire) {
 }
 async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
   const triggers = (await store2.triggers.list(agentKey)).filter((trigger) => trigger.enabled !== false);
-  const stops = [];
+  const stops2 = [];
   const fire = async (trigger, event, message, payload) => {
     await handler({ trigger, event, message: String(message ?? ""), payload });
     await ops.updateTrigger(agentKey, String(trigger.id), { last_fire: (/* @__PURE__ */ new Date()).toISOString() }).catch(() => {
@@ -30915,7 +30915,7 @@ async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
   };
   for (const trigger of triggers) {
     if (Number(trigger.interval_sec) > 0) {
-      stops.push(scheduler2.every(Number(trigger.interval_sec) * 1e3, () => fire(trigger, "interval", trigger.interval_message)));
+      stops2.push(scheduler2.every(Number(trigger.interval_sec) * 1e3, () => fire(trigger, "interval", trigger.interval_message)));
     }
     for (const [event, flag, messageKey] of EVENT_FLAGS) {
       if (!trigger[flag]) continue;
@@ -30923,11 +30923,11 @@ async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
         if (event === "tool_call" && Array.isArray(trigger.tool_names) && trigger.tool_names.length && !trigger.tool_names.includes(payload?.tool)) return;
         await fire(trigger, event, trigger[messageKey], payload);
       });
-      stops.push(off);
+      stops2.push(off);
     }
   }
   return () => {
-    for (const stop of stops) stop();
+    for (const stop of stops2) stop();
   };
 }
 var EVENT_FLAGS;
@@ -31201,13 +31201,57 @@ var init_src = __esm({
   }
 });
 
+// src/mode.ts
+function runtimeMode() {
+  const raw2 = (process.env.VEXNAR_RUNTIME_MODE || "ts").trim().toLowerCase();
+  return raw2 === "go" ? "go" : "ts";
+}
+function storeBackend() {
+  const mode = (process.env.VEXNAR_STORE || "sqlite").trim().toLowerCase();
+  return mode === "json" || mode === "postgres" ? mode : "sqlite";
+}
+var init_mode = __esm({
+  "src/mode.ts"() {
+    "use strict";
+  }
+});
+
 // src/gateway.ts
-async function responsesComplete(base, token, messages) {
-  const response = await fetch(`${base}/responses`, {
+function model() {
+  return process.env.VEXNAR_GATEWAY_MODEL || "deepseek-flash";
+}
+function inProcess() {
+  return runtimeMode() === "ts" && !process.env.VEXNAR_GATEWAY_URL?.trim();
+}
+function desktopToken() {
+  return (process.env.VEXNAR_GATEWAY_TOKEN || process.env.VEXNAR_DESKTOP_TOKEN || "").trim();
+}
+function gatewayAvailable() {
+  if (inProcess()) return Boolean(desktopToken());
+  return Boolean(process.env.VEXNAR_GATEWAY_TOKEN);
+}
+async function post(path, body) {
+  if (inProcess()) {
+    const token2 = desktopToken();
+    if (!token2) throw Object.assign(new Error("VEXNAR_DESKTOP_TOKEN \u672A\u914D\u7F6E\uFF0C\u6A21\u578B\u8C03\u7528\u4E0D\u53EF\u7528"), { status: 503 });
+    const { api: api2 } = await init_routes().then(() => routes_exports);
+    return await api2.fetch(new Request(`http://vexnar-core/api/desktop/openai/v1${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-vexnar-desktop-token": token2 },
+      body: JSON.stringify(body)
+    }));
+  }
+  const base = (process.env.VEXNAR_GATEWAY_URL || "http://127.0.0.1:8787/api/desktop/openai/v1").replace(/\/$/, "");
+  const token = process.env.VEXNAR_GATEWAY_TOKEN || "";
+  if (!token) throw Object.assign(new Error("VEXNAR_GATEWAY_TOKEN \u672A\u914D\u7F6E\uFF0C\u6A21\u578B\u8C03\u7528\u4E0D\u53EF\u7528"), { status: 503 });
+  return await fetch(`${base}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-vexnar-desktop-token": token },
-    body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || "deepseek-flash", input: messages, stream: false })
+    body: JSON.stringify(body)
   });
+}
+async function responsesComplete(messages) {
+  const response = await post("/responses", { model: model(), input: messages, stream: false });
   if (!response.ok) throw Object.assign(new Error(`gateway responses ${response.status}: ${await response.text()}`), { status: 502 });
   const data = await response.json();
   const direct = data?.output_text ?? data?.output?.[0]?.content?.[0]?.text ?? data?.choices?.[0]?.message?.content;
@@ -31215,17 +31259,10 @@ async function responsesComplete(base, token, messages) {
   throw Object.assign(new Error("responses \u8FD4\u56DE\u7F3A\u5C11\u6587\u672C"), { status: 502 });
 }
 async function gatewayComplete(messages) {
-  const base = (process.env.VEXNAR_GATEWAY_URL || "http://127.0.0.1:8787/api/desktop/openai/v1").replace(/\/$/, "");
-  const token = process.env.VEXNAR_GATEWAY_TOKEN || "";
-  if (!token) throw Object.assign(new Error("VEXNAR_GATEWAY_TOKEN \u672A\u914D\u7F6E\uFF0C\u6A21\u578B\u8C03\u7528\u4E0D\u53EF\u7528"), { status: 503 });
-  const response = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-vexnar-desktop-token": token },
-    body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || "deepseek-flash", messages, stream: false })
-  });
+  const response = await post("/chat/completions", { model: model(), messages, stream: false });
   if (response.status === 409) {
     const text2 = await response.text();
-    if (text2.includes("openai-responses")) return responsesComplete(base, token, messages);
+    if (text2.includes("openai-responses")) return responsesComplete(messages);
     throw Object.assign(new Error(`gateway 409: ${text2}`), { status: 502 });
   }
   if (!response.ok) throw Object.assign(new Error(`gateway ${response.status}: ${await response.text()}`), { status: 502 });
@@ -31237,6 +31274,7 @@ async function gatewayComplete(messages) {
 var init_gateway = __esm({
   "src/gateway.ts"() {
     "use strict";
+    init_mode();
   }
 });
 
@@ -31423,6 +31461,7 @@ __export(context_exports, {
   createNotifier: () => createNotifier,
   createRunner: () => createRunner,
   engine: () => engine,
+  gatewayAvailable: () => gatewayAvailable,
   gatewayComplete: () => gatewayComplete,
   listReports: () => listReports,
   meta: () => meta3,
@@ -31433,6 +31472,9 @@ __export(context_exports, {
   runTool: () => runTool,
   saveReport: () => saveReport,
   scheduler: () => scheduler,
+  spawnTriggerTask: () => spawnTriggerTask,
+  startSchedules: () => startSchedules,
+  startTriggers: () => startTriggers,
   store: () => store,
   storeRoot: () => storeRoot,
   taskQueue: () => taskQueue,
@@ -31446,7 +31488,7 @@ function parseJson2(value) {
     return value;
   }
 }
-var store, meta3, operations, engine, scheduler, taskQueue, triggerStops, stopSchedules, releaseStoreLock;
+var store, meta3, operations, engine, scheduler, taskQueue;
 var init_context2 = __esm({
   async "src/context.ts"() {
     "use strict";
@@ -31459,69 +31501,6 @@ var init_context2 = __esm({
     engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
     scheduler = createScheduler({ concurrency: 4 });
     taskQueue = createTaskQueue({ concurrency: Math.max(Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2, 1) });
-    triggerStops = [];
-    for (const agent of await meta3.table("agents")) {
-      try {
-        const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
-          const task = await spawnTriggerTask(operations, agent.key, fire);
-          store.invalidate?.(["tasks"]);
-          if (process.env.VEXNAR_GATEWAY_TOKEN) {
-            const taskId = String(task.id);
-            await taskQueue.enqueue(taskId, async () => {
-              await engine.plan(taskId, gatewayComplete);
-              await engine.workMany(taskId, gatewayComplete, 1);
-            });
-          }
-          const channels = await meta3.table("notify");
-          if (!channels.length) return;
-          await createNotifier(channels, void 0, async (channel, event, result) => {
-            await operations.recordDelivery({
-              channel_id: channel.id,
-              event_kind: event.kind,
-              title: event.title,
-              status: result.ok ? "ok" : "failed",
-              attempts: result.attempts,
-              error: result.detail
-            });
-          }).dispatch({
-            kind: `trigger:${fire.event}`,
-            title: `agent ${agent.key} \xB7 ${fire.event}`,
-            text: fire.message || fire.event,
-            task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
-            finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
-          });
-        });
-        triggerStops.push(stop);
-      } catch {
-      }
-    }
-    stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
-      const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
-      store.invalidate?.(["tasks"]);
-      if (process.env.VEXNAR_GATEWAY_TOKEN) {
-        const taskId = String(task.id);
-        await taskQueue.enqueue(taskId, async () => {
-          await engine.plan(taskId, gatewayComplete);
-          await engine.workMany(taskId, gatewayComplete, 1);
-        });
-      }
-    }, 3e4);
-    process.once("SIGTERM", () => {
-      for (const stop of triggerStops) stop();
-      stopSchedules();
-      scheduler.stop();
-    });
-    await operations.writer.recover().catch(() => {
-    });
-    releaseStoreLock = await operations.writer.lock();
-    process.once("SIGINT", () => {
-      void releaseStoreLock();
-      process.exit(0);
-    });
-    process.once("SIGTERM", () => {
-      void releaseStoreLock();
-      process.exit(0);
-    });
   }
 });
 
@@ -32698,6 +32677,143 @@ var init_exploration = __esm({
   }
 });
 
+// src/runtime.ts
+var runtime_exports = {};
+__export(runtime_exports, {
+  runtimeInfo: () => runtimeInfo,
+  runtimeMode: () => runtimeMode,
+  startRuntime: () => startRuntime,
+  stopRuntime: () => stopRuntime,
+  storeBackend: () => storeBackend
+});
+async function boot() {
+  for (const agent of await meta3.table("agents")) {
+    try {
+      const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
+        const task = await spawnTriggerTask(operations, agent.key, fire);
+        store.invalidate?.(["tasks"]);
+        if (gatewayAvailable()) {
+          const taskId = String(task.id);
+          await taskQueue.enqueue(taskId, async () => {
+            await engine.plan(taskId, gatewayComplete);
+            await engine.workMany(taskId, gatewayComplete, 1);
+          });
+        }
+        const channels = await meta3.table("notify");
+        if (!channels.length) return;
+        await createNotifier(channels, void 0, async (channel, event, result) => {
+          await operations.recordDelivery({
+            channel_id: channel.id,
+            event_kind: event.kind,
+            title: event.title,
+            status: result.ok ? "ok" : "failed",
+            attempts: result.attempts,
+            error: result.detail
+          });
+        }).dispatch({
+          kind: `trigger:${fire.event}`,
+          title: `agent ${agent.key} \xB7 ${fire.event}`,
+          text: fire.message || fire.event,
+          task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
+          finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
+        });
+      });
+      stops.push(stop);
+      state.triggers += 1;
+    } catch {
+    }
+  }
+  const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
+    const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
+    store.invalidate?.(["tasks"]);
+    if (gatewayAvailable()) {
+      const taskId = String(task.id);
+      await taskQueue.enqueue(taskId, async () => {
+        await engine.plan(taskId, gatewayComplete);
+        await engine.workMany(taskId, gatewayComplete, 1);
+      });
+    }
+  }, 3e4);
+  stops.push(stopSchedules);
+  state.schedules = true;
+  await operations.writer.recover().catch(() => {
+  });
+  releaseStoreLock = await operations.writer.lock();
+  state.storeLocked = true;
+  state.started = true;
+  state.startedAt = Date.now();
+}
+function startRuntime(options = {}) {
+  if (options.signals && !signalHooks) {
+    signalHooks = true;
+    for (const signal of ["SIGINT", "SIGTERM"]) {
+      process.once(signal, () => {
+        void stopRuntime().then(() => process.exit(0));
+      });
+    }
+  }
+  if (!booting) {
+    booting = boot().catch((error62) => {
+      booting = null;
+      throw error62;
+    });
+  }
+  return booting;
+}
+async function stopRuntime() {
+  if (state.released) return;
+  state.released = true;
+  for (const stop of stops.splice(0)) {
+    try {
+      stop();
+    } catch {
+    }
+  }
+  scheduler.stop();
+  if (releaseStoreLock) {
+    try {
+      releaseStoreLock();
+    } catch {
+    }
+  }
+  state.storeLocked = false;
+  state.started = false;
+}
+function runtimeInfo() {
+  return {
+    mode: runtimeMode(),
+    store: storeBackend(),
+    started: state.started,
+    started_at: state.startedAt,
+    triggers: state.triggers,
+    schedules: state.schedules,
+    store_locked: state.storeLocked,
+    engine: gatewayAvailable() ? "gateway" : "idle",
+    task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2
+  };
+}
+var state, stops, releaseStoreLock, booting, signalHooks;
+var init_runtime = __esm({
+  async "src/runtime.ts"() {
+    "use strict";
+    init_src();
+    await init_context2();
+    init_mode();
+    state = {
+      started: false,
+      startedAt: 0,
+      triggers: 0,
+      schedules: false,
+      storeLocked: false,
+      released: false
+    };
+    stops = [];
+    releaseStoreLock = null;
+    booting = null;
+    signalHooks = false;
+  }
+});
+
 // src/routes/conversations.ts
 var conversations_exports = {};
 __export(conversations_exports, {
@@ -33415,7 +33531,7 @@ async function accessMode() {
   const mode = String((await readSettings()).desktop_access_mode ?? "");
   return ACCESS_MODES.has(mode) ? mode : "full";
 }
-async function desktopToken() {
+async function desktopToken2() {
   const env = (process.env.VEXNAR_DESKTOP_TOKEN ?? "").trim();
   if (env) return env;
   return String((await readSettings()).desktop_token ?? "").trim();
@@ -33651,7 +33767,7 @@ function register3(api2) {
     }
     const rawBase = String(body.base_url ?? "").trim();
     const baseURL = rawBase ? normalizeBaseURL(rawBase) : current.base_url;
-    const model = String(body.model ?? "").trim() || current.model;
+    const model2 = String(body.model ?? "").trim() || current.model;
     const apiKey = String(body.api_key ?? "").trim() || current.api_key;
     let reasoningEffort = current.reasoning_effort;
     if (body.reasoning_effort !== void 0) {
@@ -33665,14 +33781,14 @@ function register3(api2) {
       if (!THINKING_TYPES.has(thinking)) return c.json({ error: "thinking_type \u5FC5\u987B\u662F disabled / enabled \u6216\u7A7A" }, 400);
       thinkingType = thinking;
     }
-    if (!baseURL || !model || !apiKey) return c.json({ error: "base_url\u3001model \u548C api_key \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+    if (!baseURL || !model2 || !apiKey) return c.json({ error: "base_url\u3001model \u548C api_key \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
     try {
       const parsed = new URL(baseURL);
       if (!parsed.protocol || !parsed.host) throw apiErr(400, "base_url \u65E0\u6548");
     } catch {
       return c.json({ error: "base_url \u65E0\u6548" }, 400);
     }
-    const next = { provider, model, base_url: baseURL, api_key: apiKey, reasoning_effort: reasoningEffort, thinking_type: thinkingType };
+    const next = { provider, model: model2, base_url: baseURL, api_key: apiKey, reasoning_effort: reasoningEffort, thinking_type: thinkingType };
     await writeLLM(next);
     return c.json(llmStatus(next));
   });
@@ -33853,7 +33969,7 @@ var init_desktop = __esm({
     THINKING_TYPES = /* @__PURE__ */ new Set(["", "disabled", "enabled"]);
     ACCESS_MODES = /* @__PURE__ */ new Set(["request", "balanced", "full"]);
     desktopAuth = async (c, next) => {
-      const expected = await desktopToken();
+      const expected = await desktopToken2();
       if (!expected) return c.json({ error: "\u684C\u9762\u7AEF\u4EE4\u724C\u672A\u914D\u7F6E" }, 401);
       if (!tokenMatches(c.req.header(DESKTOP_TOKEN_HEADER) ?? "", expected)) {
         return c.json({ error: "\u684C\u9762\u7AEF\u4EE4\u724C\u65E0\u6548" }, 401);
@@ -34366,13 +34482,13 @@ async function llmPoolStatus() {
     const fails = Number(st.fails ?? 0);
     const trips = Number(st.trips ?? 0);
     const openUntil = st.open_until ? Date.parse(String(st.open_until)) : 0;
-    let state = "ok";
+    let state2 = "ok";
     let cooldownSecs = 0;
     if (openUntil > now2) {
-      state = "tripped";
+      state2 = "tripped";
       cooldownSecs = Math.floor((openUntil - now2) / 1e3) + 1;
     } else if (fails > 0) {
-      state = "degraded";
+      state2 = "degraded";
     }
     const member = {
       profile_id: String(id),
@@ -34382,7 +34498,7 @@ async function llmPoolStatus() {
       priority: Number(p.priority ?? 0),
       active: Boolean(p.is_default),
       excluded: Boolean(p.pool_exclude),
-      state,
+      state: state2,
       fails,
       trips,
       cooldown_secs: cooldownSecs,
@@ -34433,14 +34549,14 @@ async function tokenByModel(taskId) {
   const rows = (await writer.list("llm_usage")).filter((r) => String(r.task_id ?? "") === taskId);
   const byModel = /* @__PURE__ */ new Map();
   for (const r of rows) {
-    const model = String(r.model ?? "").trim() || "(unknown)";
-    const entry = byModel.get(model) ?? { model, calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
+    const model2 = String(r.model ?? "").trim() || "(unknown)";
+    const entry = byModel.get(model2) ?? { model: model2, calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
     entry.calls += 1;
     entry.input_tokens += Number(r.input_tokens ?? 0);
     entry.output_tokens += Number(r.output_tokens ?? 0);
     entry.cache_read_tokens += Number(r.cache_read ?? 0);
     entry.cache_write_tokens += Number(r.cache_write ?? 0);
-    byModel.set(model, entry);
+    byModel.set(model2, entry);
   }
   return [...byModel.values()].sort(
     (a, b) => b.input_tokens + b.output_tokens - (a.input_tokens + a.output_tokens) || a.model.localeCompare(b.model)
@@ -34678,9 +34794,9 @@ function register5(api2) {
         return c.json({ error: "format \u5FC5\u987B\u662F openai / anthropic / openai-responses" }, 400);
       }
       const name = String(body.name ?? "").trim();
-      const model = String(body.model ?? "").trim();
+      const model2 = String(body.model ?? "").trim();
       if (!name) return c.json({ error: "name \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
-      if (!model) return c.json({ error: "model \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      if (!model2) return c.json({ error: "model \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
       const existingId = body.id != null ? Number(body.id) : 0;
       const profiles = await listProfiles();
       if (profiles.some((p) => p.name === name && Number(p.id) !== existingId)) {
@@ -34703,7 +34819,7 @@ function register5(api2) {
           format,
           base_url: baseURL,
           proxy,
-          model,
+          model: model2,
           api_key_hint: apiKeyHint,
           rate_per_second: Number(body.rate_per_second ?? 0),
           rate_per_minute: Number(body.rate_per_minute ?? 0),
@@ -34734,7 +34850,7 @@ function register5(api2) {
         format,
         baseURL,
         proxy,
-        model,
+        model: model2,
         apiKeyHint,
         isDefault: false,
         priority: Number(body.priority ?? 0),
@@ -34842,12 +34958,12 @@ function register5(api2) {
       let contextWindowK = Number(body.context_window_k ?? 0);
       if (contextWindowK > 0) contextWindowK = Math.min(contextWindowK, 1e3);
       const baseURL = normalizeBaseURL2(body.base_url);
-      const model = String(body.model ?? "").trim() || (format === "openai" ? "gpt-4o" : format === "openai-responses" ? "gpt-5" : "claude-opus-4-8");
+      const model2 = String(body.model ?? "").trim() || (format === "openai" ? "gpt-4o" : format === "openai-responses" ? "gpt-5" : "claude-opus-4-8");
       const proxy = String(body.proxy ?? "").trim();
       if (active) {
         Object.assign(active, {
           format,
-          model,
+          model: model2,
           base_url: baseURL || null,
           ...proxy ? { proxy } : {},
           api_key_hint: apiKeyHint,
@@ -34866,7 +34982,7 @@ function register5(api2) {
           format,
           baseURL,
           proxy,
-          model,
+          model: model2,
           apiKeyHint,
           isDefault: true,
           priority: 0,
@@ -34934,11 +35050,11 @@ function register5(api2) {
   api2.get("/api/llm/records", async (c) => {
     const page = Math.max(Number(c.req.query("page") ?? 0) || 0, 0);
     const size = Math.min(Number(c.req.query("size") ?? 50) || 50, 500);
-    const model = c.req.query("model") ?? "";
+    const model2 = c.req.query("model") ?? "";
     const session = c.req.query("session") ?? "";
     const task = c.req.query("task") ?? "";
     let rows = await writer.list("llm_records");
-    if (model) rows = rows.filter((r) => String(r.model ?? "") === model);
+    if (model2) rows = rows.filter((r) => String(r.model ?? "") === model2);
     if (session) rows = rows.filter((r) => String(r.session_id ?? "").toLowerCase().includes(session.toLowerCase()));
     if (task) rows = rows.filter((r) => String(r.task_id ?? "") === task);
     rows = rows.sort((a, b) => Number(b.id ?? 0) - Number(a.id ?? 0));
@@ -34994,12 +35110,12 @@ function register5(api2) {
     const apiKey = String(body.api_key ?? "").trim();
     if (!apiKey) return c.json({ ok: false, error: "\u672A\u63D0\u4F9B API Key" });
     const provider = String(body.provider ?? "").trim();
-    const model = String(body.model ?? "").trim();
+    const model2 = String(body.model ?? "").trim();
     const baseURL = normalizeBaseURL2(body.base_url);
     const started = Date.now();
     try {
-      const reply = await minimalCompletion({ provider, baseURL, apiKey, model });
-      return c.json({ ok: true, latency_ms: Date.now() - started, model, reply: truncateReply(reply) });
+      const reply = await minimalCompletion({ provider, baseURL, apiKey, model: model2 });
+      return c.json({ ok: true, latency_ms: Date.now() - started, model: model2, reply: truncateReply(reply) });
     } catch (error62) {
       return c.json({ ok: false, error: String(error62?.message ?? error62) });
     }
@@ -39768,7 +39884,7 @@ function notifyStateOf(row) {
   return NOTIFY_STATE_ALIASES[raw2] ?? (raw2 || "pending");
 }
 function deliveryDto(row, channels) {
-  const state = notifyStateOf(row);
+  const state2 = notifyStateOf(row);
   const channelId = Number(row.channel_id ?? 0) || 0;
   const channel = channels.get(channelId);
   const createdAt = String(row.created_at ?? "");
@@ -39779,7 +39895,7 @@ function deliveryDto(row, channels) {
     channel_id: channelId,
     channel_name: String(row.channel_name ?? channel?.name ?? ""),
     channel_kind: String(row.channel_kind ?? channel?.kind ?? ""),
-    state,
+    state: state2,
     attempts: Number(row.attempts ?? 0) || 0,
     last_error: String(row.last_error ?? row.error ?? ""),
     created_at: createdAt,
@@ -39789,7 +39905,7 @@ function deliveryDto(row, channels) {
   };
   if (row.batch_id != null) dto.batch_id = Number(row.batch_id);
   if (row.sent_at) dto.sent_at = String(row.sent_at);
-  else if (state === "sent" && createdAt) dto.sent_at = createdAt;
+  else if (state2 === "sent" && createdAt) dto.sent_at = createdAt;
   return dto;
 }
 async function channelIndex() {
@@ -39805,14 +39921,14 @@ async function notifyStats(channels, deliveries) {
   let sentToday = 0;
   let oldest = 0;
   for (const row of deliveries) {
-    const state = notifyStateOf(row);
-    if (state === "pending" || state === "sending") {
+    const state2 = notifyStateOf(row);
+    if (state2 === "pending" || state2 === "sending") {
       pending++;
       const created = Date.parse(String(row.created_at ?? ""));
       if (Number.isFinite(created) && (oldest === 0 || created < oldest)) oldest = created;
-    } else if (state === "failed") {
+    } else if (state2 === "failed") {
       failed++;
-    } else if (state === "sent") {
+    } else if (state2 === "sent") {
       if (String(row.sent_at ?? row.created_at ?? "").slice(0, 10) === today) sentToday++;
     }
   }
@@ -40113,7 +40229,7 @@ function sideScope(input2) {
   throw fail4("\u9700\u8981 task_id \u6216 conversation_id", 400);
 }
 function sideDto(row) {
-  const model = typeof row.model === "string" ? parseJson2(row.model) : row.model;
+  const model2 = typeof row.model === "string" ? parseJson2(row.model) : row.model;
   const context = typeof row.context === "string" ? parseJson2(row.context) : row.context;
   const dto = {
     id: String(row.id),
@@ -40121,7 +40237,7 @@ function sideDto(row) {
     question: String(row.question ?? ""),
     answer: String(row.answer ?? ""),
     status: String(row.status ?? "pending"),
-    model: model && typeof model === "object" ? model : {},
+    model: model2 && typeof model2 === "object" ? model2 : {},
     snapshot_at: String(row.snapshot_at ?? ""),
     created_at: String(row.created_at ?? ""),
     sequence: Number(row.sequence ?? row.ordinal ?? 0),
@@ -40135,10 +40251,10 @@ function sideDto(row) {
 async function sideSnapshot(scope) {
   const record2 = await operations.writer.readRecord(SIDE_SESSION_TABLE, scope);
   if (!record2) return null;
-  const model = typeof record2.model === "string" ? parseJson2(record2.model) : record2.model;
+  const model2 = typeof record2.model === "string" ? parseJson2(record2.model) : record2.model;
   return {
     captured_at: String(record2.captured_at ?? ""),
-    model: model && typeof model === "object" ? model : {},
+    model: model2 && typeof model2 === "object" ? model2 : {},
     available: true,
     reason: ""
   };
@@ -40149,13 +40265,13 @@ function register12(api2) {
       const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
       const requested = Number(c.req.query("page_size") ?? 50) || 50;
       const pageSize = requested <= 0 || requested > 200 ? 50 : Math.trunc(requested);
-      const state = (c.req.query("state") ?? "").trim().toLowerCase();
+      const state2 = (c.req.query("state") ?? "").trim().toLowerCase();
       const eventKind = (c.req.query("event_kind") ?? "").trim();
       const channelId = Number(c.req.query("channel_id") ?? 0) || 0;
       const rows = await operations.writer.list(DELIVERY_TABLE);
       const channels = await channelIndex();
       let items = rows.map((row) => deliveryDto(row, channels));
-      if (state) items = items.filter((item) => item.state === state);
+      if (state2) items = items.filter((item) => item.state === state2);
       if (eventKind) items = items.filter((item) => item.event_kind === eventKind);
       if (channelId > 0) items = items.filter((item) => item.channel_id === channelId);
       items.sort((a, b) => Number(b.id) - Number(a.id));
@@ -40171,8 +40287,8 @@ function register12(api2) {
       const id = String(c.req.param("id"));
       if (!/^\d+$/.test(id)) throw fail4("\u6295\u9012 id \u65E0\u6548", 400);
       const current = await operations.writer.readRecord(DELIVERY_TABLE, id);
-      const state = current ? notifyStateOf(current) : "";
-      if (!current || !["pending", "failed", "skipped"].includes(state)) {
+      const state2 = current ? notifyStateOf(current) : "";
+      if (!current || !["pending", "failed", "skipped"].includes(state2)) {
         throw fail4(`\u6295\u9012 ${id} \u4E0D\u5B58\u5728\u6216\u5F53\u524D\u72B6\u6001\u4E0D\u5141\u8BB8\u91CD\u53D1`, 400);
       }
       const next = {
@@ -46772,10 +46888,10 @@ function blowfishConstants() {
 }
 function initState() {
   const pi = blowfishConstants();
-  const state = { P: new Uint32Array(18), S: new Uint32Array(1024) };
-  state.P.set(pi.subarray(0, 18));
-  state.S.set(pi.subarray(18, 1042));
-  return state;
+  const state2 = { P: new Uint32Array(18), S: new Uint32Array(1024) };
+  state2.P.set(pi.subarray(0, 18));
+  state2.S.set(pi.subarray(18, 1042));
+  return state2;
 }
 function F(S, x) {
   let h = S[x >>> 24 & 255] + S[256 + (x >>> 16 & 255)] >>> 0;
@@ -46803,12 +46919,12 @@ function wordStream(bytes) {
     return word;
   };
 }
-function expandState(state, key, salt) {
+function expandState(state2, key, salt) {
   const keyWords = wordStream(key);
-  for (let i = 0; i < 18; i++) state.P[i] = (state.P[i] ^ keyWords()) >>> 0;
+  for (let i = 0; i < 18; i++) state2.P[i] = (state2.P[i] ^ keyWords()) >>> 0;
   const lr = new Uint32Array(2);
   const encryptPair = () => {
-    encipher(state.P, state.S, lr);
+    encipher(state2.P, state2.S, lr);
   };
   if (salt) {
     const saltWords = wordStream(salt);
@@ -46816,8 +46932,8 @@ function expandState(state, key, salt) {
       lr[0] = (lr[0] ^ saltWords()) >>> 0;
       lr[1] = (lr[1] ^ saltWords()) >>> 0;
       encryptPair();
-      state.P[i] = lr[0];
-      state.P[i + 1] = lr[1];
+      state2.P[i] = lr[0];
+      state2.P[i + 1] = lr[1];
     }
     for (let box = 0; box < 4; box++) {
       const base = box * 256;
@@ -46825,35 +46941,35 @@ function expandState(state, key, salt) {
         lr[0] = (lr[0] ^ saltWords()) >>> 0;
         lr[1] = (lr[1] ^ saltWords()) >>> 0;
         encryptPair();
-        state.S[base + i] = lr[0];
-        state.S[base + i + 1] = lr[1];
+        state2.S[base + i] = lr[0];
+        state2.S[base + i + 1] = lr[1];
       }
     }
     return;
   }
   for (let i = 0; i < 18; i += 2) {
     encryptPair();
-    state.P[i] = lr[0];
-    state.P[i + 1] = lr[1];
+    state2.P[i] = lr[0];
+    state2.P[i + 1] = lr[1];
   }
   for (let box = 0; box < 4; box++) {
     const base = box * 256;
     for (let i = 0; i < 256; i += 2) {
       encryptPair();
-      state.S[base + i] = lr[0];
-      state.S[base + i + 1] = lr[1];
+      state2.S[base + i] = lr[0];
+      state2.S[base + i + 1] = lr[1];
     }
   }
 }
 function bcryptDigest(password, salt, cost) {
   const hashed = Buffer.from(password, "utf8").subarray(0, MAX_PASSWORD_BYTES);
   const key = Buffer.concat([hashed, Buffer.from([0])]);
-  const state = initState();
-  expandState(state, key, salt);
+  const state2 = initState();
+  expandState(state2, key, salt);
   const rounds = 1 << cost;
   for (let i = 0; i < rounds; i++) {
-    expandState(state, key);
-    expandState(state, salt);
+    expandState(state2, key);
+    expandState(state2, salt);
   }
   const blocks = new Uint32Array(6);
   for (let i = 0; i < 6; i++) blocks[i] = ORPHEAN.readUInt32BE(i * 4);
@@ -46862,7 +46978,7 @@ function bcryptDigest(password, salt, cost) {
     for (let i = 0; i < 6; i += 2) {
       lr[0] = blocks[i];
       lr[1] = blocks[i + 1];
-      encipher(state.P, state.S, lr);
+      encipher(state2.P, state2.S, lr);
       blocks[i] = lr[0];
       blocks[i + 1] = lr[1];
     }
@@ -47711,791 +47827,12 @@ var init_gaps = __esm({
 });
 
 // src/routes.ts
-init_dist();
-await init_context2();
-await init_exploration();
+var routes_exports = {};
+__export(routes_exports, {
+  api: () => api
+});
 import { readFile as readFile9 } from "node:fs/promises";
 import { join as join12 } from "node:path";
-var api = new Hono3();
-register(api);
-api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
-api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
-api.get("/api/agents/:key", async (c) => {
-  const agents = await meta3.table("agents");
-  const row = agents.find((agent) => agent.key === c.req.param("key"));
-  if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({ agent: row });
-});
-api.get("/api/llm/profiles", async (c) => {
-  const rows = await meta3.table("llmProfiles");
-  return c.json({
-    profiles: rows.map((row) => {
-      if (row.base_url != null) return row;
-      const { base_url, ...rest } = row;
-      return rest;
-    })
-  });
-});
-api.get("/api/task-categories", async (c) => c.json({ categories: await meta3.table("taskCategories") }));
-api.get("/api/task-templates", async (c) => c.json({ templates: await meta3.table("taskTemplates") }));
-api.get("/api/companies", async (c) => c.json(await store.companies.list()));
-api.get("/api/tools", async (c) => {
-  const rows = await meta3.table("tools");
-  return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
-});
-api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
-api.get("/api/notify/channels", async (c) => c.json({ channels: await meta3.table("notify") }));
-api.get("/api/settings", async (c) => c.json(await meta3.table("settings")));
-var taskDto = (row, metrics) => ({
-  id: String(row.id),
-  exploration_id: Number(row.exploration_id),
-  name: row.name,
-  ...row.category_id == null ? {} : { category_id: row.category_id },
-  pinned: row.pinned_at != null,
-  ...row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) },
-  description: row.description,
-  goal: row.goal,
-  status: row.status,
-  created_at: row.created_at_text,
-  created_unix: Number(row.created_unix ?? 0),
-  completed_at: row.completed_at_text ?? "",
-  completed_unix: Number(row.completed_unix ?? 0),
-  last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
-  paused: row.paused,
-  queued: row.queued,
-  tokens: {
-    input_tokens: Number(metrics?.input_tokens ?? 0),
-    output_tokens: Number(metrics?.output_tokens ?? 0),
-    cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
-    cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
-  },
-  goals_total: Number(metrics?.goals_total ?? 0),
-  goals_met: Number(metrics?.goals_met ?? 0),
-  in_flight: Number(metrics?.in_flight ?? 0),
-  findings: {
-    critical: Number(metrics?.findings?.critical ?? 0),
-    high: Number(metrics?.findings?.high ?? 0),
-    medium: Number(metrics?.findings?.medium ?? 0),
-    low: Number(metrics?.findings?.low ?? 0)
-  },
-  ...row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id },
-  llm_profile_ids: [],
-  ...row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id },
-  llm_failover_state: "default",
-  source_task_ids: [],
-  company_ids: [],
-  coverage_enabled: row.coverage_enabled
-});
-var TASK_PAGE_MAX_SIZE = 200;
-api.get("/api/tasks", async (c) => {
-  const status = (c.req.query("status") ?? "").trim();
-  const needle = (c.req.query("q") ?? "").trim().toLowerCase();
-  const rows = await store.tasks.list();
-  const metrics = await store.taskMetrics();
-  const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
-  const paged = c.req.query("page") != null || c.req.query("size") != null;
-  if (!paged) return c.json({ tasks: all });
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
-  return c.json({
-    tasks: all.slice((page - 1) * size, (page - 1) * size + size),
-    total: all.length,
-    page,
-    size
-  });
-});
-api.get("/api/tasks/:id", async (c) => {
-  const row = await store.tasks.get(c.req.param("id"));
-  if (!row) return c.json({ error: "not found" }, 404);
-  const metrics = await store.taskMetrics();
-  return c.json(taskDto(row, metrics.get(Number(row.exploration_id))));
-});
-api.post("/api/tasks", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const record2 = await operations.createTask(body);
-    store.invalidate?.(["tasks"]);
-    return c.json(taskDto(record2), 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/exploration/findings", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.reportFinding(body);
-    store.invalidate?.(["nodes", "findings", "edges"]);
-    void createNotifier(await meta3.table("notify"), void 0, async (channel, event, result2) => {
-      await operations.recordDelivery({
-        channel_id: channel.id,
-        event_kind: event.kind,
-        title: event.title,
-        status: result2.ok ? "ok" : "failed",
-        attempts: result2.attempts,
-        error: result2.detail
-      });
-    }).dispatch({
-      kind: "finding_created",
-      title: String(body.vulnclass ?? "finding"),
-      text: String(body.summary ?? ""),
-      task_id: String(body.task_id ?? ""),
-      finding_id: String(result.finding_id)
-    }).catch(() => {
-    });
-    return c.json(result, 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/task-categories", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.createCategory(body.name);
-    meta3.reload();
-    return c.json(result, 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/task-categories/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.renameCategory(c.req.param("id"), body.name);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/task-categories/:id", async (c) => {
-  try {
-    const result = await operations.deleteCategory(c.req.param("id"));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/task-templates", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.createTemplate(body);
-    meta3.reload();
-    return c.json(result, 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/task-templates/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateTemplate(c.req.param("id"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/task-templates/:id", async (c) => {
-  try {
-    const result = await operations.deleteTemplate(c.req.param("id"));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/tasks/:id/category", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.setTaskCategory(c.req.param("id"), body.category_id == null ? null : Number(body.category_id));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/assets", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.attachAssets(c.req.param("id"), body.asset_ids ?? [], String(body.source_summary ?? ""));
-    store.invalidate?.(["assets"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/tasks/:id/assets/:assetID", async (c) => {
-  try {
-    const result = await operations.detachAsset(c.req.param("id"), c.req.param("assetID"));
-    store.invalidate?.(["assets"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/scope", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.addScope(c.req.param("id"), body);
-    store.invalidate?.(["assets"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/tasks/:id/scope/:sid", async (c) => {
-  try {
-    return c.json(await operations.deleteScope(c.req.param("id"), c.req.param("sid")));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/tasks/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const record2 = await operations.updateTask(c.req.param("id"), { name: body.name, pinned: body.pinned }, body.rev);
-    store.invalidate?.(["tasks"]);
-    return c.json(taskDto(record2));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
-  }
-});
-api.delete("/api/tasks/:id", async (c) => {
-  try {
-    const result = await operations.deleteTask(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/archive", async (c) => {
-  try {
-    const result = await operations.archiveTask(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/archive/batch", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const ids = Array.isArray(body.task_ids) ? body.task_ids : [];
-  const items = [];
-  for (const id of ids) {
-    try {
-      items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) });
-    } catch (error62) {
-      items.push({ task_id: id, ok: false, error: String(error62?.message ?? error62) });
-    }
-  }
-  store.invalidate?.(["tasks"]);
-  return c.json({ items });
-});
-api.get("/api/task-archives", async (c) => {
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
-  const all = await operations.listArchives();
-  return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size });
-});
-api.get("/api/task-archives/:id", async (c) => {
-  const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param("id"));
-  if (!one) return c.json({ error: "\u5F52\u6863\u4E0D\u5B58\u5728" }, 404);
-  return c.json(one);
-});
-api.post("/api/task-archives/:id/restore", async (c) => {
-  try {
-    const result = await operations.restoreArchive(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/task-archives/:id", async (c) => {
-  try {
-    const result = await operations.deleteArchive(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/control", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const record2 = await operations.controlTask(c.req.param("id"), String(body.action ?? ""));
-    if (body.action === "pause") taskQueue.pause(c.req.param("id"));
-    if (body.action === "resume") taskQueue.resume(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json({ id: record2.id, paused: record2.paused, queued: record2.queued, status: record2.status });
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/notify/channels", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.createChannel(body);
-    meta3.reload();
-    return c.json(result, 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/notify/channels/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateChannel(c.req.param("id"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/notify/channels/:id", async (c) => {
-  try {
-    const result = await operations.deleteChannel(c.req.param("id"));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.get("/api/agents/:key/triggers", async (c) => c.json({ triggers: await store.triggers.list(c.req.param("key")) }));
-api.post("/api/agents/:key/triggers", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    return c.json(await operations.createTrigger(c.req.param("key"), body));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/agents/:key/triggers/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    return c.json(await operations.updateTrigger(c.req.param("key"), c.req.param("id"), body));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/agents/:key/triggers/:id", async (c) => {
-  try {
-    return c.json(await operations.deleteTrigger(c.req.param("key"), c.req.param("id")));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/agents/:key", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateAgent(c.req.param("key"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.put("/api/tools/:key", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateTool(c.req.param("key"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tools/custom", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.createCustomTool(body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.put("/api/tools/custom/:key", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateCustomTool(c.req.param("key"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/tools/custom/:key", async (c) => {
-  try {
-    const result = await operations.deleteCustomTool(c.req.param("key"));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/mcp", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.saveMcpServer(body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.put("/api/mcp/:id/enabled", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.setMcpEnabled(c.req.param("id"), Boolean(body.enabled));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/mcp/:id", async (c) => {
-  try {
-    const result = await operations.deleteMcpServer(c.req.param("id"));
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/exploration/findings/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const record2 = await operations.patchFinding(c.req.param("id"), { status: body.status, severity: body.severity });
-    store.invalidate?.(["findings"]);
-    return c.json(findingDto2(record2));
-  } catch (error62) {
-    const status = error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400;
-    return c.json({ error: String(error62?.message ?? error62) }, status);
-  }
-});
-api.get("/api/tasks/:id/metrics", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "not found" }, 404);
-  const metrics = (await store.taskMetrics()).get(Number(task.exploration_id));
-  return c.json({
-    task_id: Number(task.id),
-    exploration_id: Number(task.exploration_id),
-    mttd_seconds: null,
-    findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
-    findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
-    findings_by_vulnclass: {},
-    findings_by_status: {},
-    verify_sessions: 0,
-    verify_reproduced: 0,
-    verify_false_positive: 0,
-    verify_inconclusive: 0,
-    intents: {},
-    done_intents: 0,
-    no_yield_done: 0,
-    yield_rate: 0,
-    class_coverage: {}
-  });
-});
-var ASSET_OPTIONAL = [
-  "domain",
-  "root_domain",
-  "ip",
-  "c_segment",
-  "port",
-  "icp",
-  "bound_domains",
-  "open_ports",
-  "record_type",
-  "record_value",
-  "bundle_id",
-  "app_name",
-  "category",
-  "app_description",
-  "app_icp",
-  "url",
-  "service_type",
-  "service_name",
-  "favicon_mmh3",
-  "status_code",
-  "content_length",
-  "page_title",
-  "technologies",
-  "auth",
-  "method",
-  "params",
-  "extra"
-];
-var ASSET_SOURCE = ["task_source", "task_source_summary", "task_source_node_id"];
-var assetDto = (row) => {
-  const dto = { id: row.id, type: row.type };
-  if (row.company_id != null) dto.company_id = row.company_id;
-  dto.task_ids = row.task_ids ?? [];
-  for (const field of ASSET_OPTIONAL) {
-    const value = row[field];
-    if (value == null || value === "") continue;
-    if (Array.isArray(value) && value.length === 0) continue;
-    if (typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0) continue;
-    dto[field] = value;
-  }
-  dto.last_seen = row.last_seen;
-  for (const field of ASSET_SOURCE) {
-    if (row[field] != null && row[field] !== "") dto[field] = row[field];
-  }
-  return dto;
-};
-api.get("/api/assets", async (c) => {
-  const limit = Math.min(Number(c.req.query("limit") ?? 20) || 20, 200);
-  const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
-  const type = c.req.query("type") || void 0;
-  const taskId = c.req.query("task_id") || void 0;
-  const dsl = c.req.query("dsl") ?? "";
-  if (dsl.trim()) {
-    try {
-      const all = (await store.assets.list({ type, taskId, limit: 1e5, offset: 0 })).rows;
-      const matched = queryDSL(all, dsl);
-      const rows2 = matched.slice(offset, offset + limit);
-      return c.json({ assets: rows2.map(assetDto), count: rows2.length, total: matched.length });
-    } catch (error62) {
-      return c.json({ error: String(error62?.message ?? error62) }, 400);
-    }
-  }
-  const { rows, total } = await store.assets.list({ type, taskId, limit, offset });
-  return c.json({ assets: rows.map(assetDto), count: rows.length, total });
-});
-api.post("/api/assets/import", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const assets = Array.isArray(body.assets) ? body.assets : [];
-  if (!assets.length) return c.json({ error: "assets \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
-  try {
-    const result = await operations.importAssets(assets);
-    store.invalidate?.(["assets"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, 400);
-  }
-});
-api.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
-var findingDto2 = (row) => ({
-  traffic_count: 0,
-  evidence_version: 0,
-  report_evidence_version: 0,
-  report_stale: false,
-  id: String(row.id),
-  finding_id: String(row.id),
-  vulnclass: row.vulnclass,
-  ...row.name ? { name: row.name } : {},
-  severity: row.severity,
-  status: row.status,
-  summary: row.summary,
-  evidence: row.evidence,
-  ...row.task_id == null ? {} : { task_id: String(row.task_id) },
-  ts: row.created_at_text
-});
-api.get("/api/exploration/findings", async (c) => {
-  const page = c.req.query("page");
-  const limit = c.req.query("limit");
-  if (page == null && limit == null) {
-    const rows2 = await store.findings.list(500);
-    return c.json(rows2.map(findingDto2));
-  }
-  const size = Math.min(Number(limit ?? 20) || 20, 200);
-  const current = Math.max(Number(page ?? 1) || 1, 1);
-  const severity = (c.req.query("severity") ?? "").trim().toLowerCase();
-  const status = (c.req.query("status") ?? "").trim().toLowerCase();
-  const vulnclass = (c.req.query("vulnclass") ?? "").trim();
-  const taskId = (c.req.query("task_id") ?? "").trim();
-  const query = (c.req.query("q") ?? "").trim().toLowerCase();
-  let rows = await store.findings.list(1e5);
-  if (severity) rows = rows.filter((row) => String(row.severity).toLowerCase() === severity);
-  if (status) rows = rows.filter((row) => String(row.status).toLowerCase() === status);
-  if (vulnclass) rows = rows.filter((row) => String(row.vulnclass) === vulnclass);
-  if (taskId) rows = rows.filter((row) => String(row.task_id ?? "") === taskId);
-  if (query) {
-    rows = rows.filter((row) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? "").toLowerCase().includes(query)));
-  }
-  const total = rows.length;
-  const pageRows = rows.slice((current - 1) * size, current * size);
-  return c.json({ items: pageRows.map(findingDto2), total, page: current, page_size: size });
-});
-api.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
-api.get("/api/exploration/findings/:id", async (c) => {
-  const id = c.req.param("id");
-  const row = await store.findings.get(id);
-  if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({
-    ...findingDto2(row),
-    ...row.report ? { report: row.report } : {}
-  });
-});
-var goalDto = (row) => {
-  const payload = typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {};
-  return {
-    id: String(row.id),
-    text: String(payload.text ?? ""),
-    ...payload.vulnclass ? { vulnclass: payload.vulnclass } : {},
-    state: row.state,
-    ...row.origin == null ? {} : { origin: row.origin },
-    ts: String(row.created_at).replace(/\.\d+/, "")
-  };
-};
-api.post("/api/tasks/:id/goals", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const row = await operations.addGoal(c.req.param("id"), body);
-    store.invalidate?.(["nodes", "edges"]);
-    return c.json(goalDto(row));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/tasks/:id/goals/:gid", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const row = await operations.editGoal(c.req.param("id"), c.req.param("gid"), body);
-    store.invalidate?.(["nodes"]);
-    return c.json(goalDto(row));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/tasks/:id/goals/:gid", async (c) => {
-  try {
-    const result = await operations.deleteGoal(c.req.param("id"), c.req.param("gid"));
-    store.invalidate?.(["nodes", "edges"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-var constraintDto = (row) => ({
-  id: String(row.id),
-  kind: row.kind,
-  text: row.text,
-  ...row.origin ? { origin: row.origin } : {},
-  ...row.created_at ? { ts: row.created_at } : {}
-});
-api.get("/api/tasks/:id/constraints", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "task not found" }, 404);
-  return c.json({ constraints: (await store.constraints.list(c.req.param("id"))).map(constraintDto) });
-});
-api.post("/api/tasks/:id/constraints", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const row = await operations.addConstraint(c.req.param("id"), body);
-    return c.json(constraintDto(row));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/tasks/:id/constraints/:cid", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const row = await operations.editConstraint(c.req.param("id"), c.req.param("cid"), body);
-    return c.json(constraintDto(row));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/tasks/:id/constraints/:cid", async (c) => {
-  try {
-    return c.json(await operations.deleteConstraint(c.req.param("id"), c.req.param("cid")));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/intents/:iid/messages", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.sendIntentMessage(c.req.param("id"), c.req.param("iid"), body);
-    store.invalidate?.(["nodes", "activity"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/intents/:iid/rerun", async (c) => {
-  try {
-    const result = await operations.rerunIntent(c.req.param("id"), c.req.param("iid"));
-    store.invalidate?.(["nodes"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/intents/rerun-blocked", async (c) => {
-  try {
-    const result = await operations.rerunBlocked(c.req.param("id"));
-    store.invalidate?.(["nodes"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/intents/:iid/control", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.controlIntent(c.req.param("id"), c.req.param("iid"), body);
-    store.invalidate?.(["nodes", "edges"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.get("/api/exploration/findings/:id/traffic/:bindingId/body", async (c) => {
-  const traffic = await store.traffic(c.req.param("id"));
-  if (!traffic) return c.json({ error: "finding not found" }, 404);
-  const binding = traffic.bindings.find((row) => String(row.id) === c.req.param("bindingId"));
-  if (!binding?.snapshot) return c.json({ error: "\u7ED1\u5B9A\u4E0D\u5B58\u5728" }, 404);
-  const side = c.req.query("side") || "response";
-  if (side !== "request" && side !== "response") return c.json({ error: "side \u53EA\u80FD\u662F request \u6216 response" }, 400);
-  const hash2 = side === "request" ? binding.snapshot.req_hash : binding.snapshot.resp_hash;
-  if (!hash2) return c.json({ error: "\u8BE5\u4FA7\u6CA1\u6709\u6B63\u6587" }, 404);
-  const blobs2 = blobStore(storeRoot());
-  let buffer;
-  try {
-    buffer = await blobs2.read(hash2);
-  } catch {
-    return c.json({ error: "\u6B63\u6587\u4E0D\u5B58\u5728" }, 404);
-  }
-  if (c.req.query("download") === "1") {
-    const body = new Uint8Array(buffer);
-    return new Response(body, { headers: {
-      "content-type": "application/octet-stream",
-      "content-disposition": `attachment; filename="evidence-${binding.id}-${side}.bin"`,
-      "content-length": String(body.length),
-      "x-content-type-options": "nosniff"
-    } });
-  }
-  const total = buffer.length;
-  const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
-  let length = Number(c.req.query("length") ?? 8192) || 8192;
-  if (length <= 0 || length > 8192) length = 8192;
-  if (offset > total) return c.json({ error: "offset \u8D85\u51FA\u6B63\u6587\u957F\u5EA6" }, 400);
-  let raw2 = buffer.subarray(offset, offset + length);
-  if (offset + raw2.length < total && raw2.length >= 4) {
-    let start = raw2.length - 1;
-    while (start > 0 && (raw2[start] & 192) === 128) start--;
-    try {
-      new TextDecoder("utf-8", { fatal: true }).decode(raw2.subarray(start));
-    } catch {
-      raw2 = raw2.subarray(0, start);
-    }
-  }
-  const binary = raw2.includes(0) || offset === 0 && !isValidUtf8(raw2);
-  const next = offset + raw2.length;
-  return c.json({
-    offset,
-    total,
-    next_offset: next,
-    truncated: next < total,
-    binary,
-    content: binary ? `[\u4E8C\u8FDB\u5236\u6B63\u6587\uFF0C${total} \u5B57\u8282\uFF1B\u8BF7\u4E0B\u8F7D\u67E5\u770B]` : raw2.toString("utf8")
-  });
-});
 function isValidUtf8(raw2) {
   try {
     new TextDecoder("utf-8", { fatal: true }).decode(raw2);
@@ -48504,114 +47841,6 @@ function isValidUtf8(raw2) {
     return false;
   }
 }
-api.get("/api/exploration/findings/:id/traffic", async (c) => {
-  const out = await store.traffic(c.req.param("id"));
-  if (!out) return c.json({ error: "finding not found" }, 404);
-  const snapshotDto = (snap) => {
-    if (!snap) return snap;
-    return {
-      id: snap.id,
-      source_traffic_id: snap.source_traffic_id ?? "",
-      captured_at: Number(snap.captured_at ?? 0),
-      url: snap.url ?? "",
-      method: snap.method ?? "",
-      status: Number(snap.status ?? 0),
-      content_type: snap.content_type ?? "",
-      req_hash: snap.req_hash ?? "",
-      resp_hash: snap.resp_hash ?? "",
-      req_len: Number(snap.req_len ?? 0),
-      resp_len: Number(snap.resp_len ?? 0),
-      created_at: String(snap.created_at ?? "")
-    };
-  };
-  const bindings = out.bindings.map((binding) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }));
-  return c.json({ ...out, bindings });
-});
-api.get("/api/engine/tools", async (c) => c.json({ tools: toolSpecs() }));
-api.post("/api/engine/tools/run", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const name = String(body.name ?? "");
-  const target = String(body.target ?? "");
-  if (!target) return c.json({ error: "target \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
-  try {
-    const result = await runTool(createRunner({ concurrency: 1 }), name, target, body.args ?? {});
-    const created = body.task_id ? await persistToolResult(operations, String(body.task_id), String(body.node_id ?? ""), name, result.parsed, result.stdout) : [];
-    store.invalidate?.(["assets", "findings", "nodes"]);
-    return c.json({ code: result.code, truncated: result.truncated, timed_out: result.timed_out, stdout: result.stdout.slice(0, 2e4), stderr: result.stderr.slice(0, 4e3), parsed: result.parsed, created });
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
-  }
-});
-api.post("/api/engine/plan", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  if (!body.task_id) return c.json({ error: "task_id \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
-  try {
-    const taskId = String(body.task_id);
-    return c.json({ intents: await taskQueue.enqueue(taskId, () => engine.plan(taskId, gatewayComplete)) });
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
-  }
-});
-api.post("/api/engine/work", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  if (!body.task_id) return c.json({ error: "task_id \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
-  try {
-    const taskId = String(body.task_id);
-    return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? "work#1"), 4, { isCancelled: () => taskQueue.isCancelled(taskId) })) });
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
-  }
-});
-api.get("/api/engine/queue", (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }));
-api.post("/api/engine/queue/:taskId", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const taskId = c.req.param("taskId");
-  if (body.action === "pause") taskQueue.pause(taskId);
-  else if (body.action === "resume") taskQueue.resume(taskId);
-  else if (body.action === "cancel") return c.json(taskQueue.cancel(taskId));
-  else return c.json({ error: "action \u9700\u4E3A pause/resume/cancel" }, 400);
-  return c.json({ ok: true, paused: taskQueue.pausedTasks });
-});
-api.get("/api/schedules", async (c) => c.json({ schedules: await store.schedules.list() }));
-api.post("/api/schedules", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    return c.json(await operations.createSchedule(body), 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/schedules/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    return c.json(await operations.updateSchedule(c.req.param("id"), body));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/schedules/:id", async (c) => {
-  try {
-    return c.json(await operations.deleteSchedule(c.req.param("id")));
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.get("/api/tasks/:id/coverage", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "task not found" }, 404);
-  if (task.coverage_enabled === false) {
-    return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] });
-  }
-  return c.json({ enabled: true, ...await store.coverage(c.req.param("id")) });
-});
-api.get("/api/tasks/:id/report", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "task not found" }, 404);
-  const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
-  const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
-  const overview = await operations.graphOverview(String(task.id));
-  return c.json(buildReport({ task, findings, assets, overview }));
-});
 async function renderTaskReport(taskId) {
   const task = await store.tasks.get(taskId);
   if (!task) return null;
@@ -48620,163 +47849,1069 @@ async function renderTaskReport(taskId) {
   const overview = await operations.graphOverview(String(task.id));
   return buildReport({ task, findings, assets, overview });
 }
-api.get("/api/tasks/:id/report/html", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "task not found" }, 404);
-  const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
-  const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
-  return new Response(buildReportHtml({ task, findings, assets }), { headers: { "content-type": "text/html; charset=utf-8" } });
-});
-api.post("/api/tasks/:id/report/export", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  if (body.format === "html") {
-    const task = await store.tasks.get(c.req.param("id"));
-    if (!task) return c.json({ error: "task not found" }, 404);
-    const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
-    const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
-    const html = buildReportHtml({ task, findings, assets });
-    return c.json(await saveReport(storeRoot(), String(task.id), html, { findings: findings.length, assets: assets.length }, "html"), 201);
-  }
-  const report = await renderTaskReport(c.req.param("id"));
-  if (!report) return c.json({ error: "task not found" }, 404);
-  return c.json(await saveReport(storeRoot(), String(c.req.param("id")), report.markdown, report.stats), 201);
-});
-api.get("/api/tasks/:id/reports", async (c) => c.json({ reports: await listReports(storeRoot(), String(c.req.param("id"))) }));
-api.get("/api/tasks/:id/reports/:reportId", async (c) => {
-  const id = c.req.param("reportId");
-  if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: "bad report id" }, 400);
-  try {
-    const content = await readFile9(join12(storeRoot(), "reports", `${id}.md`), "utf8");
-    return new Response(content, { headers: { "content-type": "text/markdown; charset=utf-8" } });
-  } catch {
-    return c.json({ error: "\u62A5\u544A\u4E0D\u5B58\u5728" }, 404);
-  }
-});
-api.get("/api/tasks/:id/goals", async (c) => {
-  const taskId = c.req.param("id");
-  const task = await store.tasks.get(taskId);
-  if (!task) return c.json({ error: "task not found" }, 404);
-  const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: "desc", kinds: ["goal"] });
-  const goals = items.map(goalDto);
-  return c.json({ goals });
-});
-api.get("/api/tokens/daily", async (c) => {
-  const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
-  return c.json(await store.activity.dailyTokens(days));
-});
-api.get("/api/exploration/tokens", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } });
-  const result = await store.activity.tokenStats(taskId);
-  return c.json({ workers: result.workers, sessions: result.sessions, total: result.total });
-});
-api.get("/api/exploration/activity/history", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const before = Number(c.req.query("before") ?? 0) || 0;
-  const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
-  const session = c.req.query("session") ?? "";
-  if (session && session !== "main" && session !== "plan" && !/^main:\d+$/.test(session) && !/^intent:\d+$/.test(session)) {
-    return c.json({ error: "bad session" }, 400);
-  }
-  if (!taskId) return c.json({ items: [], snapshot_cursor: 0, earliest_cursor: 0, has_more: false });
-  const result = await store.activity.history({ taskId, session, before, limit });
-  const items = result.items.map((row) => ({
-    seq: Number(row.id),
-    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
-    ...row.worker ? { worker: row.worker } : {},
-    ts: String(row.created_at).replace(/\.\d+/, ""),
-    ...row.kind ? { kind: row.kind } : {},
-    ...row.tool ? { tool: row.tool } : {},
-    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
-    is_error: Boolean(row.is_error),
-    summary: row.summary ?? "",
-    metadata: row.metadata ?? {},
-    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
-    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
-    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
-    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
-    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
-  }));
-  return c.json({
-    items,
-    snapshot_cursor: result.snapshot,
-    earliest_cursor: items.length ? items[0].seq : before,
-    has_more: result.hasMore
-  });
-});
-api.get("/api/exploration/intents", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const limit = Math.min(Number(c.req.query("limit") ?? 300) || 300, 500);
-  const before = c.req.query("before") ?? "";
-  if (!taskId) return c.req.query("page") ? c.json({ items: [], has_more: false }) : c.json([]);
-  const result = await store.nodes.page({ taskId, page: 1, size: limit, order: "desc", kinds: ["intent"], before: before && before !== "0" ? before : void 0 });
-  const items = result.items.map((row) => ({
-    id: String(row.id),
-    type: row.kind,
-    payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
-    priority: row.priority,
-    state: row.state,
-    ...row.origin == null ? {} : { origin: row.origin },
-    ts: row.created_at
-  }));
-  if (c.req.query("page")) return c.json({ items, has_more: result.total > items.length });
-  return c.json(items);
-});
-api.get("/api/exploration/nodes", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
-  if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} });
-  const kinds = (c.req.query("kind") ?? "").split(",").filter(Boolean);
-  const states = (c.req.query("state") ?? "").split(",").filter(Boolean);
-  const order2 = c.req.query("order") === "asc" ? "asc" : "desc";
-  const { items, total, edges } = await store.nodes.page({ taskId, page, size, order: order2, kinds, states });
-  return c.json({
-    items: items.map((row) => ({
+var api, taskDto, TASK_PAGE_MAX_SIZE, ASSET_OPTIONAL, ASSET_SOURCE, assetDto, findingDto2, goalDto, constraintDto, routeModules;
+var init_routes = __esm({
+  async "src/routes.ts"() {
+    "use strict";
+    init_dist();
+    await init_context2();
+    await init_exploration();
+    api = new Hono3();
+    register(api);
+    api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
+    api.get("/api/_runtime", async (c) => {
+      const { runtimeInfo: runtimeInfo2 } = await init_runtime().then(() => runtime_exports);
+      return c.json(runtimeInfo2());
+    });
+    api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
+    api.get("/api/agents/:key", async (c) => {
+      const agents = await meta3.table("agents");
+      const row = agents.find((agent) => agent.key === c.req.param("key"));
+      if (!row) return c.json({ error: "not found" }, 404);
+      return c.json({ agent: row });
+    });
+    api.get("/api/llm/profiles", async (c) => {
+      const rows = await meta3.table("llmProfiles");
+      return c.json({
+        profiles: rows.map((row) => {
+          if (row.base_url != null) return row;
+          const { base_url, ...rest } = row;
+          return rest;
+        })
+      });
+    });
+    api.get("/api/task-categories", async (c) => c.json({ categories: await meta3.table("taskCategories") }));
+    api.get("/api/task-templates", async (c) => c.json({ templates: await meta3.table("taskTemplates") }));
+    api.get("/api/companies", async (c) => c.json(await store.companies.list()));
+    api.get("/api/tools", async (c) => {
+      const rows = await meta3.table("tools");
+      return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
+    });
+    api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
+    api.get("/api/notify/channels", async (c) => c.json({ channels: await meta3.table("notify") }));
+    api.get("/api/settings", async (c) => c.json(await meta3.table("settings")));
+    taskDto = (row, metrics) => ({
       id: String(row.id),
-      type: row.kind,
-      payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
-      priority: row.priority,
-      state: row.state,
-      ...row.origin == null ? {} : { origin: row.origin },
-      ts: row.created_at
-    })),
-    total,
-    page,
-    size,
-    edges: edges.map((edge) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
-    refs: {}
-  });
-});
-var routeModules = [
-  { load: () => init_conversations().then(() => conversations_exports), scope: "conversations/chat" },
-  { load: () => init_desktop().then(() => desktop_exports), scope: "desktop gateway" },
-  { load: () => init_visibility().then(() => visibility_exports), scope: "visibility/commands" },
-  { load: () => init_llm().then(() => llm_exports), scope: "llm pool/records" },
-  { load: () => init_intercept().then(() => intercept_exports), scope: "intercept approvals" },
-  { load: () => init_traffic().then(() => traffic_exports), scope: "traffic evidence" },
-  { load: () => init_session_traffic().then(() => session_traffic_exports), scope: "session traffic" },
-  { load: () => init_skills().then(() => skills_exports), scope: "skills" },
-  { load: () => init_market().then(() => market_exports), scope: "market" },
-  { load: () => init_tasks_companies().then(() => tasks_companies_exports), scope: "tasks/companies" },
-  { load: () => init_notify_mcp().then(() => notify_mcp_exports), scope: "notify/mcp/side-questions" },
-  { load: () => init_agents().then(() => agents_exports), scope: "agents" },
-  { load: () => init_workspace().then(() => workspace_exports), scope: "workspace" },
-  { load: () => init_sync().then(() => sync_exports), scope: "scopesentry sync" },
-  { load: () => init_update().then(() => update_exports), scope: "update/self-update" },
-  { load: () => init_auth().then(() => auth_exports), scope: "auth/logs/system" },
-  { load: () => init_gaps().then(() => gaps_exports), scope: "misc gap fill" }
-];
-for (const { load, scope } of routeModules) {
-  try {
-    const mod = await load();
-    mod.register?.(api);
-  } catch (error62) {
-    console.error(`[vexnar] failed to load route module ${scope}:`, error62);
+      exploration_id: Number(row.exploration_id),
+      name: row.name,
+      ...row.category_id == null ? {} : { category_id: row.category_id },
+      pinned: row.pinned_at != null,
+      ...row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) },
+      description: row.description,
+      goal: row.goal,
+      status: row.status,
+      created_at: row.created_at_text,
+      created_unix: Number(row.created_unix ?? 0),
+      completed_at: row.completed_at_text ?? "",
+      completed_unix: Number(row.completed_unix ?? 0),
+      last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
+      paused: row.paused,
+      queued: row.queued,
+      tokens: {
+        input_tokens: Number(metrics?.input_tokens ?? 0),
+        output_tokens: Number(metrics?.output_tokens ?? 0),
+        cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
+        cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
+      },
+      goals_total: Number(metrics?.goals_total ?? 0),
+      goals_met: Number(metrics?.goals_met ?? 0),
+      in_flight: Number(metrics?.in_flight ?? 0),
+      findings: {
+        critical: Number(metrics?.findings?.critical ?? 0),
+        high: Number(metrics?.findings?.high ?? 0),
+        medium: Number(metrics?.findings?.medium ?? 0),
+        low: Number(metrics?.findings?.low ?? 0)
+      },
+      ...row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id },
+      llm_profile_ids: [],
+      ...row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id },
+      llm_failover_state: "default",
+      source_task_ids: [],
+      company_ids: [],
+      coverage_enabled: row.coverage_enabled
+    });
+    TASK_PAGE_MAX_SIZE = 200;
+    api.get("/api/tasks", async (c) => {
+      const status = (c.req.query("status") ?? "").trim();
+      const needle = (c.req.query("q") ?? "").trim().toLowerCase();
+      const rows = await store.tasks.list();
+      const metrics = await store.taskMetrics();
+      const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
+      const paged = c.req.query("page") != null || c.req.query("size") != null;
+      if (!paged) return c.json({ tasks: all });
+      const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+      const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
+      return c.json({
+        tasks: all.slice((page - 1) * size, (page - 1) * size + size),
+        total: all.length,
+        page,
+        size
+      });
+    });
+    api.get("/api/tasks/:id", async (c) => {
+      const row = await store.tasks.get(c.req.param("id"));
+      if (!row) return c.json({ error: "not found" }, 404);
+      const metrics = await store.taskMetrics();
+      return c.json(taskDto(row, metrics.get(Number(row.exploration_id))));
+    });
+    api.post("/api/tasks", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const record2 = await operations.createTask(body);
+        store.invalidate?.(["tasks"]);
+        return c.json(taskDto(record2), 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/exploration/findings", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.reportFinding(body);
+        store.invalidate?.(["nodes", "findings", "edges"]);
+        void createNotifier(await meta3.table("notify"), void 0, async (channel, event, result2) => {
+          await operations.recordDelivery({
+            channel_id: channel.id,
+            event_kind: event.kind,
+            title: event.title,
+            status: result2.ok ? "ok" : "failed",
+            attempts: result2.attempts,
+            error: result2.detail
+          });
+        }).dispatch({
+          kind: "finding_created",
+          title: String(body.vulnclass ?? "finding"),
+          text: String(body.summary ?? ""),
+          task_id: String(body.task_id ?? ""),
+          finding_id: String(result.finding_id)
+        }).catch(() => {
+        });
+        return c.json(result, 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/task-categories", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.createCategory(body.name);
+        meta3.reload();
+        return c.json(result, 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/task-categories/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.renameCategory(c.req.param("id"), body.name);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/task-categories/:id", async (c) => {
+      try {
+        const result = await operations.deleteCategory(c.req.param("id"));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/task-templates", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.createTemplate(body);
+        meta3.reload();
+        return c.json(result, 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/task-templates/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.updateTemplate(c.req.param("id"), body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/task-templates/:id", async (c) => {
+      try {
+        const result = await operations.deleteTemplate(c.req.param("id"));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/tasks/:id/category", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.setTaskCategory(c.req.param("id"), body.category_id == null ? null : Number(body.category_id));
+        store.invalidate?.(["tasks"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/assets", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.attachAssets(c.req.param("id"), body.asset_ids ?? [], String(body.source_summary ?? ""));
+        store.invalidate?.(["assets"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tasks/:id/assets/:assetID", async (c) => {
+      try {
+        const result = await operations.detachAsset(c.req.param("id"), c.req.param("assetID"));
+        store.invalidate?.(["assets"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/scope", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.addScope(c.req.param("id"), body);
+        store.invalidate?.(["assets"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tasks/:id/scope/:sid", async (c) => {
+      try {
+        return c.json(await operations.deleteScope(c.req.param("id"), c.req.param("sid")));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/tasks/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const record2 = await operations.updateTask(c.req.param("id"), { name: body.name, pinned: body.pinned }, body.rev);
+        store.invalidate?.(["tasks"]);
+        return c.json(taskDto(record2));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tasks/:id", async (c) => {
+      try {
+        const result = await operations.deleteTask(c.req.param("id"));
+        store.invalidate?.(["tasks"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/archive", async (c) => {
+      try {
+        const result = await operations.archiveTask(c.req.param("id"));
+        store.invalidate?.(["tasks"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/archive/batch", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      const ids = Array.isArray(body.task_ids) ? body.task_ids : [];
+      const items = [];
+      for (const id of ids) {
+        try {
+          items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) });
+        } catch (error62) {
+          items.push({ task_id: id, ok: false, error: String(error62?.message ?? error62) });
+        }
+      }
+      store.invalidate?.(["tasks"]);
+      return c.json({ items });
+    });
+    api.get("/api/task-archives", async (c) => {
+      const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+      const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
+      const all = await operations.listArchives();
+      return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size });
+    });
+    api.get("/api/task-archives/:id", async (c) => {
+      const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param("id"));
+      if (!one) return c.json({ error: "\u5F52\u6863\u4E0D\u5B58\u5728" }, 404);
+      return c.json(one);
+    });
+    api.post("/api/task-archives/:id/restore", async (c) => {
+      try {
+        const result = await operations.restoreArchive(c.req.param("id"));
+        store.invalidate?.(["tasks"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/task-archives/:id", async (c) => {
+      try {
+        const result = await operations.deleteArchive(c.req.param("id"));
+        store.invalidate?.(["tasks"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/control", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const record2 = await operations.controlTask(c.req.param("id"), String(body.action ?? ""));
+        if (body.action === "pause") taskQueue.pause(c.req.param("id"));
+        if (body.action === "resume") taskQueue.resume(c.req.param("id"));
+        store.invalidate?.(["tasks"]);
+        return c.json({ id: record2.id, paused: record2.paused, queued: record2.queued, status: record2.status });
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/notify/channels", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.createChannel(body);
+        meta3.reload();
+        return c.json(result, 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/notify/channels/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.updateChannel(c.req.param("id"), body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/notify/channels/:id", async (c) => {
+      try {
+        const result = await operations.deleteChannel(c.req.param("id"));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.get("/api/agents/:key/triggers", async (c) => c.json({ triggers: await store.triggers.list(c.req.param("key")) }));
+    api.post("/api/agents/:key/triggers", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        return c.json(await operations.createTrigger(c.req.param("key"), body));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/agents/:key/triggers/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        return c.json(await operations.updateTrigger(c.req.param("key"), c.req.param("id"), body));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/agents/:key/triggers/:id", async (c) => {
+      try {
+        return c.json(await operations.deleteTrigger(c.req.param("key"), c.req.param("id")));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/agents/:key", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.updateAgent(c.req.param("key"), body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.put("/api/tools/:key", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.updateTool(c.req.param("key"), body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tools/custom", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.createCustomTool(body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.put("/api/tools/custom/:key", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.updateCustomTool(c.req.param("key"), body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tools/custom/:key", async (c) => {
+      try {
+        const result = await operations.deleteCustomTool(c.req.param("key"));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/mcp", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.saveMcpServer(body);
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.put("/api/mcp/:id/enabled", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.setMcpEnabled(c.req.param("id"), Boolean(body.enabled));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/mcp/:id", async (c) => {
+      try {
+        const result = await operations.deleteMcpServer(c.req.param("id"));
+        meta3.reload();
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/exploration/findings/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const record2 = await operations.patchFinding(c.req.param("id"), { status: body.status, severity: body.severity });
+        store.invalidate?.(["findings"]);
+        return c.json(findingDto2(record2));
+      } catch (error62) {
+        const status = error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400;
+        return c.json({ error: String(error62?.message ?? error62) }, status);
+      }
+    });
+    api.get("/api/tasks/:id/metrics", async (c) => {
+      const task = await store.tasks.get(c.req.param("id"));
+      if (!task) return c.json({ error: "not found" }, 404);
+      const metrics = (await store.taskMetrics()).get(Number(task.exploration_id));
+      return c.json({
+        task_id: Number(task.id),
+        exploration_id: Number(task.exploration_id),
+        mttd_seconds: null,
+        findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
+        findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
+        findings_by_vulnclass: {},
+        findings_by_status: {},
+        verify_sessions: 0,
+        verify_reproduced: 0,
+        verify_false_positive: 0,
+        verify_inconclusive: 0,
+        intents: {},
+        done_intents: 0,
+        no_yield_done: 0,
+        yield_rate: 0,
+        class_coverage: {}
+      });
+    });
+    ASSET_OPTIONAL = [
+      "domain",
+      "root_domain",
+      "ip",
+      "c_segment",
+      "port",
+      "icp",
+      "bound_domains",
+      "open_ports",
+      "record_type",
+      "record_value",
+      "bundle_id",
+      "app_name",
+      "category",
+      "app_description",
+      "app_icp",
+      "url",
+      "service_type",
+      "service_name",
+      "favicon_mmh3",
+      "status_code",
+      "content_length",
+      "page_title",
+      "technologies",
+      "auth",
+      "method",
+      "params",
+      "extra"
+    ];
+    ASSET_SOURCE = ["task_source", "task_source_summary", "task_source_node_id"];
+    assetDto = (row) => {
+      const dto = { id: row.id, type: row.type };
+      if (row.company_id != null) dto.company_id = row.company_id;
+      dto.task_ids = row.task_ids ?? [];
+      for (const field of ASSET_OPTIONAL) {
+        const value = row[field];
+        if (value == null || value === "") continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        if (typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0) continue;
+        dto[field] = value;
+      }
+      dto.last_seen = row.last_seen;
+      for (const field of ASSET_SOURCE) {
+        if (row[field] != null && row[field] !== "") dto[field] = row[field];
+      }
+      return dto;
+    };
+    api.get("/api/assets", async (c) => {
+      const limit = Math.min(Number(c.req.query("limit") ?? 20) || 20, 200);
+      const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
+      const type = c.req.query("type") || void 0;
+      const taskId = c.req.query("task_id") || void 0;
+      const dsl = c.req.query("dsl") ?? "";
+      if (dsl.trim()) {
+        try {
+          const all = (await store.assets.list({ type, taskId, limit: 1e5, offset: 0 })).rows;
+          const matched = queryDSL(all, dsl);
+          const rows2 = matched.slice(offset, offset + limit);
+          return c.json({ assets: rows2.map(assetDto), count: rows2.length, total: matched.length });
+        } catch (error62) {
+          return c.json({ error: String(error62?.message ?? error62) }, 400);
+        }
+      }
+      const { rows, total } = await store.assets.list({ type, taskId, limit, offset });
+      return c.json({ assets: rows.map(assetDto), count: rows.length, total });
+    });
+    api.post("/api/assets/import", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      const assets = Array.isArray(body.assets) ? body.assets : [];
+      if (!assets.length) return c.json({ error: "assets \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      try {
+        const result = await operations.importAssets(assets);
+        store.invalidate?.(["assets"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, 400);
+      }
+    });
+    api.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
+    findingDto2 = (row) => ({
+      traffic_count: 0,
+      evidence_version: 0,
+      report_evidence_version: 0,
+      report_stale: false,
+      id: String(row.id),
+      finding_id: String(row.id),
+      vulnclass: row.vulnclass,
+      ...row.name ? { name: row.name } : {},
+      severity: row.severity,
+      status: row.status,
+      summary: row.summary,
+      evidence: row.evidence,
+      ...row.task_id == null ? {} : { task_id: String(row.task_id) },
+      ts: row.created_at_text
+    });
+    api.get("/api/exploration/findings", async (c) => {
+      const page = c.req.query("page");
+      const limit = c.req.query("limit");
+      if (page == null && limit == null) {
+        const rows2 = await store.findings.list(500);
+        return c.json(rows2.map(findingDto2));
+      }
+      const size = Math.min(Number(limit ?? 20) || 20, 200);
+      const current = Math.max(Number(page ?? 1) || 1, 1);
+      const severity = (c.req.query("severity") ?? "").trim().toLowerCase();
+      const status = (c.req.query("status") ?? "").trim().toLowerCase();
+      const vulnclass = (c.req.query("vulnclass") ?? "").trim();
+      const taskId = (c.req.query("task_id") ?? "").trim();
+      const query = (c.req.query("q") ?? "").trim().toLowerCase();
+      let rows = await store.findings.list(1e5);
+      if (severity) rows = rows.filter((row) => String(row.severity).toLowerCase() === severity);
+      if (status) rows = rows.filter((row) => String(row.status).toLowerCase() === status);
+      if (vulnclass) rows = rows.filter((row) => String(row.vulnclass) === vulnclass);
+      if (taskId) rows = rows.filter((row) => String(row.task_id ?? "") === taskId);
+      if (query) {
+        rows = rows.filter((row) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? "").toLowerCase().includes(query)));
+      }
+      const total = rows.length;
+      const pageRows = rows.slice((current - 1) * size, current * size);
+      return c.json({ items: pageRows.map(findingDto2), total, page: current, page_size: size });
+    });
+    api.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
+    api.get("/api/exploration/findings/:id", async (c) => {
+      const id = c.req.param("id");
+      const row = await store.findings.get(id);
+      if (!row) return c.json({ error: "not found" }, 404);
+      return c.json({
+        ...findingDto2(row),
+        ...row.report ? { report: row.report } : {}
+      });
+    });
+    goalDto = (row) => {
+      const payload = typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {};
+      return {
+        id: String(row.id),
+        text: String(payload.text ?? ""),
+        ...payload.vulnclass ? { vulnclass: payload.vulnclass } : {},
+        state: row.state,
+        ...row.origin == null ? {} : { origin: row.origin },
+        ts: String(row.created_at).replace(/\.\d+/, "")
+      };
+    };
+    api.post("/api/tasks/:id/goals", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const row = await operations.addGoal(c.req.param("id"), body);
+        store.invalidate?.(["nodes", "edges"]);
+        return c.json(goalDto(row));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/tasks/:id/goals/:gid", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const row = await operations.editGoal(c.req.param("id"), c.req.param("gid"), body);
+        store.invalidate?.(["nodes"]);
+        return c.json(goalDto(row));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tasks/:id/goals/:gid", async (c) => {
+      try {
+        const result = await operations.deleteGoal(c.req.param("id"), c.req.param("gid"));
+        store.invalidate?.(["nodes", "edges"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    constraintDto = (row) => ({
+      id: String(row.id),
+      kind: row.kind,
+      text: row.text,
+      ...row.origin ? { origin: row.origin } : {},
+      ...row.created_at ? { ts: row.created_at } : {}
+    });
+    api.get("/api/tasks/:id/constraints", async (c) => {
+      const task = await store.tasks.get(c.req.param("id"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      return c.json({ constraints: (await store.constraints.list(c.req.param("id"))).map(constraintDto) });
+    });
+    api.post("/api/tasks/:id/constraints", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const row = await operations.addConstraint(c.req.param("id"), body);
+        return c.json(constraintDto(row));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/tasks/:id/constraints/:cid", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const row = await operations.editConstraint(c.req.param("id"), c.req.param("cid"), body);
+        return c.json(constraintDto(row));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/tasks/:id/constraints/:cid", async (c) => {
+      try {
+        return c.json(await operations.deleteConstraint(c.req.param("id"), c.req.param("cid")));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/intents/:iid/messages", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.sendIntentMessage(c.req.param("id"), c.req.param("iid"), body);
+        store.invalidate?.(["nodes", "activity"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/intents/:iid/rerun", async (c) => {
+      try {
+        const result = await operations.rerunIntent(c.req.param("id"), c.req.param("iid"));
+        store.invalidate?.(["nodes"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/intents/rerun-blocked", async (c) => {
+      try {
+        const result = await operations.rerunBlocked(c.req.param("id"));
+        store.invalidate?.(["nodes"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.post("/api/tasks/:id/intents/:iid/control", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        const result = await operations.controlIntent(c.req.param("id"), c.req.param("iid"), body);
+        store.invalidate?.(["nodes", "edges"]);
+        return c.json(result);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.get("/api/exploration/findings/:id/traffic/:bindingId/body", async (c) => {
+      const traffic = await store.traffic(c.req.param("id"));
+      if (!traffic) return c.json({ error: "finding not found" }, 404);
+      const binding = traffic.bindings.find((row) => String(row.id) === c.req.param("bindingId"));
+      if (!binding?.snapshot) return c.json({ error: "\u7ED1\u5B9A\u4E0D\u5B58\u5728" }, 404);
+      const side = c.req.query("side") || "response";
+      if (side !== "request" && side !== "response") return c.json({ error: "side \u53EA\u80FD\u662F request \u6216 response" }, 400);
+      const hash2 = side === "request" ? binding.snapshot.req_hash : binding.snapshot.resp_hash;
+      if (!hash2) return c.json({ error: "\u8BE5\u4FA7\u6CA1\u6709\u6B63\u6587" }, 404);
+      const blobs2 = blobStore(storeRoot());
+      let buffer;
+      try {
+        buffer = await blobs2.read(hash2);
+      } catch {
+        return c.json({ error: "\u6B63\u6587\u4E0D\u5B58\u5728" }, 404);
+      }
+      if (c.req.query("download") === "1") {
+        const body = new Uint8Array(buffer);
+        return new Response(body, { headers: {
+          "content-type": "application/octet-stream",
+          "content-disposition": `attachment; filename="evidence-${binding.id}-${side}.bin"`,
+          "content-length": String(body.length),
+          "x-content-type-options": "nosniff"
+        } });
+      }
+      const total = buffer.length;
+      const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
+      let length = Number(c.req.query("length") ?? 8192) || 8192;
+      if (length <= 0 || length > 8192) length = 8192;
+      if (offset > total) return c.json({ error: "offset \u8D85\u51FA\u6B63\u6587\u957F\u5EA6" }, 400);
+      let raw2 = buffer.subarray(offset, offset + length);
+      if (offset + raw2.length < total && raw2.length >= 4) {
+        let start = raw2.length - 1;
+        while (start > 0 && (raw2[start] & 192) === 128) start--;
+        try {
+          new TextDecoder("utf-8", { fatal: true }).decode(raw2.subarray(start));
+        } catch {
+          raw2 = raw2.subarray(0, start);
+        }
+      }
+      const binary = raw2.includes(0) || offset === 0 && !isValidUtf8(raw2);
+      const next = offset + raw2.length;
+      return c.json({
+        offset,
+        total,
+        next_offset: next,
+        truncated: next < total,
+        binary,
+        content: binary ? `[\u4E8C\u8FDB\u5236\u6B63\u6587\uFF0C${total} \u5B57\u8282\uFF1B\u8BF7\u4E0B\u8F7D\u67E5\u770B]` : raw2.toString("utf8")
+      });
+    });
+    api.get("/api/exploration/findings/:id/traffic", async (c) => {
+      const out = await store.traffic(c.req.param("id"));
+      if (!out) return c.json({ error: "finding not found" }, 404);
+      const snapshotDto = (snap) => {
+        if (!snap) return snap;
+        return {
+          id: snap.id,
+          source_traffic_id: snap.source_traffic_id ?? "",
+          captured_at: Number(snap.captured_at ?? 0),
+          url: snap.url ?? "",
+          method: snap.method ?? "",
+          status: Number(snap.status ?? 0),
+          content_type: snap.content_type ?? "",
+          req_hash: snap.req_hash ?? "",
+          resp_hash: snap.resp_hash ?? "",
+          req_len: Number(snap.req_len ?? 0),
+          resp_len: Number(snap.resp_len ?? 0),
+          created_at: String(snap.created_at ?? "")
+        };
+      };
+      const bindings = out.bindings.map((binding) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }));
+      return c.json({ ...out, bindings });
+    });
+    api.get("/api/engine/tools", async (c) => c.json({ tools: toolSpecs() }));
+    api.post("/api/engine/tools/run", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      const name = String(body.name ?? "");
+      const target = String(body.target ?? "");
+      if (!target) return c.json({ error: "target \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      try {
+        const result = await runTool(createRunner({ concurrency: 1 }), name, target, body.args ?? {});
+        const created = body.task_id ? await persistToolResult(operations, String(body.task_id), String(body.node_id ?? ""), name, result.parsed, result.stdout) : [];
+        store.invalidate?.(["assets", "findings", "nodes"]);
+        return c.json({ code: result.code, truncated: result.truncated, timed_out: result.timed_out, stdout: result.stdout.slice(0, 2e4), stderr: result.stderr.slice(0, 4e3), parsed: result.parsed, created });
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
+      }
+    });
+    api.post("/api/engine/plan", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      if (!body.task_id) return c.json({ error: "task_id \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      try {
+        const taskId = String(body.task_id);
+        return c.json({ intents: await taskQueue.enqueue(taskId, () => engine.plan(taskId, gatewayComplete)) });
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
+      }
+    });
+    api.post("/api/engine/work", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      if (!body.task_id) return c.json({ error: "task_id \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      try {
+        const taskId = String(body.task_id);
+        return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? "work#1"), 4, { isCancelled: () => taskQueue.isCancelled(taskId) })) });
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
+      }
+    });
+    api.get("/api/engine/queue", (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }));
+    api.post("/api/engine/queue/:taskId", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      const taskId = c.req.param("taskId");
+      if (body.action === "pause") taskQueue.pause(taskId);
+      else if (body.action === "resume") taskQueue.resume(taskId);
+      else if (body.action === "cancel") return c.json(taskQueue.cancel(taskId));
+      else return c.json({ error: "action \u9700\u4E3A pause/resume/cancel" }, 400);
+      return c.json({ ok: true, paused: taskQueue.pausedTasks });
+    });
+    api.get("/api/schedules", async (c) => c.json({ schedules: await store.schedules.list() }));
+    api.post("/api/schedules", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        return c.json(await operations.createSchedule(body), 201);
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.patch("/api/schedules/:id", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      try {
+        return c.json(await operations.updateSchedule(c.req.param("id"), body));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.delete("/api/schedules/:id", async (c) => {
+      try {
+        return c.json(await operations.deleteSchedule(c.req.param("id")));
+      } catch (error62) {
+        return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+      }
+    });
+    api.get("/api/tasks/:id/coverage", async (c) => {
+      const task = await store.tasks.get(c.req.param("id"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      if (task.coverage_enabled === false) {
+        return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] });
+      }
+      return c.json({ enabled: true, ...await store.coverage(c.req.param("id")) });
+    });
+    api.get("/api/tasks/:id/report", async (c) => {
+      const task = await store.tasks.get(c.req.param("id"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
+      const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
+      const overview = await operations.graphOverview(String(task.id));
+      return c.json(buildReport({ task, findings, assets, overview }));
+    });
+    api.get("/api/tasks/:id/report/html", async (c) => {
+      const task = await store.tasks.get(c.req.param("id"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
+      const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
+      return new Response(buildReportHtml({ task, findings, assets }), { headers: { "content-type": "text/html; charset=utf-8" } });
+    });
+    api.post("/api/tasks/:id/report/export", async (c) => {
+      const body = await c.req.json().catch(() => ({}));
+      if (body.format === "html") {
+        const task = await store.tasks.get(c.req.param("id"));
+        if (!task) return c.json({ error: "task not found" }, 404);
+        const findings = (await store.findings.list(1e5)).filter((row) => String(row.task_id ?? "") === String(task.id));
+        const assets = (await store.assets.list({ taskId: String(task.id), limit: 1e3, offset: 0 })).rows;
+        const html = buildReportHtml({ task, findings, assets });
+        return c.json(await saveReport(storeRoot(), String(task.id), html, { findings: findings.length, assets: assets.length }, "html"), 201);
+      }
+      const report = await renderTaskReport(c.req.param("id"));
+      if (!report) return c.json({ error: "task not found" }, 404);
+      return c.json(await saveReport(storeRoot(), String(c.req.param("id")), report.markdown, report.stats), 201);
+    });
+    api.get("/api/tasks/:id/reports", async (c) => c.json({ reports: await listReports(storeRoot(), String(c.req.param("id"))) }));
+    api.get("/api/tasks/:id/reports/:reportId", async (c) => {
+      const id = c.req.param("reportId");
+      if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: "bad report id" }, 400);
+      try {
+        const content = await readFile9(join12(storeRoot(), "reports", `${id}.md`), "utf8");
+        return new Response(content, { headers: { "content-type": "text/markdown; charset=utf-8" } });
+      } catch {
+        return c.json({ error: "\u62A5\u544A\u4E0D\u5B58\u5728" }, 404);
+      }
+    });
+    api.get("/api/tasks/:id/goals", async (c) => {
+      const taskId = c.req.param("id");
+      const task = await store.tasks.get(taskId);
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: "desc", kinds: ["goal"] });
+      const goals = items.map(goalDto);
+      return c.json({ goals });
+    });
+    api.get("/api/tokens/daily", async (c) => {
+      const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+      return c.json(await store.activity.dailyTokens(days));
+    });
+    api.get("/api/exploration/tokens", async (c) => {
+      const taskId = c.req.query("task") ?? "";
+      if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } });
+      const result = await store.activity.tokenStats(taskId);
+      return c.json({ workers: result.workers, sessions: result.sessions, total: result.total });
+    });
+    api.get("/api/exploration/activity/history", async (c) => {
+      const taskId = c.req.query("task") ?? "";
+      const before = Number(c.req.query("before") ?? 0) || 0;
+      const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
+      const session = c.req.query("session") ?? "";
+      if (session && session !== "main" && session !== "plan" && !/^main:\d+$/.test(session) && !/^intent:\d+$/.test(session)) {
+        return c.json({ error: "bad session" }, 400);
+      }
+      if (!taskId) return c.json({ items: [], snapshot_cursor: 0, earliest_cursor: 0, has_more: false });
+      const result = await store.activity.history({ taskId, session, before, limit });
+      const items = result.items.map((row) => ({
+        seq: Number(row.id),
+        ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
+        ...row.worker ? { worker: row.worker } : {},
+        ts: String(row.created_at).replace(/\.\d+/, ""),
+        ...row.kind ? { kind: row.kind } : {},
+        ...row.tool ? { tool: row.tool } : {},
+        ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
+        is_error: Boolean(row.is_error),
+        summary: row.summary ?? "",
+        metadata: row.metadata ?? {},
+        ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
+        ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
+        ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
+        ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
+        ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
+      }));
+      return c.json({
+        items,
+        snapshot_cursor: result.snapshot,
+        earliest_cursor: items.length ? items[0].seq : before,
+        has_more: result.hasMore
+      });
+    });
+    api.get("/api/exploration/intents", async (c) => {
+      const taskId = c.req.query("task") ?? "";
+      const limit = Math.min(Number(c.req.query("limit") ?? 300) || 300, 500);
+      const before = c.req.query("before") ?? "";
+      if (!taskId) return c.req.query("page") ? c.json({ items: [], has_more: false }) : c.json([]);
+      const result = await store.nodes.page({ taskId, page: 1, size: limit, order: "desc", kinds: ["intent"], before: before && before !== "0" ? before : void 0 });
+      const items = result.items.map((row) => ({
+        id: String(row.id),
+        type: row.kind,
+        payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+        priority: row.priority,
+        state: row.state,
+        ...row.origin == null ? {} : { origin: row.origin },
+        ts: row.created_at
+      }));
+      if (c.req.query("page")) return c.json({ items, has_more: result.total > items.length });
+      return c.json(items);
+    });
+    api.get("/api/exploration/nodes", async (c) => {
+      const taskId = c.req.query("task") ?? "";
+      const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+      const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
+      if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} });
+      const kinds = (c.req.query("kind") ?? "").split(",").filter(Boolean);
+      const states = (c.req.query("state") ?? "").split(",").filter(Boolean);
+      const order2 = c.req.query("order") === "asc" ? "asc" : "desc";
+      const { items, total, edges } = await store.nodes.page({ taskId, page, size, order: order2, kinds, states });
+      return c.json({
+        items: items.map((row) => ({
+          id: String(row.id),
+          type: row.kind,
+          payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+          priority: row.priority,
+          state: row.state,
+          ...row.origin == null ? {} : { origin: row.origin },
+          ts: row.created_at
+        })),
+        total,
+        page,
+        size,
+        edges: edges.map((edge) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
+        refs: {}
+      });
+    });
+    routeModules = [
+      { load: () => init_conversations().then(() => conversations_exports), scope: "conversations/chat" },
+      { load: () => init_desktop().then(() => desktop_exports), scope: "desktop gateway" },
+      { load: () => init_visibility().then(() => visibility_exports), scope: "visibility/commands" },
+      { load: () => init_llm().then(() => llm_exports), scope: "llm pool/records" },
+      { load: () => init_intercept().then(() => intercept_exports), scope: "intercept approvals" },
+      { load: () => init_traffic().then(() => traffic_exports), scope: "traffic evidence" },
+      { load: () => init_session_traffic().then(() => session_traffic_exports), scope: "session traffic" },
+      { load: () => init_skills().then(() => skills_exports), scope: "skills" },
+      { load: () => init_market().then(() => market_exports), scope: "market" },
+      { load: () => init_tasks_companies().then(() => tasks_companies_exports), scope: "tasks/companies" },
+      { load: () => init_notify_mcp().then(() => notify_mcp_exports), scope: "notify/mcp/side-questions" },
+      { load: () => init_agents().then(() => agents_exports), scope: "agents" },
+      { load: () => init_workspace().then(() => workspace_exports), scope: "workspace" },
+      { load: () => init_sync().then(() => sync_exports), scope: "scopesentry sync" },
+      { load: () => init_update().then(() => update_exports), scope: "update/self-update" },
+      { load: () => init_auth().then(() => auth_exports), scope: "auth/logs/system" },
+      { load: () => init_gaps().then(() => gaps_exports), scope: "misc gap fill" }
+    ];
+    for (const { load, scope } of routeModules) {
+      try {
+        const mod = await load();
+        mod.register?.(api);
+      } catch (error62) {
+        console.error(`[vexnar] failed to load route module ${scope}:`, error62);
+      }
+    }
+    api.notFound((c) => c.json({ error: "route not migrated", path: c.req.path, method: c.req.method }, 404));
   }
-}
+});
+
+// src/embedded.ts
+await init_routes();
 
 // src/go-data.ts
+init_mode();
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
 var prefixes = [
   "/api/tasks",
@@ -48794,15 +48929,17 @@ var coreTraffic = ["/api/traffic/capture", "/api/traffic/ingest"];
 function isCoreTraffic(path) {
   return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
-function isGoDataRequest(method, path) {
+function isDataPlaneRequest(method, path) {
   if (isCoreTraffic(path)) return false;
   if (routes.has(`${method} ${path}`)) return true;
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
+var isGoDataRequest = isDataPlaneRequest;
 var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
 async function goData(request, localPeer) {
+  if (runtimeMode() !== "go") return void 0;
   const url2 = new URL(request.url);
-  if (!isGoDataRequest(request.method, url2.pathname)) return void 0;
+  if (!isDataPlaneRequest(request.method, url2.pathname)) return void 0;
   const host = request.headers.get("host") ?? "";
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
@@ -48844,11 +48981,16 @@ async function goData(request, localPeer) {
 }
 
 // src/embedded.ts
+await init_runtime();
+var booting2 = null;
 async function handle(request, localPeer) {
+  if (!booting2) booting2 = startRuntime();
+  await booting2;
   return await goData(request, localPeer) ?? api.fetch(request);
 }
 export {
   handle,
+  isDataPlaneRequest,
   isGoDataRequest
 };
 /*! Bundled license information:

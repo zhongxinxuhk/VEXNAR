@@ -9,16 +9,27 @@ import { ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-run
 import { startGoService } from './vexnar-go.mjs'
 
 /**
+ * 数据面由谁回答：默认 `ts`（core 原生读 SQLite，Go 不用启动）；
+ * `VEXNAR_RUNTIME_MODE=go` 回到旧路径（拉起/复用 Go，整段转发）。
+ */
+export function runtimeMode() {
+  return String(process.env.VEXNAR_RUNTIME_MODE || 'ts').trim().toLowerCase() === 'go' ? 'go' : 'ts'
+}
+
+/**
  * 起 dsh web 客户端。
  *
- * Go 后端先由本模块拉起（或复用同版本实例），把 `VEXNAR_GO_URL` 注进客户端环境：
- * 客户端不再假设 8787 上碰巧有个能用的后端。返回 `{ child, go, stop }`，
- * `stop()` 一起杀掉两个进程，避免留下孤儿 Go 继续写库。
+ * `ts` 模式下不再编译、不再拉起 Go：数据面由 in-process 的 core 直接回答。
+ * `go` 模式保留原行为——由本模块拉起（或复用同版本）Go，并把 `VEXNAR_GO_URL`
+ * 注进客户端环境。返回 `{ child, go, stop }`，`stop()` 一起收掉两个进程，
+ * 避免留下孤儿 Go 继续写库。
  */
 export async function startWeb(port, onReady, onAccountHandoff) {
   ensureProfile()
-  const go = await startGoService()
-  const env = { ...runtimeEnv(), VEXNAR_GO_URL: go.url }
+  const mode = runtimeMode()
+  const go = mode === 'go' ? await startGoService() : null
+  const env = { ...runtimeEnv(), VEXNAR_RUNTIME_MODE: mode, ...(go ? { VEXNAR_GO_URL: go.url } : {}) }
+  if (!go) console.log('[vexnar] 运行时底座：TS core（不启动 Go）')
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {
@@ -33,9 +44,9 @@ export async function startWeb(port, onReady, onAccountHandoff) {
   })
   const stop = (signal = 'SIGTERM') => {
     if (child.exitCode === null) child.kill(signal)
-    go.stop(signal)
+    go?.stop(signal)
   }
-  child.once('exit', () => go.stop())
+  child.once('exit', () => go?.stop())
   return { child, go, stop }
 }
 
@@ -52,7 +63,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => host.stop(signal))
     host.child.on('error', error => { console.error(error.message); process.exitCode = 1 })
     host.child.on('exit', code => {
-      host.go.stop()
+      host.go?.stop()
       process.exitCode = code ?? 1
     })
   }

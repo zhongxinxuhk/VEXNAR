@@ -65,6 +65,33 @@ external agent client are presentation and control surfaces, not independent mod
 - Backend APIs used by clients must have stable JSON contracts and tests. The client must
   handle backend errors instead of silently falling back to a local model runtime.
 
+### Which process implements the gateway
+
+The gateway contract is unchanged; which process implements it depends on the runtime base mode
+(`VEXNAR_RUNTIME_MODE`, default `ts`):
+
+- `ts` — `app/vexnar-core` serves the same `/api/desktop/openai/v1/*` contract, and the engine calls
+  it **in-process** (`app/vexnar-core/src/gateway.ts`): no listener, no upstream key in the engine,
+  works with the Go service stopped.
+- `go` — the legacy loopback Go gateway at `VEXNAR_GO_URL`. This is the only rollback switch.
+
+Either way the engine holds no upstream credentials: only the gateway reads the profile key.
+
+## Runtime base is TypeScript; Go is the fallback
+
+`app/vexnar-core` is the runtime base: routes, SQLite store, engine, task queue, scheduler,
+triggers, auth and the model gateway live in one process.
+
+- Data-plane prefixes (`/api/tasks`, `/api/traffic`, `/api/intercept`, `/api/exploration`,
+  `/api/assets`, `/api/report`, `/api/stats`, `/api/llm/records`, `/api/commands`) are answered
+  natively. `go-data.ts` no longer proxies by default; `VEXNAR_RUNTIME_MODE=go` restores the old
+  forwarding path for rollback.
+- `context.ts` only creates objects. Lifecycle — triggers, scheduled tasks, store recovery and the
+  exclusive store lock — runs in `startRuntime()` (`runtime.ts`). Do not move side effects back to
+  module top level: tests and reconciliation scripts import these modules directly.
+- A new data-plane route lands in core with a self-check: `vexnar-core/*.test.mjs`, run with
+  `./node_modules/.bin/tsx <file>.test.mjs` (plain `node` cannot resolve the store's `.js` imports).
+
 ## Clients are external agents; the Go service is their tool backend
 
 This repository no longer ships a first-party desktop client. The Electron client under
