@@ -10,6 +10,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "seed": "tsx seed.mjs",
+    "import:pg": "tsx import-pg.mjs",
     "compare": "tsx compare.mjs",
     "test:writes": "tsx test-writes.mjs",
     "test:engine": "tsx test-engine.mjs",
