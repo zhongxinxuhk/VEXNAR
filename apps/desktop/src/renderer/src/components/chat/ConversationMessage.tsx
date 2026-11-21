@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Check, Copy, Paperclip, Pencil, RefreshCw } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { CloudMark } from '@/components/brand'
+import { ConversationFlow } from './ConversationFlow'
 import { ConversationExecution } from './ConversationExecution'
 import { Markdown } from '@/components/Markdown'
 import { QuotaNotice } from '@/components/QuotaNotice'
@@ -36,6 +37,8 @@ export function ConversationMessage({
   const retry = (): void => {
     if (canRegenerate && retryUser) void send(retryUser.content, retryUser.attachments)
   }
+  const hasFlow = !isUser && Boolean(message.flow?.length)
+  const hasFlowText = message.flow?.some((block) => block.kind === 'text')
   const hasTrace = (message.toolEvents?.length ?? 0) > 0
   const execution = message.execution
   const startedAt = isUser ? message.createdAt : execution?.startedAt
@@ -128,7 +131,8 @@ export function ConversationMessage({
               ))}
             </div>
           ) : null}
-          {visibleContent ? (
+          {hasFlow ? <ConversationFlow message={message} quotaFailure={quotaExhausted ? failureText : undefined} /> : null}
+          {visibleContent && !hasFlowText ? (
             // 流式时由 CSS 把光标贴在最后一段文字末尾（.answer-streaming）——在
             // Markdown 之后塞 inline-block 会被块级段落挤到下一行，看着像断行。
             <section aria-label={isUser ? undefined : t(message.streaming ? 'chat.streamingReply' : execution?.cancelled ? 'chat.partialReply' : 'chat.finalAnswer')}>
@@ -139,7 +143,7 @@ export function ConversationMessage({
             </section>
           ) : message.streaming ||
             message.attachments?.length ||
-            hasTrace ||
+            hasTrace || hasFlow ||
             execution?.cancelled ||
             quotaExhausted ? null : (
             <div className="text-muted">…</div>

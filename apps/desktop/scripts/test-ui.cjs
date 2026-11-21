@@ -342,8 +342,15 @@ app.whenReady().then(async () => {
     w.setSize(1000,760)
     await new Promise((resolve)=>setTimeout(resolve,200))
     if(await run(`document.querySelector('[data-testid="chat-composer"]').scrollWidth>document.querySelector('[data-testid="chat-composer"]').clientWidth`)) throw Error('Composer overflows at minimum window width')
-    await run(`window.__uiFixture.seedHistoricalCall()`)
     const openHistoryFixture = `Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`
+    await run(`window.__uiFixture.seedOrdered()`)
+    await run(openHistoryFixture)
+    await wait(`[...document.querySelectorAll('[data-flow]')].map(row=>row.dataset.flow).join(',')==='reasoning,calls,text,reasoning,calls,text'`)
+    if (await run(`document.body.textContent.includes('PRIVATE_FLOW_FIXTURE')`)) throw Error('Ordered transcript rendered raw reasoning')
+    await run(`document.querySelector('[data-flow="calls"] summary').click()`)
+    await wait(`document.querySelector('[data-flow="calls"] details[data-call-sequence] summary')?.textContent.includes('Bash')`)
+    fs.writeFileSync(path.join(output, 'chat-ordered.png'), (await w.webContents.capturePage()).toPNG())
+    await run(`window.__uiFixture.seedHistoricalCall()`)
     await run(openHistoryFixture)
     const oldResult = `[...document.querySelectorAll('summary')].find(el=>el.textContent.includes('工具事件 · 1 条'))`
     await wait(`!!(${oldResult})`)

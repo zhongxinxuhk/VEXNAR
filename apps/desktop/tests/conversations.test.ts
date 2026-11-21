@@ -143,6 +143,23 @@ describe('toChatMessages', () => {
     expect(JSON.stringify(phases)).not.toContain('secret thoughts')
   })
 
+  it('preserves public text, reasoning markers and distinct call groups in transcript order', () => {
+    const first = step({ kind: 'thinking', detail: 'secret raw chain' })
+    const call1 = step({ kind: 'tool_use', tool_use_id: 'read-1' })
+    const narration = step({ kind: 'text', detail: '检查目录。' })
+    const later = step({ kind: 'thinking', detail: 'more secret reasoning' })
+    const call2 = step({ kind: 'tool_use', tool_use_id: 'read-2' })
+    const result = step({ kind: 'tool_result', tool_use_id: 'read-1' })
+    const final = step({ kind: 'result', detail: '目录存在。' })
+    const [message] = toChatMessages([first, call1, narration, later, call2, result, final], '1')
+    expect(message.flow?.map((row) => [row.kind, row.sequence])).toEqual([
+      ['reasoning', first.seq], ['calls', call1.seq], ['text', narration.seq],
+      ['reasoning', later.seq], ['calls', call2.seq], ['text', final.seq]
+    ])
+    expect(message.flow?.[1]).toMatchObject({ calls: [{ status: 'done' }] })
+    expect(JSON.stringify(message.flow)).not.toContain('secret')
+  })
+
   it('preserves the assistant identity when a private reasoning row becomes an answer', () => {
     const user = step({ kind: 'user', detail: '你好' })
     const first = step({ kind: 'thinking', summary: 'private summary', detail: 'private detail' })

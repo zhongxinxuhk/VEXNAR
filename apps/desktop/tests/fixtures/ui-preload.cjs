@@ -140,6 +140,20 @@ let traceReads = 0
 let historicalCall = null
 contextBridge.exposeInMainWorld('__uiFixture', {
   snapshot: () => ({ accessMode, lastSend, savedMessages, settings, effort, copiedTrace, traceReads }),
+  seedOrdered: () => {
+    const rows = [
+      { kind: 'user', detail: '核对目录' },
+      { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
+      { kind: 'tool_use', tool: 'Bash', tool_use_id: 'flow-a', detail: '{"command":"ls"}' },
+      { kind: 'tool_result', tool: 'Bash', tool_use_id: 'flow-a', detail: 'README.md' },
+      { kind: 'text', detail: '已核对目录。' },
+      { kind: 'thinking', detail: 'PRIVATE_FLOW_FIXTURE' },
+      { kind: 'tool_use', tool: 'read_file', tool_use_id: 'flow-b', detail: '{"path":"README.md"}' },
+      { kind: 'tool_result', tool: 'read_file', tool_use_id: 'flow-b', detail: '文档内容' },
+      { kind: 'result', detail: '目录和文档已核对。' }
+    ]
+    conversationActivities[2] = rows.map((row) => ({ ...row, seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:09:00Z' }))
+  },
   seedHistoricalCall: () => {
     historicalCall = { seq: ++activitySeq, tool: 'read_file', worker: 'archivist', ts: '2026-11-20T10:09:00Z' }
     conversationActivities[2] = [

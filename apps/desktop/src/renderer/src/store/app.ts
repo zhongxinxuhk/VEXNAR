@@ -55,7 +55,13 @@ export type ToolCall = {
 
 export type ChatExecutionPhase = 'reasoning' | 'tools' | 'answer'
 
+export type ChatFlowBlock =
+  | { kind: 'text'; sequence: number; text: string }
+  | { kind: 'reasoning'; sequence: number }
+  | { kind: 'calls'; sequence: number; calls: ToolCall[] }
+
 export type ChatMessage = Omit<Message, 'toolCalls'> & {
+  flow?: ChatFlowBlock[]
   toolCalls?: ToolCall[]
   toolEvents?: ToolTraceEvent[]
   execution?: { worker: string; model?: string; startedAt?: number; completedAt?: number; cancelled?: boolean; phase?: ChatExecutionPhase }

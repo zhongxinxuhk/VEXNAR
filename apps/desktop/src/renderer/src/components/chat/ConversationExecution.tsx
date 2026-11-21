@@ -51,7 +51,7 @@ export function ConversationExecution({
       </div>
     )
   }
-  if (activeLabel && (workView || phase !== 'answer')) {
+  if (activeLabel && (workView || (phase !== 'answer' && !message.flow?.length))) {
     return (
       <div data-execution-phase={phase ?? 'waiting'} className="mb-3 rounded-lg border border-line-soft bg-panel/60 px-3 py-2">
         <AgentLoading label={activeLabel} />

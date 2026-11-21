@@ -260,6 +260,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       role: 'assistant',
       content: '',
       createdAt: Date.now(),
+      flow: [],
       toolCalls: [],
       toolEvents: [],
       execution: { worker: item.worker, startedAt: turnStartedAt }
@@ -287,7 +288,11 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       }
       case 'text': {
         const message = assistant(item)
-        message.content += item.detail || item.summary
+        const text = item.detail || item.summary
+        message.content += text
+        const last = message.flow?.at(-1)
+        if (last?.kind === 'text') last.text += text
+        else if (text) message.flow?.push({ kind: 'text', sequence: item.seq, text })
         if (message.execution) message.execution.phase = 'answer'
         break
       }
@@ -302,6 +307,9 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       case 'thinking': {
         const message = assistant(item)
         if (message.execution) message.execution.phase = 'reasoning'
+        if (message.flow?.at(-1)?.kind !== 'reasoning') {
+          message.flow?.push({ kind: 'reasoning', sequence: item.seq })
+        }
         break
       }
       case 'tool_use': {
@@ -315,6 +323,9 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           status: 'running'
         }
         message.toolCalls?.push(call)
+        const last = message.flow?.at(-1)
+        if (last?.kind === 'calls') last.calls.push(call)
+        else message.flow?.push({ kind: 'calls', sequence: item.seq, calls: [call] })
         message.toolEvents?.push({
           ...call.started, tool: call.name, worker: item.worker, outcome: 'invoked'
         })
@@ -373,6 +384,12 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
           const text = message.content.trim()
           // 中间叙述已经作为 text 步骤进了同一条消息 → 接在后面；已包含则不重复。
           if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
+          const last = message.flow?.at(-1)
+          if (last?.kind === 'text') {
+            if (!last.text.trim().endsWith(answer)) last.text = `${last.text.trim()}\n\n${answer}`
+          } else {
+            message.flow?.push({ kind: 'text', sequence: item.seq, text: answer })
+          }
         }
         const completed = out[out.length - 1]
         if (open && completed?.execution) completed.execution.completedAt = observedTime(item.ts)
