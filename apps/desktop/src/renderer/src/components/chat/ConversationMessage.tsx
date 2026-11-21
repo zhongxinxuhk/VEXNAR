@@ -11,7 +11,7 @@ import { ConversationExecution } from './ConversationExecution'
 import { Markdown } from '@/components/Markdown'
 import { QuotaNotice } from '@/components/QuotaNotice'
 import { useI18n, useT } from '@/lib/i18n'
-import { parseQuotaShortfall, stripFailureText } from '@/lib/quota-error'
+import { parseQuotaShortfall, quotaFailureBody } from '@/lib/quota-error'
 import { cn } from '@/lib/utils'
 import { useAppStore, type ChatMessage } from '@/store/app'
 import { useDrafts } from '@/store/drafts'
@@ -45,11 +45,13 @@ export function ConversationMessage({
   const time = typeof startedAt === 'number' && Number.isFinite(startedAt) ? new Date(startedAt) : null
   // 上游余额不足时，用可操作的提示卡替代原始 403 JSON；其他失败仍走红色错误条。
   // 后端会先把错误写成 text 行，因此正文里可能夹着 403 原文，这里只保留叙述部分。
-  const failureText = message.error ?? message.content
+  // 失败回合的终态行只是诊断（「无文字总结，终态 model_error…」），也不是回答，
+  // 余额不足时连它一起收进「错误详情」，卡片自己说明原因。
+  const failureText = message.error?.trim() || message.content
   const quotaExhausted = message.failed ? parseQuotaShortfall(failureText) : null
   const visibleContent =
     quotaExhausted !== null
-      ? stripFailureText(message.content, failureText)
+      ? quotaFailureBody(message.content, message.diagnostic, failureText)
       : message.content
   const copy = async (): Promise<void> => {
     try {
@@ -157,7 +159,10 @@ export function ConversationMessage({
                 retrying={busy}
               />
             ) : (
-              <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
+              <div
+                className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger"
+                title={failureText}
+              >
                 <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
                 {canRegenerate ? (
                   <button

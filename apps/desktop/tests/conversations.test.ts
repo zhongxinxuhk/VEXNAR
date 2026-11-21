@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
+import { parseQuotaShortfall } from '@/lib/quota-error'
 import { describeToolPayload } from '@/lib/tool-inspection'
 import { parseReplyView } from '@/lib/reply-view'
 import { executionGroup } from '@/lib/execution-groups'
@@ -266,6 +267,45 @@ describe('toChatMessages', () => {
     expect(messages[1].content).toBe('我先看一下目录。')
     expect(messages[1].failed).toBe(true)
     expect(messages[1].error).toContain('insufficient_user_quota')
+  })
+
+  // 后端在终态 result 之后又补写一条 `（出错：…）` 的 text 行；老侧车只返回 summary，
+  // 终态行里只有 model_error 诊断，真正的 403 在这条补写行上。
+  it('folds the appended backend failure row into the failed turn', () => {
+    const terminal =
+      '（无文字总结，终态 model_error：模型或 API 调用失败（网络、鉴权、限流、供应商 5xx 等）…）'
+    const upstream =
+      'openai-responses: status 403: {"error":{"message":"Insufficient user quota, remaining quota: ¥-0.117364","code":"insufficient_user_quota"}}'
+    const messages = toChatMessages(
+      [
+        step({ kind: 'user', detail: 'hi' }),
+        step({ kind: 'result', is_error: true, summary: terminal }),
+        step({ kind: 'text', is_error: true, summary: `（出错：${upstream}）` })
+      ],
+      '5'
+    )
+    expect(messages).toHaveLength(2)
+    expect(messages[1]).toMatchObject({ role: 'assistant', failed: true })
+    expect(messages[1].error).toContain('insufficient_user_quota')
+    expect(messages[1].error).not.toContain('（出错：')
+    expect(messages[1].diagnostic).toContain('model_error')
+    expect(parseQuotaShortfall(messages[1].error)).toEqual({
+      currency: '¥',
+      remaining: -0.117364,
+      required: null
+    })
+  })
+
+  it('still shows a failed turn when only the appended failure row exists', () => {
+    const upstream = 'openai-responses: status 401: invalid api key'
+    const messages = toChatMessages(
+      [step({ kind: 'user', detail: 'hi' }), step({ kind: 'text', is_error: true, summary: `（出错：${upstream}）` })],
+      '6'
+    )
+    expect(messages).toHaveLength(2)
+    // 原始报文不当作回答正文：失败条/提示卡负责呈现，正文只保留叙述。
+    expect(messages[1]).toMatchObject({ role: 'assistant', failed: true, content: '' })
+    expect(messages[1].error).toBe(upstream)
   })
 
   // 后端把「与终态文本相同的流式增量」去重掉了，成功回合的正文只落在 result 行

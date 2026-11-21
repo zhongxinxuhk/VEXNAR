@@ -31,13 +31,20 @@ export function QuotaNotice({
   const openWallet = useAppStore((state) => state.openWallet)
   const [showDetails, setShowDetails] = useState(false)
   const shortfall = parseQuotaShortfall(error)
-  const amounts =
-    shortfall && shortfall.remaining !== null && shortfall.required !== null
-      ? {
-          remaining: formatQuotaAmount(shortfall.currency, shortfall.remaining),
-          required: formatQuotaAmount(shortfall.currency, shortfall.required)
-        }
+  const remaining =
+    shortfall && shortfall.remaining !== null
+      ? formatQuotaAmount(shortfall.currency, shortfall.remaining)
       : null
+  const required =
+    shortfall && shortfall.required !== null
+      ? formatQuotaAmount(shortfall.currency, shortfall.required)
+      : null
+  const body =
+    remaining && required
+      ? t('quota.exhausted.body', { remaining, required })
+      : remaining
+        ? t('quota.exhausted.bodyRemaining', { remaining })
+        : t('quota.exhausted.bodyPlain')
 
   return (
     <div
@@ -53,17 +60,13 @@ export function QuotaNotice({
             <h3 className="text-[13px] font-semibold leading-5 text-ink">
               {t('quota.exhausted.title')}
             </h3>
-            {amounts ? (
+            {remaining ? (
               <span className="rounded-full border border-line-soft bg-bg px-2 py-px text-[10px] tabular-nums text-muted">
-                {t('quota.exhausted.remaining')} {amounts.remaining}
+                {t('quota.exhausted.remaining')} {remaining}
               </span>
             ) : null}
           </div>
-          <p className="mt-1 max-w-[560px] text-[12px] leading-[1.7] text-muted">
-            {amounts
-              ? t('quota.exhausted.body', amounts)
-              : t('quota.exhausted.bodyPlain')}
-          </p>
+          <p className="mt-1 max-w-[560px] text-[12px] leading-[1.7] text-muted">{body}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button
               size="sm"

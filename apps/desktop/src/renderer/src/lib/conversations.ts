@@ -11,6 +11,7 @@
  * and no local streaming loop racing the server.
  */
 
+import { unwrapFailureText } from '@/lib/quota-error'
 import type { ChatMessage, ToolCall, ToolTraceEvent } from '@/store/app'
 import type { ImageAttachment, Session } from '@shared/contracts'
 
@@ -238,6 +239,15 @@ export function parseUserActivity(activity: BackendActivity): {
   return { text: raw, files: [] }
 }
 
+/** Fold the appended rejection into the turn's existing evidence without noise. */
+function mergeFailureText(current: string | undefined, incoming: string): string {
+  const base = (current ?? '').trim()
+  if (!base) return incoming
+  if (base.includes(incoming)) return base
+  if (incoming.includes(base)) return incoming
+  return `${base}\n\n${incoming}`
+}
+
 /**
  * Fold the backend activity stream into the message list ChatView renders.
  * Consecutive answer fragments and tool steps belong to one assistant bubble.
@@ -247,6 +257,9 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
   const out: ChatMessage[] = []
   const callsById = new Map<string, ToolCall[]>()
   let open: ChatMessage | null = null
+  // The assistant bubble whose turn just failed, i.e. the evidence receiver for
+  // the `text` row the backend appends after the terminal result.
+  let failedTurn: ChatMessage | null = null
   let turnStartedAt: number | undefined
 
   const observedTime = (value: string): number | undefined => {
@@ -275,6 +288,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
     switch (item.kind) {
       case 'user': {
         open = null
+        failedTurn = null
         callsById.clear()
         turnStartedAt = observedTime(item.ts)
         const parsed = parseUserActivity(item)
@@ -289,6 +303,28 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         break
       }
       case 'text': {
+        if (item.is_error) {
+          // server/conversations.go appends `（出错：<upstream>）` as its own row
+          // after the failed result. It is the raw rejection of the turn that just
+          // ended (which is where the relay's "insufficient_user_quota" lives),
+          // not a fresh assistant reply — folding it into that bubble keeps one
+          // failure card instead of a bare JSON bubble.
+          const raw = unwrapFailureText(item.detail || item.summary)
+          if (!raw) break
+          const target = failedTurn ?? out.at(-1)
+          const failed = target?.role === 'assistant' && target.failed ? target : null
+          if (failed) {
+            failed.error = mergeFailureText(failed.error, raw)
+          } else {
+            // No terminal row carried the failure: still show a failed turn so the
+            // quota notice (or the error bar) replaces the payload.
+            const message = assistant(item)
+            message.failed = true
+            message.error = raw
+            failedTurn = message
+          }
+          break
+        }
         const message = assistant(item)
         const text = item.detail || item.summary
         message.content += text
@@ -375,24 +411,32 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         if (item.outcome === 'cancelled') {
           const message = assistant(item)
           if (message.execution) message.execution.cancelled = true
+          failedTurn = null
         } else if (item.is_error) {
           const message = assistant(item)
+          // A failed turn's terminal row is a diagnostic ("无文字总结，终态
+          // model_error…"), not the model's answer: the notice card replaces it.
+          message.diagnostic = answer || message.content
           if (!message.content.trim()) message.content = answer
           message.failed = true
           // Keep the upstream rejection even when narration already streamed:
           // the view classifies "out of balance" from this text, not from the
           // partial answer that happens to precede it.
           message.error = answer || message.content
-        } else if (answer) {
-          const message = assistant(item)
-          const text = message.content.trim()
-          // 中间叙述已经作为 text 步骤进了同一条消息 → 接在后面；已包含则不重复。
-          if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
-          const last = message.flow?.at(-1)
-          if (last?.kind === 'text') {
-            if (!last.text.trim().endsWith(answer)) last.text = `${last.text.trim()}\n\n${answer}`
-          } else {
-            message.flow?.push({ kind: 'text', sequence: item.seq, text: answer })
+          failedTurn = message
+        } else {
+          failedTurn = null
+          if (answer) {
+            const message = assistant(item)
+            const text = message.content.trim()
+            // 中间叙述已经作为 text 步骤进了同一条消息 → 接在后面；已包含则不重复。
+            if (!text.endsWith(answer)) message.content = text ? `${text}\n\n${answer}` : answer
+            const last = message.flow?.at(-1)
+            if (last?.kind === 'text') {
+              if (!last.text.trim().endsWith(answer)) last.text = `${last.text.trim()}\n\n${answer}`
+            } else {
+              message.flow?.push({ kind: 'text', sequence: item.seq, text: answer })
+            }
           }
         }
         const completed = out[out.length - 1]
