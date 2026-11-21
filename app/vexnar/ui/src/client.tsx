@@ -611,13 +611,25 @@ function TrafficExchange({ id, onBack }: { id: string; onBack: () => void }) {
 }
 
 function TrafficPage() {
-  const { data, error, loading } = useApi('/api/traffic?page=1&size=50')
+  const [host, setHost] = useState('')
+  const [method, setMethod] = useState('')
+  const [q, setQ] = useState('')
+  const params = new URLSearchParams({ page: '1', size: '50' })
+  if (host) params.set('host', host)
+  if (method) params.set('method', method)
+  if (q) params.set('q', q)
+  const { data, error, loading } = useApi(`/api/traffic?${params.toString()}`, [host, method, q])
   const [exchangeId, setExchangeId] = useState('')
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要以 VEXNAR_GO_FALLBACK 启动 core 才能代理 Go 流量接口）`)
   const rows = data?.items ?? data?.exchanges ?? []
   if (exchangeId) return h(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId('') })
   return h('div', { style: { fontSize: 13 } },
+    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
+      h('input', { placeholder: 'host', value: host, onChange: (event: any) => setHost(event.target.value.trim()) }),
+      h('select', { value: method, onChange: (event: any) => setMethod(event.target.value) },
+        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
+      h('input', { placeholder: 'URL 关键字', value: q, onChange: (event: any) => setQ(event.target.value.trim()) })),
     h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? data?.total ?? rows.length} 条抓包`),
     h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
       h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
