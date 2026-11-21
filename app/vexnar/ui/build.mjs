@@ -35,6 +35,8 @@ const externals = [
 ]
 
 await mkdir(join(here, 'lib'), { recursive: true })
+const logo = await readFile(join(here, '../../../assets/logo.png'))
+const logoData = `data:image/png;base64,${logo.toString('base64')}`
 const cjs = join(here, 'lib/client.cjs')
 await build({
   entryPoints: [join(here, 'src/client.tsx')],
@@ -46,6 +48,7 @@ await build({
   jsx: 'automatic',
   external: externals,
   legalComments: 'none',
+  define: { __VEXNAR_LOGO__: JSON.stringify(logoData) },
   logLevel: 'warning'
 })
 

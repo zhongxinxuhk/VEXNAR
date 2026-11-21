@@ -205,16 +205,17 @@ export function TrafficViewer({ phase, block }: ToolViewProps): ReactNode {
   )
 }
 
+declare const __VEXNAR_LOGO__: string
+
 function BrandMark({ size }: { size?: number }): ReactNode {
   const px = size ?? 24
-  return h(
-    'svg',
-    { width: px, height: px, viewBox: '0 0 24 24', 'aria-label': 'VEXNAR', role: 'img' },
-    h('path', {
-      d: 'M3 4h4.2l4.8 11.2L16.8 4H21l-7.2 16h-3.6L3 4z',
-      fill: 'currentColor'
-    })
-  )
+  return h('img', {
+    src: __VEXNAR_LOGO__,
+    width: px,
+    height: px,
+    alt: 'VEXNAR',
+    style: { display: 'block', borderRadius: 4 }
+  })
 }
 
 function BrandName(): ReactNode {
