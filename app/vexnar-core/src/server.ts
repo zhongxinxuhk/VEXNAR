@@ -33,8 +33,10 @@ const NATIVE = [
 
 app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null, methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all' }))
 
-// 代理池控制面：由 TS 层做端点校验/SSE/错误语义，再受控转发给 app 自己编译启动的 Go 引擎。
-app.all('/api/proxy/*', (c) => proxyBridge(c.req.raw, true))
+// 回滚开关：VEXNAR_EGRESS=go 时把代理池转给 Go 引擎桥；默认走 TS 原生实现。
+if ((process.env.VEXNAR_EGRESS || '').toLowerCase() === 'go') {
+  app.all('/api/proxy/*', (c) => proxyBridge(c.req.raw, true))
+}
 
 // M3 transition: unported routes fall through to the Go service, so the web
 // console can point at the TS core before every write is migrated.

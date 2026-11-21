@@ -1,0 +1,31 @@
+{
+  "version": "v1.19.34",
+  "notes": "协议引擎（mihomo）固定版本与各平台压缩包 sha256；由 app/scripts/fetch-mihomo.mjs 校验。",
+  "assets": {
+    "darwin-arm64": {
+      "file": "mihomo-darwin-arm64-v1.19.34.gz",
+      "sha256": "1a7a20eca63fbbaec90137717465bfde488d0db2a3a79b8fadebf9b2545b6e4c",
+      "archive": "gz"
+    },
+    "darwin-x64": {
+      "file": "mihomo-darwin-amd64-v1.19.34.gz",
+      "sha256": "089b033be801ff365b6558851115238b443b237433aa0841bc3fa41ad75a3927",
+      "archive": "gz"
+    },
+    "linux-x64": {
+      "file": "mihomo-linux-amd64-v1.19.34.gz",
+      "sha256": "223fab877e5795ce780ba39902e5f0b1113c1256ae244a7160f1165e017e9ccc",
+      "archive": "gz"
+    },
+    "linux-arm64": {
+      "file": "mihomo-linux-arm64-v1.19.34.gz",
+      "sha256": "daaf78a6240a282cdfd75bcbf98fe321f6bd52765cc29e79f344191198f0b50f",
+      "archive": "gz"
+    },
+    "win32-x64": {
+      "file": "mihomo-windows-amd64-v1.19.34.zip",
+      "sha256": "f6b855de8722781caea62686f0301f89625fc558d48c1103ffdd98dad7f7f488",
+      "archive": "zip"
+    }
+  }
+}

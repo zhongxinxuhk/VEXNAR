@@ -15,14 +15,18 @@
     "verify": "node verify.mjs",
     "build:embedded": "node build-embedded.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test:traffic-index": "tsx traffic-index.test.mjs"
+    "test:traffic-index": "tsx traffic-index.test.mjs",
+    "test:egress": "tsx egress.test.mjs && tsx egress-routes.test.mjs",
+    "test:bridge": "tsx proxy-bridge.test.mjs",
+    "fetch:mihomo": "node ../scripts/fetch-mihomo.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
     "hono": "^4.10.7",
     "jsonwebtoken": "^9.0.3",
     "kysely": "^0.29.9",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",

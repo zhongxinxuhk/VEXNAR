@@ -68,7 +68,10 @@ export default function SystemSettingsPage() {
     setTavilyKeySet(!!s.tavily_key_set);
     setProxyInput(s.web_search_proxy ?? "");
     setGlobalProxyInput(s.global_proxy ?? "");
-    setListenerAuth(!!s.egress_listener_auth);
+    api
+      .proxySettings()
+      .then((p) => setListenerAuth(!!p.egress_listener_auth))
+      .catch(() => setListenerAuth(!!s.egress_listener_auth));
     setPyInterp(s.python_interpreter ?? "");
     setWorkers(String(s.workers ?? 3));
     setInjectPlanner(s.constraints_inject_planner !== false);
@@ -267,7 +270,7 @@ export default function SystemSettingsPage() {
   const saveListenerAuth = (on: boolean) => {
     setListenerAuth(on);
     api
-      .setSettings({ egress_listener_auth: on })
+      .saveProxySettings({ egress_listener_auth: on })
       .then(() => toast.success(on ? "已要求出口端口认证（浏览器出口将失效）" : "出口端口恢复免认证（仅回环）"))
       .catch((e) => {
         setListenerAuth(!on);

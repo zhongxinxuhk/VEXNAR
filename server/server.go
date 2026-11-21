@@ -927,6 +927,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/proxy/pools/{id}/check", s.egressPoolCheck)
 	mux.HandleFunc("POST /api/proxy/leases/reset", s.egressResetLeases)
 	mux.HandleFunc("PUT /api/proxy/default-pool", s.egressDefaultPool)
+	mux.HandleFunc("GET /api/proxy/settings", s.egressSettings)
+	mux.HandleFunc("PUT /api/proxy/settings", s.egressSettings)
 	mux.HandleFunc("GET /api/tasks/{id}/proxy", s.egressTaskBinding)
 	mux.HandleFunc("PUT /api/tasks/{id}/proxy", s.egressTaskBinding)
 	mux.HandleFunc("DELETE /api/tasks/{id}/proxy", s.egressTaskBinding)

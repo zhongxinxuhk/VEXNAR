@@ -53,8 +53,11 @@ const loopback = new Set(['127.0.0.1', '[::1]', 'localhost'])
 
 export async function goData(request: Request, localPeer: boolean): Promise<Response | undefined> {
   const url = new URL(request.url)
-  // 代理池控制面走专用桥：显式端点清单、SSE 直通、契约头校验，而不是通用前缀转发。
-  if (isProxyPath(url.pathname)) return proxyBridge(request, localPeer)
+  // 代理池默认由 TS 原生实现（src/egress）；只有显式 VEXNAR_EGRESS=go 时才转给
+  // Go 引擎的桥（回滚路径，保留一个版本周期）。
+  if (isProxyPath(url.pathname) && (process.env.VEXNAR_EGRESS || '').toLowerCase() === 'go') {
+    return proxyBridge(request, localPeer)
+  }
   if (!isGoDataRequest(request.method, url.pathname)) return undefined
 
   const host = request.headers.get('host') ?? ''

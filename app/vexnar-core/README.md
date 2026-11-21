@@ -36,12 +36,14 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 
 这样 web 可以先指向 TS core，未迁移的写接口仍由 Go 服务，逐条切换。
 
-## 代理池控制面（TS 桥）
+## 代理池（TS 原生）
 
-`/api/proxy/*` 由 `src/proxy-bridge.ts` 实现：端点清单校验 + 契约头 + SSE 直通 + 错误映射，
-受控转发给 app 自己编译启动的 Go 引擎（数据面仍在 Go）。`GET /api/proxy/_bridge` 可自检
-契约版本、端点清单与引擎可达性。契约类型在 `src/proxy-contract.ts`。设计说明见
-[`../docs/EGRESS-BRIDGE.md`](../docs/EGRESS-BRIDGE.md)。
+`/api/proxy/*` 由 `src/egress/` 原生实现：SQLite、解析、订阅、租约/健康、HTTP/SOCKS5 网关、
+对抗模式都在 TS 内；协议核（vmess/vless/ssr 等）由固定版本的 mihomo 二进制托管，
+socks5/http 用原生拨号。设计见 [`../docs/EGRESS-TS.md`](../docs/EGRESS-TS.md)。
+
+回滚：`VEXNAR_EGRESS=go` 时改用 `src/proxy-bridge.ts`，把请求转给 Go 引擎
+（见 [`../docs/EGRESS-BRIDGE.md`](../docs/EGRESS-BRIDGE.md)）。
 
 ## 引擎（E1/E2）
 
@@ -77,7 +79,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/mcp` | ✅ |
 | `GET /api/notify/channels` | ✅ |
 | `GET /api/settings` | ✅（只暴露 Go 的 20 个白名单键） |
-| `/api/proxy/*` | ✅ 控制面桥（端点清单 + 契约 + SSE；数据面在 Go） |
+| `/api/proxy/*` | ✅ TS 原生（SQLite/网关/订阅/对抗）+ 可选 mihomo 协议引擎 |
 | `GET /api/assets/counts` | ✅ |
 | `GET /api/tasks/:id/coverage` | ✅ 范围/已测/by_type/pct，含直接来源任务上下文 |
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |

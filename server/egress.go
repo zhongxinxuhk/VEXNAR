@@ -1198,3 +1198,52 @@ func egressContractHeader(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// GET/PUT /api/proxy/settings — proxy-pool scoped settings, so clients do not
+// have to know whether they talk to the Go engine or the TS one.
+func (s *Server) egressSettings(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	if r.Method == http.MethodGet {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"default_pool":           s.m.EgressPoolID(),
+			"egress_listener_auth":   s.m.ListenerAuthEnabled(),
+			"engine":                 map[string]any{"available": true, "error": nil},
+			"fanout_budget_per_hour": 600,
+		})
+		return
+	}
+	var req struct {
+		DefaultPool  *int64 `json:"default_pool"`
+		ListenerAuth *bool  `json:"egress_listener_auth"`
+	}
+	if err := decodeLimited(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.DefaultPool != nil {
+		id := *req.DefaultPool
+		if id > 0 {
+			if pool, err := mgr.Store().Pool(r.Context(), id); err != nil || pool == nil {
+				writeErr(w, http.StatusNotFound, "池不存在")
+				return
+			}
+		}
+		if err := s.m.SetProxyDefaultPool(id); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	if req.ListenerAuth != nil {
+		if err := s.m.SetListenerAuth(*req.ListenerAuth); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"default_pool":         s.m.EgressPoolID(),
+		"egress_listener_auth": s.m.ListenerAuthEnabled(),
+	})
+}
