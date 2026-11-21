@@ -9,6 +9,7 @@ import { OverviewPanel } from './overview.js'
 import { YakHistory, SessionTrafficAction } from './yak-history.js'
 import { CORE_BASE, callApi, responseError, useApi } from './api.js'
 import { McpTab, ToolsTab } from './catalog.js'
+import { TasksWorkspace } from './tasks/workspace.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -371,7 +372,7 @@ function OverviewIcon({ size }: { size?: number }): ReactNode {
     h('circle', { cx: 12, cy: 14, r: 1.4 }))
 }
 
-function Dashboard() {
+export function Dashboard() {
   const tasks = useApi('/api/tasks')
   const findings = useApi('/api/exploration/findings/stats')
   const assets = useApi('/api/assets/counts')
@@ -500,7 +501,7 @@ function TaskScopePicker({ scope, onScope, options }: {
  * 任务清单：筛选与窗口都交给后端（`/api/tasks?status=&q=&page=&size=`），所以任务再多
  * 也只取一页；total 是筛选后的全集，分页器据此算页数。排序沿用后端的置顶优先 + id 倒序。
  */
-function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
+export function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
   const [query, setQuery] = useState('')
   const [needle, setNeedle] = useState('')
   const [status, setStatus] = useState('all')
@@ -572,7 +573,7 @@ function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
  * 任务详情：一个任务的全部上下文——目标、意图、节点、覆盖度，它的发现，以及它调过的
  * 工具与执行记录。执行记录本来就属于任务的从属数据，所以它在这里，不占顶层页签。
  */
-function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }: {
+export function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }: {
   id: string
   onBack: () => void
   onOpenFindings?: (taskID: string) => void
@@ -1067,25 +1068,17 @@ const TASKS_TABS: ReadonlyArray<readonly [TasksTab, string]> = [
  */
 function TasksPanel() {
   const [tab, setTab] = useState<TasksTab>('tasks')
-  const [detailID, setDetailID] = useState('')
   const [findingID, setFindingID] = useState('')
   const [scope, setScope] = useState('')
 
   const tabButton = (id: TasksTab, label: string): ReactNode =>
     h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
 
-  const openFindings = (taskID: string): void => { setScope(taskID); setFindingID(''); setTab('findings') }
 
   let body: ReactNode
   if (tab === 'tasks') {
-    body = detailID
-      ? h(TaskDetail, {
-          id: detailID,
-          onBack: () => setDetailID(''),
-          onOpenFindings: openFindings,
-          onOpenFinding: (findingID: string) => { setFindingID(findingID); setTab('findings') }
-        })
-      : h('div', null, h(Dashboard), h(TaskList, { onOpen: (id: string) => setDetailID(id) }))
+    // 任务页签整体交给复刻版工作区：清单 + 详情十页（与 Web 控制台同一组接口）。
+    body = h(TasksWorkspace, null)
   } else {
     body = findingID
       ? h(FindingDetail, { id: findingID, onBack: () => setFindingID('') })

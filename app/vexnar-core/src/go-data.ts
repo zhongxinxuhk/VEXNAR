@@ -2,19 +2,30 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const routes = new Set([
-  'GET /api/traffic',
-  'GET /api/traffic/exchange',
-  'POST /api/traffic/import/yakit',
-  'POST /api/traffic/promote',
-  'GET /api/assets',
-  'GET /api/assets/counts',
-  'POST /api/assets',
-  'POST /api/yak/history'
-])
+const routes = new Set(['POST /api/yak/history'])
+
+/**
+ * 转发给 Go 服务的接口前缀。
+ *
+ * 任务/发现/资产/流量这些领域数据只有 Go 服务持有（PG），core 内嵌的那套 kv 只是
+ * dsh 侧的兜底；客户端要和控制台（:3000）看到同一行数据，这些前缀必须由 Go 回答。
+ */
+const prefixes = [
+  '/api/tasks',
+  '/api/exploration',
+  '/api/assets',
+  '/api/traffic',
+  '/api/report',
+  '/api/stats',
+  '/api/llm/records',
+  '/api/commands',
+  '/api/intercept',
+  '/api/yak/history'
+]
 
 export function isGoDataRequest(method: string, path: string) {
-  return routes.has(`${method} ${path}`)
+  if (routes.has(`${method} ${path}`)) return true
+  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
 
 const loopback = new Set(['127.0.0.1', '[::1]', 'localhost'])
@@ -51,7 +62,8 @@ export async function goData(request: Request, localPeer: boolean): Promise<Resp
     if (contentType) headers.set('content-type', contentType)
     const upstream = await fetch(new URL(url.pathname + url.search, backend.origin), {
       method: request.method,
-      body: request.method === 'POST' ? await request.arrayBuffer() : undefined,
+      // PATCH/PUT/DELETE 也带正文（改发现状态、改拦截规则都走 PATCH），不能只转发 POST。
+      body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer(),
       headers,
       redirect: 'error',
       signal: AbortSignal.timeout(60_000)
