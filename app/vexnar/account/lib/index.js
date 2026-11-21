@@ -23,6 +23,10 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'logo.png')
+let logoBytes = null
 
 export const name = '@vexnar/dsh-account'
 
@@ -225,6 +229,17 @@ async function runBrowserLogin(ctx) {
 }
 
 
+const FAVICON_SCRIPT = `
+(() => {
+  const link = document.createElement('link');
+  link.rel = 'icon';
+  link.type = 'image/png';
+  link.href = '/vexnar-brand/favicon.png';
+  document.querySelectorAll('link[rel~="icon"], link[rel="shortcut icon"]').forEach((node) => node.remove());
+  document.head.appendChild(link);
+})();
+`
+
 // Injected into the served index so the full-access warning applies even when a
 // browser still holds an older client bundle.
 const PERMISSION_WARNING_SCRIPT = `
@@ -285,12 +300,33 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 export function apply(ctx) {
   ctx.effect(() => ctx.on('webserver/index-inject', (table) => {
     table.push({ kind: 'style', text: PERMISSION_WARNING_CSS })
+    table.push({ kind: 'html', placement: 'head', html: '<link rel="icon" type="image/png" href="/vexnar-brand/favicon.png">' })
+    table.push({ kind: 'script', placement: 'body', text: FAVICON_SCRIPT })
     table.push({ kind: 'script', placement: 'body', text: PERMISSION_WARNING_SCRIPT })
   }))
 
   // Restore runs in the background: settings settles after every entry mounts,
   // so awaiting it inside apply would deadlock startup.
   void restore(ctx).catch((error) => console.warn('[vexnar-account] restore failed:', String(error?.message || error)))
+
+  ctx.effect(() =>
+    ctx.webServer.register({
+      kind: 'exact',
+      path: '/vexnar-brand/favicon.png',
+      handler: async (_req, res) => {
+        try {
+          logoBytes ??= await readFile(LOGO_PATH)
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'image/png')
+          res.setHeader('Cache-Control', 'public, max-age=86400')
+          res.end(logoBytes)
+        } catch (error) {
+          res.statusCode = 404
+          res.end('logo not found')
+        }
+      }
+    })
+  )
 
   ctx.effect(() =>
     ctx.webServer.register({

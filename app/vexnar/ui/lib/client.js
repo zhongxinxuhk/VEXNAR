@@ -218,7 +218,7 @@ function HeroLogo({ size }) {
   });
 }
 function installHeroSlogan() {
-  const slogan = () => (navigator.language || "zh").toLowerCase().startsWith("zh") ? "\u4EE5\u667A\u80FD\uFF0C\u7834\u672A\u81F3\u4E4B\u5883" : "Beyond the known attack surface";
+  const slogan = () => (navigator.language || "zh").toLowerCase().startsWith("zh") ? "\u63A2\u7D22\u672A\u77E5\uFF0C\u7A81\u7834\u8FB9\u754C" : "Explore the unknown. Break the boundaries.";
   const rewrite = () => {
     const group = document.querySelector('[class*="titleGroup"]');
     const title = group?.firstElementChild;

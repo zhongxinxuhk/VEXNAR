@@ -14,7 +14,7 @@
  * regenerated from app/vexnar/cordis.patch.yml.
  */
 import { spawnSync } from 'node:child_process'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dshHome, resolveRuntime } from './dsh-runtime.mjs'
@@ -26,6 +26,10 @@ const home = dshHome()
 const profile = join(home, 'profiles', 'web')
 const bin = join(runtime, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 await mkdir(profile, { recursive: true })
+
+// Keep the account package's favicon copy in step with the project logo.
+await mkdir(join(repo, 'app', 'vexnar', 'account', 'assets'), { recursive: true })
+await copyFile(join(repo, 'assets', 'logo.png'), join(repo, 'app', 'vexnar', 'account', 'assets', 'logo.png'))
 
 for (const pkg of ['ui', 'account']) {
   const dir = join(repo, 'app', 'vexnar', pkg)
