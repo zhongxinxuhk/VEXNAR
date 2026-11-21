@@ -245,6 +245,12 @@ assets / exploration_nodes`，与运行中的 Go API 对账：
 同时确认了两个必须带进迁移的语义：任务 `status` 由引擎计算、全局与任务内 finding
 使用不同 id（`findings.id` vs 探索节点 id）。
 
+### P0-2 已完成（2026-11-21）
+
+[`app/spike/p0-tools`](./spike/p0-tools/README.md) 把 `list_assets` / `traffic_get` /
+`report_finding` 的 TS 实现与 Go MCP 工具对账：**9/9 通过**（读工具逐字节一致，
+写工具用事务回滚验证插入形状）。对账暴露的 `TrimSpace`、DSL 转义、校验顺序已记录。
+
 ---
 
 ## 10. 验收标准（功能对等）
