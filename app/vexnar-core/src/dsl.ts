@@ -133,7 +133,7 @@ function evalLeaf(asset: any, expr: Expr): boolean {
     }
   }
   if (ARRAY_FIELDS.has(field)) {
-    const list = Array.isArray(asset.technologies) ? asset.technologies.map(lower) : []
+    const list: string[] = Array.isArray(asset.technologies) ? asset.technologies.map(lower) : []
     if (expr.op === '==') return list.includes(lower(expr.value))
     if (expr.op === '!=') return !list.includes(lower(expr.value))
     if (expr.op === '=') return list.some((item) => item.includes(lower(expr.value)))

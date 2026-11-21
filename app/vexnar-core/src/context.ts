@@ -29,9 +29,10 @@ for (const agent of await meta.table<any[]>('agents')) {
       const task = await spawnTriggerTask(operations, agent.key, fire)
       store.invalidate?.(['tasks'])
       if (process.env.VEXNAR_GATEWAY_TOKEN) {
-        await taskQueue.enqueue(task.id, async () => {
-          await engine.plan(task.id, gatewayComplete)
-          await engine.workMany(task.id, gatewayComplete, 1)
+        const taskId = String(task.id)
+        await taskQueue.enqueue(taskId, async () => {
+          await engine.plan(taskId, gatewayComplete)
+          await engine.workMany(taskId, gatewayComplete, 1)
         })
       }
       const channels = await meta.table<any[]>('notify')
@@ -58,9 +59,10 @@ const stopSchedules = startSchedules(store, scheduler, operations, async (schedu
   const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) })
   store.invalidate?.(['tasks'])
   if (process.env.VEXNAR_GATEWAY_TOKEN) {
-    await taskQueue.enqueue(task.id, async () => {
-      await engine.plan(task.id, gatewayComplete)
-      await engine.workMany(task.id, gatewayComplete, 1)
+    const taskId = String(task.id)
+    await taskQueue.enqueue(taskId, async () => {
+      await engine.plan(taskId, gatewayComplete)
+      await engine.workMany(taskId, gatewayComplete, 1)
     })
   }
 }, 30_000)
