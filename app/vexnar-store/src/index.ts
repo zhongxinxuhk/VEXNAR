@@ -19,6 +19,8 @@ export { startSchedules } from './schedules.js'
 export { createTaskQueue } from './queue.js'
 export { buildReport, buildReportHtml, escapeHtml, saveReport, listReports } from './report.js'
 export { storeWriter, StoreConflict } from './writer.js'
+export { TASK_LIFECYCLE, TASK_STATUS_KEYS, isTaskStatus, isTerminalTaskStatus, resolveTaskStatus, summarizeTasks, taskStatusMeta } from './task-status.js'
+export type { TaskStatusKey, TaskStatusMeta, TaskSummary, TaskSummaryRow, TaskSummaryMetrics } from './task-status.js'
 export { metaStore } from './meta-store.js'
 
 /**

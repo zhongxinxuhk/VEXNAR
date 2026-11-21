@@ -53,7 +53,50 @@ const query = (params: Record<string, string | number | undefined>) => {
   return text ? `?${text}` : ''
 }
 
-export type TaskStatus = 'draft' | 'running' | 'paused' | 'done' | 'failed' | 'archived' | string
+/**
+ * 任务状态：created | queued | running | paused | done | failed | timeout。
+ * 这是服务端 `TaskLifecycle` 的镜像（Go server/task_summary.go、
+ * app/vexnar-store/src/task-status.ts）；归档不是状态，是 `archived_at` 标记，
+ * 归档任务不在活动清单里。
+ */
+export type TaskStatus = 'created' | 'queued' | 'running' | 'paused' | 'done' | 'failed' | 'timeout' | (string & {})
+
+export interface TaskLifecycleEntry {
+  key: TaskStatus
+  label: string
+  tone: 'muted' | 'info' | 'success' | 'warn' | 'error' | (string & {})
+  terminal?: boolean
+  active?: boolean
+  hint?: string
+}
+
+/**
+ * `GET /api/tasks/summary`：任务清单的聚合口径。概览 KPI、健康度、任务面板的
+ * 筛选计数都读这一条——分页结果算出来的计数只描述当前页，那是数字对不上的根因。
+ */
+export interface TaskSummary {
+  total: number
+  by_status: Record<string, number | undefined>
+  active: number
+  paused: number
+  terminal: number
+  done: number
+  failed: number
+  timeout: number
+  completion_rate: number
+  goals_total: number
+  goals_met: number
+  goal_rate: number
+  in_flight: number
+  findings: { total: number; critical: number; high: number; medium: number; low: number }
+  tokens: { input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; total: number }
+  window_days: number
+  created_window: number
+  created_prev: number
+  throughput: number[]
+  lifecycle: TaskLifecycleEntry[]
+  generated_unix: number
+}
 
 export type Task = {
   id: string
@@ -159,6 +202,7 @@ export type MainSessions = { sessions: Array<{ seq: number; created_at: string }
 export const tasksApi = {
   list: (params: { q?: string; status?: string; page?: number; size?: number }) =>
     get<TaskPage>(`/tasks${query({ q: params.q, status: params.status, page: params.page, size: params.size })}`),
+  summary: (days = 30) => get<TaskSummary>(`/tasks/summary${query({ days })}`),
   get: (id: string) => get<Task>(`/tasks/${encodeURIComponent(id)}`),
   create: (input: { name?: string; description: string; goal?: string }) => post<Task>('/tasks', input),
   control: (id: string, action: 'start' | 'pause' | 'resume' | 'stop') =>

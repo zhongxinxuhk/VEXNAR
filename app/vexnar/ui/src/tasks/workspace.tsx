@@ -27,6 +27,15 @@ import {
 } from './sections.js'
 import { Button, Card, Empty, ErrorLine, Field, Select, StatusChip, relTime } from './ui.js'
 
+/** 服务端语义色 → 面板已有的 chip 色调类（`info` 落到 redirect，没有独立类）。 */
+const CHIP_TONE: Record<string, string> = {
+  muted: 'muted',
+  info: 'redirect',
+  success: 'success',
+  warn: 'warn',
+  error: 'error'
+}
+
 const TABS = [
   ['sessions', '会话'],
   ['overview', '总览'],
@@ -42,13 +51,19 @@ const TABS = [
 
 type TabID = (typeof TABS)[number][0]
 
+/**
+ * 状态筛选：与服务端生命周期同源。`archived` 不是状态（归档任务已不在清单里），
+ * 所以这里不再提供这个选项——此前选它必然得到空列表。
+ */
 const STATUS_FILTER: Array<[string, string]> = [
   ['', '全部状态'],
+  ['created', '待启动'],
+  ['queued', '排队中'],
   ['running', '进行中'],
   ['paused', '已暂停'],
   ['done', '已完成'],
   ['failed', '失败'],
-  ['archived', '已归档']
+  ['timeout', '已超时']
 ]
 
 function TaskRow({ task, onOpen }: { task: Task; onOpen: () => void }) {
@@ -95,15 +110,19 @@ export function TasksWorkspace() {
 
   const key = `tasks:${query}:${status}:${page}:${size}`
   const list = useResource(key, () => tasksApi.list({ q: query, status, page, size }))
+  // 筛选计数读全量聚合，不读当前页：一页 20 条算出来的分布从来不是全站分布。
+  const summary = useResource('tasks:summary', () => tasksApi.summary())
   const rows = list.data?.tasks ?? []
   const total = list.data?.total ?? rows.length
   const pages = Math.max(1, Math.ceil(total / size))
 
-  const stats = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const task of rows) counts.set(task.status, (counts.get(task.status) ?? 0) + 1)
-    return counts
-  }, [rows])
+  const lifecycle = summary.data?.lifecycle ?? []
+  const statusline = useMemo(() => {
+    const counts = summary.data?.by_status ?? {}
+    return lifecycle
+      .map((entry) => ({ ...entry, value: Number(counts[entry.key] ?? 0) }))
+      .filter((entry) => entry.value > 0)
+  }, [lifecycle, summary.data])
 
   if (open) return <TaskDetailPage id={open} onBack={() => setOpen('')} />
 
@@ -129,7 +148,7 @@ export function TasksWorkspace() {
         <Field placeholder="搜索任务（名称 / 描述 / 目标）" value={query} onChange={(value) => { setQuery(value); setPage(1) }} ariaLabel="搜索任务" />
         <Select value={status} onChange={(value) => { setStatus(value); setPage(1) }} ariaLabel="状态" options={STATUS_FILTER} />
         <Select value={String(size)} onChange={(value) => setSize(Number(value))} ariaLabel="每页" options={[['10', '10 / 页'], ['20', '20 / 页'], ['50', '50 / 页']]} />
-        <Button onClick={list.reload}>刷新</Button>
+        <Button onClick={() => { list.reload(); summary.reload() }}>刷新</Button>
         <span className="vx-task-spacer" />
         <span className="vx-task-hint">
           共 {total} 个任务 · 第 {page}/{pages} 页
@@ -154,11 +173,18 @@ export function TasksWorkspace() {
       </Card>
 
       <div className="vx-task-statusline">
-        {Array.from(stats.entries()).map(([value, count]) => (
-          <span key={value} className={`vx-chip vx-chip--${value === 'running' ? 'success' : value === 'paused' ? 'warn' : value === 'failed' ? 'error' : 'muted'}`}>
-            {value} · {count}
-          </span>
-        ))}
+        {summary.data !== undefined ? (
+          <>
+            <span className="vx-task-hint">共 {summary.data.total} 个任务</span>
+            {statusline.map((entry) => (
+              <span key={entry.key} className={`vx-chip vx-chip--${CHIP_TONE[entry.tone] ?? 'muted'}`}>
+                {entry.label} · {entry.value}
+              </span>
+            ))}
+          </>
+        ) : (
+          <span className="vx-task-hint">{summary.error ? `统计不可用：${summary.error}` : '读取统计…'}</span>
+        )}
       </div>
 
       <Card className="vx-task-listcard">

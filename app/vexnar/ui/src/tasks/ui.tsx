@@ -16,14 +16,19 @@ export function relTime(input?: string | number): string {
   return new Date(time).toLocaleDateString('zh-CN')
 }
 
+/**
+ * 任务状态标签：created | queued | running | paused | done | failed | timeout。
+ * 服务端的 TaskLifecycle 是唯一权威（随 /api/tasks/summary 下发），这里只是断网/
+ * 未取到时的镜像——键集合与 Go 的 TaskLifecycle 一致，别再引入 draft/archived。
+ */
 const STATUS_TEXT: Record<string, [label: string, tone: string]> = {
-  draft: ['草稿', 'muted'],
+  created: ['待启动', 'muted'],
+  queued: ['排队中', 'redirect'],
   running: ['进行中', 'success'],
   paused: ['已暂停', 'warn'],
-  queued: ['排队中', 'redirect'],
   done: ['已完成', 'success'],
   failed: ['失败', 'error'],
-  archived: ['已归档', 'muted']
+  timeout: ['已超时', 'error']
 }
 
 export function statusTone(status?: string): string {

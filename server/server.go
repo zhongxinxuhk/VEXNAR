@@ -736,6 +736,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/update/stream", s.updateStream)
 
 	mux.HandleFunc("GET /api/tasks", s.listTasks)
+	mux.HandleFunc("GET /api/tasks/summary", s.taskSummary) // 任务清单聚合口径（KPI/健康度/筛选计数共用）
 	mux.HandleFunc("POST /api/tasks", s.createTask)
 	mux.HandleFunc("GET /api/task-categories", s.pgListTaskCategories)
 	mux.HandleFunc("POST /api/task-categories", s.pgCreateTaskCategory)
@@ -1189,35 +1190,14 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	if t := s.m.ActiveTask(); t != nil {
 		active = t.ID
 	}
-	list := s.m.List()
-	metrics, _ := s.m.PG().TaskListMetricsAll()
-	archiveBlockers, _ := s.m.PG().TaskArchiveBlockers()
-	dtos := make([]TaskDTO, 0, len(list))
-	for _, t := range list {
-		dto := taskDTO(t, s.resolvedTaskStatus(t))
+	inventory := s.taskInventory()
+	dtos := make([]TaskDTO, 0, len(inventory))
+	for _, dto := range inventory {
 		if status != "" && dto.Status != status {
 			continue
 		}
 		if needle != "" && !taskMatchesQuery(dto, needle) {
 			continue
-		}
-		applyTaskArchiveBlocker(&dto, archiveBlockers)
-		metric := metrics[t.ExpID]
-		dto.Tokens = tokenTotalDTO(metric.Tokens)
-		// prefer the live in-memory heartbeat (fresher) and fall back to the
-		// persisted max activity time (survives restarts) for run-duration display.
-		dto.LastActivity = metric.LastActivity
-		if live := s.engine.LastActivity(t.ID); live > dto.LastActivity {
-			dto.LastActivity = live
-		}
-		dto.GoalsTotal = metric.Goals.Total
-		dto.GoalsMet = metric.Goals.Met
-		dto.InFlight = metric.RunningIntents
-		dto.Findings = FindingSeverityDTO{
-			Critical: metric.Findings.Critical,
-			High:     metric.Findings.High,
-			Medium:   metric.Findings.Medium,
-			Low:      metric.Findings.Low,
 		}
 		dtos = append(dtos, dto)
 	}

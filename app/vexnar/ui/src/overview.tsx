@@ -131,8 +131,34 @@ interface SysCounts {
   toolsOn: number
 }
 
+/** `/api/tasks/summary`：任务清单的聚合口径（KPI/健康度/筛选计数共用）。 */
+interface TaskSummaryPayload {
+  total?: number
+  by_status?: Record<string, number | undefined>
+  active?: number
+  paused?: number
+  terminal?: number
+  done?: number
+  failed?: number
+  timeout?: number
+  completion_rate?: number
+  goals_total?: number
+  goals_met?: number
+  goal_rate?: number
+  in_flight?: number
+  findings?: { total?: number; critical?: number; high?: number; medium?: number; low?: number }
+  tokens?: { input_tokens?: number; output_tokens?: number; cache_read_tokens?: number; cache_write_tokens?: number; total?: number }
+  window_days?: number
+  created_window?: number
+  created_prev?: number
+  throughput?: number[]
+  lifecycle?: LifecycleEntry[]
+  generated_unix?: number
+}
+
 interface OverviewData {
   tasks: TaskRow[]
+  summary: TaskSummaryPayload | null
   stats: SevCounts
   findings: FindingRow[]
   assets: Record<string, number>
@@ -150,6 +176,7 @@ interface OverviewData {
 
 const EMPTY_DATA: OverviewData = {
   tasks: [],
+  summary: null,
   stats: { total: 0, pending: 0, critical: 0, high: 0, medium: 0, low: 0 },
   findings: [],
   assets: {},
@@ -180,7 +207,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
     getJson<{ items?: ActivityRow[] }>('/api/exploration/activity?limit=14', signal),
     getJson<{ agents?: Array<{ enabled?: boolean }> }>('/api/agents', signal),
     getJson<{ servers?: Array<{ enabled?: boolean }> }>('/api/mcp', signal),
-    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal)
+    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal),
+    getJson<TaskSummaryPayload>('/api/tasks/summary?days=30', signal)
   ])
 
   // 只有主数据源（任务/发现/资产/Token）失败才算“数据不可用”。流量与活动流走 Go
@@ -199,6 +227,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
   const agents = pick(settled[7] as PromiseSettledResult<{ agents?: Array<{ enabled?: boolean }> }>, {})
   const mcp = pick(settled[8] as PromiseSettledResult<{ servers?: Array<{ enabled?: boolean }> }>, {})
   const tools = pick(settled[9] as PromiseSettledResult<{ tools?: Array<{ enabled?: boolean }> }>, {})
+  // 聚合只是加速与统一口径：取不到时退回清单自算，界面不会因此变成 0。
+  const summary = pick(settled[10] as PromiseSettledResult<TaskSummaryPayload>, {})
 
   const countOn = (rows: Array<{ enabled?: boolean }> | undefined): number =>
     (rows ?? []).filter((row) => row.enabled !== false).length
@@ -212,6 +242,7 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
     error,
     data: {
       tasks: Array.isArray(tasks.tasks) ? tasks.tasks : [],
+      summary: summary !== null && typeof summary === 'object' && Number.isFinite(Number(summary.total)) ? summary : null,
       stats: {
         total: Number(stats.total ?? 0),
         pending: Number(stats.pending ?? 0),
@@ -356,13 +387,44 @@ const STATUS_LABELS: Record<string, string> = {
   risk_accepted: '接受风险'
 }
 
-const TASK_STATUS: Record<string, { label: string; tone: string }> = {
-  created: { label: '待启动', tone: 'var(--vx-text-faint)' },
-  queued: { label: '排队', tone: 'var(--vx-chart-2)' },
-  running: { label: '运行中', tone: 'var(--vx-chart-1)' },
-  paused: { label: '已暂停', tone: 'var(--vx-chart-4)' },
-  done: { label: '已完成', tone: 'var(--vx-chart-3)' },
-  failed: { label: '失败', tone: 'var(--vx-chart-5)' }
+/**
+ * 任务状态词表：优先用 `/api/tasks/summary` 随数据下发的生命周期定义（服务端是
+ * 唯一权威），网络/降级时用这份本地镜像兜底。键集合必须与 Go 的 TaskLifecycle 和
+ * `app/vexnar-store/src/task-status.ts` 完全一致，否则任务会在列表里“消失”。
+ */
+interface LifecycleEntry {
+  key: string
+  label: string
+  tone: string
+  terminal?: boolean
+  active?: boolean
+  hint?: string
+}
+
+const TASK_LIFECYCLE_FALLBACK: LifecycleEntry[] = [
+  { key: 'created', label: '待启动', tone: 'muted' },
+  { key: 'queued', label: '排队中', tone: 'info' },
+  { key: 'running', label: '进行中', tone: 'success' },
+  { key: 'paused', label: '已暂停', tone: 'warn' },
+  { key: 'done', label: '已完成', tone: 'success' },
+  { key: 'failed', label: '失败', tone: 'error' },
+  { key: 'timeout', label: '已超时', tone: 'error' }
+]
+
+const STATUS_TONE: Record<string, string> = {
+  muted: 'var(--vx-text-faint)',
+  info: 'var(--vx-chart-2)',
+  success: 'var(--vx-chart-3)',
+  warn: 'var(--vx-chart-4)',
+  error: 'var(--vx-chart-5)'
+}
+
+const TASK_STATUS_META: Record<string, { label: string; tone: string }> = Object.fromEntries(
+  TASK_LIFECYCLE_FALLBACK.map((entry) => [entry.key, { label: entry.label, tone: STATUS_TONE[entry.tone] ?? 'var(--vx-text-faint)' }])
+)
+
+function statusMetaOf(status: string): { label: string; tone: string } {
+  return TASK_STATUS_META[status] ?? { label: status === '' ? '—' : status, tone: 'var(--vx-text-faint)' }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -918,9 +980,18 @@ function buildRange(daily: DayBucket[], days: number): TrendPoint[] {
 
 interface View {
   scopeDays: number
-  counts: { created: number; queued: number; running: number; paused: number; done: number; failed: number }
+  /** 生命周期计数；键集合固定，未知状态折叠进 created，保证各档之和 = total。 */
+  counts: { created: number; queued: number; running: number; paused: number; done: number; failed: number; timeout: number }
+  /** 任务总量与派生比率的唯一口径（优先读 /api/tasks/summary）。 */
+  taskTotal: number
+  taskInFlight: number
+  lifecycle: LifecycleEntry[]
+  /** 状态 → 中文标签/颜色，来自下发的生命周期定义（服务端是唯一权威）。 */
+  statusMeta: Record<string, { label: string; tone: string }>
   completionRate: number
   goalRate: number
+  goalsMet: number
+  goalsTotal: number
   created: number
   createdPrev: number
   throughput: number[]
@@ -958,22 +1029,26 @@ function derive(data: OverviewData, days: number): View {
   const cutoff = Date.now() / 1000 - days * 86400
   const prevCutoff = cutoff - days * 86400
 
-  const counts = { created: 0, queued: 0, running: 0, paused: 0, done: 0, failed: 0 }
+  const counts = { created: 0, queued: 0, running: 0, paused: 0, done: 0, failed: 0, timeout: 0 }
   let goalsMet = 0
   let goalsTotal = 0
   let created = 0
   let createdPrev = 0
+  let inFlight = 0
   const throughput = new Array<number>(days).fill(0)
   for (const task of data.tasks) {
-    const status = task.status ?? ''
-    if (status === 'created') counts.created += 1
-    else if (status === 'queued') counts.queued += 1
+    const status = String(task.status ?? '')
+    // 未知/缺省状态折叠进「待启动」，绝不静默丢任务：卡片上的数字必须能加回 total。
+    if (status === 'queued') counts.queued += 1
     else if (status === 'running') counts.running += 1
     else if (status === 'paused') counts.paused += 1
     else if (status === 'done') counts.done += 1
     else if (status === 'failed') counts.failed += 1
+    else if (status === 'timeout') counts.timeout += 1
+    else counts.created += 1
     goalsMet += Number(task.goals_met ?? 0)
     goalsTotal += Number(task.goals_total ?? 0)
+    inFlight += Number(task.in_flight ?? 0)
     const createdUnix = Number(task.created_unix ?? 0)
     if (createdUnix >= cutoff) {
       created += 1
@@ -1064,11 +1139,51 @@ function derive(data: OverviewData, days: number): View {
   const findings = [...data.findings].sort((left, right) => (Date.parse(right.ts ?? '') || 0) - (Date.parse(left.ts ?? '') || 0))
   const activity = [...data.activity].sort((left, right) => Number(right.seq ?? 0) - Number(left.seq ?? 0))
 
+  // 服务端聚合优先：它按全量清单算，且是概览/任务面板/网页控制台共用的同一行数据。
+  // 取不到时退回下面的清单自算（同样是全量），界面不会因为一个接口失败显示 0。
+  const summary = data.summary
+  const num = (value: unknown, fallback: number): number => (Number.isFinite(Number(value)) ? Number(value) : fallback)
+  const taskTotal = summary === null ? data.tasks.length : num(summary.total, data.tasks.length)
+  if (summary?.by_status !== undefined) {
+    counts.created = num(summary.by_status.created, counts.created)
+    counts.queued = num(summary.by_status.queued, counts.queued)
+    counts.running = num(summary.by_status.running, counts.running)
+    counts.paused = num(summary.by_status.paused, counts.paused)
+    counts.done = num(summary.by_status.done, counts.done)
+    counts.failed = num(summary.by_status.failed, counts.failed)
+    counts.timeout = num(summary.by_status.timeout, counts.timeout)
+  }
+  if (summary !== null) {
+    goalsMet = num(summary.goals_met, goalsMet)
+    goalsTotal = num(summary.goals_total, goalsTotal)
+    inFlight = num(summary.in_flight, inFlight)
+  }
+  const lifecycle = Array.isArray(summary?.lifecycle) && summary.lifecycle.length > 0
+    ? summary.lifecycle.filter((entry): entry is LifecycleEntry => typeof entry?.key === 'string')
+    : TASK_LIFECYCLE_FALLBACK
+  const statusMeta: Record<string, { label: string; tone: string }> = {}
+  for (const entry of lifecycle) {
+    statusMeta[entry.key] = { label: entry.label ?? entry.key, tone: STATUS_TONE[entry.tone] ?? 'var(--vx-text-faint)' }
+  }
+
+  const completionRate = summary === null
+    ? (taskTotal > 0 ? (counts.done / taskTotal) * 100 : 0)
+    : num(summary.completion_rate, taskTotal > 0 ? (counts.done / taskTotal) * 100 : 0)
+  const goalRate = summary === null
+    ? (goalsTotal > 0 ? (goalsMet / goalsTotal) * 100 : 0)
+    : num(summary.goal_rate, goalsTotal > 0 ? (goalsMet / goalsTotal) * 100 : 0)
+
   return {
     scopeDays: days,
     counts,
-    completionRate: data.tasks.length > 0 ? (counts.done / data.tasks.length) * 100 : 0,
-    goalRate: goalsTotal > 0 ? (goalsMet / goalsTotal) * 100 : 0,
+    taskTotal,
+    taskInFlight: inFlight,
+    lifecycle,
+    statusMeta,
+    completionRate,
+    goalRate,
+    goalsMet,
+    goalsTotal,
     created,
     createdPrev,
     throughput,
@@ -1111,11 +1226,15 @@ function WorkerChip({ worker }: { worker: string }): ReactNode {
   return <span className={`vx-ov-worker vx-ov-tone-${tone}`}>{worker === '' ? 'agent' : worker}</span>
 }
 
-function StatusPill({ status }: { status: string }): ReactNode {
-  const meta = TASK_STATUS[status]
+function StatusPill({ status, meta }: { status: string; meta?: { label: string; tone: string } | undefined }): ReactNode {
+  const resolved = meta ?? statusMetaOf(status)
   return (
-    <span className="vx-ov-pill" style={meta === undefined ? undefined : { color: meta.tone, borderColor: `color-mix(in srgb, ${meta.tone} 38%, transparent)`, background: `color-mix(in srgb, ${meta.tone} 10%, transparent)` }}>
-      {meta?.label ?? (status === '' ? '—' : status)}
+    <span
+      className="vx-ov-pill"
+      title={status === '' ? undefined : status}
+      style={{ color: resolved.tone, borderColor: `color-mix(in srgb, ${resolved.tone} 38%, transparent)`, background: `color-mix(in srgb, ${resolved.tone} 10%, transparent)` }}
+    >
+      {resolved.label}
     </span>
   )
 }
@@ -1164,18 +1283,24 @@ export function OverviewPanel(): ReactNode {
         <Stat
           tone="blue"
           icon="target"
-          label="任务"
-          value={String(view.counts.running)}
-          unit={`/ ${view.tasks.length}`}
+          label="任务总数"
+          value={fmtInt(view.taskTotal)}
+          unit="个"
           delta={deltaOf(view.created, view.createdPrev)}
           spark={view.throughput}
           footer={(
             <span className="vx-ov-chips">
-              {view.counts.created > 0 ? <span className="vx-ov-chip">待启动 {view.counts.created}</span> : null}
-              {view.counts.done > 0 ? <span className="vx-ov-chip">完成 {view.counts.done}</span> : null}
-              {view.counts.paused > 0 ? <span className="vx-ov-chip">暂停 {view.counts.paused}</span> : null}
-              {view.counts.failed > 0 ? <span className="vx-ov-chip">失败 {view.counts.failed}</span> : null}
-              {view.tasks.length === 0 ? <span className="vx-ov-chip">暂无任务</span> : null}
+              {view.lifecycle.map((entry) => {
+                const value = view.counts[entry.key as keyof typeof view.counts] ?? 0
+                if (value === 0) return null
+                return (
+                  <span className="vx-ov-chip" key={entry.key} style={{ color: view.statusMeta[entry.key]?.tone }}>
+                    <i className="vx-ov-dot" style={{ background: view.statusMeta[entry.key]?.tone }} />
+                    {view.statusMeta[entry.key]?.label ?? entry.label} {fmtInt(value)}
+                  </span>
+                )
+              })}
+              {view.taskTotal === 0 ? <span className="vx-ov-chip">暂无任务</span> : null}
             </span>
           )}
         />
@@ -1319,22 +1444,22 @@ export function OverviewPanel(): ReactNode {
       </div>
 
       <div className="vx-ov-grid">
-        <Section span={6} icon="target" title="任务健康度" caption={`${view.tasks.length} 个任务`}>
+        <Section span={6} icon="target" title="任务健康度" caption={`${fmtInt(view.taskTotal)} 个任务 · 近 ${days} 天新建 ${fmtInt(view.created)}`}>
           <div className="vx-ov-health">
-            <Ring value={view.completionRate} label="完成率" caption={`${view.counts.done} / ${view.tasks.length}`} />
-            <Ring value={view.goalRate} label="目标达成" caption={`${fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.goals_met ?? 0), 0))} 个目标`} />
+            <Ring value={view.completionRate} label="完成率" caption={`${fmtInt(view.counts.done)} / ${fmtInt(view.taskTotal)}`} />
+            <Ring value={view.goalRate} label="目标达成" caption={`${fmtInt(view.goalsMet)} / ${fmtInt(view.goalsTotal)} 目标`} />
             <div className="vx-ov-health-side">
-              {Object.entries(TASK_STATUS).map(([key, meta]) => (
-                <div className="vx-ov-status-row" key={key}>
-                  <span className="vx-ov-dot" style={{ background: meta.tone }} />
-                  <span>{meta.label}</span>
-                  <b>{view.counts[key as keyof typeof view.counts]}</b>
+              {view.lifecycle.map((entry) => (
+                <div className="vx-ov-status-row" key={entry.key} title={entry.hint}>
+                  <span className="vx-ov-dot" style={{ background: view.statusMeta[entry.key]?.tone }} />
+                  <span>{view.statusMeta[entry.key]?.label ?? entry.label}</span>
+                  <b>{fmtInt(view.counts[entry.key as keyof typeof view.counts] ?? 0)}</b>
                 </div>
               ))}
               <div className="vx-ov-status-row">
                 <span className="vx-ov-dot" style={{ background: 'var(--vx-text-faint)' }} />
                 <span>在途意图</span>
-                <b>{fmtInt(view.tasks.reduce((sum, task) => sum + Number(task.in_flight ?? 0), 0))}</b>
+                <b>{fmtInt(view.taskInFlight)}</b>
               </div>
             </div>
           </div>
@@ -1387,7 +1512,7 @@ export function OverviewPanel(): ReactNode {
         </Section>
       </div>
 
-      <Section span={12} icon="clock" title="任务" caption={`${view.tasks.length} 个任务 · 按最近活动排序`}>
+      <Section span={12} icon="clock" title="任务" caption={`${fmtInt(view.taskTotal)} 个任务 · 按最近活动排序`}>
         <div className="vx-ov-table-wrap">
           <table className="vx-ov-table">
             <thead>
@@ -1408,7 +1533,7 @@ export function OverviewPanel(): ReactNode {
                       <b>{task.description ?? task.name ?? '未命名任务'}</b>
                       <em>{task.id ?? ''}</em>
                     </td>
-                    <td><StatusPill status={String(task.status ?? '')} /></td>
+                    <td><StatusPill status={String(task.status ?? '')} meta={view.statusMeta[String(task.status ?? '')]} /></td>
                     <td><span className="vx-ov-engine">{task.engine_mode ?? 'idle'}</span></td>
                     <td>
                       {pct === null ? <span className="vx-ov-muted">—</span> : (

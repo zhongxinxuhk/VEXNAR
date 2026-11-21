@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { blobStore, buildReport, buildReportHtml, createNotifier, createRunner, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
 import { register as registerExploration } from './routes/exploration.ts'
+import { summarizeTasks } from '../../vexnar-store/src/task-status.ts'
 
 export const api = new Hono()
 
@@ -119,6 +120,16 @@ api.get('/api/tasks', async (c) => {
     page,
     size
   })
+})
+
+// 任务清单的**聚合口径**：一次回答「有多少任务、各自什么状态、完成率/目标达成/
+// 在途意图/漏洞/Token 各是多少、窗口内新建了多少」。KPI 卡与健康度读这一条，
+// 不再各自拿清单（或更糟：当前页）去重算。契约与 Go 的 GET /api/tasks/summary 一致。
+api.get('/api/tasks/summary', async (c) => {
+  const days = Math.max(Number(c.req.query('days') ?? 30) || 30, 1)
+  const rows = await store.tasks.list()
+  const metrics = await store.taskMetrics()
+  return c.json(summarizeTasks(rows, metrics, { days }))
 })
 
 api.get('/api/tasks/:id', async (c) => {

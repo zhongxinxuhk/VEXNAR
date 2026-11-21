@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import pg from 'pg'
+import { resolveTaskStatus } from './task-status.js'
 import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
 
 /**
@@ -23,6 +24,20 @@ export function pgStore(connection: {
   const rfc = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`
   const ts = (column: string) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`
 
+  // 任务行一律走同一个投影 + 同一个状态解析：原始 status 只是存储事实，
+  // 对外发布的 status 必须是生命周期状态（task-status.ts）。
+  const TASK_SELECT = `SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
+          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
+          ${rfc('created_at')} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
+          ${rfc('completed_at')} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix,
+          ${rfc('archived_at')} AS archived_at_text`
+  const parseTaskRow = (row: any) => taskRow.parse({
+    ...row,
+    exploration_id: Number(row.exploration_id),
+    stored_status: String(row.status ?? ''),
+    status: resolveTaskStatus(row)
+  })
+
   return {
     backend: 'postgres',
     pool,
@@ -30,22 +45,11 @@ export function pgStore(connection: {
       await pool.query('select 1')
     },
     tasks: {
-      list: async () => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc('created_at')} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc('completed_at')} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks ORDER BY tasks.id DESC`)
-        return rows.map((row) => taskRow.parse({ ...row, exploration_id: Number(row.exploration_id) }))
-      },
-      get: async (id) => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc('created_at')} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc('completed_at')} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks WHERE id = $1`, [id])
-        return rows[0] ? taskRow.parse({ ...rows[0], exploration_id: Number(rows[0].exploration_id) }) : undefined
-      }
+      // 活动清单 = 未删除、未归档。归档任务在数据库里同时写 archived_at 与 deleted_at，
+      // 因此这里两个条件都要给；只按 deleted_at 过滤会让归档任务重新出现在列表里。
+      list: () => q(TASK_SELECT + ' FROM tasks WHERE deleted_at IS NULL AND archived_at IS NULL ORDER BY tasks.id DESC')
+        .then((rows) => rows.map(parseTaskRow)),
+      get: (id) => q(TASK_SELECT + ' FROM tasks WHERE id = $1', [id]).then((rows) => (rows[0] ? parseTaskRow(rows[0]) : undefined))
     },
     findings: {
       list: async (limit = 500) => {
