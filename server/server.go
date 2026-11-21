@@ -895,6 +895,29 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/notify/channels/{id}/test", s.notifyTestChannel)
 	mux.HandleFunc("GET /api/notify/deliveries", s.notifyListDeliveries)
 	mux.HandleFunc("POST /api/notify/deliveries/{id}/retry", s.notifyRetryDelivery)
+	// 代理池（egress）：内置 mihomo 协议核 + SQLite 节点库 + 回环会话网关。
+	// 节点密钥只在服务端解密，DTO 里永远不出现（NodeConfig.Secrets 是 json:"-"）。
+	mux.HandleFunc("GET /api/proxy/state", s.egressState)
+	mux.HandleFunc("GET /api/proxy/pools", s.egressPools)
+	mux.HandleFunc("POST /api/proxy/pools", s.egressPools)
+	mux.HandleFunc("PATCH /api/proxy/pools/{id}", s.egressPoolByID)
+	mux.HandleFunc("DELETE /api/proxy/pools/{id}", s.egressPoolByID)
+	mux.HandleFunc("GET /api/proxy/pools/{id}/nodes", s.egressPoolNodes)
+	mux.HandleFunc("POST /api/proxy/pools/{id}/nodes", s.egressPoolNodes)
+	mux.HandleFunc("DELETE /api/proxy/pools/{id}/nodes/{nodeID}", s.egressPoolNodeDelete)
+	mux.HandleFunc("GET /api/proxy/nodes", s.egressNodes)
+	mux.HandleFunc("POST /api/proxy/nodes", s.egressNodes)
+	mux.HandleFunc("PATCH /api/proxy/nodes/{id}", s.egressNodeByID)
+	mux.HandleFunc("DELETE /api/proxy/nodes/{id}", s.egressNodeByID)
+	mux.HandleFunc("POST /api/proxy/nodes/parse", s.egressParse)
+	mux.HandleFunc("POST /api/proxy/nodes/import", s.egressImport)
+	mux.HandleFunc("POST /api/proxy/nodes/{id}/check", s.egressNodeCheck)
+	mux.HandleFunc("POST /api/proxy/pools/{id}/check", s.egressPoolCheck)
+	mux.HandleFunc("POST /api/proxy/leases/reset", s.egressResetLeases)
+	mux.HandleFunc("PUT /api/proxy/default-pool", s.egressDefaultPool)
+	mux.HandleFunc("GET /api/tasks/{id}/proxy", s.egressTaskBinding)
+	mux.HandleFunc("PUT /api/tasks/{id}/proxy", s.egressTaskBinding)
+	mux.HandleFunc("DELETE /api/tasks/{id}/proxy", s.egressTaskBinding)
 	mux.HandleFunc("POST /api/settings/web-search/test", s.testWebSearch)
 	mux.HandleFunc("GET /api/report", s.getReport)
 	mux.HandleFunc("GET /api/chat/mentions", s.searchChatMentions)
@@ -3481,6 +3504,8 @@ func (s *Server) settingsPayload() map[string]any {
 		"tavily_key_set":           strings.TrimSpace(tavilyKey) != "",
 		"web_search_proxy":         proxy,                       // 独立出口代理(http/https/socks5)，空=直连
 		"global_proxy":             s.m.GlobalProxy(),           // 全局出口代理(http/https/socks5)，所有目标流量走它，空=直连
+		"proxy_default_pool":       s.m.EgressPoolID(),          // 代理池默认池 id(0=未配置，回落 global_proxy)
+		"proxy_pool_enabled":       s.m.Egress() != nil,         // 内置代理池是否可用(初始化失败时为 false)
 		"python_interpreter":       strings.TrimSpace(pyStored), // 用户/自动设的值(空=用运行时检测)
 		"workers":                  s.m.Workers(),               // 并发工作 agent 数(默认3)；对之后启动的任务生效
 		"task_concurrency_enabled": concOn,                      // 任务并发上限开关(默认关)
