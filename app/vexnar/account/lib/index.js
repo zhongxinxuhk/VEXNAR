@@ -1,21 +1,12 @@
-// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
-// Repository: https://github.com/zhongxinxuhk/VEXNAR
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-
-import { readFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { installPlatform } from './platform.js'
-import { registerYakHistoryTools } from './yak-history-tools.js'
-
-const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'logo.png')
-let logoBytes = null
-
-export const name = '@vexnar/dsh-account'
-
-export const inject = ['webServer', 'credentials', 'settings', 'connection', 'sessions', 'tools', 'agentDefaultModel', 'typertGateway']
-
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { installPlatform, recordOf } from "./platform.js";
+import { registerYakHistoryTools } from "./yak-history-tools.js";
+const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "logo.png");
+let logoBytes = null;
+const name = "@vexnar/dsh-account";
+const inject = ["webServer", "credentials", "settings", "connection", "sessions", "tools", "agentDefaultModel", "typertGateway"];
 const BRAND_SCRIPT = `
 (() => {
   const updateTitle = () => {
@@ -25,24 +16,20 @@ const BRAND_SCRIPT = `
   updateTitle();
   new MutationObserver(updateTitle).observe(document.head, { childList: true, subtree: true, characterData: true });
 })();
-`
-
+`;
 const BRAND_HEAD = [
-  '<title>VEXNAR</title>',
+  "<title>VEXNAR</title>",
   '<meta name="application-name" content="VEXNAR">',
   '<meta name="apple-mobile-web-app-title" content="VEXNAR">',
   '<meta property="og:title" content="VEXNAR">',
   '<link rel="icon" type="image/png" href="/vexnar-brand/favicon.png">',
   '<link rel="apple-touch-icon" sizes="512x512" href="/vexnar-brand/favicon.png">',
   '<link rel="manifest" href="/vexnar-brand/manifest.webmanifest">'
-].join('')
-
-// Injected into the served index so the full-access warning applies even when a
-// browser still holds an older client bundle.
+].join("");
 const PERMISSION_WARNING_SCRIPT = `
 (() => {
   document.documentElement.dataset.vexnarPermInjected = '1';
-  const labels = new Set(['完全权限','Full access','フルアクセス','Acceso completo','Accès complet','Voller Zugriff','Полный доступ','Acesso total']);
+  const labels = new Set(['\u5B8C\u5168\u6743\u9650','Full access','\u30D5\u30EB\u30A2\u30AF\u30BB\u30B9','Acceso completo','Acc\xE8s complet','Voller Zugriff','\u041F\u043E\u043B\u043D\u044B\u0439 \u0434\u043E\u0441\u0442\u0443\u043F','Acesso total']);
   const paint = (node, full) => {
     if (!(node instanceof HTMLElement)) return;
     if (full) {
@@ -66,161 +53,158 @@ const PERMISSION_WARNING_SCRIPT = `
   sweep();
   new MutationObserver(sweep).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 })();
-`
-
-
+`;
 const PERMISSION_WARNING_CSS = `
-button[aria-label*="完全权限"] [class*="triggerLabel"],
+button[aria-label*="\u5B8C\u5168\u6743\u9650"] [class*="triggerLabel"],
 button[aria-label*="Full access"] [class*="triggerLabel"],
-button[aria-label*="フルアクセス"] [class*="triggerLabel"],
+button[aria-label*="\u30D5\u30EB\u30A2\u30AF\u30BB\u30B9"] [class*="triggerLabel"],
 button[aria-label*="Acceso completo"] [class*="triggerLabel"],
-button[aria-label*="Accès complet"] [class*="triggerLabel"],
+button[aria-label*="Acc\xE8s complet"] [class*="triggerLabel"],
 button[aria-label*="Voller Zugriff"] [class*="triggerLabel"],
-button[aria-label*="Полный доступ"] [class*="triggerLabel"],
+button[aria-label*="\u041F\u043E\u043B\u043D\u044B\u0439 \u0434\u043E\u0441\u0442\u0443\u043F"] [class*="triggerLabel"],
 button[aria-label*="Acesso total"] [class*="triggerLabel"],
-button[aria-label*="完全权限"] { color: #dc2626 !important; }
-button[aria-label*="完全权限"] svg,
-button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #dc2626 !important; }
+button[aria-label*="\u5B8C\u5168\u6743\u9650"] { color: #dc2626 !important; }
+button[aria-label*="\u5B8C\u5168\u6743\u9650"] svg,
+button[aria-label*="\u5B8C\u5168\u6743\u9650"] svg * { color: #dc2626 !important; stroke: #dc2626 !important; }
 [data-vexnar-full="1"], [data-vexnar-full="1"] svg,
 [data-vexnar-full="1"] svg * { color: #dc2626 !important; stroke: #dc2626 !important; }
-[role="menuitem"][aria-label*="完全权限"],
+[role="menuitem"][aria-label*="\u5B8C\u5168\u6743\u9650"],
 [role="menuitem"][aria-label*="Full access"],
-[role="menuitem"][aria-label*="フルアクセス"],
+[role="menuitem"][aria-label*="\u30D5\u30EB\u30A2\u30AF\u30BB\u30B9"],
 [role="menuitem"][aria-label*="Acceso completo"],
-[role="menuitem"][aria-label*="Accès complet"],
+[role="menuitem"][aria-label*="Acc\xE8s complet"],
 [role="menuitem"][aria-label*="Voller Zugriff"],
-[role="menuitem"][aria-label*="Полный доступ"],
+[role="menuitem"][aria-label*="\u041F\u043E\u043B\u043D\u044B\u0439 \u0434\u043E\u0441\u0442\u0443\u043F"],
 [role="menuitem"][aria-label*="Acesso total"] { color: #dc2626 !important; font-weight: 600 !important; }
-`
-
-// ── routes ─────────────────────────────────────────────────────────────────
-export function apply(ctx) {
-  registerYakHistoryTools(ctx)
-  if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
-    const app = import('./core-embedded.js')
+`;
+function apply(ctx) {
+  registerYakHistoryTools(ctx);
+  if (process.env.VEXNAR_CORE_EMBEDDED !== "0") {
+    const app = import("./core-embedded.js");
     ctx.effect(() => ctx.webServer.register({
-      kind: 'prefix',
-      path: '/vexnar-api',
+      kind: "prefix",
+      path: "/vexnar-api",
       handler: async (req, res) => {
         try {
           if (!platformReady()) {
-            res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
-            res.end(JSON.stringify({ error: '请先登录 VEXNAR' }))
-            return
+            res.writeHead(401, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+            res.end(JSON.stringify({ error: "\u8BF7\u5148\u767B\u5F55 VEXNAR" }));
+            return;
           }
-          const url = new URL(req.url || '/', 'http://127.0.0.1')
-          url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
-          const { handle, isGoDataRequest } = await app
+          const url = new URL(req.url || "/", "http://127.0.0.1");
+          url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
+          const { handle, isGoDataRequest } = await app;
           if (isGoDataRequest(req.method, url.pathname)) {
-            const rejection = ctx.connection.requestRejection(req)
+            const rejection = ctx.connection.requestRejection(req);
             if (rejection) {
-              res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
-              res.end(JSON.stringify({ error: '请从已登录的 VEXNAR 客户端访问' }))
-              return
+              res.writeHead(rejection, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+              res.end(JSON.stringify({ error: "\u8BF7\u4ECE\u5DF2\u767B\u5F55\u7684 VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }));
+              return;
             }
           }
-          const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
-          const limit = readingYakHistory ? 8192 : url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
-          const chunks = []
-          let size = 0
+          const readingYakHistory = req.method === "POST" && url.pathname === "/api/yak/history";
+          const limit = readingYakHistory ? 8192 : url.pathname === "/api/traffic/import/yakit" ? 16 * 1024 * 1024 : Infinity;
+          const chunks = [];
+          let size = 0;
           for await (const chunk of req) {
-            size += chunk.length
+            size += chunk.length;
             if (size > limit) {
-              res.writeHead(413, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: '请求正文过大' }))
-              return
+              res.writeHead(413, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "\u8BF7\u6C42\u6B63\u6587\u8FC7\u5927" }));
+              return;
             }
-            chunks.push(chunk)
+            chunks.push(chunk);
           }
-          const headers = new Headers()
+          const headers = new Headers();
           for (const [key, value] of Object.entries(req.headers)) {
-            if (Array.isArray(value)) for (const item of value) headers.append(key, item)
-            else if (value !== undefined) headers.set(key, value)
+            if (Array.isArray(value)) for (const item of value) headers.append(key, item);
+            else if (value !== void 0) headers.set(key, value);
           }
-          let body = req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks)
+          let body = req.method === "GET" || req.method === "HEAD" ? void 0 : Buffer.concat(chunks);
           if (readingYakHistory) {
-            let input
-            try { input = JSON.parse(body.toString('utf8')) } catch {}
-            if (!input || Array.isArray(input) || typeof input !== 'object' ||
-                ('workspace' in input || 'agent' in input) ||
-                (input.session_id !== undefined && (typeof input.session_id !== 'string' || !input.session_id))) {
-              res.writeHead(400, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: '无效的流量会话请求' }))
-              return
+            let input;
+            try {
+              input = JSON.parse(body === void 0 ? "" : body.toString("utf8"));
+            } catch {
             }
-            // The Session header owns the original project. An Agent changing
-            // its effective working directory does not change the project.
-            const workspace = input.session_id ? ctx.sessions.get(input.session_id)?.header.cwd : undefined
-            if (input.session_id && !workspace) {
-              res.writeHead(409, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ error: '当前会话没有可用的本地项目' }))
-              return
+            if (!input || Array.isArray(input) || typeof input !== "object" || ("workspace" in input || "agent" in input) || input.session_id !== void 0 && (typeof input.session_id !== "string" || !input.session_id)) {
+              res.writeHead(400, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "\u65E0\u6548\u7684\u6D41\u91CF\u4F1A\u8BDD\u8BF7\u6C42" }));
+              return;
             }
-            delete input.session_id
-            body = Buffer.from(JSON.stringify({ ...input, workspace }))
+            const sessionID = typeof input.session_id === "string" ? input.session_id : void 0;
+            const workspace = sessionID ? ctx.sessions.get(sessionID)?.header.cwd : void 0;
+            if (sessionID && !workspace) {
+              res.writeHead(409, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "\u5F53\u524D\u4F1A\u8BDD\u6CA1\u6709\u53EF\u7528\u7684\u672C\u5730\u9879\u76EE" }));
+              return;
+            }
+            delete input.session_id;
+            body = Buffer.from(JSON.stringify({ ...input, workspace }));
           }
-          const request = new Request(url, { method: req.method, headers, body })
-          const localPeer = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)
-          const response = await handle(request, localPeer)
-          const responseHeaders = {}
-          for (const [key, value] of response.headers.entries()) responseHeaders[key] = value
-          res.writeHead(response.status, responseHeaders)
-          res.end(Buffer.from(await response.arrayBuffer()))
+          const init = { headers };
+          if (req.method !== void 0) init.method = req.method;
+          if (body !== void 0) init.body = body;
+          const request = new Request(url, init);
+          const remoteAddress = req.socket.remoteAddress;
+          const localPeer = remoteAddress !== void 0 && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remoteAddress);
+          const response = await handle(request, localPeer);
+          const responseHeaders = {};
+          for (const [key, value] of response.headers.entries()) responseHeaders[key] = value;
+          res.writeHead(response.status, responseHeaders);
+          res.end(Buffer.from(await response.arrayBuffer()));
         } catch (error) {
-          res.statusCode = 502
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: String(error?.message || error) }))
+          res.statusCode = 502;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: String(recordOf(error).message || error) }));
         }
       }
-    }))
+    }));
   }
-
-  ctx.effect(() => ctx.webServer.tapIndex(html => html
-    .replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, '')
-    .replace(/<link\b[^>]*\brel=["'](?:shortcut icon|icon|apple-touch-icon|manifest)["'][^>]*>/gi, '')
-    .replace('</head>', () => BRAND_HEAD + `<script>${BRAND_SCRIPT}</script></head>`)))
-
-  const platformReady = installPlatform(ctx)
-
-  ctx.effect(() =>
-    ctx.webServer.register({
-      kind: 'exact',
-      path: '/vexnar-brand/manifest.webmanifest',
+  ctx.effect(() => ctx.webServer.tapIndex((html) => html.replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, "").replace(/<link\b[^>]*\brel=["'](?:shortcut icon|icon|apple-touch-icon|manifest)["'][^>]*>/gi, "").replace("</head>", () => BRAND_HEAD + `<script>${BRAND_SCRIPT}</script></head>`)));
+  const platformReady = installPlatform(ctx);
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: "exact",
+      path: "/vexnar-brand/manifest.webmanifest",
       handler: async (_req, res) => {
-        res.statusCode = 200
-        res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8')
-        res.setHeader('Cache-Control', 'public, max-age=86400')
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=86400");
         res.end(JSON.stringify({
-          name: 'VEXNAR',
-          short_name: 'VEXNAR',
-          description: 'VEXNAR — AI 自主渗透测试系统',
-          start_url: '/',
-          display: 'standalone',
-          background_color: '#ffffff',
-          theme_color: '#111827',
-          icons: [{ src: '/vexnar-brand/favicon.png', sizes: '512x512', type: 'image/png' }]
-        }))
+          name: "VEXNAR",
+          short_name: "VEXNAR",
+          description: "VEXNAR \u2014 AI \u81EA\u4E3B\u6E17\u900F\u6D4B\u8BD5\u7CFB\u7EDF",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#ffffff",
+          theme_color: "#111827",
+          icons: [{ src: "/vexnar-brand/favicon.png", sizes: "512x512", type: "image/png" }]
+        }));
       }
     })
-  )
-
-  ctx.effect(() =>
-    ctx.webServer.register({
-      kind: 'exact',
-      path: '/vexnar-brand/favicon.png',
+  );
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: "exact",
+      path: "/vexnar-brand/favicon.png",
       handler: async (_req, res) => {
         try {
-          logoBytes ??= await readFile(LOGO_PATH)
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'image/png')
-          res.setHeader('Cache-Control', 'public, max-age=86400')
-          res.end(logoBytes)
+          logoBytes ??= await readFile(LOGO_PATH);
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "image/png");
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          res.end(logoBytes);
         } catch (error) {
-          res.statusCode = 404
-          res.end('logo not found')
+          res.statusCode = 404;
+          res.end("logo not found");
         }
       }
     })
-  )
-
+  );
 }
+export {
+  apply,
+  inject,
+  name
+};

@@ -35,7 +35,7 @@
 - [x] 重构 store 层为后端无关：`writer` 增加 `list/maxKey/remove`，`operations.ts` 不再直读文件系统
 - [x] 实现 `sqlite.ts`（`node:sqlite`）：`sqliteWriter` + `sqliteStore`(读) + `sqliteMetaStore`，单文件 `vexnar.sqlite`（WAL）
 - [x] `openStore`/`storeOperations`/`openMeta` 默认走 SQLite；`VEXNAR_STORE=json` 回退
-- [x] PG 导入脚本 `import-pg.mjs`：`db/schema.sql` 域表全量 → SQLite
+- [x] PG 导入脚本 `import-pg.ts`：`db/schema.sql` 域表全量 → SQLite
 - [x] 验收：store 测试双后端全绿（SQLite 97 / JSON 98）
 
 ### WP-1 桌面模型网关 `/api/desktop/*`（19 条）— agent A
@@ -165,11 +165,11 @@
 | WP-15 任务/公司扩展 | 12 | `routes/tasks-companies.ts` | 42/42 |
 | 补齐零散路由 | 11 | `routes/gaps.ts` | 11/11 |
 
-**模块自检：14/14 个 `*.test.mjs` 全部 exit 0；store 双后端 97（SQLite）/98（JSON）。**
+**模块自检：14/14 个 `*.test.ts` 全部 exit 0；store 双后端 97（SQLite）/98（JSON）。**
 
 集成方式：所有模块 `export function register(api)`，由 `routes.ts` 末尾的 `routeModules`
 列表统一挂载；`exploration` 因静态路径优先级在 `api` 创建后立即注册。全部经
-`app/vexnar-core/build-embedded.mjs` 打进 `dsh` 内嵌 bundle（`/vexnar-api` 前缀，无新端口）。
+`app/vexnar-core/build-embedded.ts` 打进 `dsh` 内嵌 bundle（`/vexnar-api` 前缀，无新端口）。
 
 **仍未完成（后续项）**：
 - MITM 抓包采集本体（P0-4 已验证 mitmproxy sidecar 等价；`traffic.ts` 已预留

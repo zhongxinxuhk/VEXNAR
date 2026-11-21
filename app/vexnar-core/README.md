@@ -15,7 +15,7 @@ TypeScript 只读 API 的第一片：直接读现有 PostgreSQL，与 Go 服务�
 cd app && pnpm install     # workspace 统一安装，只需一次
 cd vexnar-core
 PORT=8790 pnpm start       # Go 在 8787 时用于对账
-node compare.mjs           # 逐端点对比 Go 与 TS
+tsx compare.ts           # 逐端点对比 Go 与 TS
 ```
 
 鉴权与 Go 相同：`Authorization: Bearer <HS256 JWT>`（用仓库根 `jwt.key` 签发）或
@@ -124,7 +124,7 @@ socks5/http 用原生拨号。设计见 [`../docs/EGRESS-TS.md`](../docs/EGRESS-
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**
-（`node compare-domain.mjs`：tasks 核心字段、assets、findings、findings stats、nodes items/edges）。
+（`tsx compare-domain.ts`：tasks 核心字段、assets、findings、findings stats、nodes items/edges）。
 
 ## 对账中确认的实现细节
 

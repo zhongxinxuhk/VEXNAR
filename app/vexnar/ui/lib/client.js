@@ -29,7 +29,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// vexnar/ui/src/client.tsx
+// src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   Dashboard: () => Dashboard,
@@ -43,7 +43,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react11 = require("react");
 
-// vexnar/ui/src/styles.ts
+// src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -3055,7 +3055,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// vexnar/ui/src/overview.tsx
+// src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -4372,14 +4372,14 @@ function OverviewPanel() {
   ] });
 }
 
-// vexnar/ui/src/yak-history.tsx
+// src/yak-history.tsx
 var import_react3 = require("react");
 
-// node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var React = __toESM(require("react"), 1);
 var import_react_dom = require("react-dom");
 
-// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js
 function getMeasurementKey(item) {
   return typeof item === "object" ? item.key : item;
 }
@@ -4414,7 +4414,7 @@ function createLazyMeasurementsView(cache, flat) {
   });
 }
 
-// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/utils.js
 function memo(getDeps, fn, opts) {
   let deps = opts.initialDeps ?? [];
   let result;
@@ -4493,7 +4493,7 @@ var debounce = (targetWindow, fn, ms) => {
   );
 };
 
-// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js
 function classifyScrollEvent({
   offset,
   isScrolling,
@@ -4572,7 +4572,7 @@ function flingCaught(samples) {
   return Math.abs(last.offset - from.offset) / (last.t - from.t) >= 0.05;
 }
 
-// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js
 var _isIOSResult;
 var isIOSWebKit = () => {
   if (_isIOSResult !== void 0) return _isIOSResult;
@@ -4693,7 +4693,7 @@ var IosGesture = class {
   }
 };
 
-// node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+virtual-core@3.19.11/node_modules/@tanstack/virtual-core/dist/esm/index.js
 var getRect = (element) => {
   const { clientWidth, clientHeight } = element;
   return { width: clientWidth, height: clientHeight };
@@ -6326,7 +6326,7 @@ function calculateRangeImpl(measurements, outerSize, scrollOffset, lanes, flat) 
   return { startIndex, endIndex };
 }
 
-// node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
+// ../../node_modules/.pnpm/@tanstack+react-virtual@3.14.26_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/@tanstack/react-virtual/dist/esm/index.js
 var useIsomorphicLayoutEffect = typeof document !== "undefined" ? React.useLayoutEffect : React.useEffect;
 function useVirtualizerBase({
   useFlushSync = true,
@@ -6458,7 +6458,7 @@ function useVirtualizer(options) {
   });
 }
 
-// node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
+// ../../node_modules/.pnpm/react-resizable-panels@2.1.9_react-dom@19.3.1_react@19.3.1__react@19.3.1/node_modules/react-resizable-panels/dist/react-resizable-panels.browser.esm.js
 var React2 = __toESM(require("react"));
 var import_react2 = require("react");
 var PanelGroupContext = (0, import_react2.createContext)(null);
@@ -8571,7 +8571,7 @@ function PanelResizeHandle({
 }
 PanelResizeHandle.displayName = "PanelResizeHandle";
 
-// vexnar/ui/src/http-packet.ts
+// src/http-packet.ts
 var BINARY_PREFIXES = [
   "image/",
   "audio/",
@@ -8963,7 +8963,7 @@ function methodClass(method) {
   }
 }
 
-// vexnar/ui/src/yak-history.tsx
+// src/yak-history.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
 function useHistory(body, revision = 0) {
   const [result, setResult] = (0, import_react3.useState)();
@@ -9485,7 +9485,7 @@ function SessionTrafficAction({ sessionId }) {
   ] });
 }
 
-// vexnar/ui/src/capture-action.tsx
+// src/capture-action.tsx
 var import_react4 = require("react");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var CORE_BASE = "/vexnar-api";
@@ -9560,7 +9560,7 @@ function SessionCaptureAction({ sessionId }) {
   ] });
 }
 
-// vexnar/ui/src/api.ts
+// src/api.ts
 var import_react5 = require("react");
 var CORE_BASE2 = "/vexnar-api";
 async function responseError(response) {
@@ -9593,7 +9593,7 @@ function useApi(path, deps = []) {
   return state;
 }
 
-// vexnar/ui/src/catalog.tsx
+// src/catalog.tsx
 var import_react6 = require("react");
 var import_jsx_runtime4 = require("react/jsx-runtime");
 function errorText(error) {
@@ -10177,10 +10177,10 @@ function ServerDetail({ server, onBack, onSaved }) {
   ] });
 }
 
-// vexnar/ui/src/tasks/workspace.tsx
+// src/tasks/workspace.tsx
 var import_react9 = require("react");
 
-// vexnar/ui/src/tasks/api.ts
+// src/tasks/api.ts
 var BASE = "/vexnar-api/api";
 async function request(path, init) {
   const response = await fetch(`${BASE}${path}`, {
@@ -10287,7 +10287,7 @@ async function reportText(id) {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
-// vexnar/ui/src/tasks/hooks.ts
+// src/tasks/hooks.ts
 var import_react7 = require("react");
 function useResource(key, load, enabled2 = true) {
   const [state, setState] = (0, import_react7.useState)();
@@ -10311,10 +10311,10 @@ function useResource(key, load, enabled2 = true) {
   };
 }
 
-// vexnar/ui/src/tasks/sections.tsx
+// src/tasks/sections.tsx
 var import_react8 = require("react");
 
-// vexnar/ui/src/tasks/ui.tsx
+// src/tasks/ui.tsx
 var import_jsx_runtime5 = require("react/jsx-runtime");
 function relTime(input) {
   if (!input) return "\u2014";
@@ -10432,7 +10432,7 @@ function KeyValue({ label, children }) {
   ] });
 }
 
-// vexnar/ui/src/tasks/sections.tsx
+// src/tasks/sections.tsx
 var import_jsx_runtime6 = require("react/jsx-runtime");
 var FINDING_STATUS = [
   ["pending", "\u5F85\u5904\u7406"],
@@ -11142,7 +11142,7 @@ function ReportSection({ task }) {
   ) });
 }
 
-// vexnar/ui/src/tasks/workspace.tsx
+// src/tasks/workspace.tsx
 var import_jsx_runtime7 = require("react/jsx-runtime");
 var CHIP_TONE = {
   muted: "muted",
@@ -11353,11 +11353,11 @@ function TaskDetailPage({ id, onBack }) {
   ] });
 }
 
-// vexnar/ui/src/intercept/page.tsx
+// src/intercept/page.tsx
 var import_react10 = require("react");
 var reactDom = __toESM(require("react-dom"), 1);
 
-// vexnar/ui/src/intercept/api.ts
+// src/intercept/api.ts
 var listOf2 = (value, key) => {
   const inner = value?.[key];
   return Array.isArray(inner) ? inner : [];
@@ -11461,7 +11461,7 @@ var interceptApi = {
 };
 var errText = (error) => error instanceof Error ? error.message : String(error);
 
-// vexnar/ui/src/intercept/page.tsx
+// src/intercept/page.tsx
 var import_jsx_runtime8 = require("react/jsx-runtime");
 var createPortal2 = reactDom.createPortal;
 var TABS2 = [
@@ -12370,7 +12370,7 @@ function InterceptSettings() {
   ] });
 }
 
-// vexnar/ui/src/client.tsx
+// src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";

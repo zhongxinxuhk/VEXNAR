@@ -1,15 +1,10 @@
-// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
-// Repository: https://github.com/zhongxinxuhk/VEXNAR
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-const script = '/vexnar-api/platform/entry.js'
-export const workspaceSessionScript = `<script defer src="${script}"></script>`
-
-export const loginPage = `<!doctype html>
+const script = "/vexnar-api/platform/entry.js";
+const workspaceSessionScript = `<script defer src="${script}"></script>`;
+const loginPage = `<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'self'">
-<title>登录 VEXNAR</title><link rel="icon" href="/vexnar-brand/favicon.png">
+<title>\u767B\u5F55 VEXNAR</title><link rel="icon" href="/vexnar-brand/favicon.png">
 <style>
 *{box-sizing:border-box} [hidden]{display:none!important}
 :root{font:15px/1.5 system-ui,-apple-system,"PingFang SC",sans-serif;color:#112435;background:#eef4f5}
@@ -31,15 +26,19 @@ button:disabled{opacity:.62;cursor:wait} :focus-visible{outline:3px solid #14a48
 @media(max-width:650px){main{grid-template-columns:1fr;grid-template-rows:auto 1fr}aside{padding:18px 22px}aside p{display:none}section{align-content:start;justify-items:center;padding:35px 22px}}
 </style>${workspaceSessionScript}</head>
 <body><main id="vexnar-sign-in"><aside><div class="brand"><img src="/vexnar-brand/favicon.png" alt="">VEXNAR</div><p>HXSEC AI Platform</p></aside>
-<section><div class="content"><h1>登录 VEXNAR</h1><p>登录 HXSEC AI Platform 后进入工作区。</p>
-<div id="notice" aria-live="polite">正在检查账户状态…</div>
+<section><div class="content"><h1>\u767B\u5F55 VEXNAR</h1><p>\u767B\u5F55 HXSEC AI Platform \u540E\u8FDB\u5165\u5DE5\u4F5C\u533A\u3002</p>
+<div id="notice" aria-live="polite">\u6B63\u5728\u68C0\u67E5\u8D26\u6237\u72B6\u6001\u2026</div>
 <form id="password-login" hidden>
-<label>平台账号<input name="username" autocomplete="username" required></label>
-<label>密码<input name="password" type="password" autocomplete="current-password" required></label>
-<button class="primary" type="submit">登录</button></form>
-<form id="verify-login" hidden><label>两步验证代码<input name="code" autocomplete="one-time-code" required></label>
-<button class="primary" type="submit">验证并登录</button>
-<button id="back" type="button">返回登录</button></form>
-<div id="browser-options" hidden><button id="browser-login" type="button">在平台窗口登录</button><p id="methods" class="methods"></p></div>
-<button id="retry" type="button" hidden>重新检测</button>
-</div></section></main></body></html>`
+<label>\u5E73\u53F0\u8D26\u53F7<input name="username" autocomplete="username" required></label>
+<label>\u5BC6\u7801<input name="password" type="password" autocomplete="current-password" required></label>
+<button class="primary" type="submit">\u767B\u5F55</button></form>
+<form id="verify-login" hidden><label>\u4E24\u6B65\u9A8C\u8BC1\u4EE3\u7801<input name="code" autocomplete="one-time-code" required></label>
+<button class="primary" type="submit">\u9A8C\u8BC1\u5E76\u767B\u5F55</button>
+<button id="back" type="button">\u8FD4\u56DE\u767B\u5F55</button></form>
+<div id="browser-options" hidden><button id="browser-login" type="button">\u5728\u5E73\u53F0\u7A97\u53E3\u767B\u5F55</button><p id="methods" class="methods"></p></div>
+<button id="retry" type="button" hidden>\u91CD\u65B0\u68C0\u6D4B</button>
+</div></section></main></body></html>`;
+export {
+  loginPage,
+  workspaceSessionScript
+};

@@ -1,0 +1,19 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+{
+  // 四个 P0 spike 共用一个程序：它们互相 import，拆开只会让同一份 db.ts
+  // 在四个 program 里各判一遍。类型依赖装在各自的包里（pnpm 不提升）。
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts"]
+}

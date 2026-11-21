@@ -8,7 +8,7 @@
  * 工具与 MCP 的注册表已经从 Go 服务迁到 TypeScript core：路由、存储、发现都在
  * 这边，缺的只是「出厂默认」——一份写在代码里、可以在空库上重新注册回来的清单。
  * 内容来自 Go 侧目录（61 个系统工具、3 个 MCP server），
- * 由 `app/scripts/gen-catalog-defaults.mjs` 生成；Go 侧的种子变了就重跑一次，
+ * 由 `app/scripts/gen-catalog-defaults.ts` 生成；Go 侧的种子变了就重跑一次，
  * 不要在这个文件里手改。
  */
 

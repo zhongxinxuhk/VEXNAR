@@ -31,8 +31,8 @@ React 与 `@deepseek-ai/dsh-client-*` 全部 external，由 loader 的 `require`
 ## 挂载
 
 ```sh
-node ../../scripts/setup-app-profile.mjs   # 安装到 dsh profile 并写入 vexnar-ui 行
-node ../../scripts/vexnar.mjs web             # 启动后卡片随 tool 调用出现
+pnpm --dir ../.. run setup                   # 安装到 dsh profile 并写入 vexnar-ui 行
+pnpm --dir ../.. run web                     # 启动后卡片随 tool 调用出现
 ```
 
 `package.json` 的 `dsh.client.inject` 声明了 `dsh-client-ui-tool` 与

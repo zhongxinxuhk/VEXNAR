@@ -16,7 +16,7 @@
  *   - 错误语义统一：401→502（令牌不一致）、连不上→503、未知端点→404；
  *   - 响应带 `x-vexnar-egress-contract`，缺失时由 TS 补上自己的契约版本。
  *
- * Go 侧的编译与载入由 app 自己负责（`app/scripts/vexnar-go.mjs`：按源码 stamp 编译、
+ * Go 侧的编译与载入由 app 自己负责（`app/scripts/vexnar-go.ts`：按源码 stamp 编译、
  * 启动、回收，见 app/docs/EGRESS-BRIDGE.md）。
  */
 

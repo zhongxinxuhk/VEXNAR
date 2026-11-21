@@ -178,9 +178,18 @@ importers:
       '@deepseek-ai/dsh':
         specifier: 0.2.2-rc.5
         version: 0.2.2-rc.5(1eb66b3cbb55632a6613dd2709b5371a)
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       electron:
         specifier: 44.7.0
         version: 44.7.0
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -196,8 +205,34 @@ importers:
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+    devDependencies:
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
-  spike/p0-mitm: {}
+  spike/p0-mitm:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   spike/p0-tools:
     dependencies:
@@ -210,6 +245,22 @@ importers:
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+    devDependencies:
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   spike/p0-worker:
     dependencies:
@@ -222,6 +273,22 @@ importers:
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+    devDependencies:
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: ^4.20.6
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   vexnar:
     dependencies:
@@ -275,6 +342,18 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  vexnar-mcp:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   vexnar-store:
     dependencies:
       pg:
@@ -303,6 +382,9 @@ importers:
         specifier: ^1.65.1
         version: 1.65.1
     devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/react':
         specifier: ^18.3.31
         version: 18.3.31
@@ -322,6 +404,9 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       '@types/react':
         specifier: ^18.3.31
         version: 18.3.31

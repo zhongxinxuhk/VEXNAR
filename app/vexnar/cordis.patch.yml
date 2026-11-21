@@ -20,7 +20,7 @@
     documentsDirectory: !!js "process.env.VEXNAR_HOME"
 
 # 账号、平台令牌与模型提供方归 @vexnar/dsh-account（TypeScript 侧，见
-# account/lib/platform-account.js）。它把提供方写进 llm-pi-ai，密钥写进 dsh 凭据库，
+# account/src/platform-account.ts，构建到 lib/platform-account.js）。它把提供方写进 llm-pi-ai，密钥写进 dsh 凭据库，
 # 所以默认模型只是初始值：登录后由插件按真实目录改写。
 - id: agent-default-model
   config:

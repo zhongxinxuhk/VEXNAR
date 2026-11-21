@@ -102,10 +102,10 @@ curl -s -X POST localhost:8790/api/conversations/12/traffic/capture \
 cd app/vexnar-core
 pnpm test:mitm     # 10/10：HTTPS 拦截/明文转发/落库/scope/停止关端口/CA
 pnpm typecheck
-node egress.test.mjs        # 代理池既有 15/15（本机无 mihomo 时跳过 2 项）
+pnpm --filter @vexnar/core run test:egress   # 代理池既有 15/15（本机无 mihomo 时跳过 2 项）
 ```
 
-`traffic-mitm.test.mjs` 用同一 CA 起本地 HTTPS 目标，客户端信任 MITM CA 完成
+`traffic-mitm.test.ts` 用同一 CA 起本地 HTTPS 目标，客户端信任 MITM CA 完成
 CONNECT → TLS → GET，再断言 `traffic_exchanges` 有带 scope 的请求/响应与头部。
 
 ---

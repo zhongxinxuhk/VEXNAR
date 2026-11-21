@@ -1,0 +1,18 @@
+// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+// Repository: https://github.com/zhongxinxuhk/VEXNAR
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+{
+  // Node 侧那部分（esbuild 打包脚本 + node:test 测试）单独一个 program：
+  // 类型来自 @types/node，浏览器那份 program 不引 node 全局。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  // 基配置用 exclude 把宿主文件留给这一份；继承会把 exclude 一起带下来，
+  // 所以这里必须清空，否则 include 里的宿主文件全被过滤掉（空 gate）。
+  "exclude": [],
+  "include": ["src/index.ts", "build.ts", "test"]
+}
