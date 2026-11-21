@@ -48,6 +48,11 @@ func (m *Manager) recordingAddr(taskID int64, sessionKey string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	if m.ListenerAuthEnabled() && m.egress != nil {
+		if user, secret, ok := m.egress.SessionCredential(sessionKey); ok {
+			l.SetCredential(user, secret)
+		}
+	}
 	l.SetUpstreamResolver(func(ctx context.Context) (*url.URL, error) {
 		if m.egress == nil {
 			return nil, errors.New("代理池未启用")
@@ -105,6 +110,17 @@ func (m *Manager) closeRecording(sessionKey string) {
 	delete(m.recordings, sessionKey)
 	m.recMu.Unlock()
 	if l != nil {
+		_ = l.Close()
+	}
+}
+
+// closeAllRecordings drops every recording listener (auth policy change).
+func (m *Manager) closeAllRecordings() {
+	m.recMu.Lock()
+	closing := m.recordings
+	m.recordings = map[string]*traffic.Listener{}
+	m.recMu.Unlock()
+	for _, l := range closing {
 		_ = l.Close()
 	}
 }

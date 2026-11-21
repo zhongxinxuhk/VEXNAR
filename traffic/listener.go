@@ -6,11 +6,14 @@ package traffic
 
 import (
 	"context"
+	"crypto/subtle"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +81,35 @@ func (l *Listener) SetUpstreamResolver(fn func(context.Context) (*url.URL, error
 		}
 		return u, nil
 	})
+}
+
+// SetCredential makes the listener demand this Basic proxy credential. It is
+// opt-in: Chromium cannot answer proxy auth, so a browser-bound listener must stay
+// credential-free, while CLI tools can carry sess_<key>:<secret>.
+func (l *Listener) SetCredential(user, secret string) {
+	l.proxy.SetAuthProxy(func(_ http.ResponseWriter, req *http.Request) (bool, error) {
+		gotUser, gotPass, ok := parseProxyBasic(req.Header.Get("Proxy-Authorization"))
+		if !ok || gotUser != user {
+			return false, fmt.Errorf("traffic: 代理凭据无效")
+		}
+		if subtle.ConstantTimeCompare([]byte(gotPass), []byte(secret)) != 1 {
+			return false, fmt.Errorf("traffic: 代理凭据无效")
+		}
+		return true, nil
+	})
+}
+
+func parseProxyBasic(header string) (user, pass string, ok bool) {
+	const prefix = "Basic "
+	if !strings.HasPrefix(header, prefix) {
+		return "", "", false
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(header[len(prefix):]))
+	if err != nil {
+		return "", "", false
+	}
+	user, pass, ok = strings.Cut(string(raw), ":")
+	return user, pass, ok
 }
 
 // Addr is the loopback proxy address tools should use (no credential: the

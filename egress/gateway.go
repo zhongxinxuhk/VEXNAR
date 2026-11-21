@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -36,8 +37,9 @@ type Gateway struct {
 }
 
 type fixedEntry struct {
-	url   string
-	close func()
+	url      string
+	close    func()
+	lastUsed atomic.Int64 // unix seconds; idle listeners are reaped
 }
 
 // route is the per-request view of a session: the stored session plus optional
@@ -96,9 +98,27 @@ func (g *Gateway) listenFixed(sessionKey string) (string, func(), error) {
 	srv := &http.Server{
 		ReadHeaderTimeout: 15 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if e := g.fixedEntryFor(sessionKey); e != nil {
+				e.lastUsed.Store(time.Now().Unix())
+			}
 			s, ok := g.mgr.sessionByKey(sessionKey)
 			if !ok {
 				writeProxyError(w, http.StatusProxyAuthRequired, "EGRESS_SESSION_REVOKED", "会话已撤销")
+				return
+			}
+			// A credential, when offered, must be this session's. Without one the
+			// listener is allowed only while the operator has not required auth.
+			if header := r.Header.Get("Proxy-Authorization"); header != "" {
+				rt, err := g.mgr.routeForHeader(header)
+				if err != nil || rt.sess != s {
+					writeProxyError(w, http.StatusProxyAuthRequired, "EGRESS_BAD_CREDENTIAL", "代理认证失败")
+					return
+				}
+				g.serve(w, r, rt)
+				return
+			}
+			if g.mgr.RequireListenerAuth() {
+				writeProxyError(w, http.StatusProxyAuthRequired, "EGRESS_LISTENER_AUTH_REQUIRED", "该出口要求代理认证")
 				return
 			}
 			g.serve(w, r, &route{sess: s})
@@ -155,6 +175,16 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, rt *route) {
 //	sess_<key>              → session policy (sticky/rotate from the binding)
 //	sess_<key>.rotate       → override mode for this connection
 //	sess_<key>.node_<id>    → pin one node (fanout distribution, debugging)
+//
+// routeForHeader parses a Proxy-Authorization header into a route.
+func (m *Manager) routeForHeader(header string) (*route, error) {
+	user, pass, ok := basicAuth(header)
+	if !ok {
+		return nil, errBadCredential
+	}
+	return m.routeFor(user, pass)
+}
+
 func (g *Gateway) auth(r *http.Request) (*route, error) {
 	user, pass, ok := basicAuth(r.Header.Get("Proxy-Authorization"))
 	if !ok {
@@ -198,6 +228,14 @@ func (m *Manager) sessionByKey(key string) (*session, bool) {
 	return s, s != nil
 }
 
+// fixedEntryFor looks up a listener entry by session key.
+func (g *Gateway) fixedEntryFor(key string) *fixedEntry {
+	m := g.mgr
+	m.fixedMu.Lock()
+	defer m.fixedMu.Unlock()
+	return m.fixed[key]
+}
+
 // FixedProxyURL returns a loopback proxy that is permanently bound to one
 // session and requires no credential. Used for clients that cannot answer proxy
 // authentication (Chromium's --proxy-server ignores URL userinfo).
@@ -218,7 +256,9 @@ func (m *Manager) FixedProxyURL(key string) (string, error) {
 	if m.fixed == nil {
 		m.fixed = map[string]*fixedEntry{}
 	}
-	m.fixed[user] = &fixedEntry{url: url, close: closer}
+	e := &fixedEntry{url: url, close: closer}
+	e.lastUsed.Store(time.Now().Unix())
+	m.fixed[user] = e
 	return url, nil
 }
 
@@ -230,6 +270,25 @@ func (m *Manager) closeFixed(key string) {
 	m.fixedMu.Unlock()
 	if e != nil {
 		e.close()
+	}
+}
+
+// evictIdleFixed closes credential-free listeners that saw no request for ttl.
+// These listen on loopback without authentication, so shrinking their lifetime is
+// the practical hardening for shared hosts.
+func (m *Manager) evictIdleFixed(ttl time.Duration) {
+	cutoff := time.Now().Add(-ttl).Unix()
+	var closing []func()
+	m.fixedMu.Lock()
+	for key, e := range m.fixed {
+		if e.lastUsed.Load() < cutoff {
+			closing = append(closing, e.close)
+			delete(m.fixed, key)
+		}
+	}
+	m.fixedMu.Unlock()
+	for _, c := range closing {
+		c()
 	}
 }
 

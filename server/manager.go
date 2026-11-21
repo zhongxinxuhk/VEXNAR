@@ -261,6 +261,14 @@ type Manager struct {
 	// Keyed by sanitized session key; created lazily, closed on task end.
 	recMu      sync.Mutex
 	recordings map[string]*traffic.Listener
+
+	// browserMu tracks which pool-bound tasks currently own the browser MCP. MCP is
+	// a process-wide config, so only one task can own it; more than one active
+	// pool-bound task falls back to the default pool.
+	browserMu           sync.Mutex
+	browserTasks        map[int64]int
+	browserProxyApplied string
+	browserCertApplied  string
 }
 
 // Settings keys the UI toggles at runtime.
@@ -279,8 +287,12 @@ const (
 	// settingProxyDefaultPool is the proxy-pool id used when a task has no explicit
 	// binding. 0 = unset (fall back to global_proxy / direct).
 	settingProxyDefaultPool = "proxy_default_pool"
-	settingWorkers          = "workers"
-	settingLLMRecord        = "llm_record"
+	// settingEgressListenerAuth requires Proxy-Authorization on credential-free
+	// egress listeners (browser/fixed ports). Off by default: Chromium cannot
+	// answer proxy auth, so enabling it trades browser egress for multi-user safety.
+	settingEgressListenerAuth = "egress_listener_auth"
+	settingWorkers            = "workers"
+	settingLLMRecord          = "llm_record"
 	// LLM 轮询(故障转移)。默认关闭——开启后走「全局激活配置」的 agent 在当前配置
 	// 不可用(余额不足/key 失效/限流/服务异常)时自动切到下一个配置。
 	// settingLLMPoolBindFallback 仅在轮询开启时有意义:默认关闭,即 agent/任务显式
@@ -392,7 +404,7 @@ func NewManager(dir, proxyAddr string) (*Manager, error) {
 	if err := pg.EnsureLLMUsageTable(); err != nil {
 		log.Printf("[llmusage] create table: %v", err)
 	}
-	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg), recordings: map[string]*traffic.Listener{}}
+	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg), recordings: map[string]*traffic.Listener{}, browserTasks: map[int64]int{}}
 	if proxyAddr != "" {
 		tr, err := traffic.Open(filepath.Join(dir, "traffic"), proxyAddr)
 		if err != nil {
@@ -460,6 +472,9 @@ func NewManager(dir, proxyAddr string) (*Manager, error) {
 	}
 	m.enrich = enrich.New(m.assets, m.ProxyAddr, 4)
 	m.initEgress(filepath.Join(dir, "egress"))
+	if m.egress != nil {
+		m.egress.SetRequireListenerAuth(pg.GetBool(settingEgressListenerAuth, false))
+	}
 	// Reconcile the seeded browser MCP with the persisted capture state, so a
 	// restart with capture already on keeps Playwright routed through the proxy.
 	m.syncBrowserMCPProxy()
@@ -692,6 +707,10 @@ func (m *Manager) syncBrowserMCPProxy() {
 		log.Printf("[mcp] browser 代理同步失败: %v", err)
 		return
 	}
+	m.browserMu.Lock()
+	m.browserProxyApplied = proxy
+	m.browserCertApplied = cert
+	m.browserMu.Unlock()
 	if proxy != "" {
 		log.Printf("[mcp] browser MCP 已挂捕获代理 %s (CA %s)", proxy, cert)
 	} else {
@@ -779,10 +798,106 @@ func (m *Manager) ProxyAddr() string {
 	return m.globalProxy
 }
 
+// ListenerAuthEnabled reports whether loopback listeners demand proxy auth.
+func (m *Manager) ListenerAuthEnabled() bool {
+	v, _, _ := m.pg.GetSetting(settingEgressListenerAuth)
+	return strings.EqualFold(strings.TrimSpace(v), "true")
+}
+
+// SetListenerAuth persists and applies the listener-auth policy. Existing
+// recording listeners are closed so they are recreated with the new policy.
+func (m *Manager) SetListenerAuth(on bool) error {
+	if err := m.pg.SetBool(settingEgressListenerAuth, on); err != nil {
+		return err
+	}
+	if m.egress != nil {
+		m.egress.SetRequireListenerAuth(on)
+	}
+	m.closeAllRecordings()
+	m.syncBrowserMCPProxy()
+	return nil
+}
+
+// ActivateBrowserTask marks a pool-bound task as wanting the browser MCP.
+func (m *Manager) ActivateBrowserTask(id int64) {
+	if id <= 0 {
+		return
+	}
+	m.browserMu.Lock()
+	m.sweepBrowserTasksLocked()
+	m.browserTasks[id]++
+	m.browserMu.Unlock()
+	m.refreshBrowserProxy()
+}
+
+// DeactivateBrowserTask drops the task's claim (task end/delete).
+func (m *Manager) DeactivateBrowserTask(id int64) {
+	m.browserMu.Lock()
+	if n := m.browserTasks[id]; n > 1 {
+		m.browserTasks[id] = n - 1
+	} else {
+		delete(m.browserTasks, id)
+	}
+	m.browserMu.Unlock()
+	m.refreshBrowserProxy()
+}
+
+// browserTaskID returns the single task that owns the browser, 0 when none or
+// more than one (ambiguous).
+func (m *Manager) browserTaskID() int64 {
+	m.browserMu.Lock()
+	defer m.browserMu.Unlock()
+	m.sweepBrowserTasksLocked()
+	if len(m.browserTasks) != 1 {
+		return 0
+	}
+	for id := range m.browserTasks {
+		return id
+	}
+	return 0
+}
+
+// sweepBrowserTasksLocked drops tasks that finished or disappeared. Caller holds
+// browserMu.
+func (m *Manager) sweepBrowserTasksLocked() {
+	for id := range m.browserTasks {
+		task, err := m.pg.GetTask(id)
+		if err != nil || task == nil || isTerminalStatus(task.Status) {
+			delete(m.browserTasks, id)
+		}
+	}
+}
+
+// refreshBrowserProxy re-points the browser MCP only when the effective proxy
+// changed, so agent builds do not rewrite the MCP row on every run.
+func (m *Manager) refreshBrowserProxy() {
+	proxy := m.BrowserProxyURL()
+	cert := m.ProxyCACert()
+	m.browserMu.Lock()
+	unchanged := proxy == m.browserProxyApplied && cert == m.browserCertApplied
+	m.browserMu.Unlock()
+	if unchanged {
+		return
+	}
+	m.syncBrowserMCPProxy()
+}
+
 // BrowserProxyURL is what a browser may receive as --proxy-server. Chromium cannot
 // answer proxy authentication (URL userinfo is ignored), so a pool-bound default
 // uses a credential-free fixed-port listener instead of the credential URL.
 func (m *Manager) BrowserProxyURL() string {
+	// A single pool-bound task owns the browser: point Playwright at that task's
+	// own recording/fixed listener so its pool actually applies.
+	if id := m.browserTaskID(); id > 0 && m.egress != nil {
+		key := taskSessionKey(id, "worker")
+		if m.traffic != nil && m.TrafficEnabled() {
+			if addr, err := m.recordingAddr(id, key); err == nil {
+				return addr
+			}
+		} else if u, err := m.egress.FixedProxyURL(key); err == nil {
+			return u
+		}
+	}
 	if m.traffic != nil && m.TrafficEnabled() {
 		return m.traffic.ProxyAddr() // MITM; its upstream already honors the pool
 	}

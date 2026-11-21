@@ -138,6 +138,10 @@ type Manager struct {
 	hosts  map[string]*hostMemory // per-target-host node preferences (fanout)
 
 	events eventBus
+	// requireListenerAuth makes credential-free listeners (browser/fixed ports)
+	// demand Proxy-Authorization. Off by default because Chromium cannot answer it;
+	// multi-user hosts should turn it on and accept that browser egress stops.
+	requireListenerAuth atomic.Bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -549,6 +553,22 @@ func (m *Manager) UpstreamURLFor(key string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("http://sess_%s.node_%d:%s@%s", user, st.node.ID, s.secret, m.gateway.Addr()), nil
+}
+
+// SetRequireListenerAuth toggles authentication on fixed/recording listeners.
+func (m *Manager) SetRequireListenerAuth(on bool) { m.requireListenerAuth.Store(on) }
+
+// RequireListenerAuth reports the current listener-auth policy.
+func (m *Manager) RequireListenerAuth() bool { return m.requireListenerAuth.Load() }
+
+// SessionCredential returns the proxy username/secret of a live session so a
+// recording listener can authenticate tools that do speak proxy auth.
+func (m *Manager) SessionCredential(key string) (user, secret string, ok bool) {
+	s, found := m.sessionByKey(key)
+	if !found {
+		return "", "", false
+	}
+	return "sess_" + sanitizeKey(key), s.secret, true
 }
 
 // Sessions lists live sessions.
@@ -973,6 +993,7 @@ func (m *Manager) loop() {
 			m.runDueChecks()
 			m.evictIdleSessions()
 			m.runSubscriptions()
+			m.evictIdleFixed(10 * time.Minute)
 		}
 	}
 }
