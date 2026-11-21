@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest'
+import { describeToolPayload } from '@/lib/tool-inspection'
 import { executionGroup } from '@/lib/execution-groups'
 import {
   lastTurnUsage,
@@ -375,5 +376,24 @@ describe('executionGroup', () => {
     expect(executionGroup('mcp__software__inspect_window')).toEqual({ category: 'software', source: 'software' })
     expect(executionGroup('WebFetch')).toEqual({ category: 'api' })
     expect(executionGroup('browser_unknown')).toEqual({ category: 'other' })
+  })
+})
+
+describe('describeToolPayload', () => {
+  it('presents skill and planning records using explicit fields', () => {
+    expect(describeToolPayload('Skill', '{"name":"docs"}', 'ack').fields)
+      .toEqual([{ key: 'skill', label: 'chat.inspectSkill', value: 'docs' }])
+    expect(describeToolPayload('TodoWrite', '{"todos":[{"content":"check","status":"completed"},{"content":"other","status":"unknown"}]}', '').todos)
+      .toEqual([{ text: 'check', status: 'chat.inspectTodoDone' }])
+  })
+
+  it('keeps terminal streams distinct and displays only explicit session IDs', () => {
+    const terminal = describeToolPayload('Bash', '{"command":"ls"}', '{"exit_code":0,"stdout":"files","stderr":"notice"}')
+    expect(terminal).toMatchObject({ stdout: 'files', stderr: 'notice' })
+    expect(terminal.fields.find((field) => field.key === 'exitCode')?.value).toBe(0)
+    expect(describeToolPayload('mcp__browser__navigate', '{"session_id":"transport"}', '').fields)
+      .not.toContainEqual(expect.objectContaining({ key: 'session' }))
+    expect(describeToolPayload('mcp__software__inspect', '{}', '{"software_session_id":"editor"}').fields)
+      .toContainEqual(expect.objectContaining({ key: 'session', value: 'editor' }))
   })
 })

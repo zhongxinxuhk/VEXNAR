@@ -190,6 +190,17 @@ app.whenReady().then(async () => {
     await wait(`!(${activity}).parentElement.querySelector('div[tabindex="0"] > details').open`)
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='展开全部分组').click()`)
     await wait(`(${activity}).parentElement.querySelector('div[tabindex="0"] > details').open`)
+    const initialTraceReads = await run(`window.__uiFixture.snapshot().traceReads`)
+    for (const [category, expected] of [
+      ['skill', 'documentation-review'], ['planning', '核对说明文档'],
+      ['browser', 'browser-fixture'], ['software', 'editor-fixture']
+    ]) {
+      await changeSelect(traceSelector('按类别筛选'), category)
+      const toolPanel = `(${activity}).parentElement.querySelector('details[data-tool-category="${category}"]')`
+      await wait(`!!(${toolPanel})`)
+      await run(`(${toolPanel}).querySelector('summary').click()`)
+      await wait(`(${toolPanel}).textContent.includes(${JSON.stringify(expected)})`)
+    }
     await changeSelect(traceSelector('按类别筛选'), 'all')
     await run(`[...(${activity}).parentElement.querySelectorAll('button')].find(e=>e.textContent==='按调用查看').click()`)
     await changeSelect(traceSelector('活动排序'), 'duration')
@@ -218,10 +229,14 @@ app.whenReady().then(async () => {
     await wait(`(${activity}).parentElement.textContent.includes('第 1–25 项')`)
     await wait(`Array.from(document.querySelectorAll('summary')).some(e=>e.textContent.includes('Bash') && e.textContent.includes('成功'))`)
     if (await run(`(${activity}).parentElement.querySelector('pre') !== null`)) throw Error('Collapsed tool mounted its payload')
-    await wait(`window.__uiFixture.snapshot().traceReads===0`)
+    const readsAfterInspection = await run(`window.__uiFixture.snapshot().traceReads`)
+    if (readsAfterInspection !== initialTraceReads + 8) throw Error('Tool rows eagerly fetched payloads')
     await run(`Array.from(document.querySelectorAll('summary')).find(e=>e.textContent.includes('Bash') && e.textContent.includes('成功')).click()`)
+    const terminalCall = `document.querySelector('details[data-call-sequence="3"]')`
+    await wait(`(${terminalCall})?.querySelector('section[aria-label="终端"]')?.textContent.includes('ls')`)
+    await run(`[...(${terminalCall}).querySelectorAll('button')].find(e=>e.textContent==='输出').click()`)
     await wait(`Array.from(document.querySelectorAll('pre')).some(e=>e.textContent.includes('README.md') && e.checkVisibility())`)
-    await wait(`window.__uiFixture.snapshot().traceReads===2`)
+    await wait(`window.__uiFixture.snapshot().traceReads===${readsAfterInspection + 2}`)
     const outputPanel = `[...document.querySelectorAll('article[aria-label="助手消息"] section')].find(e=>e.querySelector('h4')?.textContent==='输出')`
     if (await run(`(${outputPanel}).querySelector('pre').textContent.includes('END_OF_OUTPUT')`)) throw Error('Large output rendered beyond its preview')
     await run(`[...(${outputPanel}).querySelectorAll('button')].find(e=>e.textContent==='下一页').click()`)
@@ -338,7 +353,9 @@ app.whenReady().then(async () => {
     const historicalPanel = `document.querySelector('section[aria-label="历史调用"]')`
     await wait(`(${historicalPanel})?.textContent.includes('archivist')`)
     await run(`(${historicalPanel}).querySelector('summary').click()`)
-    await wait(`(${historicalPanel})?.textContent.includes('archive.md') && (${historicalPanel})?.textContent.includes('archived result')`)
+    await wait(`(${historicalPanel})?.textContent.includes('archived result')`)
+    await run(`[...(${historicalPanel}).querySelectorAll('button')].find(e=>e.textContent==='输入').click()`)
+    await wait(`(${historicalPanel})?.textContent.includes('archive.md')`)
     await run(`window.__uiFixture.startDraft()`)
     await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`)
     await wait(`document.body.textContent.includes('你好，正在生成答复')`)

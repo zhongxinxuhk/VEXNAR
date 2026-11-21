@@ -4,10 +4,11 @@
 //
 // Pattern adapted from Motif's Tool Call (MIT). See ./NOTICE.md.
 
-import { useEffect, useState } from 'react'
-import { BookOpen, Check, ChevronDown, CircleHelp, Loader2, SquareTerminal, Wrench, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { BookOpen, Check, ChevronDown, CircleHelp, ClipboardList, Globe, Loader2, Monitor, Plug, SquareTerminal, Unplug, Wrench, X } from 'lucide-react'
 import { conversations } from '@/lib/conversations'
-import { executionGroup } from '@/lib/execution-groups'
+import { describeToolPayload } from '@/lib/tool-inspection'
+import { executionCategories, executionGroup } from '@/lib/execution-groups'
 import { useI18n, useT } from '@/lib/i18n'
 import type { ToolCall } from '@/store/app'
 import { cn } from '@/lib/utils'
@@ -62,9 +63,17 @@ export function ToolCallRow({
     return () => { cancelled = true }
   }, [open, current, failed, conversationId, callSequence, resultSequence, key])
 
-  const Icon = executionGroup(name).category === 'terminal'
-    ? SquareTerminal
-    : name === 'read_file' || name === 'list_files' ? BookOpen : Wrench
+  const { category } = executionGroup(name)
+  const Icon = {
+    planning: ClipboardList,
+    skill: BookOpen,
+    mcp: Plug,
+    browser: Globe,
+    terminal: SquareTerminal,
+    software: Monitor,
+    api: Unplug,
+    other: Wrench
+  }[category]
   const { tone, icon: StatusIcon, label } = statusDisplay[status]
 
   const elapsedMs = finished ? Date.parse(finished.timestamp) - Date.parse(started.timestamp) : NaN
@@ -77,7 +86,7 @@ export function ToolCallRow({
     : null
 
   return (
-    <details data-call-sequence={callSequence} className="group" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <details data-call-sequence={callSequence} data-tool-category={category} className="group" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-panel-2/60">
         <Icon className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-soft" title={name}>{name}</span>
@@ -113,21 +122,7 @@ export function ToolCallRow({
             )}
           </dl>
           {current ? (
-            <>
-              {current.input ? <ToolPayload key={`input-${key}`} label={t('chat.toolInput')} value={current.input} /> : null}
-              {current.output ? (
-                <ToolPayload
-                  key={`output-${key}`}
-                  label={t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')}
-                  value={current.output}
-                  error={status === 'error'}
-                />
-              ) : (
-                <p className="px-2.5 py-2 text-[11px] text-muted">
-                  {t(status === 'running' ? 'chat.toolWaiting' : 'chat.toolEmpty')}
-                </p>
-              )}
-            </>
+            <ToolInspection key={key} tool={name} input={current.input} output={current.output} status={status} />
           ) : failed ? (
             <div role="status" className="flex items-center justify-between gap-2 px-2.5 py-2 text-[11px] text-danger">
               {t('chat.toolPayloadFailed')}
@@ -141,6 +136,94 @@ export function ToolCallRow({
         </div>
       ) : null}
     </details>
+  )
+}
+
+function ToolInspection({ tool, input, output, status }: {
+  tool: string
+  input: string
+  output: string
+  status: ToolCallStatus
+}): React.JSX.Element {
+  const t = useT()
+  const inspection = useMemo(() => describeToolPayload(tool, input, output), [tool, input, output])
+  const category = executionGroup(tool).category
+  const hasOverview = inspection.fields.length > 0 || inspection.todos.length > 0
+  const panes = {
+    overview: hasOverview ? t('chat.inspectOverview') : null,
+    input: input ? t('chat.toolInput') : null,
+    output: output ? t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput') : null
+  }
+  type Pane = keyof typeof panes
+  const available = (Object.keys(panes) as Pane[]).filter((pane) => panes[pane] != null)
+  const [chosen, setChosen] = useState<Pane | null>(null)
+  const active = chosen ?? (hasOverview ? 'overview' : output ? 'output' : input ? 'input' : null)
+
+  return (
+    <>
+      {available.length > 0 ? (
+        <div role="group" aria-label={t('chat.inspectViews')} className="flex flex-wrap items-center gap-1 border-b border-line-soft px-2 py-1">
+          {available.map((pane) => (
+            <button
+              key={pane}
+              type="button"
+              aria-pressed={active === pane}
+              onClick={() => setChosen(pane)}
+              className="rounded-md px-2 py-1 text-[11px] text-muted hover:bg-panel-2 aria-pressed:bg-panel-2 aria-pressed:font-medium aria-pressed:text-ink"
+            >
+              {panes[pane]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {active === 'overview' ? (
+        <section aria-label={t(executionCategories[category])} className="space-y-2 px-3 py-2">
+          {inspection.fields.length > 0 ? (
+            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[11px] leading-5">
+              {inspection.fields.map(({ key, label, value }) => (
+                <div key={key} className="contents">
+                  <dt className="text-muted">{t(label)}</dt>
+                  <dd className={cn('min-w-0 whitespace-pre-wrap break-words text-ink-soft', key === 'command' && 'font-mono')}>
+                    {String(value).length > 4096 ? String(value).slice(0, 4096) + '…' : value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {inspection.todos.length > 0 ? (
+            <ul className="divide-y divide-line-soft">
+              {inspection.todos.map((todo, index) => (
+                <li key={index} className="flex items-baseline justify-between gap-2 py-1 text-[11px]">
+                  <span className="min-w-0 break-words text-ink-soft">{todo.text}</span>
+                  <span className={cn('shrink-0', todo.status === 'chat.inspectTodoDone' ? 'text-accent-2' : 'text-muted')}>{t(todo.status)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {inspection.additionalTodos > 0 ? (
+            <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setChosen('input')}>
+              {t('chat.inspectMoreTodos', { count: inspection.additionalTodos })}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
+      {active === 'input' ? <ToolPayload label={t('chat.toolInput')} value={input} /> : null}
+      {active === 'output' ? (
+        inspection.stdout !== undefined || inspection.stderr !== undefined ? (
+          <>
+            {inspection.stdout ? <ToolPayload label={t('chat.inspectStdout')} value={inspection.stdout} /> : null}
+            {inspection.stderr ? <ToolPayload label={t('chat.inspectStderr')} value={inspection.stderr} error /> : null}
+            <details className="px-2.5 py-1 text-[11px] text-muted">
+              <summary className="cursor-pointer">{t('chat.inspectRawOutput')}</summary>
+              <ToolPayload label={t('chat.inspectRawOutput')} value={output} error={status === 'error'} />
+            </details>
+          </>
+        ) : <ToolPayload label={t(status === 'error' ? 'chat.toolErrorDetail' : 'chat.toolOutput')} value={output} error={status === 'error'} />
+      ) : null}
+      {active === null || (!output && status === 'running') ? (
+        <p className="px-2.5 py-2 text-[11px] text-muted">{t(status === 'running' ? 'chat.toolWaiting' : 'chat.toolEmpty')}</p>
+      ) : null}
+    </>
   )
 }
 

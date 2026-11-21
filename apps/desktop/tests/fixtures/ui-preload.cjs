@@ -62,10 +62,17 @@ const conversationActivities = {
       const tool_use_id = `read-${index}`
       const tool = ({
         20: 'mcp__files__read_file', 21: 'Skill', 22: 'mcp__browser__navigate',
-        23: 'mcp__software__inspect_window', 24: 'WebFetch'
+        23: 'mcp__software__inspect_window', 24: 'WebFetch', 25: 'TodoWrite'
       })[index] || 'read_file'
       const activity = { worker: 'auto', ts: '2026-11-20T10:00:08Z', tool, tool_use_id }
-      const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: 'read_file', detail: JSON.stringify({ path: `notes-${index}.md` }) }
+      const args = ({
+        21: { name: 'documentation-review' },
+        22: { action: 'navigate', url: 'https://example.invalid/' },
+        23: { application: 'Text Editor', action: 'inspect_window' },
+        24: { method: 'GET', url: 'https://example.invalid/docs' },
+        25: { todos: [{ content: '核对说明文档', status: 'completed' }, { content: '整理结果', status: 'in_progress' }] }
+      })[index] || { path: `notes-${index}.md` }
+      const call = { ...activity, seq: ++activitySeq, kind: 'tool_use', summary: tool, detail: JSON.stringify(args) }
       if (index === 1 || index === 2) return [call]
       const result = {
         ...activity,
@@ -74,7 +81,12 @@ const conversationActivities = {
         ts: index === 3 ? '2026-11-20T10:00:08.500Z' : activity.ts,
         is_error: index === 63,
         summary: index === 63 ? 'file not found' : 'done',
-        detail: index === 63 ? 'file not found' : `output ${index}`
+        detail: ({
+          21: 'Skill "documentation-review" loaded.',
+          22: '{"browser_session_id":"browser-fixture","url":"https://example.invalid/"}',
+          23: '{"software_session_id":"editor-fixture","window_title":"Notes"}',
+          63: 'file not found'
+        })[index] || `output ${index}`
       }
       if (index !== 15) return [call, result]
       return [call, result, {
