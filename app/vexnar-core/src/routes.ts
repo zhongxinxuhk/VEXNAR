@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, createRunner, createScheduler, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -20,6 +20,7 @@ const meta = metaStore(storeRoot())
 const operations = storeOperations(storeRoot())
 const engine = createEngine(store as any, operations as any, { runner: createRunner({ concurrency: 2 }) })
 const scheduler = createScheduler({ concurrency: 4 })
+const taskQueue = createTaskQueue({ concurrency: Math.max(Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2, 1) })
 const triggerStops: Array<() => void> = []
 for (const agent of await meta.table<any[]>('agents')) {
   try {
@@ -27,8 +28,10 @@ for (const agent of await meta.table<any[]>('agents')) {
       const task = await spawnTriggerTask(operations, agent.key, fire)
       store.invalidate?.(['tasks'])
       if (process.env.VEXNAR_GATEWAY_TOKEN) {
-        await engine.plan(task.id, gatewayComplete)
-        await engine.workMany(task.id, gatewayComplete, 1)
+        await taskQueue.enqueue(task.id, async () => {
+          await engine.plan(task.id, gatewayComplete)
+          await engine.workMany(task.id, gatewayComplete, 1)
+        })
       }
       const channels = await meta.table<any[]>('notify')
       if (!channels.length) return
@@ -54,8 +57,10 @@ const stopSchedules = startSchedules(store, scheduler, operations, async (schedu
   const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) })
   store.invalidate?.(['tasks'])
   if (process.env.VEXNAR_GATEWAY_TOKEN) {
-    await engine.plan(task.id, gatewayComplete)
-    await engine.workMany(task.id, gatewayComplete, 1)
+    await taskQueue.enqueue(task.id, async () => {
+      await engine.plan(task.id, gatewayComplete)
+      await engine.workMany(task.id, gatewayComplete, 1)
+    })
   }
 }, 30_000)
 process.once('SIGTERM', () => { for (const stop of triggerStops) stop(); stopSchedules(); scheduler.stop() })
@@ -329,6 +334,8 @@ api.post('/api/tasks/:id/control', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
     const record = await operations.controlTask(c.req.param('id'), String(body.action ?? ''))
+    if (body.action === 'pause') taskQueue.pause(c.req.param('id'))
+    if (body.action === 'resume') taskQueue.resume(c.req.param('id'))
     store.invalidate?.(['tasks'])
     return c.json({ id: record.id, paused: record.paused, queued: record.queued, status: record.status })
   } catch (error: any) {
@@ -740,15 +747,27 @@ api.post('/api/engine/tools/run', async (c) => {
 api.post('/api/engine/plan', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   if (!body.task_id) return c.json({ error: 'task_id 不能为空' }, 400)
-  try { return c.json({ intents: await engine.plan(String(body.task_id), gatewayComplete) }) }
+  try { const taskId = String(body.task_id); return c.json({ intents: await taskQueue.enqueue(taskId, () => engine.plan(taskId, gatewayComplete)) }) }
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
 
 api.post('/api/engine/work', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   if (!body.task_id) return c.json({ error: 'task_id 不能为空' }, 400)
-  try { return c.json({ result: await engine.work(String(body.task_id), gatewayComplete, String(body.worker ?? 'work#1')) }) }
+  try { const taskId = String(body.task_id); return c.json({ result: await taskQueue.enqueue(taskId, () => engine.work(taskId, gatewayComplete, String(body.worker ?? 'work#1'))) }) }
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
+})
+
+api.get('/api/engine/queue', (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }))
+
+api.post('/api/engine/queue/:taskId', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const taskId = c.req.param('taskId')
+  if (body.action === 'pause') taskQueue.pause(taskId)
+  else if (body.action === 'resume') taskQueue.resume(taskId)
+  else if (body.action === 'cancel') return c.json({ cancelled: taskQueue.cancel(taskId) })
+  else return c.json({ error: 'action 需为 pause/resume/cancel' }, 400)
+  return c.json({ ok: true, paused: taskQueue.pausedTasks })
 })
 
 api.get('/api/schedules', async (c) => c.json({ schedules: await store.schedules.list() }))
