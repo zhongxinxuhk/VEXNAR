@@ -369,6 +369,17 @@ cd app && npm run setup && npm run web
 | 5 | 卡片样式与 shell 争 `font-size` | 用户字号设置失效 | 只继承，不写死根字号 |
 | 6 | 大流量正文（MB 级）阻塞渲染 | 卡顿 | 已在 320px 高内滚动；P2 增加"仅在展开时渲染正文" |
 | 7 | 许可证 | 分发合规 | dsh 为 MIT，移植片段保留 NOTICE；VEXNAR 自写文件保持 AGPL 头 |
+| 8 | **服务声明缺失导致插件静默失效** | 侧栏/hero 悄悄退回官方 fallback，构建与类型检查全绿 | `export const inject = ['slots']` 必须在模块作用域；`apply` 对空 `slots` 只告警不抛错；`test/client.smoke.test.mjs` 断言导出与注册清单 |
+
+### 10.1 已发生的一次真实故障（2026-11-21）
+
+现象：侧栏回到「DSH 本地构建 / DESKTOP EDITION」鲸鱼 fallback，hero 回到「探索未至之境」，卡片样式全部丢失。
+
+根因：重写卡片时漏掉 `export const inject = ['slots']`，dsh 不注入 `slots` 服务，`apply()` 第一行注册即抛错，客户端插件整体不激活。`ui-sidebar` 的 `renderSlot(..., { fallback })` 用 `FishLogo` + `brand.localBuild` 兜底，所以界面上看不到任何报错。
+
+排查路径：boot 日志确认 `vexnar-ui` 处于 `active` → 抓取的 client bundle 含品牌槽位 → Node 侧 stub 执行 `apply` 正常 → 对比上游 `ui-brand-official` 源码发现 `export const inject = ['slots']` → diff 上一提交，确认是本仓库丢失该声明。
+
+教训：**"插件 active" 不等于 "客户端注册成功"**；验收必须看 DOM（槽位内容），不能只看构建结果。
 
 ---
 
@@ -379,5 +390,6 @@ cd app && npm run setup && npm run web
 | `app/vexnar/ui/src/styles.ts`（新增） | `--vx-*` 令牌桥；卡片/头部/标题/元信息/chip/分段控件/代码块/加载/品牌/渐变标语/动效/reduced-motion 全部样式；`installStyles()` 幂等注入 |
 | `app/vexnar/ui/src/client.tsx` | 移除全部 inline 色值与 `CSSProperties` 常量；改用类名 + `data-*` 状态；严重级映射为 `Severity` 五档 + 圆点；流量卡标题取请求行、字节数友好化、分段控件改 `aria-pressed`；复制反馈改 `useEffect` 清理；`apply()` 先注入样式 |
 | `app/vexnar/ui/lib/client.js` | 重新构建产物（147 KB） |
+| `app/vexnar/ui/test/client.smoke.test.mjs`（新增） | 用 stub 加载构建产物：断言 `inject = ['slots']`、五个槽位注册清单、空 `slots` 不抛错、样式不引用不存在的令牌 |
 
 验证结果：`npm run build` ✅、`npm run typecheck` ✅、bundle 中已无 `--dsw-alias-bg-secondary` / `--dsw-alias-border-secondary` 这两个不存在的令牌。

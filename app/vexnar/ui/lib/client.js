@@ -24,7 +24,8 @@ var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
   TrafficViewer: () => TrafficViewer,
-  apply: () => apply
+  apply: () => apply,
+  inject: () => inject
 });
 module.exports = __toCommonJS(client_exports);
 var import_react = require("react");
@@ -321,6 +322,7 @@ function installStyles(doc = document) {
 }
 
 // src/client.tsx
+var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
 function textOf(block) {
@@ -539,12 +541,17 @@ function installPermissionWarning() {
   return () => observer.disconnect();
 }
 function apply(ctx) {
+  const { slots } = ctx;
+  if (slots === void 0) {
+    console.warn("[vexnar] client slots service missing; check `export const inject`");
+    return;
+  }
   installStyles();
-  ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
-  ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
-  ctx.slots.inject("sidebar.brand.mark", () => ctx.slots.register({ name: "sidebar.brand.mark" }, BrandMark));
-  ctx.slots.inject("sidebar.brand.name", () => ctx.slots.register({ name: "sidebar.brand.name" }, BrandName));
-  ctx.slots.inject("conversation.hero.brand.mark", () => ctx.slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
+  slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
+  slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
+  slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
+  slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));
+  slots.inject("conversation.hero.brand.mark", () => slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
   ctx.effect?.(() => installHeroSlogan());
   ctx.effect?.(() => installPermissionWarning());
 }
