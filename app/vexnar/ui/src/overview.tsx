@@ -139,6 +139,8 @@ interface OverviewData {
   daily: DayBucket[]
   traffic: Exchange[]
   trafficTotal: number
+  /** `/api/traffic/hosts`：站点级 host 聚合（不只是最近样本里的众数）。 */
+  trafficHosts: Array<{ host: string; count: number }>
   activity: ActivityRow[]
   sys: SysCounts
   /** A chat conversation has capture armed right now. */
@@ -156,6 +158,7 @@ const EMPTY_DATA: OverviewData = {
   daily: [],
   traffic: [],
   trafficTotal: 0,
+  trafficHosts: [],
   activity: [],
   sys: { agents: 0, agentsOn: 0, mcp: 0, mcpOn: 0, tools: 0, toolsOn: 0 },
   capture: false,
@@ -180,7 +183,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
     getJson<{ items?: ActivityRow[] }>('/api/exploration/activity?limit=14', signal),
     getJson<{ agents?: Array<{ enabled?: boolean }> }>('/api/agents', signal),
     getJson<{ servers?: Array<{ enabled?: boolean }> }>('/api/mcp', signal),
-    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal)
+    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal),
+    getJson<{ hosts?: Array<{ host?: string; count?: number }> }>('/api/traffic/hosts', signal)
   ])
 
   // 只有主数据源（任务/发现/资产/Token）失败才算“数据不可用”。流量与活动流走 Go
@@ -199,6 +203,7 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
   const agents = pick(settled[7] as PromiseSettledResult<{ agents?: Array<{ enabled?: boolean }> }>, {})
   const mcp = pick(settled[8] as PromiseSettledResult<{ servers?: Array<{ enabled?: boolean }> }>, {})
   const tools = pick(settled[9] as PromiseSettledResult<{ tools?: Array<{ enabled?: boolean }> }>, {})
+  const hostRows = pick(settled[10] as PromiseSettledResult<{ hosts?: Array<{ host?: string; count?: number }> }>, {})
 
   const countOn = (rows: Array<{ enabled?: boolean }> | undefined): number =>
     (rows ?? []).filter((row) => row.enabled !== false).length
@@ -225,6 +230,9 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
       daily: Array.isArray(daily) ? daily : [],
       traffic: recent,
       trafficTotal: Number(capture.total ?? 0),
+      trafficHosts: (Array.isArray(hostRows.hosts) ? hostRows.hosts : [])
+        .map((row) => ({ host: String(row?.host ?? ''), count: Number(row?.count ?? 0) }))
+        .filter((row) => row.host !== '' && Number.isFinite(row.count)),
       activity: Array.isArray(activity.items) ? activity.items : [],
       sys: {
         agents: agents.agents?.length ?? 0,
@@ -1024,7 +1032,18 @@ function derive(data: OverviewData, days: number): View {
 
   const codeCounts = new Map<number, number>()
   const methodCounts = new Map<string, number>()
+  // Host ranking comes from the aggregate endpoint over every recorded exchange;
+  // counting hosts inside the recent sample alone made a busy host invisible
+  // whenever it happened not to appear in the last few rows.
   const hostCounts = new Map<string, number>()
+  for (const row of data.trafficHosts) hostCounts.set(row.host, row.count)
+  if (hostCounts.size === 0) {
+    for (const exchange of data.traffic) {
+      const host = String(exchange.host ?? '')
+      if (host === '') continue
+      hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1)
+    }
+  }
   for (const exchange of data.traffic) {
     const status = Number(exchange.status ?? 0)
     if (status > 0) {
@@ -1033,8 +1052,6 @@ function derive(data: OverviewData, days: number): View {
     }
     const method = String(exchange.method ?? 'GET')
     methodCounts.set(method, (methodCounts.get(method) ?? 0) + 1)
-    const host = String(exchange.host ?? '—')
-    hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1)
   }
   const codes = CODE_TONES.map((item) => ({ label: item.label, value: codeCounts.get(item.bucket) ?? 0, tone: item.tone }))
   const trafficTotal = data.traffic.length

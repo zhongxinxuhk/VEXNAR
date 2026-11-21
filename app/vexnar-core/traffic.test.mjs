@@ -12,6 +12,9 @@ const root = await mkdtemp(join(tmpdir(), 'vexnar-traffic-'))
 process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_SQLITE_PATH = join(root, 'vexnar.sqlite')
+// 归档流量索引（`data/traffic/_index`）在真实部署里有历史数据；测试必须指向
+// 空目录，否则 station-wide 的 list/hosts 会把那些行算进来。
+process.env.VEXNAR_TRAFFIC_DIR = join(root, 'traffic')
 
 const { register, recordExchange, ingestTrafficEvidence } = await import('./src/routes/traffic.ts')
 const { operations, store } = await import('./src/context.ts')
