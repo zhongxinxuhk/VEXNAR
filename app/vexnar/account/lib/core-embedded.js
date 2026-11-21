@@ -31449,7 +31449,8 @@ api.get("/api/exploration/nodes", async (c) => {
   });
 });
 var routeModules = [
-  { file: "./routes/conversations.ts", scope: "conversations/chat" }
+  { file: "./routes/conversations.ts", scope: "conversations/chat" },
+  { file: "./routes/desktop.ts", scope: "desktop gateway" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {

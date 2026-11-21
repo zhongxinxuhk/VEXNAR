@@ -905,7 +905,8 @@ api.get('/api/exploration/nodes', async (c) => {
 
 // ── 领域路由模块（各 agent 并行迁移，统一在此挂载）─────────────────
 const routeModules: Array<{ file: string; scope: string }> = [
-  { file: './routes/conversations.ts', scope: 'conversations/chat' }
+  { file: './routes/conversations.ts', scope: 'conversations/chat' },
+  { file: './routes/desktop.ts', scope: 'desktop gateway' }
 ]
 for (const { file, scope } of routeModules) {
   try {
