@@ -90,23 +90,40 @@ export function jsonStore(root: string): Store {
     },
     activity: {
       history: async ({ taskId, session = '', before = 0, limit = 200 }) => {
-        const tasks = await load('tasks', taskRow)
-        const task = tasks.find((row) => String(row.id) === String(taskId))
+        const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
         if (!task) return { items: [], snapshot: 0, hasMore: false }
         const all = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
         const snapshot = all.reduce((max, row) => Math.max(max, Number(row.id)), 0)
         let rows = all
-        if (session.startsWith('intent:')) {
-          rows = rows.filter((row) => String(row.node_id) === session.slice(7))
-        } else if (session === 'plan') {
-          rows = rows.filter((row) => row.worker === 'planner')
-        } else {
-          rows = rows.filter((row) => row.worker === 'mainagent')
-          if (session.startsWith('main:')) rows = rows.filter((row) => String(row.main_seg ?? 0) === session.slice(5))
-        }
+        if (session.startsWith('intent:')) rows = rows.filter((row) => String(row.node_id) === session.slice(7))
+        else if (session === 'plan') rows = rows.filter((row) => row.worker === 'planner')
+        else { rows = rows.filter((row) => row.worker === 'mainagent'); if (session.startsWith('main:')) rows = rows.filter((row) => String(row.main_seg ?? 0) === session.slice(5)) }
         const filtered = rows.filter((row) => !before || Number(row.id) < before).sort((a, b) => Number(b.id) - Number(a.id))
         const page = filtered.slice(0, Math.min(limit, 500)).reverse()
         return { items: page, snapshot, hasMore: filtered.length > limit }
+      },
+      tokenStats: async (taskId) => {
+        const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(taskId))
+        if (!task) return { workers: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }
+        const rows = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'result')
+        const byWorker = new Map<string, any>()
+        const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
+        for (const row of rows) {
+          const worker = row.worker ?? ''
+          const entry = byWorker.get(worker) ?? { worker, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 }
+          for (const key of ['input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens'] as const) {
+            entry[key] += Number(row[key] ?? 0)
+            total[key] += Number(row[key] ?? 0)
+          }
+          byWorker.set(worker, entry)
+        }
+        const workers = [...byWorker.values()].sort((a, b) => {
+          if (a.worker === b.worker) return 0
+          if (a.worker === '') return 1
+          if (b.worker === '') return -1
+          return String(a.worker).localeCompare(String(b.worker))
+        })
+        return { workers, total }
       }
     },
     async taskMetrics() {
