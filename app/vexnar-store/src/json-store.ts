@@ -114,6 +114,9 @@ export function jsonStore(root: string): Store {
         }))
       }
     },
+    schedules: {
+      list: async () => (await load('schedules', { parse: (value) => value })).sort((a, b) => Number(a.id) - Number(b.id))
+    },
     triggers: {
       list: async (agentKey) => (await load('agent_triggers', { parse: (value) => value })).filter((row) => row.agent_key === agentKey).sort((a, b) => Number(a.id) - Number(b.id))
     },

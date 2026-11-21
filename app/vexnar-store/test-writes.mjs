@@ -188,6 +188,11 @@ let invalidTrigger = null
 try { await ops.createTrigger('goals', {}) } catch (error) { invalidTrigger = error }
 check('trigger lifecycle', trigger.on_finding === true && triggerUpdate.enabled === false && triggerDelete.deleted === trigger.id && invalidTrigger?.status === 400, JSON.stringify({ id: trigger.id, update: triggerUpdate.enabled }))
 
+const schedule = await ops.createSchedule({ name: 'daily scan', prompt: 'scan', frequency: 'daily', time_of_day: '03:00' })
+const scheduleUpdate = await ops.updateSchedule(String(schedule.id), { frequency: 'weekly' })
+const scheduleDelete = await ops.deleteSchedule(String(schedule.id))
+check('schedule lifecycle', schedule.next_fire_at && scheduleUpdate.frequency === 'weekly' && scheduleDelete.deleted === schedule.id, JSON.stringify({ id: schedule.id, next: schedule.next_fire_at }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
