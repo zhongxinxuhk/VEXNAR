@@ -138,6 +138,49 @@ api.post('/api/exploration/findings', async (c) => {
   }
 })
 
+api.post('/api/task-categories', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.createCategory(body.name), 201) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/task-categories/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.renameCategory(c.req.param('id'), body.name)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/task-categories/:id', async (c) => {
+  try { return c.json(await operations.deleteCategory(c.req.param('id'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.post('/api/task-templates', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.createTemplate(body), 201) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/task-templates/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.updateTemplate(c.req.param('id'), body)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/task-templates/:id', async (c) => {
+  try { return c.json(await operations.deleteTemplate(c.req.param('id'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/tasks/:id/category', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const result = await operations.setTaskCategory(c.req.param('id'), body.category_id == null ? null : Number(body.category_id))
+    store.invalidate?.(['tasks'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.patch('/api/tasks/:id', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
