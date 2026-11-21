@@ -4,9 +4,10 @@
 import { api } from './routes.ts'
 import { goData } from './go-data.ts'
 import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
+import { startRuntime } from './runtime.ts'
 
-export { isGoDataRequest } from './go-data.ts'
-export { setModelCompletion, modelCompletionReady } from './gateway.ts'
+export { isGoDataRequest, isDataPlaneRequest } from './go-data.ts'
+export { modelCompletionReady, setModelCompletion } from './gateway.ts'
 
 /**
  * 拦截规则的一次性迁移只跑一次：成功或失败都记住这次尝试，之后的请求不再重试，
@@ -28,8 +29,15 @@ function migrateOnce(): Promise<unknown> {
  * In-process entry for the dsh host: the same Hono app the standalone server
  * mounts, without an HTTP listener. The account host plugin registers it as a
  * webserver prefix and forwards Fetch requests directly.
+ *
+ * 底座（触发器 / 定时任务 / store 独占锁）在第一次请求时启动一次：宿主进程里不该在
+ * `import` 阶段就去锁库，但请求进来时必须已经在跑。
  */
+let booting: Promise<void> | null = null
+
 export async function handle(request: Request, localPeer: boolean) {
+  if (!booting) booting = startRuntime()
+  await booting
   await migrateOnce()
   return await goData(request, localPeer) ?? api.fetch(request)
 }

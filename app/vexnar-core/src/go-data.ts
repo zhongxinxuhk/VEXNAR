@@ -1,19 +1,20 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-
 import { isProxyPath, proxyBridge } from './proxy-bridge.ts'
+import { runtimeMode } from './mode.ts'
 
 const routes = new Set(['POST /api/yak/history'])
 
 /**
- * 把请求转给 Go 服务——默认关闭。
+ * 数据面前缀：任务/发现/资产/流量/拦截/用量这些领域读写。
  *
- * 现在客户端由 TypeScript 的 core 自己回答领域接口（248/301 条在 routes* 里），
- * 数据面走 `vexnar-store` 的 PG 适配器，和 `web/` 控制台读同一份库，所以不再需要
- * Go 在环。这条转发只在对照验证时打开：`VEXNAR_GO_DATA=on`。
+ * 这些前缀的原生实现已经在 core 里（`routes/tasks-companies.ts`、`routes/traffic.ts`、
+ * `routes/intercept.ts`、`routes/exploration.ts`、`routes/llm.ts`、`routes/visibility.ts`
+ * …），默认直接读 SQLite store，不再转发给 Go。
  *
- * 打开后这些前缀仍交给 Go：
+ * 清单保留下来是为了「本机来源校验」：数据面只允许本机 VEXNAR 客户端访问，即使
+ * `VEXNAR_RUNTIME_MODE=ts` 也照样过 `connection.requestRejection`。
  */
 const prefixes = [
   '/api/tasks',
@@ -28,9 +29,6 @@ const prefixes = [
   '/api/yak/history'
 ]
 
-/** 只有显式要求时才转发（`VEXNAR_GO_DATA=on|1|true`）。 */
-const forwarding = () => /^(1|on|true|yes)$/i.test(process.env.VEXNAR_GO_DATA ?? '')
-
 /**
  * 必须留在进程内的流量路由：会话抓包的控制面与采集面由 core 自己实现，Go 没有
  * 对应处理器。`/api/traffic` 前缀整体转发的规则会把它们一起送走并得到 404，所以
@@ -42,15 +40,25 @@ function isCoreTraffic(path: string) {
   return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
 
-export function isGoDataRequest(method: string, path: string) {
-  if (!forwarding()) return false
+/** 是否属于「数据面」请求：只决定来源校验，不决定谁来回答。 */
+export function isDataPlaneRequest(method: string, path: string) {
   if (isCoreTraffic(path)) return false
   if (routes.has(`${method} ${path}`)) return true
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
 
+/**
+ * 历史名字保留给宿主插件（`vexnar/account/lib/index.js` 用它做本机来源校验）。
+ * 语义已从「要转发给 Go」改成「属于数据面」，与 `runtimeMode()` 无关。
+ */
+export const isGoDataRequest = isDataPlaneRequest
+
 const loopback = new Set(['127.0.0.1', '[::1]', 'localhost'])
 
+/**
+ * `VEXNAR_RUNTIME_MODE=go` 时的旧路径：整段转发给 Go。默认（ts）返回 undefined，
+ * 由 core 自己的路由回答。
+ */
 export async function goData(request: Request, localPeer: boolean): Promise<Response | undefined> {
   const url = new URL(request.url)
   // 代理池默认由 TS 原生实现（src/egress）；只有显式 VEXNAR_EGRESS=go 时才转给
@@ -58,7 +66,8 @@ export async function goData(request: Request, localPeer: boolean): Promise<Resp
   if (isProxyPath(url.pathname) && (process.env.VEXNAR_EGRESS || '').toLowerCase() === 'go') {
     return proxyBridge(request, localPeer)
   }
-  if (!isGoDataRequest(request.method, url.pathname)) return undefined
+  if (runtimeMode() !== 'go') return undefined
+  if (!isDataPlaneRequest(request.method, url.pathname)) return undefined
 
   const host = request.headers.get('host') ?? ''
   const origin = request.headers.get('origin')

@@ -5,9 +5,9 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { auth, serviceToken } from './auth.js'
-import { proxyBridge } from './proxy-bridge.ts'
 import { api } from './routes.js'
-import { ensureInterceptRulesSeeded } from './intercept-seed.js'
+import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
+import { runtimeInfo, runtimeMode, startRuntime } from './runtime.ts'
 
 const app = new Hono()
 const fallback = (process.env.VEXNAR_GO_FALLBACK || '').replace(/\/$/, '')
@@ -28,16 +28,13 @@ app.route('/', api)
 const NATIVE = [
   '/api/health', '/api/agents', '/api/llm/profiles', '/api/task-categories', '/api/task-templates',
   '/api/companies', '/api/tools', '/api/mcp', '/api/notify/channels', '/api/settings',
-  '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes',
-  '/api/proxy'
+  '/api/tasks', '/api/assets', '/api/exploration/findings', '/api/exploration/nodes'
 ]
 
-app.get('/api/_migration', (c) => c.json({ native: NATIVE, fallback: fallback || null, methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all' }))
-
-// 回滚开关：VEXNAR_EGRESS=go 时把代理池转给 Go 引擎桥；默认走 TS 原生实现。
-if ((process.env.VEXNAR_EGRESS || '').toLowerCase() === 'go') {
-  app.all('/api/proxy/*', (c) => proxyBridge(c.req.raw, true))
-}
+app.get('/api/_migration', (c) => c.json({
+  mode: runtimeMode(), native: NATIVE, fallback: fallback || null,
+  methods: fallbackMethods.length ? fallbackMethods : 'all', allow: fallbackAllow.length ? fallbackAllow : 'all'
+}))
 
 // M3 transition: unported routes fall through to the Go service, so the web
 // console can point at the TS core before every write is migrated.
@@ -69,15 +66,17 @@ app.all('/api/*', async (c) => {
   return new Response(upstream.body, { status: upstream.status, headers: responseHeaders })
 })
 
-// 规则迁移在建监听之前跑：第一次打开拦截规则页时就该看到原有规则，而不是空表。
-// 迁移源不可用只记日志，服务照常起。
-const port = Number(process.env.PORT ?? 8790)
+// 拦截规则的一次性迁移先跑：它是数据搬迁，与底座的触发器/锁无关，
+// 失败也不能挡住服务启动。
 await ensureInterceptRulesSeeded().then(
   (outcome) => {
     if (outcome.seeded > 0) console.log(`[vexnar] 拦截规则迁移：${outcome.seeded} 条（来源 ${outcome.source}）`)
   },
   (error) => console.error('[vexnar] 拦截规则迁移失败（不影响其它接口）', error)
 )
+const port = Number(process.env.PORT ?? 8790)
+await startRuntime({ signals: true })
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port }, (info) => {
-  console.log(`vexnar-core listening on http://127.0.0.1:${info.port}`)
+  const runtime = runtimeInfo()
+  console.log(`vexnar-core listening on http://127.0.0.1:${info.port} (runtime=${runtime.mode} store=${runtime.store} triggers=${runtime.triggers})`)
 })

@@ -144,7 +144,7 @@ var init_body = __esm({
       } else if (!key.endsWith("[]")) form[key] = value;
       else form[key] = [value];
     };
-    handleParsingNestedValues = (form, key, value, state) => {
+    handleParsingNestedValues = (form, key, value, state2) => {
       if (/(?:^|\.)__proto__\./.test(key)) return;
       let nestedForm = form;
       const keys = key.split(".", 34);
@@ -153,7 +153,7 @@ var init_body = __esm({
         if (index === keys.length - 1) nestedForm[key2] = value;
         else {
           if (!nestedForm[key2] || typeof nestedForm[key2] !== "object" || Array.isArray(nestedForm[key2]) || nestedForm[key2] instanceof File) {
-            if (state.count++ >= MAX_NESTED_OBJECTS) throwNestingLimitExceeded();
+            if (state2.count++ >= MAX_NESTED_OBJECTS) throwNestingLimitExceeded();
             nestedForm[key2] = /* @__PURE__ */ Object.create(null);
           }
           nestedForm = nestedForm[key2];
@@ -12203,11 +12203,11 @@ function settle(inst, answer) {
 function isRecursiveSchema(inst) {
   return isRecursive(inst, /* @__PURE__ */ new Set(), true) !== NONE;
 }
-function bucketFor(state, inst) {
-  let bucket = state.buckets.get(inst);
+function bucketFor(state2, inst) {
+  let bucket = state2.buckets.get(inst);
   if (!bucket) {
     bucket = /* @__PURE__ */ new WeakMap();
-    state.buckets.set(inst, bucket);
+    state2.buckets.set(inst, bucket);
   }
   return bucket;
 }
@@ -12287,16 +12287,16 @@ var init_memoizer = __esm({
             const input2 = payload.value;
             if (!isRef(input2))
               return base(payload, ctx);
-            let state = ctx[STATE];
-            if (!state) {
-              state = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
-              ctx[STATE] = state;
+            let state2 = ctx[STATE];
+            if (!state2) {
+              state2 = { buckets: /* @__PURE__ */ new WeakMap(), backEdges: void 0 };
+              ctx[STATE] = state2;
             }
             let bucket;
             if (lastCtx === ctx) {
               bucket = lastBucket;
             } else {
-              bucket = bucketFor(state, inst);
+              bucket = bucketFor(state2, inst);
               lastCtx = ctx;
               lastBucket = bucket;
             }
@@ -12308,8 +12308,8 @@ var init_memoizer = __esm({
                   payload.issues.push(...cloneIssues(hit.issues));
               } else {
                 payload.memo = true;
-                state.backEdges ?? (state.backEdges = /* @__PURE__ */ new WeakSet());
-                state.backEdges.add(hit.value);
+                state2.backEdges ?? (state2.backEdges = /* @__PURE__ */ new WeakSet());
+                state2.backEdges.add(hit.value);
               }
               return payload;
             }
@@ -30133,15 +30133,15 @@ function storeOperations(_root) {
     const [written] = await writer4.commit([{ table: "nodes", key: nodeId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
     return written;
   }
-  async function setNodeState(taskId, nodeId, state) {
+  async function setNodeState(taskId, nodeId, state2) {
     const task = await writer4.readRecord("tasks", taskId);
     const node2 = await writer4.readRecord("nodes", nodeId);
     if (!task || !node2 || String(node2.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error("node \u4E0D\u5B58\u5728"), { status: 404 });
     const allowed = TRANSITIONS[String(node2.state)] ?? [];
-    if (!allowed.includes(state) && state !== node2.state) {
-      throw Object.assign(new Error(`\u975E\u6CD5\u72B6\u6001\u8FC1\u79FB: ${node2.state} \u2192 ${state}`), { status: 409 });
+    if (!allowed.includes(state2) && state2 !== node2.state) {
+      throw Object.assign(new Error(`\u975E\u6CD5\u72B6\u6001\u8FC1\u79FB: ${node2.state} \u2192 ${state2}`), { status: 409 });
     }
-    const next = { ...node2, state };
+    const next = { ...node2, state: state2 };
     delete next.rev;
     const [written] = await writer4.commit([{ table: "nodes", key: nodeId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
     return written;
@@ -30206,9 +30206,9 @@ function storeOperations(_root) {
     const byState = {};
     for (const node2 of scoped) {
       const kind = String(node2.kind);
-      const state = String(node2.state);
+      const state2 = String(node2.state);
       byKind[kind] = (byKind[kind] ?? 0) + 1;
-      byState[state] = (byState[state] ?? 0) + 1;
+      byState[state2] = (byState[state2] ?? 0) + 1;
     }
     const edges = (await writer4.list("edges")).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length;
     const anchors = (await (async () => {
@@ -31253,7 +31253,7 @@ async function spawnTriggerTask(ops, agentKey, fire) {
 }
 async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
   const triggers = (await store2.triggers.list(agentKey)).filter((trigger) => trigger.enabled !== false);
-  const stops = [];
+  const stops2 = [];
   const fire = async (trigger, event, message, payload) => {
     await handler({ trigger, event, message: String(message ?? ""), payload });
     await ops.updateTrigger(agentKey, String(trigger.id), { last_fire: (/* @__PURE__ */ new Date()).toISOString() }).catch(() => {
@@ -31261,7 +31261,7 @@ async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
   };
   for (const trigger of triggers) {
     if (Number(trigger.interval_sec) > 0) {
-      stops.push(scheduler2.every(Number(trigger.interval_sec) * 1e3, () => fire(trigger, "interval", trigger.interval_message)));
+      stops2.push(scheduler2.every(Number(trigger.interval_sec) * 1e3, () => fire(trigger, "interval", trigger.interval_message)));
     }
     for (const [event, flag, messageKey] of EVENT_FLAGS) {
       if (!trigger[flag]) continue;
@@ -31269,11 +31269,11 @@ async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
         if (event === "tool_call" && Array.isArray(trigger.tool_names) && trigger.tool_names.length && !trigger.tool_names.includes(payload?.tool)) return;
         await fire(trigger, event, trigger[messageKey], payload);
       });
-      stops.push(off);
+      stops2.push(off);
     }
   }
   return () => {
-    for (const stop of stops) stop();
+    for (const stop of stops2) stop();
   };
 }
 var EVENT_FLAGS;
@@ -34211,6 +34211,7 @@ __export(context_exports, {
   gatewayComplete: () => gatewayComplete,
   listReports: () => listReports,
   meta: () => meta3,
+  modelCompletionReady: () => modelCompletionReady,
   operations: () => operations,
   parseJson: () => parseJson2,
   persistToolResult: () => persistToolResult,
@@ -34218,6 +34219,9 @@ __export(context_exports, {
   runTool: () => runTool,
   saveReport: () => saveReport,
   scheduler: () => scheduler,
+  spawnTriggerTask: () => spawnTriggerTask,
+  startSchedules: () => startSchedules,
+  startTriggers: () => startTriggers,
   store: () => store,
   storeRoot: () => storeRoot,
   taskQueue: () => taskQueue,
@@ -34231,7 +34235,7 @@ function parseJson2(value) {
     return value;
   }
 }
-var store, meta3, operations, engine, scheduler, taskQueue, triggerStops, stopSchedules, releaseStoreLock;
+var store, meta3, operations, engine, scheduler, taskQueue;
 var init_context2 = __esm({
   async "src/context.ts"() {
     "use strict";
@@ -34253,69 +34257,6 @@ var init_context2 = __esm({
     engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
     scheduler = createScheduler({ concurrency: 4 });
     taskQueue = createTaskQueue({ concurrency: Math.max(Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2, 1) });
-    triggerStops = [];
-    for (const agent of await meta3.table("agents")) {
-      try {
-        const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
-          const task = await spawnTriggerTask(operations, agent.key, fire);
-          store.invalidate?.(["tasks"]);
-          if (modelCompletionReady()) {
-            const taskId = String(task.id);
-            await taskQueue.enqueue(taskId, async () => {
-              await engine.plan(taskId, gatewayComplete);
-              await engine.workMany(taskId, gatewayComplete, 1);
-            });
-          }
-          const channels = await meta3.table("notify");
-          if (!channels.length) return;
-          await createNotifier(channels, void 0, async (channel, event, result) => {
-            await operations.recordDelivery({
-              channel_id: channel.id,
-              event_kind: event.kind,
-              title: event.title,
-              status: result.ok ? "ok" : "failed",
-              attempts: result.attempts,
-              error: result.detail
-            });
-          }).dispatch({
-            kind: `trigger:${fire.event}`,
-            title: `agent ${agent.key} \xB7 ${fire.event}`,
-            text: fire.message || fire.event,
-            task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
-            finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
-          });
-        });
-        triggerStops.push(stop);
-      } catch {
-      }
-    }
-    stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
-      const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
-      store.invalidate?.(["tasks"]);
-      if (modelCompletionReady()) {
-        const taskId = String(task.id);
-        await taskQueue.enqueue(taskId, async () => {
-          await engine.plan(taskId, gatewayComplete);
-          await engine.workMany(taskId, gatewayComplete, 1);
-        });
-      }
-    }, 3e4);
-    process.once("SIGTERM", () => {
-      for (const stop of triggerStops) stop();
-      stopSchedules();
-      scheduler.stop();
-    });
-    await operations.writer.recover().catch(() => {
-    });
-    releaseStoreLock = await operations.writer.lock();
-    process.once("SIGINT", () => {
-      void releaseStoreLock();
-      process.exit(0);
-    });
-    process.once("SIGTERM", () => {
-      void releaseStoreLock();
-      process.exit(0);
-    });
   }
 });
 
@@ -41282,11 +41223,11 @@ var require_lexer = __commonJS({
       hasChars(n) {
         return this.pos + n <= this.buffer.length;
       }
-      setNext(state) {
+      setNext(state2) {
         this.buffer = this.buffer.substring(this.pos);
         this.pos = 0;
         this.lineEndPos = null;
-        this.next = state;
+        this.next = state2;
         return null;
       }
       peek(n) {
@@ -44490,13 +44431,13 @@ async function llmPoolStatus() {
     const fails = Number(st.fails ?? 0);
     const trips = Number(st.trips ?? 0);
     const openUntil = st.open_until ? Date.parse(String(st.open_until)) : 0;
-    let state = "ok";
+    let state2 = "ok";
     let cooldownSecs = 0;
     if (openUntil > now2) {
-      state = "tripped";
+      state2 = "tripped";
       cooldownSecs = Math.floor((openUntil - now2) / 1e3) + 1;
     } else if (fails > 0) {
-      state = "degraded";
+      state2 = "degraded";
     }
     const member = {
       profile_id: String(id),
@@ -44506,7 +44447,7 @@ async function llmPoolStatus() {
       priority: Number(p.priority ?? 0),
       active: Boolean(p.is_default),
       excluded: Boolean(p.pool_exclude),
-      state,
+      state: state2,
       fails,
       trips,
       cooldown_secs: cooldownSecs,
@@ -53812,9 +53753,9 @@ var require_rsa = __commonJS({
       }
       return rval;
     };
-    pki.rsa.stepKeyPairGenerationState = function(state, n) {
-      if (!("algorithm" in state)) {
-        state.algorithm = "PRIMEINC";
+    pki.rsa.stepKeyPairGenerationState = function(state2, n) {
+      if (!("algorithm" in state2)) {
+        state2.algorithm = "PRIMEINC";
       }
       var THIRTY = new BigInteger(null);
       THIRTY.fromInt(30);
@@ -53825,95 +53766,95 @@ var require_rsa = __commonJS({
       var t1 = +/* @__PURE__ */ new Date();
       var t2;
       var total = 0;
-      while (state.keys === null && (n <= 0 || total < n)) {
-        if (state.state === 0) {
-          var bits = state.p === null ? state.pBits : state.qBits;
+      while (state2.keys === null && (n <= 0 || total < n)) {
+        if (state2.state === 0) {
+          var bits = state2.p === null ? state2.pBits : state2.qBits;
           var bits1 = bits - 1;
-          if (state.pqState === 0) {
-            state.num = new BigInteger(bits, state.rng);
-            if (!state.num.testBit(bits1)) {
-              state.num.bitwiseTo(
+          if (state2.pqState === 0) {
+            state2.num = new BigInteger(bits, state2.rng);
+            if (!state2.num.testBit(bits1)) {
+              state2.num.bitwiseTo(
                 BigInteger.ONE.shiftLeft(bits1),
                 op_or,
-                state.num
+                state2.num
               );
             }
-            state.num.dAddOffset(31 - state.num.mod(THIRTY).byteValue(), 0);
+            state2.num.dAddOffset(31 - state2.num.mod(THIRTY).byteValue(), 0);
             deltaIdx = 0;
-            ++state.pqState;
-          } else if (state.pqState === 1) {
-            if (state.num.bitLength() > bits) {
-              state.pqState = 0;
-            } else if (state.num.isProbablePrime(
-              _getMillerRabinTests(state.num.bitLength())
+            ++state2.pqState;
+          } else if (state2.pqState === 1) {
+            if (state2.num.bitLength() > bits) {
+              state2.pqState = 0;
+            } else if (state2.num.isProbablePrime(
+              _getMillerRabinTests(state2.num.bitLength())
             )) {
-              ++state.pqState;
+              ++state2.pqState;
             } else {
-              state.num.dAddOffset(GCD_30_DELTA[deltaIdx++ % 8], 0);
+              state2.num.dAddOffset(GCD_30_DELTA[deltaIdx++ % 8], 0);
             }
-          } else if (state.pqState === 2) {
-            state.pqState = state.num.subtract(BigInteger.ONE).gcd(state.e).compareTo(BigInteger.ONE) === 0 ? 3 : 0;
-          } else if (state.pqState === 3) {
-            state.pqState = 0;
-            if (state.p === null) {
-              state.p = state.num;
+          } else if (state2.pqState === 2) {
+            state2.pqState = state2.num.subtract(BigInteger.ONE).gcd(state2.e).compareTo(BigInteger.ONE) === 0 ? 3 : 0;
+          } else if (state2.pqState === 3) {
+            state2.pqState = 0;
+            if (state2.p === null) {
+              state2.p = state2.num;
             } else {
-              state.q = state.num;
+              state2.q = state2.num;
             }
-            if (state.p !== null && state.q !== null) {
-              ++state.state;
+            if (state2.p !== null && state2.q !== null) {
+              ++state2.state;
             }
-            state.num = null;
+            state2.num = null;
           }
-        } else if (state.state === 1) {
-          if (state.p.compareTo(state.q) < 0) {
-            state.num = state.p;
-            state.p = state.q;
-            state.q = state.num;
+        } else if (state2.state === 1) {
+          if (state2.p.compareTo(state2.q) < 0) {
+            state2.num = state2.p;
+            state2.p = state2.q;
+            state2.q = state2.num;
           }
-          ++state.state;
-        } else if (state.state === 2) {
-          state.p1 = state.p.subtract(BigInteger.ONE);
-          state.q1 = state.q.subtract(BigInteger.ONE);
-          state.phi = state.p1.multiply(state.q1);
-          ++state.state;
-        } else if (state.state === 3) {
-          if (state.phi.gcd(state.e).compareTo(BigInteger.ONE) === 0) {
-            ++state.state;
+          ++state2.state;
+        } else if (state2.state === 2) {
+          state2.p1 = state2.p.subtract(BigInteger.ONE);
+          state2.q1 = state2.q.subtract(BigInteger.ONE);
+          state2.phi = state2.p1.multiply(state2.q1);
+          ++state2.state;
+        } else if (state2.state === 3) {
+          if (state2.phi.gcd(state2.e).compareTo(BigInteger.ONE) === 0) {
+            ++state2.state;
           } else {
-            state.p = null;
-            state.q = null;
-            state.state = 0;
+            state2.p = null;
+            state2.q = null;
+            state2.state = 0;
           }
-        } else if (state.state === 4) {
-          state.n = state.p.multiply(state.q);
-          if (state.n.bitLength() === state.bits) {
-            ++state.state;
+        } else if (state2.state === 4) {
+          state2.n = state2.p.multiply(state2.q);
+          if (state2.n.bitLength() === state2.bits) {
+            ++state2.state;
           } else {
-            state.q = null;
-            state.state = 0;
+            state2.q = null;
+            state2.state = 0;
           }
-        } else if (state.state === 5) {
-          var d = state.e.modInverse(state.phi);
-          state.keys = {
+        } else if (state2.state === 5) {
+          var d = state2.e.modInverse(state2.phi);
+          state2.keys = {
             privateKey: pki.rsa.setPrivateKey(
-              state.n,
-              state.e,
+              state2.n,
+              state2.e,
               d,
-              state.p,
-              state.q,
-              d.mod(state.p1),
-              d.mod(state.q1),
-              state.q.modInverse(state.p)
+              state2.p,
+              state2.q,
+              d.mod(state2.p1),
+              d.mod(state2.q1),
+              state2.q.modInverse(state2.p)
             ),
-            publicKey: pki.rsa.setPublicKey(state.n, state.e)
+            publicKey: pki.rsa.setPublicKey(state2.n, state2.e)
           };
         }
         t2 = +/* @__PURE__ */ new Date();
         total += t2 - t1;
         t1 = t2;
       }
-      return state.keys !== null;
+      return state2.keys !== null;
     };
     pki.rsa.generateKeyPair = function(bits, e, options, callback) {
       if (arguments.length === 1) {
@@ -54060,12 +54001,12 @@ var require_rsa = __commonJS({
           }
         }
       }
-      var state = pki.rsa.createKeyPairGenerationState(bits, e, options);
+      var state2 = pki.rsa.createKeyPairGenerationState(bits, e, options);
       if (!callback) {
-        pki.rsa.stepKeyPairGenerationState(state, 0);
-        return state.keys;
+        pki.rsa.stepKeyPairGenerationState(state2, 0);
+        return state2.keys;
       }
-      _generateKeyPair(state, options, callback);
+      _generateKeyPair(state2, options, callback);
     };
     pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
       var key = {
@@ -54501,7 +54442,7 @@ var require_rsa = __commonJS({
       }
       return eb.getBytes();
     }
-    function _generateKeyPair(state, options, callback) {
+    function _generateKeyPair(state2, options, callback) {
       if (typeof options === "function") {
         callback = options;
         options = {};
@@ -54522,15 +54463,15 @@ var require_rsa = __commonJS({
       }
       generate();
       function generate() {
-        getPrime(state.pBits, function(err4, num2) {
+        getPrime(state2.pBits, function(err4, num2) {
           if (err4) {
             return callback(err4);
           }
-          state.p = num2;
-          if (state.q !== null) {
-            return finish(err4, state.q);
+          state2.p = num2;
+          if (state2.q !== null) {
+            return finish(err4, state2.q);
           }
-          getPrime(state.qBits, finish);
+          getPrime(state2.qBits, finish);
         });
       }
       function getPrime(bits, callback2) {
@@ -54540,51 +54481,51 @@ var require_rsa = __commonJS({
         if (err4) {
           return callback(err4);
         }
-        state.q = num2;
-        if (state.p.compareTo(state.q) < 0) {
-          var tmp = state.p;
-          state.p = state.q;
-          state.q = tmp;
+        state2.q = num2;
+        if (state2.p.compareTo(state2.q) < 0) {
+          var tmp = state2.p;
+          state2.p = state2.q;
+          state2.q = tmp;
         }
-        if (state.p.subtract(BigInteger.ONE).gcd(state.e).compareTo(BigInteger.ONE) !== 0) {
-          state.p = null;
+        if (state2.p.subtract(BigInteger.ONE).gcd(state2.e).compareTo(BigInteger.ONE) !== 0) {
+          state2.p = null;
           generate();
           return;
         }
-        if (state.q.subtract(BigInteger.ONE).gcd(state.e).compareTo(BigInteger.ONE) !== 0) {
-          state.q = null;
-          getPrime(state.qBits, finish);
+        if (state2.q.subtract(BigInteger.ONE).gcd(state2.e).compareTo(BigInteger.ONE) !== 0) {
+          state2.q = null;
+          getPrime(state2.qBits, finish);
           return;
         }
-        state.p1 = state.p.subtract(BigInteger.ONE);
-        state.q1 = state.q.subtract(BigInteger.ONE);
-        state.phi = state.p1.multiply(state.q1);
-        if (state.phi.gcd(state.e).compareTo(BigInteger.ONE) !== 0) {
-          state.p = state.q = null;
+        state2.p1 = state2.p.subtract(BigInteger.ONE);
+        state2.q1 = state2.q.subtract(BigInteger.ONE);
+        state2.phi = state2.p1.multiply(state2.q1);
+        if (state2.phi.gcd(state2.e).compareTo(BigInteger.ONE) !== 0) {
+          state2.p = state2.q = null;
           generate();
           return;
         }
-        state.n = state.p.multiply(state.q);
-        if (state.n.bitLength() !== state.bits) {
-          state.q = null;
-          getPrime(state.qBits, finish);
+        state2.n = state2.p.multiply(state2.q);
+        if (state2.n.bitLength() !== state2.bits) {
+          state2.q = null;
+          getPrime(state2.qBits, finish);
           return;
         }
-        var d = state.e.modInverse(state.phi);
-        state.keys = {
+        var d = state2.e.modInverse(state2.phi);
+        state2.keys = {
           privateKey: pki.rsa.setPrivateKey(
-            state.n,
-            state.e,
+            state2.n,
+            state2.e,
             d,
-            state.p,
-            state.q,
-            d.mod(state.p1),
-            d.mod(state.q1),
-            state.q.modInverse(state.p)
+            state2.p,
+            state2.q,
+            d.mod(state2.p1),
+            d.mod(state2.q1),
+            state2.q.modInverse(state2.p)
           ),
-          publicKey: pki.rsa.setPublicKey(state.n, state.e)
+          publicKey: pki.rsa.setPublicKey(state2.n, state2.e)
         };
-        callback(null, state.keys);
+        callback(null, state2.keys);
       }
     }
     function _bnToBytes(b) {
@@ -60574,12 +60515,12 @@ var require_tls = __commonJS({
         };
         return mode;
       };
-      var state = {
+      var state2 = {
         read: createMode(),
         write: createMode()
       };
-      state.read.update = function(c2, record2) {
-        if (!state.read.cipherFunction(record2, state.read)) {
+      state2.read.update = function(c2, record2) {
+        if (!state2.read.cipherFunction(record2, state2.read)) {
           c2.error(c2, {
             message: "Could not decrypt record or bad MAC.",
             send: true,
@@ -60591,7 +60532,7 @@ var require_tls = __commonJS({
               description: tls.Alert.Description.bad_record_mac
             }
           });
-        } else if (!state.read.compressFunction(c2, record2, state.read)) {
+        } else if (!state2.read.compressFunction(c2, record2, state2.read)) {
           c2.error(c2, {
             message: "Could not decompress record.",
             send: true,
@@ -60603,8 +60544,8 @@ var require_tls = __commonJS({
         }
         return !c2.fail;
       };
-      state.write.update = function(c2, record2) {
-        if (!state.write.compressFunction(c2, record2, state.write)) {
+      state2.write.update = function(c2, record2) {
+        if (!state2.write.compressFunction(c2, record2, state2.write)) {
           c2.error(c2, {
             message: "Could not compress record.",
             send: false,
@@ -60613,7 +60554,7 @@ var require_tls = __commonJS({
               description: tls.Alert.Description.internal_error
             }
           });
-        } else if (!state.write.cipherFunction(record2, state.write)) {
+        } else if (!state2.write.cipherFunction(record2, state2.write)) {
           c2.error(c2, {
             message: "Could not encrypt record.",
             send: false,
@@ -60629,21 +60570,21 @@ var require_tls = __commonJS({
         var sp = c.session.sp;
         c.session.cipherSuite.initSecurityParameters(sp);
         sp.keys = tls.generateKeys(c, sp);
-        state.read.macKey = client ? sp.keys.server_write_MAC_key : sp.keys.client_write_MAC_key;
-        state.write.macKey = client ? sp.keys.client_write_MAC_key : sp.keys.server_write_MAC_key;
-        c.session.cipherSuite.initConnectionState(state, c, sp);
+        state2.read.macKey = client ? sp.keys.server_write_MAC_key : sp.keys.client_write_MAC_key;
+        state2.write.macKey = client ? sp.keys.client_write_MAC_key : sp.keys.server_write_MAC_key;
+        c.session.cipherSuite.initConnectionState(state2, c, sp);
         switch (sp.compression_algorithm) {
           case tls.CompressionMethod.none:
             break;
           case tls.CompressionMethod.deflate:
-            state.read.compressFunction = inflate;
-            state.write.compressFunction = deflate;
+            state2.read.compressFunction = inflate;
+            state2.write.compressFunction = deflate;
             break;
           default:
             throw new Error("Unsupported compression algorithm.");
         }
       }
-      return state;
+      return state2;
     };
     tls.createRandom = function() {
       var d = /* @__PURE__ */ new Date();
@@ -61510,22 +61451,22 @@ var require_aesCipherSuites = __commonJS({
       },
       initConnectionState
     };
-    function initConnectionState(state, c, sp) {
+    function initConnectionState(state2, c, sp) {
       var client = c.entity === forge2.tls.ConnectionEnd.client;
-      state.read.cipherState = {
+      state2.read.cipherState = {
         init: false,
         cipher: forge2.cipher.createDecipher("AES-CBC", client ? sp.keys.server_write_key : sp.keys.client_write_key),
         iv: client ? sp.keys.server_write_IV : sp.keys.client_write_IV
       };
-      state.write.cipherState = {
+      state2.write.cipherState = {
         init: false,
         cipher: forge2.cipher.createCipher("AES-CBC", client ? sp.keys.client_write_key : sp.keys.server_write_key),
         iv: client ? sp.keys.client_write_IV : sp.keys.server_write_IV
       };
-      state.read.cipherFunction = decrypt_aes_cbc_sha1;
-      state.write.cipherFunction = encrypt_aes_cbc_sha1;
-      state.read.macLength = state.write.macLength = sp.mac_length;
-      state.read.macFunction = state.write.macFunction = tls.hmac_sha1;
+      state2.read.cipherFunction = decrypt_aes_cbc_sha1;
+      state2.write.cipherFunction = encrypt_aes_cbc_sha1;
+      state2.read.macLength = state2.write.macLength = sp.mac_length;
+      state2.read.macFunction = state2.write.macFunction = tls.hmac_sha1;
     }
     function encrypt_aes_cbc_sha1(record2, s) {
       var rval = false;
@@ -69141,7 +69082,7 @@ function notifyStateOf(row) {
   return NOTIFY_STATE_ALIASES[raw2] ?? (raw2 || "pending");
 }
 function deliveryDto(row, channels) {
-  const state = notifyStateOf(row);
+  const state2 = notifyStateOf(row);
   const channelId = Number(row.channel_id ?? 0) || 0;
   const channel = channels.get(channelId);
   const createdAt = String(row.created_at ?? "");
@@ -69152,7 +69093,7 @@ function deliveryDto(row, channels) {
     channel_id: channelId,
     channel_name: String(row.channel_name ?? channel?.name ?? ""),
     channel_kind: String(row.channel_kind ?? channel?.kind ?? ""),
-    state,
+    state: state2,
     attempts: Number(row.attempts ?? 0) || 0,
     last_error: String(row.last_error ?? row.error ?? ""),
     created_at: createdAt,
@@ -69162,7 +69103,7 @@ function deliveryDto(row, channels) {
   };
   if (row.batch_id != null) dto.batch_id = Number(row.batch_id);
   if (row.sent_at) dto.sent_at = String(row.sent_at);
-  else if (state === "sent" && createdAt) dto.sent_at = createdAt;
+  else if (state2 === "sent" && createdAt) dto.sent_at = createdAt;
   return dto;
 }
 async function channelIndex() {
@@ -69178,14 +69119,14 @@ async function notifyStats(channels, deliveries) {
   let sentToday = 0;
   let oldest = 0;
   for (const row of deliveries) {
-    const state = notifyStateOf(row);
-    if (state === "pending" || state === "sending") {
+    const state2 = notifyStateOf(row);
+    if (state2 === "pending" || state2 === "sending") {
       pending++;
       const created = Date.parse(String(row.created_at ?? ""));
       if (Number.isFinite(created) && (oldest === 0 || created < oldest)) oldest = created;
-    } else if (state === "failed") {
+    } else if (state2 === "failed") {
       failed++;
-    } else if (state === "sent") {
+    } else if (state2 === "sent") {
       if (String(row.sent_at ?? row.created_at ?? "").slice(0, 10) === today) sentToday++;
     }
   }
@@ -69522,13 +69463,13 @@ function register12(api2) {
       const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
       const requested = Number(c.req.query("page_size") ?? 50) || 50;
       const pageSize = requested <= 0 || requested > 200 ? 50 : Math.trunc(requested);
-      const state = (c.req.query("state") ?? "").trim().toLowerCase();
+      const state2 = (c.req.query("state") ?? "").trim().toLowerCase();
       const eventKind = (c.req.query("event_kind") ?? "").trim();
       const channelId = Number(c.req.query("channel_id") ?? 0) || 0;
       const rows = await operations.writer.list(DELIVERY_TABLE);
       const channels = await channelIndex();
       let items = rows.map((row) => deliveryDto(row, channels));
-      if (state) items = items.filter((item) => item.state === state);
+      if (state2) items = items.filter((item) => item.state === state2);
       if (eventKind) items = items.filter((item) => item.event_kind === eventKind);
       if (channelId > 0) items = items.filter((item) => item.channel_id === channelId);
       items.sort((a, b) => Number(b.id) - Number(a.id));
@@ -69544,8 +69485,8 @@ function register12(api2) {
       const id = String(c.req.param("id"));
       if (!/^\d+$/.test(id)) throw fail4("\u6295\u9012 id \u65E0\u6548", 400);
       const current = await operations.writer.readRecord(DELIVERY_TABLE, id);
-      const state = current ? notifyStateOf(current) : "";
-      if (!current || !["pending", "failed", "skipped"].includes(state)) {
+      const state2 = current ? notifyStateOf(current) : "";
+      if (!current || !["pending", "failed", "skipped"].includes(state2)) {
         throw fail4(`\u6295\u9012 ${id} \u4E0D\u5B58\u5728\u6216\u5F53\u524D\u72B6\u6001\u4E0D\u5141\u8BB8\u91CD\u53D1`, 400);
       }
       const next = {
@@ -76145,10 +76086,10 @@ function blowfishConstants() {
 }
 function initState() {
   const pi = blowfishConstants();
-  const state = { P: new Uint32Array(18), S: new Uint32Array(1024) };
-  state.P.set(pi.subarray(0, 18));
-  state.S.set(pi.subarray(18, 1042));
-  return state;
+  const state2 = { P: new Uint32Array(18), S: new Uint32Array(1024) };
+  state2.P.set(pi.subarray(0, 18));
+  state2.S.set(pi.subarray(18, 1042));
+  return state2;
 }
 function F(S, x) {
   let h = S[x >>> 24 & 255] + S[256 + (x >>> 16 & 255)] >>> 0;
@@ -76176,12 +76117,12 @@ function wordStream(bytes) {
     return word;
   };
 }
-function expandState(state, key, salt) {
+function expandState(state2, key, salt) {
   const keyWords = wordStream(key);
-  for (let i = 0; i < 18; i++) state.P[i] = (state.P[i] ^ keyWords()) >>> 0;
+  for (let i = 0; i < 18; i++) state2.P[i] = (state2.P[i] ^ keyWords()) >>> 0;
   const lr = new Uint32Array(2);
   const encryptPair = () => {
-    encipher(state.P, state.S, lr);
+    encipher(state2.P, state2.S, lr);
   };
   if (salt) {
     const saltWords = wordStream(salt);
@@ -76189,8 +76130,8 @@ function expandState(state, key, salt) {
       lr[0] = (lr[0] ^ saltWords()) >>> 0;
       lr[1] = (lr[1] ^ saltWords()) >>> 0;
       encryptPair();
-      state.P[i] = lr[0];
-      state.P[i + 1] = lr[1];
+      state2.P[i] = lr[0];
+      state2.P[i + 1] = lr[1];
     }
     for (let box = 0; box < 4; box++) {
       const base = box * 256;
@@ -76198,35 +76139,35 @@ function expandState(state, key, salt) {
         lr[0] = (lr[0] ^ saltWords()) >>> 0;
         lr[1] = (lr[1] ^ saltWords()) >>> 0;
         encryptPair();
-        state.S[base + i] = lr[0];
-        state.S[base + i + 1] = lr[1];
+        state2.S[base + i] = lr[0];
+        state2.S[base + i + 1] = lr[1];
       }
     }
     return;
   }
   for (let i = 0; i < 18; i += 2) {
     encryptPair();
-    state.P[i] = lr[0];
-    state.P[i + 1] = lr[1];
+    state2.P[i] = lr[0];
+    state2.P[i + 1] = lr[1];
   }
   for (let box = 0; box < 4; box++) {
     const base = box * 256;
     for (let i = 0; i < 256; i += 2) {
       encryptPair();
-      state.S[base + i] = lr[0];
-      state.S[base + i + 1] = lr[1];
+      state2.S[base + i] = lr[0];
+      state2.S[base + i + 1] = lr[1];
     }
   }
 }
 function bcryptDigest(password, salt, cost) {
   const hashed = Buffer.from(password, "utf8").subarray(0, MAX_PASSWORD_BYTES);
   const key = Buffer.concat([hashed, Buffer.from([0])]);
-  const state = initState();
-  expandState(state, key, salt);
+  const state2 = initState();
+  expandState(state2, key, salt);
   const rounds = 1 << cost;
   for (let i = 0; i < rounds; i++) {
-    expandState(state, key);
-    expandState(state, salt);
+    expandState(state2, key);
+    expandState(state2, salt);
   }
   const blocks = new Uint32Array(6);
   for (let i = 0; i < 6; i++) blocks[i] = ORPHEAN.readUInt32BE(i * 4);
@@ -76235,7 +76176,7 @@ function bcryptDigest(password, salt, cost) {
     for (let i = 0; i < 6; i += 2) {
       lr[0] = blocks[i];
       lr[1] = blocks[i + 1];
-      encipher(state.P, state.S, lr);
+      encipher(state2.P, state2.S, lr);
       blocks[i] = lr[0];
       blocks[i + 1] = lr[1];
     }
@@ -78673,7 +78614,7 @@ var EgressManager = class {
     this.pools = /* @__PURE__ */ new Map();
     for (const pool of pools) {
       const sem = new Semaphore(Math.max(1, pool.maxConns));
-      const nodes = (members2.get(pool.id) ?? []).map((id) => this.nodes.get(id)).filter((state) => Boolean(state));
+      const nodes = (members2.get(pool.id) ?? []).map((id) => this.nodes.get(id)).filter((state2) => Boolean(state2));
       this.pools.set(pool.id, { pool, nodes, sem });
     }
     this.bindings = this.store.bindings();
@@ -78796,14 +78737,14 @@ var EgressManager = class {
     const mode = route.mode ?? session.spec.mode ?? "sticky";
     let chosen;
     if (route.pin !== void 0) {
-      chosen = candidates.find((state) => state.node.id === route.pin);
+      chosen = candidates.find((state2) => state2.node.id === route.pin);
       if (!chosen) {
         pool.sem.give();
         session.sem.give();
         throw new EgressError("EGRESS_NO_NODE", 502, `\u6307\u5B9A\u8282\u70B9 ${route.pin} \u4E0D\u5728\u6C60\u5185\u6216\u4E0D\u53EF\u7528`);
       }
     } else if (mode === "sticky" && session.lease && session.lease.expires > Date.now()) {
-      chosen = candidates.find((state) => state.node.id === session.lease?.nodeId);
+      chosen = candidates.find((state2) => state2.node.id === session.lease?.nodeId);
     }
     if (!chosen) chosen = pickWeighted(candidates, pool.pool.strategy);
     if (!chosen) {
@@ -78856,16 +78797,16 @@ var EgressManager = class {
   }
   candidates(pool) {
     const now2 = Date.now();
-    return pool.nodes.filter((state) => {
-      if (!state.node.enabled) return false;
-      if (state.health.state === "cooldown" && state.health.cooldownUntil > now2) return false;
+    return pool.nodes.filter((state2) => {
+      if (!state2.node.enabled) return false;
+      if (state2.health.state === "cooldown" && state2.health.cooldownUntil > now2) return false;
       return true;
     });
   }
   // ---------- health ----------
   async checkNode(id) {
-    const state = this.nodes.get(id);
-    if (!state) throw new Error(`\u8282\u70B9 ${id} \u4E0D\u5B58\u5728`);
+    const state2 = this.nodes.get(id);
+    if (!state2) throw new Error(`\u8282\u70B9 ${id} \u4E0D\u5B58\u5728`);
     const pool = [...this.pools.values()].find((p) => p.nodes.some((n) => n.node.id === id));
     const healthUrl = pool?.pool.healthUrl ?? "http://www.gstatic.com/generate_204";
     const target = new URL(healthUrl);
@@ -78875,13 +78816,13 @@ var EgressManager = class {
       state: "down",
       latencyMs: 0,
       successRate: 0,
-      failStreak: state.health.failStreak + 1,
+      failStreak: state2.health.failStreak + 1,
       checkedAt: Date.now(),
       cooldownUntil: 0,
       lastError: ""
     };
     try {
-      const socket = await dialNode(state.node, this.engine, target.hostname, Number(target.port || 80), 1e4);
+      const socket = await dialNode(state2.node, this.engine, target.hostname, Number(target.port || 80), 1e4);
       const status = await httpProbe(socket, target);
       socket.destroy();
       health = {
@@ -78892,11 +78833,11 @@ var EgressManager = class {
         failStreak: 0
       };
       if (status >= 400) throw new Error(`\u63A2\u6D4B\u8FD4\u56DE HTTP ${status}`);
-      state.latencyEw = health.latencyMs;
+      state2.latencyEw = health.latencyMs;
     } catch (error62) {
       health.lastError = error62.message.slice(0, 200);
     }
-    state.health = health;
+    state2.health = health;
     this.store.saveHealth(health);
     this.emit({ type: "node_health", node_id: id, state: health.state, message: health.lastError });
     return health;
@@ -78905,19 +78846,19 @@ var EgressManager = class {
     const pool = this.pools.get(poolId);
     if (!pool) return [];
     const results = [];
-    for (const state of pool.nodes) {
-      results.push(await this.checkNode(state.node.id));
+    for (const state2 of pool.nodes) {
+      results.push(await this.checkNode(state2.node.id));
     }
     return results;
   }
   async runHealthDue(force) {
     const now2 = Date.now();
     for (const pool of this.pools.values()) {
-      for (const state of pool.nodes) {
-        if (!state.node.enabled) continue;
-        const due = state.health.checkedAt === 0 || now2 - state.health.checkedAt >= pool.pool.checkSeconds * 1e3;
-        const cooled = state.health.cooldownUntil > 0 && state.health.cooldownUntil <= now2;
-        if (force || due || cooled) await this.checkNode(state.node.id);
+      for (const state2 of pool.nodes) {
+        if (!state2.node.enabled) continue;
+        const due = state2.health.checkedAt === 0 || now2 - state2.health.checkedAt >= pool.pool.checkSeconds * 1e3;
+        const cooled = state2.health.cooldownUntil > 0 && state2.health.cooldownUntil <= now2;
+        if (force || due || cooled) await this.checkNode(state2.node.id);
       }
     }
   }
@@ -78949,15 +78890,15 @@ var EgressManager = class {
     const chosen = [];
     for (let index = 0; index < k; index++) chosen.push(candidates[index % candidates.length]);
     const settled = await Promise.all(
-      chosen.map((state) => this.fanoutAttempt(state, target, upper, options, pool.pool.id))
+      chosen.map((state2) => this.fanoutAttempt(state2, target, upper, options, pool.pool.id))
     );
     for (let index = 0; index < settled.length; index++) {
-      const state = chosen[index];
+      const state2 = chosen[index];
       const result = settled[index];
       attempts.push({
-        node_id: state.node.id,
-        node_name: state.node.name,
-        egress_ip: state.node.egressIp || void 0,
+        node_id: state2.node.id,
+        node_name: state2.node.name,
+        egress_ip: state2.node.egressIp || void 0,
         status: result.status,
         verdict: result.verdict,
         ms: result.ms,
@@ -78966,11 +78907,11 @@ var EgressManager = class {
       });
       if (result.verdict === "pass" && !winner) {
         winner = { status: result.status ?? 0, body: result.body ?? "", header: result.header ?? {} };
-        winnerNode = state.node.id;
+        winnerNode = state2.node.id;
         blocked = false;
       }
       if (!fallback || (result.status ?? 0) > (fallback.status ?? 0)) {
-        fallback = { status: result.status ?? 0, body: result.body ?? "", header: result.header ?? {}, node: state.node.id };
+        fallback = { status: result.status ?? 0, body: result.body ?? "", header: result.header ?? {}, node: state2.node.id };
       }
     }
     if (!winner && fallback) {
@@ -78987,13 +78928,13 @@ var EgressManager = class {
       header: winner?.header
     };
   }
-  async fanoutAttempt(state, target, method, options, poolId) {
+  async fanoutAttempt(state2, target, method, options, poolId) {
     const started = Date.now();
     const timeout = options.timeoutMs ?? 3e4;
     try {
-      const acquired = await this.acquire({ session: this.internalSession(state), pin: state.node.id, poolId });
+      const acquired = await this.acquire({ session: this.internalSession(state2), pin: state2.node.id, poolId });
       if (acquired.direct) throw new Error("\u8282\u70B9\u4E0D\u53EF\u7528");
-      const socket = await dialNode(state.node, this.engine, target.hostname, Number(target.port || 80), timeout);
+      const socket = await dialNode(state2.node, this.engine, target.hostname, Number(target.port || 80), timeout);
       const response = await httpRequest(socket, target, method, options.headers ?? {}, options.body);
       socket.destroy();
       acquired.release(response.status, response.body.length, (options.body ?? "").length, void 0);
@@ -79004,8 +78945,8 @@ var EgressManager = class {
       return { verdict: "unknown", ms: Date.now() - started, error: message };
     }
   }
-  internalSession(state) {
-    const key = `internal-${state.node.id}`;
+  internalSession(state2) {
+    const key = `internal-${state2.node.id}`;
     let session = this.sessions.get(key);
     if (!session) {
       session = {
@@ -79101,26 +79042,26 @@ var EgressManager = class {
   }
   // ---------- views ----------
   state() {
-    const nodes = [...this.nodes.values()].map((state) => ({
-      id: state.node.id,
-      name: state.node.name,
-      protocol: state.node.protocol,
-      server: state.node.server,
-      port: state.node.port,
-      tags: state.node.tags,
-      weight: state.node.weight,
-      max_conns: state.node.maxConns,
-      enabled: state.node.enabled,
-      egress_ip: state.node.egressIp || void 0,
-      note: state.node.note || void 0,
-      source: state.node.source || void 0,
-      config: state.node.config,
-      state: state.health.state,
-      latency_ms: state.health.latencyMs,
-      requests: state.requests,
-      failures: state.failures,
-      inflight: state.inflight,
-      success_rate: state.requests ? (state.requests - state.failures) / state.requests : 1
+    const nodes = [...this.nodes.values()].map((state2) => ({
+      id: state2.node.id,
+      name: state2.node.name,
+      protocol: state2.node.protocol,
+      server: state2.node.server,
+      port: state2.node.port,
+      tags: state2.node.tags,
+      weight: state2.node.weight,
+      max_conns: state2.node.maxConns,
+      enabled: state2.node.enabled,
+      egress_ip: state2.node.egressIp || void 0,
+      note: state2.node.note || void 0,
+      source: state2.node.source || void 0,
+      config: state2.node.config,
+      state: state2.health.state,
+      latency_ms: state2.health.latencyMs,
+      requests: state2.requests,
+      failures: state2.failures,
+      inflight: state2.inflight,
+      success_rate: state2.requests ? (state2.requests - state2.failures) / state2.requests : 1
     }));
     const pools = [...this.pools.values()].map((pool) => ({
       id: pool.pool.id,
@@ -79203,12 +79144,12 @@ var EgressManager = class {
     const binding = this.bindings.get(session.spec.taskId ?? 0);
     return binding?.fallback ?? "block";
   }
-  report(state, ok, latency, error62) {
-    const previous = state.health.state;
+  report(state2, ok, latency, error62) {
+    const previous = state2.health.state;
     if (ok) {
-      state.failures = 0;
-      state.health = {
-        ...state.health,
+      state2.failures = 0;
+      state2.health = {
+        ...state2.health,
         state: "up",
         failStreak: 0,
         latencyMs: latency,
@@ -79216,34 +79157,34 @@ var EgressManager = class {
         cooldownUntil: 0,
         successRate: 1
       };
-      state.latencyEw = state.latencyEw ? state.latencyEw * 0.7 + latency * 0.3 : latency;
+      state2.latencyEw = state2.latencyEw ? state2.latencyEw * 0.7 + latency * 0.3 : latency;
     } else {
-      state.failures++;
-      state.health.failStreak++;
-      if (error62) state.health.lastError = error62.message.slice(0, 200);
-      if (state.health.failStreak >= 3) {
-        const backoff = Math.min(3e5, 2e3 * 2 ** Math.min(state.health.failStreak - 3, 7));
-        state.health.state = "cooldown";
-        state.health.cooldownUntil = Date.now() + backoff;
+      state2.failures++;
+      state2.health.failStreak++;
+      if (error62) state2.health.lastError = error62.message.slice(0, 200);
+      if (state2.health.failStreak >= 3) {
+        const backoff = Math.min(3e5, 2e3 * 2 ** Math.min(state2.health.failStreak - 3, 7));
+        state2.health.state = "cooldown";
+        state2.health.cooldownUntil = Date.now() + backoff;
       } else {
-        state.health.state = "degraded";
+        state2.health.state = "degraded";
       }
     }
-    if (previous !== state.health.state) {
-      this.emit({ type: "node_health", node_id: state.node.id, state: state.health.state, message: state.health.lastError });
-      this.store.saveHealth(state.health);
+    if (previous !== state2.health.state) {
+      this.emit({ type: "node_health", node_id: state2.node.id, state: state2.health.state, message: state2.health.lastError });
+      this.store.saveHealth(state2.health);
     }
   }
-  note(session, state, ok, status, bytesIn, bytesOut, latency, error62) {
+  note(session, state2, ok, status, bytesIn, bytesOut, latency, error62) {
     session.counters.requests++;
-    state.requests++;
+    state2.requests++;
     if (!ok) {
       session.counters.failures++;
       session.counters.lastError = (error62?.message ?? `HTTP ${status}`).slice(0, 200);
     }
     session.counters.recent.push({
       at: Date.now(),
-      nodeId: state.node.id,
+      nodeId: state2.node.id,
       ok,
       status,
       ms: latency,
@@ -79252,7 +79193,7 @@ var EgressManager = class {
       error: error62?.message
     });
     if (session.counters.recent.length > 10) session.counters.recent.shift();
-    this.store.addUsage(session.spec.taskId ?? 0, state.node.id, 1, ok ? 0 : 1, bytesIn, bytesOut);
+    this.store.addUsage(session.spec.taskId ?? 0, state2.node.id, 1, ok ? 0 : 1, bytesIn, bytesOut);
   }
   consumeFanout(taskId, want) {
     if (taskId <= 0) return want;
@@ -79278,7 +79219,7 @@ var EgressManager = class {
       return 0;
     };
     const ranked = [...nodes].sort((a, b) => score(a.node.id) - score(b.node.id));
-    const usable = ranked.filter((state) => score(state.node.id) !== 1);
+    const usable = ranked.filter((state2) => score(state2.node.id) !== 1);
     return usable.length ? usable : ranked;
   }
   rememberHost(host, winner, attempts) {
@@ -79326,11 +79267,11 @@ function normalizeFallback(value) {
 function pickWeighted(nodes, strategy) {
   if (nodes.length === 0) return void 0;
   if (strategy === "failover") return nodes[0];
-  const weights = nodes.map((state) => {
-    const latency = state.latencyEw || 400;
-    const success2 = state.requests ? (state.requests - state.failures) / state.requests : 1;
-    const penalty = Math.min(state.health.failStreak * 0.15, 0.6);
-    return Math.max(0.01, 0.5 * (1 / (1 + latency / 1e3)) + 0.35 * success2 + 0.15 * Math.min(state.node.weight / 10, 1) - penalty);
+  const weights = nodes.map((state2) => {
+    const latency = state2.latencyEw || 400;
+    const success2 = state2.requests ? (state2.requests - state2.failures) / state2.requests : 1;
+    const penalty = Math.min(state2.health.failStreak * 0.15, 0.6);
+    return Math.max(0.01, 0.5 * (1 / (1 + latency / 1e3)) + 0.35 * success2 + 0.15 * Math.min(state2.node.weight / 10, 1) - penalty);
   });
   const total = weights.reduce((sum, w) => sum + w, 0);
   let roll = Math.random() * total;
@@ -79900,9 +79841,9 @@ function registerEgress(api2) {
     wrap(async (c) => {
       const mgr = await manager();
       const id = Number(c.req.param("id"));
-      const state = mgr.state();
-      const members2 = state.pools.find((p) => p.id === id)?.members ?? [];
-      return c.json(state.nodes.filter((n) => members2.includes(n.id)));
+      const state2 = mgr.state();
+      const members2 = state2.pools.find((p) => p.id === id)?.members ?? [];
+      return c.json(state2.nodes.filter((n) => members2.includes(n.id)));
     })
   );
   api2.post(
@@ -80050,8 +79991,8 @@ function registerEgress(api2) {
       node2.fingerprint = fingerprint(node2);
       mgr.store.updateNode(node2);
       await mgr.reload();
-      const state = mgr.state();
-      return c.json(state.nodes.find((n) => n.id === id) ?? null);
+      const state2 = mgr.state();
+      return c.json(state2.nodes.find((n) => n.id === id) ?? null);
     })
   );
   api2.delete(
@@ -80286,8 +80227,8 @@ function toStoredNode(input2, tags = []) {
   };
 }
 function poolDto(mgr, id) {
-  const state = mgr.state();
-  return state.pools.find((pool) => pool.id === id) ?? null;
+  const state2 = mgr.state();
+  return state2.pools.find((pool) => pool.id === id) ?? null;
 }
 function bindingDto(binding) {
   return {
@@ -81463,14 +81404,14 @@ var PROXY_ENDPOINTS = [
 function validateProxyState(value) {
   const problems = [];
   if (typeof value !== "object" || value === null) return ["state \u4E0D\u662F\u5BF9\u8C61"];
-  const state = value;
+  const state2 = value;
   for (const key of ["enabled", "gateway", "default_pool", "pools", "nodes", "sessions"]) {
-    if (!(key in state)) problems.push(`\u7F3A\u5C11\u5B57\u6BB5 ${key}`);
+    if (!(key in state2)) problems.push(`\u7F3A\u5C11\u5B57\u6BB5 ${key}`);
   }
-  if (typeof state.enabled !== "boolean") problems.push("enabled \u4E0D\u662F\u5E03\u5C14");
-  if (typeof state.gateway !== "string") problems.push("gateway \u4E0D\u662F\u5B57\u7B26\u4E32");
-  if (typeof state.default_pool !== "number") problems.push("default_pool \u4E0D\u662F\u6570\u5B57");
-  if (state.pools !== null && !Array.isArray(state.pools)) problems.push("pools \u4E0D\u662F\u6570\u7EC4\u6216 null");
+  if (typeof state2.enabled !== "boolean") problems.push("enabled \u4E0D\u662F\u5E03\u5C14");
+  if (typeof state2.gateway !== "string") problems.push("gateway \u4E0D\u662F\u5B57\u7B26\u4E32");
+  if (typeof state2.default_pool !== "number") problems.push("default_pool \u4E0D\u662F\u6570\u5B57");
+  if (state2.pools !== null && !Array.isArray(state2.pools)) problems.push("pools \u4E0D\u662F\u6570\u7EC4\u6216 null");
   return problems;
 }
 
@@ -81631,6 +81572,12 @@ async function proxyBridge(request, localPeer) {
   }
 }
 
+// src/mode.ts
+function runtimeMode() {
+  const raw2 = (process.env.VEXNAR_RUNTIME_MODE || "ts").trim().toLowerCase();
+  return raw2 === "go" ? "go" : "ts";
+}
+
 // src/go-data.ts
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
 var prefixes = [
@@ -81645,24 +81592,24 @@ var prefixes = [
   "/api/intercept",
   "/api/yak/history"
 ];
-var forwarding = () => /^(1|on|true|yes)$/i.test(process.env.VEXNAR_GO_DATA ?? "");
 var coreTraffic = ["/api/traffic/capture", "/api/traffic/ingest"];
 function isCoreTraffic(path) {
   return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
-function isGoDataRequest(method, path) {
-  if (!forwarding()) return false;
+function isDataPlaneRequest(method, path) {
   if (isCoreTraffic(path)) return false;
   if (routes.has(`${method} ${path}`)) return true;
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
+var isGoDataRequest = isDataPlaneRequest;
 var loopback2 = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
 async function goData(request, localPeer) {
   const url2 = new URL(request.url);
   if (isProxyPath(url2.pathname) && (process.env.VEXNAR_EGRESS || "").toLowerCase() === "go") {
     return proxyBridge(request, localPeer);
   }
-  if (!isGoDataRequest(request.method, url2.pathname)) return void 0;
+  if (runtimeMode() !== "go") return void 0;
+  if (!isDataPlaneRequest(request.method, url2.pathname)) return void 0;
   const host = request.headers.get("host") ?? "";
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
@@ -82083,6 +82030,115 @@ async function ensureInterceptRulesSeeded(loadRows = loadRulesFromPostgres) {
   return { seeded: rows.length, source };
 }
 
+// src/runtime.ts
+init_src();
+await init_context2();
+var state = {
+  started: false,
+  startedAt: 0,
+  triggers: 0,
+  schedules: false,
+  storeLocked: false,
+  released: false
+};
+var stops = [];
+var releaseStoreLock = null;
+var booting = null;
+var signalHooks = false;
+async function boot() {
+  for (const agent of await meta3.table("agents")) {
+    try {
+      const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
+        const task = await spawnTriggerTask(operations, agent.key, fire);
+        store.invalidate?.(["tasks"]);
+        if (modelCompletionReady()) {
+          const taskId = String(task.id);
+          await taskQueue.enqueue(taskId, async () => {
+            await engine.plan(taskId, gatewayComplete);
+            await engine.workMany(taskId, gatewayComplete, 1);
+          });
+        }
+        const channels = await meta3.table("notify");
+        if (!channels.length) return;
+        await createNotifier(channels, void 0, async (channel, event, result) => {
+          await operations.recordDelivery({
+            channel_id: channel.id,
+            event_kind: event.kind,
+            title: event.title,
+            status: result.ok ? "ok" : "failed",
+            attempts: result.attempts,
+            error: result.detail
+          });
+        }).dispatch({
+          kind: `trigger:${fire.event}`,
+          title: `agent ${agent.key} \xB7 ${fire.event}`,
+          text: fire.message || fire.event,
+          task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
+          finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
+        });
+      });
+      stops.push(stop);
+      state.triggers += 1;
+    } catch {
+    }
+  }
+  const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
+    const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
+    store.invalidate?.(["tasks"]);
+    if (modelCompletionReady()) {
+      const taskId = String(task.id);
+      await taskQueue.enqueue(taskId, async () => {
+        await engine.plan(taskId, gatewayComplete);
+        await engine.workMany(taskId, gatewayComplete, 1);
+      });
+    }
+  }, 3e4);
+  stops.push(stopSchedules);
+  state.schedules = true;
+  await operations.writer.recover().catch(() => {
+  });
+  releaseStoreLock = await operations.writer.lock();
+  state.storeLocked = true;
+  state.started = true;
+  state.startedAt = Date.now();
+}
+function startRuntime(options = {}) {
+  if (options.signals && !signalHooks) {
+    signalHooks = true;
+    for (const signal of ["SIGINT", "SIGTERM"]) {
+      process.once(signal, () => {
+        void stopRuntime().then(() => process.exit(0));
+      });
+    }
+  }
+  if (!booting) {
+    booting = boot().catch((error62) => {
+      booting = null;
+      throw error62;
+    });
+  }
+  return booting;
+}
+async function stopRuntime() {
+  if (state.released) return;
+  state.released = true;
+  for (const stop of stops.splice(0)) {
+    try {
+      stop();
+    } catch {
+    }
+  }
+  scheduler.stop();
+  if (releaseStoreLock) {
+    try {
+      releaseStoreLock();
+    } catch {
+    }
+  }
+  state.storeLocked = false;
+  state.started = false;
+}
+
 // src/embedded.ts
 init_gateway();
 var migration = null;
@@ -82095,12 +82151,16 @@ function migrateOnce() {
   );
   return migration;
 }
+var booting2 = null;
 async function handle(request, localPeer) {
+  if (!booting2) booting2 = startRuntime();
+  await booting2;
   await migrateOnce();
   return await goData(request, localPeer) ?? api.fetch(request);
 }
 export {
   handle,
+  isDataPlaneRequest,
   isGoDataRequest,
   modelCompletionReady,
   setModelCompletion
