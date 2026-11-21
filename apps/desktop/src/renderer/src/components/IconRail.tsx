@@ -9,8 +9,6 @@ import {
   Bug,
   Clock3,
   Ellipsis,
-  FolderClosed,
-  GitBranch,
   Globe2,
   House,
   LayoutDashboard,
@@ -75,8 +73,6 @@ export function IconRail(): React.JSX.Element {
   const railPins = useLayout((state) => state.railPins)
   const toggleRailPin = useLayout((state) => state.toggleRailPin)
   const setView = useAppStore((state) => state.setView)
-  const chooseWorkspace = useAppStore((state) => state.chooseWorkspace)
-  const setRightTab = useAppStore((state) => state.setRightTab)
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen)
 
   const consoleItems: Array<{ id: AppView; label: string; icon: typeof LayoutDashboard }> = [
@@ -211,14 +207,6 @@ export function IconRail(): React.JSX.Element {
             </RailButton>
           )
         })}
-
-        <RailButton label={t('rail.workspace')} onClick={() => void chooseWorkspace()}>
-          <FolderClosed className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </RailButton>
-
-        <RailButton label={t('rail.changes')} onClick={() => setRightTab('diff')}>
-          <GitBranch className="h-[19px] w-[19px]" strokeWidth={1.8} />
-        </RailButton>
 
         <RailButton
           label={t('rail.findings')}
