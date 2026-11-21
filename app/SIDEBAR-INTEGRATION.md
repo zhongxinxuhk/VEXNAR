@@ -28,7 +28,7 @@ dsh 设置页
 ├─ MCP         → settings.section: vexnar-mcp
 ├─ 工具        → settings.section: vexnar-tools
 ├─ 通知推送    → settings.section: vexnar-notify
-├─ 拦截规则    → settings.section: vexnar-intercept
+├─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
 ├─ 资产同步    → settings.section: vexnar-asset-sync
 └─ 审批记录    → settings.section: vexnar-approvals
 ```

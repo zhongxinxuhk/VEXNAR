@@ -947,9 +947,21 @@ function TrafficPage() {
 function InterceptPage() {
   const { data, error, loading } = useApi("/api/intercept/rules");
   const [version, setVersion] = (0, import_react.useState)(0);
+  const [form, setForm] = (0, import_react.useState)({ id: 0, name: "", enabled: true, priority: 100, match_target: "tool_input", match_type: "string", pattern: "", action: "deny" });
   if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u89C4\u5219\uFF09`);
   const rows = data?.rules ?? [];
+  const submit = async () => {
+    try {
+      const body2 = { ...form, id: void 0 };
+      if (form.id) await callApi(`/api/intercept/rules/${form.id}`, "PUT", body2);
+      else await callApi("/api/intercept/rules", "POST", body2);
+      setForm({ id: 0, name: "", enabled: true, priority: 100, match_target: "tool_input", match_type: "string", pattern: "", action: "deny" });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
   const remove = async (row) => {
     if (!window.confirm(`\u5220\u9664\u89C4\u5219 #${row.id}?`)) return;
     try {
@@ -959,21 +971,40 @@ function InterceptPage() {
       window.alert(String(e?.message ?? e));
     }
   };
+  const field = (key, placeholder, width = 140) => (0, import_react.createElement)("input", { value: form[key] ?? "", placeholder, onChange: (event) => setForm({ ...form, [key]: event.target.value }), style: { width } });
   return (0, import_react.createElement)(
     "div",
     { key: version, fontSize: 13 },
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12, alignItems: "center" } },
+      field("name", "\u89C4\u5219\u540D"),
+      (0, import_react.createElement)("select", { value: form.match_target, onChange: (event) => setForm({ ...form, match_target: event.target.value }) }, ["tool_input", "tool_name"].map((v) => (0, import_react.createElement)("option", { key: v, value: v }, v))),
+      (0, import_react.createElement)("select", { value: form.match_type, onChange: (event) => setForm({ ...form, match_type: event.target.value }) }, ["string", "regex"].map((v) => (0, import_react.createElement)("option", { key: v, value: v }, v))),
+      field("pattern", "\u5339\u914D\u5185\u5BB9", 240),
+      (0, import_react.createElement)("select", { value: form.action, onChange: (event) => setForm({ ...form, action: event.target.value }) }, ["allow", "deny", "ask"].map((v) => (0, import_react.createElement)("option", { key: v, value: v }, v))),
+      (0, import_react.createElement)("button", { type: "button", onClick: submit, style: { cursor: "pointer" } }, form.id ? "\u4FDD\u5B58" : "\u65B0\u589E"),
+      form.id ? (0, import_react.createElement)("button", { type: "button", onClick: () => setForm({ id: 0, name: "", enabled: true, priority: 100, match_target: "tool_input", match_type: "string", pattern: "", action: "deny" }), style: { cursor: "pointer" } }, "\u53D6\u6D88") : null
+    ),
     (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? rows.length} \u6761\u89C4\u5219`),
     (0, import_react.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse" } },
-      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u5339\u914D", "\u52A8\u4F5C", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u540D\u79F0", "\u5339\u914D", "\u52A8\u4F5C", "\u542F\u7528", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
       (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
         "tr",
         { key: row.id },
         (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name ?? row.match ?? row.match_target ?? ""),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.action ?? row.enabled === false ? "\u505C\u7528" : "\u542F\u7528"),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664"))
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, `${row.match_target}:${row.match_type}:${row.pattern ?? ""}`),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.action),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.enabled ? "\u662F" : "\u5426"),
+        (0, import_react.createElement)(
+          "td",
+          { style: { padding: "6px 8px", display: "flex", gap: 8 } },
+          (0, import_react.createElement)("button", { type: "button", onClick: () => setForm({ ...row }), style: { cursor: "pointer" } }, "\u7F16\u8F91"),
+          (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664")
+        )
       )))
     )
   );

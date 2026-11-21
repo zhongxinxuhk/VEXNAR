@@ -621,19 +621,43 @@ function TrafficPage() {
 function InterceptPage() {
   const { data, error, loading } = useApi('/api/intercept/rules')
   const [version, setVersion] = useState(0)
+  const [form, setForm] = useState<any>({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' })
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要 VEXNAR_GO_FALLBACK 代理 Go 拦截规则）`)
   const rows = data?.rules ?? []
+  const submit = async () => {
+    try {
+      const body = { ...form, id: undefined }
+      if (form.id) await callApi(`/api/intercept/rules/${form.id}`, 'PUT', body)
+      else await callApi('/api/intercept/rules', 'POST', body)
+      setForm({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' })
+      setVersion(version + 1)
+    } catch (e: any) { window.alert(String(e?.message ?? e)) }
+  }
   const remove = async (row: any) => { if (!window.confirm(`删除规则 #${row.id}?`)) return; try { await callApi(`/api/intercept/rules/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  const field = (key: string, placeholder: string, width = 140) =>
+    h('input', { value: form[key] ?? '', placeholder, onChange: (event: any) => setForm({ ...form, [key]: event.target.value }), style: { width } })
   return h('div', { key: version, fontSize: 13 },
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' } },
+      field('name', '规则名'),
+      h('select', { value: form.match_target, onChange: (event: any) => setForm({ ...form, match_target: event.target.value }) }, ['tool_input', 'tool_name'].map((v) => h('option', { key: v, value: v }, v))),
+      h('select', { value: form.match_type, onChange: (event: any) => setForm({ ...form, match_type: event.target.value }) }, ['string', 'regex'].map((v) => h('option', { key: v, value: v }, v))),
+      field('pattern', '匹配内容', 240),
+      h('select', { value: form.action, onChange: (event: any) => setForm({ ...form, action: event.target.value }) }, ['allow', 'deny', 'ask'].map((v) => h('option', { key: v, value: v }, v))),
+      h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, form.id ? '保存' : '新增'),
+      form.id ? h('button', { type: 'button', onClick: () => setForm({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' }), style: { cursor: 'pointer' } }, '取消') : null),
     h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? rows.length} 条规则`),
     h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-      h('thead', null, h('tr', null, ['ID', '匹配', '动作', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('thead', null, h('tr', null, ['ID', '名称', '匹配', '动作', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
       h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
         h('td', { style: { padding: '6px 8px' } }, row.id),
-        h('td', { style: { padding: '6px 8px' } }, row.name ?? row.match ?? row.match_target ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, row.action ?? row.enabled === false ? '停用' : '启用'),
-        h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
+        h('td', { style: { padding: '6px 8px' } }, row.name),
+        h('td', { style: { padding: '6px 8px' } }, `${row.match_target}:${row.match_type}:${row.pattern ?? ''}`),
+        h('td', { style: { padding: '6px 8px' } }, row.action),
+        h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
+        h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
+          h('button', { type: 'button', onClick: () => setForm({ ...row }), style: { cursor: 'pointer' } }, '编辑'),
+          h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
 }
 
 function ApprovalsPage() {
