@@ -11,14 +11,14 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, createRunner, createScheduler, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
 const store = await openStore()
 const meta = metaStore(storeRoot())
 const operations = storeOperations(storeRoot())
-const engine = createEngine(store as any, operations as any)
+const engine = createEngine(store as any, operations as any, { runner: createRunner({ concurrency: 2 }) })
 const scheduler = createScheduler({ concurrency: 4 })
 const triggerStops: Array<() => void> = []
 for (const agent of await meta.table<any[]>('agents')) {
@@ -722,6 +722,19 @@ api.get('/api/exploration/findings/:id/traffic', async (c) => {
   }
   const bindings = out.bindings.map((binding: any) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }))
   return c.json({ ...out, bindings })
+})
+
+api.post('/api/engine/tools/run', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const name = String(body.name ?? '')
+  const target = String(body.target ?? '')
+  if (!target) return c.json({ error: 'target 不能为空' }, 400)
+  try {
+    const result = await runTool(createRunner({ concurrency: 1 }) as any, name as any, target, body.args ?? {})
+    const created = body.task_id ? await persistToolResult(operations as any, String(body.task_id), String(body.node_id ?? ''), name as any, result.parsed, result.stdout) : []
+    store.invalidate?.(['assets', 'findings', 'nodes'])
+    return c.json({ code: result.code, truncated: result.truncated, timed_out: result.timed_out, stdout: result.stdout.slice(0, 20000), stderr: result.stderr.slice(0, 4000), parsed: result.parsed, created })
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
 
 api.post('/api/engine/plan', async (c) => {
