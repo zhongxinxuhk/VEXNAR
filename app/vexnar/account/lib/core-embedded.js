@@ -31456,7 +31456,9 @@ var routeModules = [
   { file: "./routes/intercept.ts", scope: "intercept approvals" },
   { file: "./routes/traffic.ts", scope: "traffic evidence" },
   { file: "./routes/skills.ts", scope: "skills" },
-  { file: "./routes/market.ts", scope: "market" }
+  { file: "./routes/market.ts", scope: "market" },
+  { file: "./routes/tasks-companies.ts", scope: "tasks/companies" },
+  { file: "./routes/notify-mcp.ts", scope: "notify/mcp/side-questions" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {
