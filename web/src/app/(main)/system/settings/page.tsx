@@ -24,6 +24,7 @@ import { CHAT_SEND_MODE_OPTIONS, type ChatSendMode, setChatSendMode, useChatSend
 import type { Settings } from "@/lib/types";
 
 import { UpdateCard } from "./_components/update-card";
+import { ProxySubscriptionsCard } from "./proxy-subscriptions-card";
 
 export default function SystemSettingsPage() {
   const [trafficCapture, setTrafficCapture] = React.useState(false);
@@ -86,7 +87,7 @@ export default function SystemSettingsPage() {
         apply(s);
         toast.success("已保存并发工作 agent 数（对之后启动的任务生效）");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSavingWorkers(false));
   };
 
@@ -98,7 +99,7 @@ export default function SystemSettingsPage() {
         apply(s);
         toast.success("已保存 Python 解释器配置");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSaving(false));
   };
   const detectPython = () => {
@@ -200,7 +201,7 @@ export default function SystemSettingsPage() {
         toast.success("已保存网络搜索配置");
       })
       .catch((e) => {
-        toast.error("保存失败：" + (e as Error).message);
+        toast.error(`保存失败：${(e as Error).message}`);
         api
           .settings()
           .then(apply)
@@ -218,7 +219,7 @@ export default function SystemSettingsPage() {
         setBraveKeyInput("");
         toast.success("已保存 Brave API Key");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSavingKey(false));
   };
 
@@ -231,7 +232,7 @@ export default function SystemSettingsPage() {
         setTavilyKeyInput("");
         toast.success("已保存 Tavily API Key");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSavingTavilyKey(false));
   };
 
@@ -243,7 +244,7 @@ export default function SystemSettingsPage() {
         apply(s);
         toast.success(proxyInput.trim() ? "已保存出口代理" : "已清除出口代理（改为直连）");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSavingProxy(false));
   };
 
@@ -255,7 +256,7 @@ export default function SystemSettingsPage() {
         apply(s);
         toast.success(globalProxyInput.trim() ? "已保存全局代理" : "已清除全局代理（改为直连）");
       })
-      .catch((e) => toast.error("保存失败：" + (e as Error).message))
+      .catch((e) => toast.error(`保存失败：${(e as Error).message}`))
       .finally(() => setSavingGlobalProxy(false));
   };
 
@@ -272,9 +273,9 @@ export default function SystemSettingsPage() {
       })
       .then((r) => {
         if (r.ok) toast.success(`搜索测试成功 · ${r.backend} 返回 ${r.count} 条结果`);
-        else toast.error("搜索测试失败：" + (r.error || "未知错误"));
+        else toast.error(`搜索测试失败：${r.error || "未知错误"}`);
       })
-      .catch((e) => toast.error("搜索测试失败：" + (e as Error).message))
+      .catch((e) => toast.error(`搜索测试失败：${(e as Error).message}`))
       .finally(() => setTesting(false));
   };
 
@@ -284,7 +285,7 @@ export default function SystemSettingsPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 md:gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">系统配置</h1>
+        <h1 className="font-semibold text-xl tracking-tight">系统配置</h1>
         <p className="text-muted-foreground text-sm">全局运行时开关</p>
       </div>
 
@@ -310,7 +311,7 @@ export default function SystemSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
-            <Label htmlFor="traffic-capture" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="traffic-capture" className="font-normal text-muted-foreground text-sm">
               {trafficCapture ? "已开启 · 正在记录流量并注入代理" : "已关闭 · 不记录、不注入代理"}
             </Label>
             <Switch
@@ -337,7 +338,7 @@ export default function SystemSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
-            <Label htmlFor="agent-traffic-binding" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="agent-traffic-binding" className="font-normal text-muted-foreground text-sm">
               {agentTrafficBinding ? "已开启 · 会增加 Token 消耗" : "已关闭 · 可继续人工绑定"}
             </Label>
             <Switch
@@ -369,7 +370,7 @@ export default function SystemSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <Label htmlFor="global-proxy" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="global-proxy" className="font-normal text-muted-foreground text-sm">
               代理地址
             </Label>
             <div className="flex items-center gap-2">
@@ -391,6 +392,8 @@ export default function SystemSettingsPage() {
           </CardContent>
         </Card>
 
+        <ProxySubscriptionsCard />
+
         <Card className="mb-4 break-inside-avoid md:mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -407,7 +410,7 @@ export default function SystemSettingsPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="inject-planner" className="text-sm font-normal text-muted-foreground">
+              <Label htmlFor="inject-planner" className="font-normal text-muted-foreground text-sm">
                 注入规划者（planner）{injectPlanner ? " · 已开启" : " · 已关闭"}
               </Label>
               <Switch
@@ -418,7 +421,7 @@ export default function SystemSettingsPage() {
               />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="inject-worker" className="text-sm font-normal text-muted-foreground">
+              <Label htmlFor="inject-worker" className="font-normal text-muted-foreground text-sm">
                 注入执行者（worker）{injectWorker ? " · 已开启" : " · 已关闭"}
               </Label>
               <Switch
@@ -443,12 +446,12 @@ export default function SystemSettingsPage() {
               （reproduced）才把漏洞从「待处理」提升为「已确认」，确认误报则标记为「误报」，
               无法确认（inconclusive）保持原状态。每条验证都是一次真实 LLM 调用，会计费。
               <br />
-              前提是「漏洞复测」Agent 已启用、并绑定了 get_finding_retest_context 与
-              record_finding_retest_result 两个工具。
+              前提是「漏洞复测」Agent 已启用、并绑定了 get_finding_retest_context 与 record_finding_retest_result
+              两个工具。
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
-            <Label htmlFor="finding-auto-verify" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="finding-auto-verify" className="font-normal text-muted-foreground text-sm">
               上报后自动独立验证{findingAutoVerify ? " · 已开启" : " · 已关闭"}
             </Label>
             <Switch
@@ -476,7 +479,7 @@ export default function SystemSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
-            <Label htmlFor="noa-compaction" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="noa-compaction" className="font-normal text-muted-foreground text-sm">
               noa 上下文压缩{noaCompaction ? " · 已开启" : " · 已关闭"}
             </Label>
             <Switch
@@ -500,13 +503,13 @@ export default function SystemSettingsPage() {
               记录代理，独立于流量捕获。
               <br />
               来源可选 <b>DuckDuckGo（ddgs）</b>（无需 Key）、<b>Brave（免费版）</b>（需填写 Brave API Key）、{" "}
-              <b>Tavily</b>（需填写 Tavily API Key）或 <b>DeepSeek</b>（复用当前 LLM 配置）。总开关关闭时，各
-              Agent 的网络搜索开关不可用。
+              <b>Tavily</b>（需填写 Tavily API Key）或 <b>DeepSeek</b>（复用当前 LLM 配置）。总开关关闭时，各 Agent
+              的网络搜索开关不可用。
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="web-search" className="text-sm font-normal text-muted-foreground">
+              <Label htmlFor="web-search" className="font-normal text-muted-foreground text-sm">
                 {webSearch ? "总开关已开启 · 可在各 Agent 配置里单独启用" : "已关闭 · 各 Agent 无法启用网络搜索"}
               </Label>
               <Switch
@@ -522,7 +525,7 @@ export default function SystemSettingsPage() {
 
             {webSearch && (
               <div className="flex items-center justify-between gap-4">
-                <Label className="text-sm font-normal text-muted-foreground">搜索来源</Label>
+                <Label className="font-normal text-muted-foreground text-sm">搜索来源</Label>
                 <Select
                   value={backend}
                   disabled={!loaded || saving}
@@ -545,8 +548,8 @@ export default function SystemSettingsPage() {
             )}
 
             {webSearch && backend === "deepseek" && (
-              <div className="border-border/60 bg-muted/30 flex flex-col gap-2 rounded-md border p-3">
-                <p className="text-sm font-medium">DeepSeek 官方联网搜索</p>
+              <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <p className="font-medium text-sm">DeepSeek 官方联网搜索</p>
                 <p className="text-muted-foreground text-xs leading-relaxed">
                   该来源直接复用<b>当前激活的 LLM 配置</b>。因此它
                   <b>仅支持 DeepSeek 官方模型</b>，且该配置<b>必须使用 anthropic 协议</b>
@@ -565,9 +568,9 @@ export default function SystemSettingsPage() {
 
             {webSearch && backend === "brave-free" && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="brave-key" className="text-sm font-normal text-muted-foreground">
+                <Label htmlFor="brave-key" className="font-normal text-muted-foreground text-sm">
                   Brave Search API Key
-                  {braveKeySet && <span className="ml-2 text-xs text-emerald-500">已配置</span>}
+                  {braveKeySet && <span className="ml-2 text-emerald-500 text-xs">已配置</span>}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -588,7 +591,7 @@ export default function SystemSettingsPage() {
                   </Button>
                 </div>
                 {braveNeedsKey && (
-                  <p className="text-xs text-amber-500">
+                  <p className="text-amber-500 text-xs">
                     已选择 Brave 但尚未配置 Key —— 在保存 Key 之前，搜索工具不会启用。
                   </p>
                 )}
@@ -600,9 +603,9 @@ export default function SystemSettingsPage() {
 
             {webSearch && backend === "tavily" && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="tavily-key" className="text-sm font-normal text-muted-foreground">
+                <Label htmlFor="tavily-key" className="font-normal text-muted-foreground text-sm">
                   Tavily Search API Key
-                  {tavilyKeySet && <span className="ml-2 text-xs text-emerald-500">已配置</span>}
+                  {tavilyKeySet && <span className="ml-2 text-emerald-500 text-xs">已配置</span>}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -623,7 +626,7 @@ export default function SystemSettingsPage() {
                   </Button>
                 </div>
                 {webSearch && backend === "tavily" && !tavilyKeySet && (
-                  <p className="text-xs text-amber-500">
+                  <p className="text-amber-500 text-xs">
                     已选择 Tavily 但尚未配置 Key —— 在保存 Key 之前，搜索工具不会启用。
                   </p>
                 )}
@@ -633,7 +636,7 @@ export default function SystemSettingsPage() {
 
             {webSearch && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="ws-proxy" className="text-sm font-normal text-muted-foreground">
+                <Label htmlFor="ws-proxy" className="font-normal text-muted-foreground text-sm">
                   出口代理（可选）
                 </Label>
                 <div className="flex items-center gap-2">
@@ -746,7 +749,7 @@ export default function SystemSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-4">
-            <Label htmlFor="chat-send-mode" className="text-sm font-normal text-muted-foreground">
+            <Label htmlFor="chat-send-mode" className="font-normal text-muted-foreground text-sm">
               发送方式
             </Label>
             <Select value={sendMode} onValueChange={(v) => setChatSendMode(v as ChatSendMode)}>

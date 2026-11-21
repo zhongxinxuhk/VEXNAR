@@ -1696,6 +1696,8 @@ export interface InterceptExecution {
 /** 一个出口节点 + 运行时健康/计数。密钥永不返回。 */
 export interface ProxyNodeView {
   id: number;
+  /** clash proxies 条目（不含口令）；自定义/编辑节点时回填。 */
+  config?: Record<string, unknown>;
   name: string;
   protocol: string;
   server: string;
@@ -1818,4 +1820,35 @@ export interface ProxyFanoutResult {
   winner_node: number;
   attempts: ProxyFanoutAttempt[] | null;
   body?: string;
+}
+
+/** 代理池订阅（设置页维护）。 */
+export interface ProxySubscription {
+  id: number;
+  name: string;
+  url: string;
+  pool_id: number;
+  tags: string[] | null;
+  interval_seconds: number;
+  enabled: boolean;
+  last_fetch_at: string;
+  last_error?: string;
+  last_added: number;
+  last_removed: number;
+  last_changed: number;
+  last_diff?: string;
+  created_at: string;
+}
+
+export interface ProxySubscriptionDiff {
+  added: string[] | null;
+  removed: string[] | null;
+}
+
+export interface ProxyRefreshResult {
+  added: number;
+  removed: number;
+  changed: number;
+  issues?: ProxyParseIssue[] | null;
+  diff?: ProxySubscriptionDiff;
 }

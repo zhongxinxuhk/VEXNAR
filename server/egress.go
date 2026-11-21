@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -758,8 +757,8 @@ func decodeLimited(r *http.Request, v any) error {
 }
 
 // resolveSubscription returns the pasted text, or fetches a subscription URL when
-// no text was given. Only http(s) is accepted, the body is capped, and a non-2xx
-// status is an error rather than an empty node list.
+// no text was given. The fetch rules (http/https only, timeout, 8MB cap, non-2xx)
+// live in the egress package so the scheduler and the one-shot import share them.
 func resolveSubscription(ctx context.Context, text, rawURL string) (string, error) {
 	if strings.TrimSpace(text) != "" {
 		return text, nil
@@ -768,32 +767,7 @@ func resolveSubscription(ctx context.Context, text, rawURL string) (string, erro
 	if rawURL == "" {
 		return "", errors.New("需要粘贴节点内容或填写订阅 URL")
 	}
-	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
-		return "", errors.New("订阅 URL 只允许 http/https")
-	}
-	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("订阅 URL 无效: %w", err)
-	}
-	req.Header.Set("User-Agent", "vexnar/egress")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("拉取订阅失败: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("订阅返回 HTTP %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-	if err != nil {
-		return "", fmt.Errorf("读取订阅失败: %w", err)
-	}
-	if strings.TrimSpace(string(body)) == "" {
-		return "", errors.New("订阅内容为空")
-	}
-	return string(body), nil
+	return egress.FetchSubscription(ctx, rawURL)
 }
 
 // POST /api/proxy/nodes/batch  {ids, action, pool_id?, tags?}
@@ -1052,4 +1026,143 @@ func (s *Server) egressFanout(w http.ResponseWriter, r *http.Request) {
 		"attempts": res.Attempts, "body": res.BodyText,
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// GET/POST /api/proxy/subscriptions
+func (s *Server) egressSubscriptions(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	if r.Method == http.MethodGet {
+		subs, err := mgr.Store().Subscriptions(r.Context())
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, subs)
+		return
+	}
+	var req egress.Subscription
+	if err := decodeLimited(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.PoolID > 0 {
+		if pool, err := mgr.Store().Pool(r.Context(), req.PoolID); err != nil || pool == nil {
+			writeErr(w, http.StatusNotFound, "池不存在")
+			return
+		}
+	}
+	id, err := mgr.Store().SaveSubscription(r.Context(), req)
+	if err != nil {
+		writeErr(w, http.StatusConflict, "保存订阅失败: "+err.Error())
+		return
+	}
+	req.ID = id
+	writeJSON(w, http.StatusOK, req)
+}
+
+// PATCH/DELETE /api/proxy/subscriptions/{id}
+func (s *Server) egressSubscriptionByID(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	id, ok := pathInt(r, "id")
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "订阅 ID 无效")
+		return
+	}
+	sub, err := mgr.Store().Subscription(r.Context(), id)
+	if err != nil || sub == nil {
+		writeErr(w, http.StatusNotFound, "订阅不存在")
+		return
+	}
+	switch r.Method {
+	case http.MethodDelete:
+		if err := mgr.Store().DeleteSubscription(r.Context(), id); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"deleted": id})
+	case http.MethodPatch:
+		var req egress.Subscription
+		if err := decodeLimited(r, &req); err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		req.ID = id
+		if strings.TrimSpace(req.Name) == "" {
+			req.Name = sub.Name
+		}
+		if strings.TrimSpace(req.URL) == "" {
+			req.URL = sub.URL
+		}
+		if req.PoolID == 0 {
+			req.PoolID = sub.PoolID
+		}
+		if len(req.Tags) == 0 {
+			req.Tags = sub.Tags
+		}
+		if req.IntervalSeconds == 0 {
+			req.IntervalSeconds = sub.IntervalSeconds
+		}
+		if req.PoolID > 0 {
+			if pool, err := mgr.Store().Pool(r.Context(), req.PoolID); err != nil || pool == nil {
+				writeErr(w, http.StatusNotFound, "池不存在")
+				return
+			}
+		}
+		if _, err := mgr.Store().SaveSubscription(r.Context(), req); err != nil {
+			writeErr(w, http.StatusConflict, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, req)
+	default:
+		writeErr(w, http.StatusMethodNotAllowed, "不支持的方法")
+	}
+}
+
+// POST /api/proxy/subscriptions/{id}/refresh
+func (s *Server) egressSubscriptionRefresh(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	id, ok := pathInt(r, "id")
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "订阅 ID 无效")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	defer cancel()
+	res, err := mgr.RefreshSubscription(ctx, id)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// POST /api/proxy/subscriptions/preview  {url}
+func (s *Server) egressSubscriptionPreview(w http.ResponseWriter, r *http.Request) {
+	if s.egressOrErr(w) == nil {
+		return
+	}
+	var req struct {
+		URL string `json:"url"`
+	}
+	if err := decodeLimited(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 40*time.Second)
+	defer cancel()
+	text, err := egress.FetchSubscription(ctx, req.URL)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, egress.ParseInput(text))
 }

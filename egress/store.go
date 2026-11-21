@@ -32,12 +32,15 @@ type Store struct {
 // Node is a stored node: routing config + operator metadata.
 type Node struct {
 	NodeConfig
-	Tags      []string  `json:"tags"`
-	Weight    int       `json:"weight"`
-	MaxConns  int       `json:"max_conns"`
-	Enabled   bool      `json:"enabled"`
-	EgressIP  string    `json:"egress_ip,omitempty"`
-	Note      string    `json:"note,omitempty"`
+	Tags     []string `json:"tags"`
+	Weight   int      `json:"weight"`
+	MaxConns int      `json:"max_conns"`
+	Enabled  bool     `json:"enabled"`
+	EgressIP string   `json:"egress_ip,omitempty"`
+	Note     string   `json:"note,omitempty"`
+	// Source marks where the node came from: "" = manual, "sub:<id>" = a managed
+	// subscription. The scheduler prunes removed nodes from its own source only.
+	Source    string    `json:"source,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -97,6 +100,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   enabled     INTEGER NOT NULL DEFAULT 1,
   note        TEXT NOT NULL DEFAULT '',
   egress_ip   TEXT NOT NULL DEFAULT '',
+  source      TEXT NOT NULL DEFAULT '',
   created_at  INTEGER NOT NULL,
   updated_at  INTEGER NOT NULL
 );
@@ -151,6 +155,22 @@ CREATE TABLE IF NOT EXISTS usage (
   bytes_out INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (task_id, node_id, bucket)
 );
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  name             TEXT NOT NULL,
+  url              TEXT NOT NULL UNIQUE,
+  pool_id          INTEGER NOT NULL DEFAULT 0,
+  tags             TEXT NOT NULL DEFAULT '',
+  interval_seconds INTEGER NOT NULL DEFAULT 3600,
+  enabled          INTEGER NOT NULL DEFAULT 1,
+  last_fetch_at    INTEGER NOT NULL DEFAULT 0,
+  last_error       TEXT NOT NULL DEFAULT '',
+  last_added       INTEGER NOT NULL DEFAULT 0,
+  last_removed     INTEGER NOT NULL DEFAULT 0,
+  last_changed     INTEGER NOT NULL DEFAULT 0,
+  last_diff        TEXT NOT NULL DEFAULT '',
+  created_at       INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS fanout_usage (
   task_id INTEGER NOT NULL,
   bucket  INTEGER NOT NULL,
@@ -183,7 +203,45 @@ func OpenStore(dir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("egress: 初始化数据库失败: %w", err)
 	}
+	if err := ensureNodeSourceColumn(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return &Store{db: db, box: box, path: path}, nil
+}
+
+// ensureNodeSourceColumn upgrades databases created before subscriptions existed.
+// SQLite has no ADD COLUMN IF NOT EXISTS, so the current shape is inspected first.
+func ensureNodeSourceColumn(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(nodes)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	has := false
+	for rows.Next() {
+		var (
+			cid       int
+			name, typ string
+			notnull   int
+			dflt      any
+			pk        int
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "source" {
+			has = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if has {
+		return nil
+	}
+	_, err = db.Exec(`ALTER TABLE nodes ADD COLUMN source TEXT NOT NULL DEFAULT ''`)
+	return err
 }
 
 // Path returns the database file path (for logs and diagnostics).
@@ -197,7 +255,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // Nodes lists every node with secrets decrypted.
 func (s *Store) Nodes(ctx context.Context) ([]Node, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id,name,protocol,server,port,config,secrets,fingerprint,
-		tags,weight,max_conns,enabled,note,egress_ip,created_at,updated_at FROM nodes ORDER BY id`)
+		tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at FROM nodes ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +274,7 @@ func (s *Store) Nodes(ctx context.Context) ([]Node, error) {
 // Node loads one node.
 func (s *Store) Node(ctx context.Context, id int64) (*Node, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT id,name,protocol,server,port,config,secrets,fingerprint,
-		tags,weight,max_conns,enabled,note,egress_ip,created_at,updated_at FROM nodes WHERE id=?`, id)
+		tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at FROM nodes WHERE id=?`, id)
 	n, err := s.scanNode(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -241,7 +299,7 @@ func (s *Store) scanNode(sc rowScanner) (Node, error) {
 	)
 	if err := sc.Scan(&n.ID, &n.Name, &n.Protocol, &n.Server, &n.Port, &configJSON, &sealed,
 		&fingerprint, &tagsRaw, &n.Weight, &n.MaxConns, &enabled, &n.Note, &n.EgressIP,
-		&created, &updated); err != nil {
+		&n.Source, &created, &updated); err != nil {
 		return Node{}, err
 	}
 	n.Config = map[string]any{}
@@ -292,10 +350,10 @@ func (s *Store) UpsertNodes(ctx context.Context, nodes []Node, defaultTags []str
 				tags = defaultTags
 			}
 			if _, err := s.db.ExecContext(ctx, `INSERT INTO nodes
-				(name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,created_at,updated_at)
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+				(name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 				n.Name, n.Protocol, n.Server, n.Port, string(cfgJSON), sealed, fp, joinTags(tags),
-				defaultInt(n.Weight, 1), defaultInt(n.MaxConns, 32), 1, n.Note, n.EgressIP, now, now); err != nil {
+				defaultInt(n.Weight, 1), defaultInt(n.MaxConns, 32), 1, n.Note, n.EgressIP, n.Source, now, now); err != nil {
 				return created, updated, err
 			}
 			created++
@@ -303,8 +361,8 @@ func (s *Store) UpsertNodes(ctx context.Context, nodes []Node, defaultTags []str
 			return created, updated, err
 		default:
 			if _, err := s.db.ExecContext(ctx, `UPDATE nodes SET name=?, protocol=?, server=?, port=?,
-				config=?, secrets=?, updated_at=? WHERE id=?`,
-				n.Name, n.Protocol, n.Server, n.Port, string(cfgJSON), sealed, now, existingID); err != nil {
+				config=?, secrets=?, source=CASE WHEN ?<>'' THEN ? ELSE source END, updated_at=? WHERE id=?`,
+				n.Name, n.Protocol, n.Server, n.Port, string(cfgJSON), sealed, n.Source, n.Source, now, existingID); err != nil {
 				return created, updated, err
 			}
 			updated++
@@ -328,10 +386,10 @@ func (s *Store) UpdateNode(ctx context.Context, n Node) error {
 		return err
 	}
 	_, err = s.db.ExecContext(ctx, `UPDATE nodes SET name=?,protocol=?,server=?,port=?,config=?,secrets=?,
-		tags=?,weight=?,max_conns=?,enabled=?,note=?,egress_ip=?,updated_at=? WHERE id=?`,
+		tags=?,weight=?,max_conns=?,enabled=?,note=?,egress_ip=?,source=?,updated_at=? WHERE id=?`,
 		n.Name, n.Protocol, n.Server, n.Port, string(cfgJSON), sealed, joinTags(n.Tags),
 		defaultInt(n.Weight, 1), defaultInt(n.MaxConns, 32), boolInt(n.Enabled), n.Note, n.EgressIP,
-		time.Now().Unix(), n.ID)
+		n.Source, time.Now().Unix(), n.ID)
 	return err
 }
 
@@ -692,6 +750,133 @@ func (s *Store) Usage(ctx context.Context, limit int) ([]UsageRow, error) {
 			return nil, err
 		}
 		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// Subscription is a managed clash/base64 subscription that the scheduler refreshes.
+type Subscription struct {
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	PoolID          int64     `json:"pool_id"`
+	Tags            []string  `json:"tags"`
+	IntervalSeconds int       `json:"interval_seconds"`
+	Enabled         bool      `json:"enabled"`
+	LastFetchAt     time.Time `json:"last_fetch_at"`
+	LastError       string    `json:"last_error,omitempty"`
+	LastAdded       int       `json:"last_added"`
+	LastRemoved     int       `json:"last_removed"`
+	LastChanged     int       `json:"last_changed"`
+	LastDiff        string    `json:"last_diff,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// Subscriptions lists all subscriptions.
+func (s *Store) Subscriptions(ctx context.Context) ([]Subscription, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id,name,url,pool_id,tags,interval_seconds,enabled,
+		last_fetch_at,last_error,last_added,last_removed,last_changed,last_diff,created_at FROM subscriptions ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Subscription
+	for rows.Next() {
+		sub, err := scanSubscription(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sub)
+	}
+	return out, rows.Err()
+}
+
+// Subscription loads one subscription.
+func (s *Store) Subscription(ctx context.Context, id int64) (*Subscription, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id,name,url,pool_id,tags,interval_seconds,enabled,
+		last_fetch_at,last_error,last_added,last_removed,last_changed,last_diff,created_at FROM subscriptions WHERE id=?`, id)
+	sub, err := scanSubscription(row)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &sub, nil
+}
+
+func scanSubscription(sc rowScanner) (Subscription, error) {
+	var (
+		sub                Subscription
+		tagsRaw            string
+		enabled            int
+		lastFetch, created int64
+	)
+	if err := sc.Scan(&sub.ID, &sub.Name, &sub.URL, &sub.PoolID, &tagsRaw, &sub.IntervalSeconds,
+		&enabled, &lastFetch, &sub.LastError, &sub.LastAdded, &sub.LastRemoved, &sub.LastChanged,
+		&sub.LastDiff, &created); err != nil {
+		return Subscription{}, err
+	}
+	sub.Tags = splitTags(tagsRaw)
+	sub.Enabled = enabled == 1
+	sub.LastFetchAt = time.Unix(lastFetch, 0)
+	sub.CreatedAt = time.Unix(created, 0)
+	return sub, nil
+}
+
+// SaveSubscription inserts (ID=0) or updates a subscription.
+func (s *Store) SaveSubscription(ctx context.Context, sub Subscription) (int64, error) {
+	sub.Name = strings.TrimSpace(sub.Name)
+	sub.URL = strings.TrimSpace(sub.URL)
+	if sub.Name == "" || sub.URL == "" {
+		return 0, errors.New("egress: 订阅名称与 URL 不能为空")
+	}
+	if sub.IntervalSeconds < 300 {
+		sub.IntervalSeconds = 3600
+	}
+	if sub.ID == 0 {
+		res, err := s.db.ExecContext(ctx, `INSERT INTO subscriptions(name,url,pool_id,tags,interval_seconds,enabled,created_at)
+			VALUES (?,?,?,?,?,?,?)`, sub.Name, sub.URL, sub.PoolID, joinTags(sub.Tags), sub.IntervalSeconds, boolInt(sub.Enabled), time.Now().Unix())
+		if err != nil {
+			return 0, err
+		}
+		return res.LastInsertId()
+	}
+	_, err := s.db.ExecContext(ctx, `UPDATE subscriptions SET name=?,url=?,pool_id=?,tags=?,interval_seconds=?,enabled=? WHERE id=?`,
+		sub.Name, sub.URL, sub.PoolID, joinTags(sub.Tags), sub.IntervalSeconds, boolInt(sub.Enabled), sub.ID)
+	return sub.ID, err
+}
+
+// DeleteSubscription removes a subscription. Its imported nodes stay: they may be
+// referenced by pools and deleting them silently would empty a working pool.
+func (s *Store) DeleteSubscription(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM subscriptions WHERE id=?`, id)
+	return err
+}
+
+// SetSubscriptionResult stores the outcome of one refresh.
+func (s *Store) SetSubscriptionResult(ctx context.Context, id int64, added, removed, changed int, diff, lastErr string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE subscriptions SET last_fetch_at=?, last_error=?, last_added=?,
+		last_removed=?, last_changed=?, last_diff=? WHERE id=?`,
+		time.Now().Unix(), lastErr, added, removed, changed, diff, id)
+	return err
+}
+
+// NodesBySource lists nodes imported by one subscription.
+func (s *Store) NodesBySource(ctx context.Context, source string) ([]Node, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id,name,protocol,server,port,config,secrets,fingerprint,
+		tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at FROM nodes WHERE source=?`, source)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Node
+	for rows.Next() {
+		n, err := s.scanNode(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, n)
 	}
 	return out, rows.Err()
 }
