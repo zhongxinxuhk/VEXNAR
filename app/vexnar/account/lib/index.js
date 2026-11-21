@@ -31,8 +31,12 @@ export const inject = ['webServer', 'credentials', 'settings']
 const KEY_REF = 'VEXNAR_NEWAPI_KEY'
 const PROVIDER = 'vexnar'
 
-function newapiBase() {
-  return (process.env.VEXNAR_NEWAPI_BASE || 'https://api.sec.hn.cn').replace(/\/+$/, '')
+// Two hosts: the platform serves the login UI, the api host serves /api and /v1.
+function apiBase() {
+  return (process.env.VEXNAR_NEWAPI_API || process.env.VEXNAR_NEWAPI_BASE || 'https://api.sec.hn.cn').replace(/\/+$/, '')
+}
+function platformBase() {
+  return (process.env.VEXNAR_NEWAPI_PLATFORM || 'https://platform.sec.hn.cn').replace(/\/+$/, '')
 }
 function accountFile() {
   const home = process.env.DSH_HOME || join(process.cwd(), '.dsh-home')
@@ -56,7 +60,7 @@ async function readJson(req) {
 async function newapiJson(path, init = {}, cookie = '') {
   const headers = { 'Content-Type': 'application/json', Accept: 'application/json', ...(init.headers || {}) }
   if (cookie) headers.Cookie = cookie
-  const response = await fetch(`${newapiBase()}${path}`, { ...init, headers, redirect: 'manual' })
+  const response = await fetch(`${apiBase()}${path}`, { ...init, headers, redirect: 'manual' })
   const text = await response.text()
   let body
   try {
@@ -92,7 +96,7 @@ async function createApiKey(call, name) {
 
 /** Model catalog for the pi-ai route: everything the key may call. */
 async function listModels(apiKey) {
-  const response = await fetch(`${newapiBase()}/v1/models`, {
+  const response = await fetch(`${apiBase()}/v1/models`, {
     headers: { Authorization: `Bearer ${apiKey}` }
   })
   if (!response.ok) return []
@@ -124,19 +128,19 @@ async function applyAccount(ctx, account, key) {
       [PROVIDER]: {
         displayName: 'VEXNAR · NewAPI',
         api: 'openai-completions',
-        baseURL: `${account.base}/v1`,
+        baseURL: `${account.api}/v1`,
         apiKeyEnv: KEY_REF,
         models: account.models.map((model) => ({ id: model.id, name: model.name || model.id }))
       }
     }
   })
-  await persist({ base: account.base, models: account.models, user: account.user ?? '', savedAt: Date.now() })
+  await persist({ api: account.api, platform: account.platform, models: account.models, user: account.user ?? '', savedAt: Date.now() })
 }
 
 /** Re-apply the stored route on boot so a restart keeps working. */
 async function restore(ctx) {
   const account = await readAccount()
-  if (!account?.base || !Array.isArray(account.models) || account.models.length === 0) return
+  if (!account?.api || !Array.isArray(account.models) || account.models.length === 0) return
   const stored = await ctx.credentials.resolve(KEY_REF)
   if (!stored?.value) return
   await ctx.settings.update('llm-pi-ai', {
@@ -144,7 +148,7 @@ async function restore(ctx) {
       [PROVIDER]: {
         displayName: 'VEXNAR · NewAPI',
         api: 'openai-completions',
-        baseURL: `${account.base}/v1`,
+        baseURL: `${account.api}/v1`,
         apiKeyEnv: KEY_REF,
         models: account.models.map((model) => ({ id: model.id, name: model.name || model.id }))
       }
@@ -154,8 +158,8 @@ async function restore(ctx) {
 
 function statusOf(account, credential) {
   return {
-    configured: Boolean(credential?.value) && Boolean(account?.base),
-    base: account?.base ?? newapiBase(),
+    configured: Boolean(credential?.value) && Boolean(account?.api),
+    base: account?.platform ?? account?.api ?? platformBase(),
     user: account?.user ?? '',
     models: account?.models?.length ?? 0,
     keySet: Boolean(credential?.value),
@@ -180,7 +184,7 @@ async function runBrowserLogin(ctx) {
       viewport: { width: 1100, height: 780 }
     })
     const page = context.pages()[0] ?? (await context.newPage())
-    await page.goto(`${newapiBase()}/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.goto(`${platformBase()}/login`, { waitUntil: 'domcontentloaded', timeout: 30000 })
     browserLogin.state = 'waiting'
     browserLogin.message = '请在 Chrome 窗口里完成登录（任意已启用的方式）'
 
@@ -188,7 +192,7 @@ async function runBrowserLogin(ctx) {
     let user = ''
     while (Date.now() < deadline) {
       if (context.pages().length === 0) throw new Error('登录窗口已关闭')
-      const me = await page.request.get(`${newapiBase()}/api/user/self`).catch(() => null)
+      const me = await page.request.get(`${platformBase()}/api/user/self`).catch(() => null)
       if (me && me.ok()) {
         const body = await me.json().catch(() => ({}))
         if (body?.data?.username) {
@@ -201,7 +205,7 @@ async function runBrowserLogin(ctx) {
     if (user === '') throw new Error('等待登录超时')
 
     const call = async (path, init) => {
-      const response = await page.request.fetch(`${newapiBase()}${path}`, {
+      const response = await page.request.fetch(`${platformBase()}${path}`, {
         method: init?.method ?? 'GET',
         data: init?.body,
         headers: init?.body ? { 'Content-Type': 'application/json' } : undefined
@@ -211,7 +215,7 @@ async function runBrowserLogin(ctx) {
     const key = await createApiKey(call, `vexnar-app-${Date.now()}`)
     const models = await listModels(key)
     if (models.length === 0) throw new Error('读取模型列表失败')
-    await applyAccount(ctx, { base: newapiBase(), user, models }, key)
+    await applyAccount(ctx, { api: apiBase(), platform: platformBase(), user, models }, key)
     Object.assign(browserLogin, { state: 'done', message: `已登录：${user}`, user })
   } catch (error) {
     Object.assign(browserLogin, { state: 'error', message: String(error?.message || error) })
@@ -245,7 +249,7 @@ export function apply(ctx) {
             oauth.push({ slug: provider.slug, name: provider.name || provider.slug })
           }
           send(res, 200, {
-            base: newapiBase(),
+            base: platformBase(),
             password: d.password_login_enabled !== false,
             passkey: d.passkey_login === true,
             emailVerification: d.email_verification === true,
@@ -283,8 +287,8 @@ export function apply(ctx) {
           const key = await createApiKey(call, `vexnar-app-${Date.now()}`)
           const models = await listModels(key)
           if (models.length === 0) throw new Error('读取模型列表失败')
-          await applyAccount(ctx, { base: newapiBase(), user: username, models }, key)
-          send(res, 200, statusOf({ base: newapiBase(), models, user: username }, { value: key }))
+          await applyAccount(ctx, { api: apiBase(), platform: platformBase(), user: username, models }, key)
+          send(res, 200, statusOf({ api: apiBase(), platform: platformBase(), models, user: username }, { value: key }))
         } catch (error) {
           send(res, 400, { error: String(error?.message || error) })
         }
@@ -333,8 +337,9 @@ export function apply(ctx) {
             send(res, 400, { error: '该 Key 读取不到模型列表' })
             return
           }
-          await applyAccount(ctx, { base: base.replace(/\/v1$/, ''), user: '', models }, key)
-          send(res, 200, statusOf({ base, models }, { value: key }))
+          const api = base.replace(/\/v1$/, '')
+          await applyAccount(ctx, { api, platform: api, user: '', models }, key)
+          send(res, 200, statusOf({ api: base, models }, { value: key }))
         } catch (error) {
           send(res, 400, { error: String(error?.message || error) })
         }
@@ -360,7 +365,7 @@ export function apply(ctx) {
       path: '/vexnar-account/logout',
       handler: async (_req, res) => {
         await ctx.credentials.unset(KEY_REF)
-        await persist({ base: '', models: [] })
+        await persist({ api: '', models: [] })
         send(res, 200, { configured: false })
       }
     })
