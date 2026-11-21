@@ -106,6 +106,6 @@ export interface Store {
   taskMetrics(): Promise<Map<number, TaskMetrics>>
   invalidate?(tables?: string[]): void
   nodes: {
-    page(options: { taskId: string; page: number; size: number; order?: 'asc' | 'desc'; kinds?: string[]; states?: string[] }): Promise<{ items: any[]; total: number; edges: any[] }>
+    page(options: { taskId: string; page: number; size: number; order?: 'asc' | 'desc'; kinds?: string[]; states?: string[]; before?: string }): Promise<{ items: any[]; total: number; edges: any[] }>
   }
 }

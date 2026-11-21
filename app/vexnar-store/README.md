@@ -83,6 +83,11 @@ writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
 - journal 恢复只重放 `prepared`，`failed` 不重放；
 - 测试：`pnpm --filter @vexnar/store run test:writes`（创建任务、分配探索、改漏洞、冲突、上报漏洞、日志重放、锁释放）。
 
+## 节点分页
+
+`nodes.page` 支持 `kinds`、`states`、`order` 与 `before`（取更早的 id），
+供 `/api/exploration/nodes` 与 `/api/exploration/intents` 共用。
+
 ## 与 dsh 的关系
 
 dsh 的 `storage-domain` 是"schema 校验 + 可替换 backend"的 KV 域。本包按同一模型实现

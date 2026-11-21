@@ -451,6 +451,25 @@ api.get('/api/exploration/findings/:id', async (c) => {
   })
 })
 
+api.get('/api/exploration/intents', async (c) => {
+  const taskId = c.req.query('task') ?? ''
+  const limit = Math.min(Number(c.req.query('limit') ?? 300) || 300, 500)
+  const before = c.req.query('before') ?? ''
+  if (!taskId) return c.req.query('page') ? c.json({ items: [], has_more: false }) : c.json([])
+  const result = await store.nodes.page({ taskId, page: 1, size: limit, order: 'desc', kinds: ['intent'], before: before && before !== '0' ? before : undefined })
+  const items = result.items.map((row: any) => ({
+    id: String(row.id),
+    type: row.kind,
+    payload: JSON.stringify(typeof row.payload === 'string' ? parseJson(row.payload) : row.payload ?? {}),
+    priority: row.priority,
+    state: row.state,
+    ...(row.origin == null ? {} : { origin: row.origin }),
+    ts: row.created_at
+  }))
+  if (c.req.query('page')) return c.json({ items, has_more: result.total > items.length })
+  return c.json(items)
+})
+
 api.get('/api/exploration/nodes', async (c) => {
   const taskId = c.req.query('task') ?? ''
   const page = Math.max(Number(c.req.query('page') ?? 1) || 1, 1)
