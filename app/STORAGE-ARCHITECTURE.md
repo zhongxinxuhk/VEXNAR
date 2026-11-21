@@ -175,7 +175,17 @@ meta 表主键即 key
 
 ---
 
-## 9. 待决问题
+## 9. M1 落地状态（2026-11-21）
+
+- `vexnar-meta` 已实现：`$DSH_HOME/vexnar/store/meta.json`（version + tables），
+  agents / tools / mcp / notify / llmProfiles / taskCategories / taskTemplates / settings；
+- 元数据端点 10 个已切到 meta 域，对账 12/12；companies 仍在 PG（assets 域）；
+- seed 修正了两个 PG 别名排序陷阱（`id::text AS id` 会让 `ORDER BY id` 变成字典序），
+  并补齐 profiles 的 null 省略、tools 的 `agents: []` 归一。
+
+下一步 M2：assets/companies 进 `vexnar-assets` 域，然后是 activity。
+
+## 10. 待决问题
 
 1. `activity` 何时切 sqlite？建议 > 50k 行或单文件 > 10 MB 时。
 2. `journal` 的清理策略：保留 7 天 + 最近 1000 条。

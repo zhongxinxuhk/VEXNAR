@@ -3,121 +3,39 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from 'hono'
 import { db, parseJson, rfc3339, sql, unix } from './db.js'
-import { openStore } from '../../vexnar-store/src/index.ts'
+import { metaStore, openStore, storeRoot } from '../../vexnar-store/src/index.ts'
 
 const store = await openStore()
+const meta = metaStore(storeRoot())
 
 export const api = new Hono()
 
 api.get('/api/health', (c) => c.json({ ok: true, service: 'vexnar', version: process.env.VEXNAR_VERSION ?? 'dev' }))
 
-// ── agents ────────────────────────────────────────────────────────────────
-api.get('/api/agents', async (c) => {
-  const rows = await db.selectFrom('agents').selectAll().orderBy('id').execute()
-  return c.json({
-    agents: rows.map((row) => ({
-      id: String(row.id),
-      key: row.key,
-      name: row.name,
-      description: row.description,
-      role: row.role,
-      builtin: row.builtin,
-      enabled: row.enabled,
-      max_turns: row.max_turns,
-      run_seconds: row.run_seconds,
-      web_search: row.web_search,
-      interactive_shell: row.interactive_shell,
-      llm_profile_id: row.llm_profile_id ?? null,
-      trigger_run_mode: row.trigger_run_mode,
-      trigger_merge_mode: row.trigger_merge_mode,
-      trigger_max_parallel: row.trigger_max_parallel,
-      mcp_count: 0,
-      skill_count: 0,
-      tool_count: 0
-    }))
-  })
-})
+// ── agents / profiles / categories / templates (vexnar-meta) ─────────────
+api.get('/api/agents', async (c) => c.json({ agents: await meta.table('agents') }))
 
 api.get('/api/agents/:key', async (c) => {
-  const row = await db.selectFrom('agents').selectAll().where('key', '=', c.req.param('key')).executeTakeFirst()
+  const agents = await meta.table<any[]>('agents')
+  const row = agents.find((agent) => agent.key === c.req.param('key'))
   if (!row) return c.json({ error: 'not found' }, 404)
   return c.json({ agent: row })
 })
 
-// ── LLM profiles ──────────────────────────────────────────────────────────
 api.get('/api/llm/profiles', async (c) => {
-  const rows = await db.selectFrom('llm_profiles').selectAll().orderBy('id').execute()
+  const rows = await meta.table<any[]>('llmProfiles')
   return c.json({
-    profiles: rows.map((row) => ({
-      id: String(row.id),
-      name: row.name,
-      format: row.format,
-      ...(row.base_url == null ? {} : { base_url: row.base_url }),
-      model: row.model,
-      api_key_hint: row.api_key_hint,
-      rate_per_second: row.rate_per_second,
-      rate_per_minute: row.rate_per_minute,
-      context_window_k: row.context_window_k,
-      thinking_type: row.thinking_type,
-      reasoning_effort: row.reasoning_effort,
-      is_default: row.is_default,
-      priority: row.priority,
-      pool_exclude: row.pool_exclude,
-      streaming: row.streaming,
-      max_tokens: row.max_tokens,
-      max_tokens_field: row.max_tokens_field,
-      session_header_key: row.session_header_key,
-      retry: {
-        connect: { attempts: row.retry_connect_attempts, interval_ms: row.retry_connect_interval_ms },
-        empty: { attempts: row.retry_empty_attempts, interval_ms: row.retry_empty_interval_ms },
-        stream: { attempts: row.retry_stream_attempts, interval_ms: row.retry_stream_interval_ms }
-      },
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }))
+    profiles: rows.map((row) => {
+      if (row.base_url != null) return row
+      const { base_url, ...rest } = row
+      return rest
+    })
   })
 })
 
-// ── categories / templates / companies ────────────────────────────────────
-api.get('/api/task-categories', async (c) => {
-  const rows = await db
-    .selectFrom('task_categories as c')
-    .selectAll('c')
-    .select((eb) => eb.selectFrom('tasks').select(sql<number>`count(*)::int`).whereRef('tasks.category_id', '=', 'c.id').as('task_count'))
-    .orderBy('c.id')
-    .execute()
-  return c.json({
-    categories: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      task_count: Number(row.task_count ?? 0),
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }))
-  })
-})
+api.get('/api/task-categories', async (c) => c.json({ categories: await meta.table('taskCategories') }))
 
-api.get('/api/task-templates', async (c) => {
-  const rows = await db
-    .selectFrom('task_templates')
-    .selectAll()
-    .select([rfc3339('created_at').as('created_text'), rfc3339('updated_at').as('updated_text')])
-    .orderBy('updated_at', 'desc')
-    .orderBy('id', 'desc')
-    .execute()
-  return c.json({
-    templates: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      goal: row.goal,
-      category_id: row.category_id,
-      intercept_rules: parseJson(row.intercept_rules) ?? [],
-      created_at: row.created_at,
-      updated_at: row.updated_at
-    }))
-  })
-})
+api.get('/api/task-templates', async (c) => c.json({ templates: await meta.table('taskTemplates') }))
 
 api.get('/api/companies', async (c) => {
   const rows = await db
@@ -159,114 +77,14 @@ api.get('/api/companies', async (c) => {
   )
 })
 
-// ── tools / mcp / notify / settings ───────────────────────────────────────
+// ── tools / mcp / notify / settings (vexnar-meta) ────────────────────────
 api.get('/api/tools', async (c) => {
-  const rows = await db.selectFrom('tools').selectAll().orderBy('key').execute()
-  const counts = await db
-    .selectFrom('tool_usage')
-    .select(['tool_key'])
-    .select(sql<number>`count(*)::int`.as('n'))
-    .groupBy('tool_key')
-    .execute()
-  const calls = new Map(counts.map((row) => [row.tool_key, Number(row.n)]))
-  return c.json({
-    tools: rows.map((row) => ({
-      key: row.key,
-      system: row.system,
-      description: row.description,
-      schema: parseJson(row.schema),
-      agents: parseJson(row.agents) ?? [],
-      enabled: row.enabled,
-      kind: row.kind,
-      exec: row.exec,
-      deferred: row.deferred,
-      calls: calls.get(row.key) ?? 0
-    }))
-  })
+  const rows = await meta.table<any[]>('tools')
+  return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) })
 })
-
-api.get('/api/mcp', async (c) => {
-  const rows = await db.selectFrom('mcp_servers').selectAll().orderBy('id').execute()
-  return c.json({
-    servers: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      transport: row.transport,
-      command: row.command ?? undefined,
-      args: parseJson(row.args) ?? [],
-      env: parseJson(row.env) ?? {},
-      url: row.url ?? undefined,
-      enabled: row.enabled,
-      insecure: row.insecure,
-      tools: []
-    }))
-  })
-})
-
-api.get('/api/notify/channels', async (c) => {
-  const rows = await db.selectFrom('notification_channels').selectAll().orderBy('id').execute()
-  return c.json({
-    channels: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      kind: row.kind,
-      enabled: row.enabled,
-      config: parseJson(row.config),
-      mode: row.mode,
-      filter: parseJson(row.filter),
-      rate_per_min: row.rate_per_min
-    }))
-  })
-})
-
-const SETTINGS_DEFAULTS: Record<string, unknown> = {
-  traffic_capture: false,
-  agent_traffic_binding: false,
-  llm_record: false,
-  web_search_enabled: false,
-  web_search_backend: 'ddgs',
-  brave_key_set: false,
-  tavily_key_set: false,
-  web_search_proxy: '',
-  global_proxy: '',
-  python_interpreter: '',
-  workers: 3,
-  task_concurrency_enabled: false,
-  task_concurrency_limit: 5,
-  llm_pool_enabled: false,
-  llm_pool_bind_fallback: false,
-  constraints_inject_planner: false,
-  constraints_inject_worker: false,
-  noa_compaction: false,
-  finding_auto_verify: false,
-  notify_enabled: true,
-  notify_public_base_url: '',
-  notify_digest_interval_min: 30
-}
-
-const SETTINGS_TYPES: Record<string, 'bool' | 'int'> = {
-  traffic_capture: 'bool', agent_traffic_binding: 'bool', llm_record: 'bool', web_search_enabled: 'bool',
-  brave_key_set: 'bool', tavily_key_set: 'bool', task_concurrency_enabled: 'bool', llm_pool_enabled: 'bool',
-  llm_pool_bind_fallback: 'bool', constraints_inject_planner: 'bool', constraints_inject_worker: 'bool',
-  noa_compaction: 'bool', finding_auto_verify: 'bool', notify_enabled: 'bool',
-  workers: 'int', task_concurrency_limit: 'int', notify_digest_interval_min: 'int'
-}
-
-api.get('/api/settings', async (c) => {
-  const rows = await db.selectFrom('settings').selectAll().execute()
-  const stored = new Map(rows.map((row) => [row.key, row.value]))
-  const out: Record<string, unknown> = {}
-  for (const [key, fallback] of Object.entries(SETTINGS_DEFAULTS)) {
-    const raw = stored.get(key)
-    if (raw === undefined) {
-      out[key] = fallback
-      continue
-    }
-    const type = SETTINGS_TYPES[key]
-    out[key] = type === 'bool' ? raw === 'true' : type === 'int' ? Number(raw) : raw
-  }
-  return c.json(out)
-})
+api.get('/api/mcp', async (c) => c.json({ servers: await meta.table('mcp') }))
+api.get('/api/notify/channels', async (c) => c.json({ channels: await meta.table('notify') }))
+api.get('/api/settings', async (c) => c.json(await meta.table('settings')))
 
 // ── tasks ─────────────────────────────────────────────────────────────────
 const taskDto = (row: any) => ({
