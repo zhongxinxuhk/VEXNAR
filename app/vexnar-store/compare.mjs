@@ -61,7 +61,7 @@ if (busiest) {
 
 const pgCompanies = await pg.companies.list()
 const jsonCompanies = await json.companies.list()
-check('companies equal', same(pgCompanies, jsonCompanies))
+check('companies equal', same(pgCompanies, jsonCompanies), JSON.stringify(diff(canon(pgCompanies), canon(jsonCompanies)).slice(0,2)))
 
 const pgStats = await pg.findings.stats()
 const jsonStats = await json.findings.stats()

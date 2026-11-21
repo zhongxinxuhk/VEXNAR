@@ -183,8 +183,10 @@ meta 表主键即 key
 - seed 修正了两个 PG 别名排序陷阱（`id::text AS id` 会让 `ORDER BY id` 变成字典序），
   并补齐 profiles 的 null 省略、tools 的 `agents: []` 归一。
 
-M2 首步：companies/company_scope 已进 store（`companies.json`），core 不再直连 PG；
-`assets` 仍是单文件，per-record 化与 activity 域是下一步。
+M2 首步已完成：graph/assets/companies 全部改为 **per-record 目录**
+（`tasks/<id>.json` 等），单次写只替换一个文档；companies 的 PG 顺序用
+`<ordinal>-<id>` 键保持；core 不再直连 PG。store 对账 **7/7**。
+下一步：activity 域与写路径（journal + rev）。
 
 ## 10. 待决问题
 

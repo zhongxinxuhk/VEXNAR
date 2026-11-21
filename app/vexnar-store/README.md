@@ -19,12 +19,17 @@ VEXNAR 的存储层。**默认跟随 dsh**：`$DSH_HOME/vexnar/store` 下的 JSO
 
 ```text
 store/
-├─ tasks.json
-├─ findings.json
-├─ assets.json
-├─ nodes.json
-└─ edges.json
+├─ tasks/<id>.json          per-record
+├─ findings/<id>.json
+├─ nodes/<id>.json
+├─ edges/<src>-<rel>-<dst>.json
+├─ assets/<id>.json
+├─ companies/<ordinal-id>.json
+└─ meta.json                 single-file 域（配置类）
 ```
+
+导入时会清空对应表目录，避免旧键与新键并存造成重复；遗留的 `tasks.json`
+等单文件会被删除。
 
 写入路径：临时文件 + `rename` 原子替换（0600），目录 0700。
 
@@ -37,7 +42,7 @@ npm run seed        # 只读 PG，写 JSON store
 npm run compare     # JSON store vs PG 适配器逐项对比
 ```
 
-最近一次：
+最近一次（per-record 布局）：
 
 ```text
 [PASS] tasks row count  232 vs 232
