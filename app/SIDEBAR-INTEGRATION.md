@@ -52,7 +52,12 @@ dsh 侧边栏
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
-- 工具执行：选择 nmap/httpx/ffuf/sqlmap，填 target 与可选 task_id，结果解析并落库。
+- 工具执行：选择 nmap/httpx/ffuf/sqlmap，填 target 与可选 task_id，结果解析并落库；
+- 任务详情：暂停/恢复/归档按钮；
+- 流量页：抓包列表（经 core 回退代理 Go `/api/traffic`）；
+- 拦截规则：规则列表与删除（同样代理 Go）；
+- 审批记录：Go 无独立接口，占位说明。
+- core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。
 
 连接方式：面板右上「连接 core」写入 `vexnar.coreUrl` 与 `vexnar.coreToken`；
 core 需设置 `VEXNAR_API_TOKEN`，并已开放 CORS 与 `x-vexnar-token` 头。

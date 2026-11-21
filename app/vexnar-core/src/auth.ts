@@ -9,6 +9,11 @@ import { repo } from './db.js'
 
 const key = readFileSync(join(repo, 'jwt.key'))
 
+/** Service token used when the shared-token caller is proxied to Go. */
+export function serviceToken() {
+  return jwt.sign({}, key, { algorithm: 'HS256', subject: 'VEXNAR', expiresIn: '5m' })
+}
+
 /** Same HS256 contract as the Go service: Bearer header or cookie. */
 export const auth: MiddlewareHandler = async (c, next) => {
   if (c.req.path === '/api/health') return next()

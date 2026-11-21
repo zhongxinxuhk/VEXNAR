@@ -713,6 +713,16 @@ function TaskDetail({ id, onBack }) {
   const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`);
   const coverage = useApi(`/api/tasks/${id}/coverage`);
   const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`);
+  const [tick, setTick] = (0, import_react.useState)(0);
+  const act = async (action) => {
+    try {
+      if (action === "archive") await callApi(`/api/tasks/${id}/archive`, "POST");
+      else await callApi(`/api/tasks/${id}/control`, "POST", { action });
+      setTick(tick + 1);
+    } catch (error) {
+      window.alert(String(error?.message ?? error));
+    }
+  };
   const row = task.data ?? {};
   const section = (title, children) => (0, import_react.createElement)(
     "div",
@@ -937,6 +947,72 @@ function ToolRunPage() {
     (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
   );
 }
+function TrafficPage() {
+  const { data, error, loading } = useApi("/api/traffic?page=1&size=50");
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981\u4EE5 VEXNAR_GO_FALLBACK \u542F\u52A8 core \u624D\u80FD\u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09`);
+  const rows = data?.items ?? data?.exchanges ?? [];
+  return (0, import_react.createElement)(
+    "div",
+    { style: { fontSize: 13 } },
+    (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? data?.total ?? rows.length} \u6761\u6293\u5305`),
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse" } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["\u65F6\u95F4", "\u65B9\u6CD5", "URL", "\u72B6\u6001", "\u6765\u6E90"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, rows.slice(0, 50).map((row, index) => (0, import_react.createElement)(
+        "tr",
+        { key: row.id ?? index },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, String(row.ts ?? row.time ?? "")),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.method ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.url ?? row.host ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, String(row.status ?? row.status_code ?? "")),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.source ?? row.client ?? "")
+      )))
+    )
+  );
+}
+function InterceptPage() {
+  const { data, error, loading } = useApi("/api/intercept/rules");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u89C4\u5219\uFF09`);
+  const rows = data?.rules ?? [];
+  const remove = async (row) => {
+    if (!window.confirm(`\u5220\u9664\u89C4\u5219 #${row.id}?`)) return;
+    try {
+      await callApi(`/api/intercept/rules/${row.id}`, "DELETE");
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
+  };
+  return (0, import_react.createElement)(
+    "div",
+    { key: version, fontSize: 13 },
+    (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? rows.length} \u6761\u89C4\u5219`),
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse" } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u5339\u914D", "\u52A8\u4F5C", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.id },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.name ?? row.match ?? row.match_target ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.action ?? row.enabled === false ? "\u505C\u7528" : "\u542F\u7528"),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react.createElement)("button", { type: "button", onClick: () => remove(row), style: { cursor: "pointer" } }, "\u5220\u9664"))
+      )))
+    )
+  );
+}
+function ApprovalsPage() {
+  return (0, import_react.createElement)(
+    "div",
+    { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
+    "\u5BA1\u6279\u8BB0\u5F55\uFF1AGo \u4FA7\u6682\u65E0\u72EC\u7ACB REST \u63A5\u53E3\uFF08web \u63A7\u5236\u53F0\u4E5F\u6CA1\u6709\u8BE5\u9875\uFF09\uFF0C\u8FC1\u79FB\u65F6\u968F\u62E6\u622A\u89C4\u5219\u4E00\u8D77\u843D\u5730\u3002"
+  );
+}
 function VexnarConsole() {
   const [active, setActive] = (0, import_react.useState)("dashboard");
   const [taskId, setTaskId] = (0, import_react.useState)("");
@@ -1000,7 +1076,7 @@ function VexnarConsole() {
         }, "\u8FDE\u63A5 core")
       ),
       (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 20px" } }, current.desc),
-      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId }) : current.id === "agents" ? (0, import_react.createElement)(AgentsPage) : current.id === "mcp" ? (0, import_react.createElement)(McpPage) : current.id === "tools" ? (0, import_react.createElement)(ToolsPage) : current.id === "notify" ? (0, import_react.createElement)(NotifyPage) : current.id === "tools-run" ? (0, import_react.createElement)(ToolRunPage) : (0, import_react.createElement)(
+      current.id === "dashboard" ? (0, import_react.createElement)(Dashboard) : current.id === "tasks" ? taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)(TaskList, { onSelect: setTaskId }) : current.id === "findings" ? findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId }) : current.id === "agents" ? (0, import_react.createElement)(AgentsPage) : current.id === "mcp" ? (0, import_react.createElement)(McpPage) : current.id === "tools" ? (0, import_react.createElement)(ToolsPage) : current.id === "notify" ? (0, import_react.createElement)(NotifyPage) : current.id === "tools-run" ? (0, import_react.createElement)(ToolRunPage) : current.id === "traffic" ? (0, import_react.createElement)(TrafficPage) : current.id === "intercept" ? (0, import_react.createElement)(InterceptPage) : current.id === "approvals" ? (0, import_react.createElement)(ApprovalsPage) : (0, import_react.createElement)(
         "div",
         { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
         "\u8BE5\u9762\u677F\u7531 vexnar-core \u7684 /api \u63D0\u4F9B\u6570\u636E\uFF1B\u5F53\u524D\u4E3A\u63A5\u5165\u9AA8\u67B6\uFF0C\u5217\u8868\u4E0E\u8BE6\u60C5\u6309\u57DF\u9010\u6B65\u5F00\u653E\u3002"

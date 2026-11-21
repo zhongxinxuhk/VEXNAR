@@ -4,7 +4,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { auth } from './auth.js'
+import { auth, serviceToken } from './auth.js'
 import { api } from './routes.js'
 
 const app = new Hono()
@@ -46,6 +46,7 @@ app.all('/api/*', async (c) => {
   const url = new URL(c.req.url)
   const target = `${fallback}${url.pathname}${url.search}`
   const headers = new Headers()
+  if (!c.req.header('authorization')) headers.set('authorization', `Bearer ${serviceToken()}`)
   for (const key of ['authorization', 'cookie', 'content-type', 'accept', 'x-requested-with']) {
     const value = c.req.header(key)
     if (value) headers.set(key, value)
