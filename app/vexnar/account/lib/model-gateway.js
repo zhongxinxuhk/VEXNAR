@@ -1,152 +1,160 @@
-// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
-// Repository: https://github.com/zhongxinxuhk/VEXNAR
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-/**
- * 引擎的模型网关：在 dsh 进程内起一个只监听 127.0.0.1 的 OpenAI 兼容端点，
- * 用登录时拿到的提供方密钥把请求转给上游。
- *
- * 以前这条路由由 Go 的 `/api/desktop/openai/v1` 提供（`gateway.ts` 里的
- * VEXNAR_GATEWAY_URL 默认指向 8787）。现在 Go 默认不在环，模型调用必须由 TS 侧
- * 自己给出同样的两类端点：
- *
- *   - `POST /chat/completions`：优先用 chat 类提供方（DeepSeek / 自定义）；只有平台
- *     Responses 提供方时，把 messages 折成 `input` 再取回文本；
- *   - `POST /responses`：优先用 Responses 提供方（平台）；只有 chat 类时反向折一次；
- *   - `GET /models`：汇总当前可用模型，便于引擎选名。
- *
- * 令牌每次启动随机生成，只通过 `VEXNAR_GATEWAY_TOKEN` 交给引擎；上游密钥不出进程。
- */
-
-import { randomBytes } from 'node:crypto'
-import { createServer } from 'node:http'
-
-const MAX_BODY = 4 * 1024 * 1024
-
+import { randomBytes } from "node:crypto";
+import { createServer } from "node:http";
+const MAX_BODY = 4 * 1024 * 1024;
+function isFields(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function failure(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+function statusOf(error) {
+  if (isFields(error) && typeof error.status === "number") return error.status;
+  return 502;
+}
+function errorText(error) {
+  if (isFields(error) && typeof error.message === "string") return error.message;
+  return "\u6A21\u578B\u7F51\u5173\u5931\u8D25";
+}
+function upstreamError(data) {
+  if (!isFields(data) || !isFields(data.error)) return "";
+  const message = data.error.message;
+  return message ? String(message) : "";
+}
 function send(res, status, body) {
-  const payload = JSON.stringify(body)
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': Buffer.byteLength(payload) })
-  res.end(payload)
+  const payload = JSON.stringify(body);
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(payload) });
+  res.end(payload);
 }
-
 async function readBody(req) {
-  const chunks = []
-  let size = 0
+  const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    size += chunk.length
-    if (size > MAX_BODY) throw Object.assign(new Error('请求正文过大'), { status: 413 })
-    chunks.push(chunk)
+    size += chunk.length;
+    if (size > MAX_BODY) throw failure(413, "\u8BF7\u6C42\u6B63\u6587\u8FC7\u5927");
+    chunks.push(chunk);
   }
-  if (size === 0) return {}
+  if (size === 0) return {};
+  let parsed;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
-    throw Object.assign(new Error('无效的 JSON 请求'), { status: 400 })
+    throw failure(400, "\u65E0\u6548\u7684 JSON \u8BF7\u6C42");
   }
+  return isFields(parsed) ? parsed : {};
 }
-
 async function upstream(provider, path, payload) {
-  let response
+  let response;
   try {
-    response = await fetch(`${provider.base.replace(/\/+$/, '')}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${provider.key}` },
+    response = await fetch(`${provider.base.replace(/\/+$/, "")}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${provider.key}` },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(180_000)
-    })
+      signal: AbortSignal.timeout(18e4)
+    });
   } catch {
-    throw Object.assign(new Error(`无法连接模型提供方 ${provider.name}`), { status: 502 })
+    throw failure(502, `\u65E0\u6CD5\u8FDE\u63A5\u6A21\u578B\u63D0\u4F9B\u65B9 ${provider.name}`);
   }
-  const text = await response.text()
-  let data
+  const text = await response.text();
+  let data;
   try {
-    data = text === '' ? {} : JSON.parse(text)
+    data = text === "" ? {} : JSON.parse(text);
   } catch {
-    data = undefined
+    data = void 0;
   }
   if (!response.ok) {
-    throw Object.assign(new Error(`${provider.name} 返回 ${response.status}${data?.error?.message ? `：${data.error.message}` : ''}`), { status: 502 })
+    const detail = upstreamError(data);
+    throw failure(502, `${provider.name} \u8FD4\u56DE ${response.status}${detail === "" ? "" : `\uFF1A${detail}`}`);
   }
-  if (data === undefined) throw Object.assign(new Error(`${provider.name} 返回了无法解析的响应`), { status: 502 })
-  return data
+  if (data === void 0) throw failure(502, `${provider.name} \u8FD4\u56DE\u4E86\u65E0\u6CD5\u89E3\u6790\u7684\u54CD\u5E94`);
+  return isFields(data) ? data : {};
 }
-
-const textOf = (data) => data?.output_text ??
-  data?.output?.flatMap((item) => item?.content ?? []).map((part) => part?.text ?? '').join('') ??
-  data?.choices?.[0]?.message?.content
-
+const textOf = (data) => {
+  const outputText = data.output_text;
+  if (outputText !== void 0 && outputText !== null) return outputText;
+  const output = data.output;
+  if (Array.isArray(output)) {
+    const items = output;
+    const parts = items.flatMap((item) => {
+      const content = isFields(item) && Array.isArray(item.content) ? item.content : [];
+      return content;
+    });
+    return parts.map((part) => isFields(part) && part.text !== void 0 && part.text !== null ? part.text : "").join("");
+  }
+  const choices = data.choices;
+  if (Array.isArray(choices)) {
+    const first = choices[0];
+    if (isFields(first) && isFields(first.message)) return first.message.content;
+  }
+  return void 0;
+};
+function textValue(data) {
+  const text = textOf(data);
+  return typeof text === "string" ? text : "";
+}
 function chatOf(data) {
-  const content = typeof textOf(data) === 'string' ? textOf(data) : ''
-  return { object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }] }
+  const content = textValue(data);
+  return { object: "chat.completion", choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }] };
 }
-
 function responsesOf(data) {
-  const text = typeof textOf(data) === 'string' ? textOf(data) : ''
-  return { object: 'response', output_text: text, output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text }] }] }
+  const text = textValue(data);
+  return { object: "response", output_text: text, output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text }] }] };
 }
-
-/**
- * @param getProviders 返回 `catalog()` 的结果（带 base/key/models）
- * @returns `{ url, token, close }`
- */
-export async function startModelGateway(getProviders) {
-  // 默认每次启动随机；显式给了 VEXNAR_GATEWAY_TOKEN 就沿用（排障/对照用）。
-  const token = process.env.VEXNAR_GATEWAY_TOKEN?.trim() || randomBytes(24).toString('hex')
+async function startModelGateway(getProviders) {
+  const token = process.env.VEXNAR_GATEWAY_TOKEN?.trim() || randomBytes(24).toString("hex");
   const server = createServer(async (req, res) => {
     try {
-      if (req.method === 'GET' && req.url === '/models') {
-        const models = getProviders().flatMap((provider) => provider.models)
-        return send(res, 200, { object: 'list', data: models })
+      if (req.method === "GET" && req.url === "/models") {
+        const models = getProviders().flatMap((provider) => provider.models);
+        return send(res, 200, { object: "list", data: models });
       }
-      if (req.method !== 'POST') return send(res, 405, { error: { message: '请求方法不受支持' } })
-      if (req.headers['x-vexnar-desktop-token'] !== token) {
-        return send(res, 401, { error: { message: '模型网关令牌无效' } })
+      if (req.method !== "POST") return send(res, 405, { error: { message: "\u8BF7\u6C42\u65B9\u6CD5\u4E0D\u53D7\u652F\u6301" } });
+      if (req.headers["x-vexnar-desktop-token"] !== token) {
+        return send(res, 401, { error: { message: "\u6A21\u578B\u7F51\u5173\u4EE4\u724C\u65E0\u6548" } });
       }
-      const providers = getProviders()
-      if (providers.length === 0) return send(res, 503, { error: { message: '尚未配置可用的模型提供方' } })
-      const chat = providers.find((provider) => provider.id !== 'vexnar') ?? undefined
-      const responses = providers.find((provider) => provider.id === 'vexnar') ?? providers[0]
-      const body = await readBody(req)
-      const model = typeof body.model === 'string' && body.model.trim() !== ''
-        ? body.model
-        : (providers[0].models[0]?.id ?? 'default')
-
-      if (req.url === '/chat/completions') {
-        const target = chat ?? responses
-        if (chat) return send(res, 200, await upstream(chat, '/chat/completions', { ...body, model }))
-        // 只有 Responses 提供方：messages → input，结果再折回 chat 形状。
-        const created = await upstream(responses, '/responses', {
+      const providers = getProviders();
+      const primary = providers[0];
+      if (primary === void 0) return send(res, 503, { error: { message: "\u5C1A\u672A\u914D\u7F6E\u53EF\u7528\u7684\u6A21\u578B\u63D0\u4F9B\u65B9" } });
+      const chat = providers.find((provider) => provider.id !== "vexnar");
+      const responses = providers.find((provider) => provider.id === "vexnar") ?? primary;
+      const body = await readBody(req);
+      const requested = body.model;
+      const model = typeof requested === "string" && requested.trim() !== "" ? requested : primary.models[0]?.id ?? "default";
+      if (req.url === "/chat/completions") {
+        if (chat !== void 0) return send(res, 200, await upstream(chat, "/chat/completions", { ...body, model }));
+        const messages = body.messages;
+        const created = await upstream(responses, "/responses", {
           model,
-          input: Array.isArray(body.messages) ? body.messages : [],
+          input: Array.isArray(messages) ? messages : [],
           stream: false
-        })
-        return send(res, 200, chatOf(created))
+        });
+        return send(res, 200, chatOf(created));
       }
-      if (req.url === '/responses') {
-        const targetChat = chat ?? responses
-        if (chat) return send(res, 200, await upstream(chat, '/chat/completions', {
+      if (req.url === "/responses") {
+        const targetChat = chat ?? responses;
+        if (chat !== void 0) return send(res, 200, await upstream(chat, "/chat/completions", {
           model,
-          messages: Array.isArray(body.input)
-            ? body.input.map((item) => typeof item === 'string' ? { role: 'user', content: item } : item)
-            : [],
+          messages: Array.isArray(body.input) ? body.input.map((item) => typeof item === "string" ? { role: "user", content: item } : item) : [],
           stream: false
-        }).then(responsesOf))
-        return send(res, 200, await upstream(targetChat, '/responses', { ...body, model }))
+        }).then(responsesOf));
+        return send(res, 200, await upstream(targetChat, "/responses", { ...body, model }));
       }
-      return send(res, 404, { error: { message: `未实现的网关端点 ${req.url}` } })
+      return send(res, 404, { error: { message: `\u672A\u5B9E\u73B0\u7684\u7F51\u5173\u7AEF\u70B9 ${req.url}` } });
     } catch (error) {
-      send(res, error?.status ?? 502, { error: { message: error?.message ?? '模型网关失败' } })
+      send(res, statusOf(error), { error: { message: errorText(error) } });
     }
-  })
-
+  });
   await new Promise((done, fail) => {
-    server.once('error', fail)
-    server.listen(0, '127.0.0.1', done)
-  })
-  const { port } = server.address()
+    server.once("error", fail);
+    server.listen(0, "127.0.0.1", done);
+  });
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("\u6A21\u578B\u7F51\u5173\u6CA1\u6709\u62FF\u5230\u76D1\u542C\u7AEF\u53E3");
   return {
-    url: `http://127.0.0.1:${port}`,
+    url: `http://127.0.0.1:${address.port}`,
     token,
     close: () => new Promise((done) => server.close(() => done()))
-  }
+  };
 }
+export {
+  startModelGateway
+};

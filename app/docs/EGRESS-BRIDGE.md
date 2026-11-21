@@ -134,7 +134,7 @@ bash/WebFetch"都发生在 Go 进程里。把这些搬到 TS 等于重写协议�
 
 ```bash
 cd app/vexnar-core
-node proxy-bridge.test.mjs        # 17 项：透传/SSE/401→502/不可达/来源校验/契约
+tsx proxy-bridge.test.ts        # 17 项：透传/SSE/401→502/不可达/来源校验/契约
 pnpm --filter @vexnar/core typecheck
 
 # Go 侧
@@ -144,7 +144,7 @@ go test ./egress/ ./traffic/
 curl -s http://127.0.0.1:8790/api/proxy/_bridge | jq .
 ```
 
-`proxy-bridge.test.mjs` 用本地 stub 引擎模拟 `/api/proxy/*`，不需要真的启动 Go。
+`proxy-bridge.test.ts` 用本地 stub 引擎模拟 `/api/proxy/*`，不需要真的启动 Go。
 
 ---
 

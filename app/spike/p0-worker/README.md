@@ -13,8 +13,8 @@
 
 ```sh
 cd app/spike/p0-worker
-node demo.mjs          # 建临时任务 → claim → 执行 → 写回 → 校验 → 清理
-node demo.mjs --keep   # 保留任务，重启 Go 后用 /api/exploration/nodes?task=<id> 查看
+tsx demo.ts          # 建临时任务 → claim → 执行 → 写回 → 校验 → 清理
+tsx demo.ts --keep   # 保留任务，重启 Go 后用 /api/exploration/nodes?task=<id> 查看
 ```
 
 ## 链路

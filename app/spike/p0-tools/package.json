@@ -7,6 +7,19 @@
   "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
-  "scripts": { "compare": "node compare.mjs" },
-  "dependencies": { "jsonwebtoken": "^9.0.3", "kysely": "^0.29.9", "pg": "^8.23.1" }
+  "scripts": {
+    "compare": "tsx compare.ts"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "kysely": "^0.29.9",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
 }

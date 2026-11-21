@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Type-check only. The client bundle is produced by build.mjs (esbuild), which
+ * Type-check only. The client bundle is produced by build.ts (esbuild), which
  * strips types and keeps the platform modules external; `tsc` never emits here.
  *
  * React is not a dependency of this package: at runtime the dsh client module
@@ -30,7 +30,11 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    // lib/ 下的插件源码由 dsh 运行时直接 import（类型擦除），import 写真实 .ts 路径
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // index.ts 是宿主插件（node 侧），由 tsconfig.node.json 负责
+  "exclude": ["src/index.ts"]
 }

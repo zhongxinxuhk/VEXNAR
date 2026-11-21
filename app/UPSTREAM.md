@@ -46,7 +46,7 @@
 
 | # | 不变量 | 检查点 |
 |---|---|---|
-| 1 | `app/dsh` HEAD == lock.commit | `check-upstream.mjs` |
+| 1 | `app/dsh` HEAD == lock.commit | `check-upstream.ts` |
 | 2 | `app/dsh` 工作树干净（无人改上游） | `git -C app/dsh status --porcelain` |
 | 3 | lock 的 tag 仍解析到同一 commit | `git rev-list -n1 <tag>` |
 | 4 | 依赖的上游 API 面存在：`tool.call.toolview`、`sidebar.brand.mark/name`、`llm-pi-ai`、`mcp-manager`、`streamable-http`、`__ModuleLoader__` | 文件级断言 |
@@ -132,7 +132,7 @@ pnpm run upstream:upgrade -- --rollback
 | `llm-pi-ai` 配置字段变化 | 断言 #5 通过但可能运行失败 | 冒烟发现 → 改 patch |
 | `mcp-manager` transport 改名 | 断言 #4 失败 | 改 patch 的 transport |
 | `tool.call.toolview` 契约变化 | 断言 #4 通过但卡片异常 | 改 `client.tsx` 注册 |
-| Client loader 格式变化 | 断言 #6 失败 | 改 `build.mjs` 包装 |
+| Client loader 格式变化 | 断言 #6 失败 | 改 `build.ts` 包装 |
 
 ---
 

@@ -21,7 +21,7 @@ go run ./cmd/vexnar -addr 127.0.0.1:8787 -data ./data
 PUT /api/settings {"traffic_capture":true}
 
 # 3. 对比（自动起 mitmdump 8899，结束后清理）
-cd app/spike/p0-mitm && node compare.mjs
+cd app/spike/p0-mitm && tsx compare.ts
 ```
 
 ## 实测结果

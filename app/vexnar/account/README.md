@@ -10,7 +10,7 @@
 未登录时整个工作区被登录页替换，其他请求一律 401，不存在"能进但全是空数据"的中间状态。
 退出登录会清除本机账号、模型密钥与已注册的提供方，并回到登录页。
 
-登录、令牌申请、模型目录全部在 TypeScript 侧完成（`lib/platform-account.js`），
+登录、令牌申请、模型目录全部在 TypeScript 侧完成（`src/platform-account.ts`），
 不依赖 Go 服务，也不依赖它的部署版本。支持在登录页直接输入平台密码和两步验证码；
 OAuth、Passkey 及要求平台页面验证的方式使用独立浏览器窗口，由
 [HXSEC AI Platform](https://platform.sec.hn.cn/login) 完成认证，VEXNAR 在同一次会话里

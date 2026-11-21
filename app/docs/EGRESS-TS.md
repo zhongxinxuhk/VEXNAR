@@ -123,7 +123,7 @@ pnpm test:bridge        # 17 项：回滚桥契约
 pnpm typecheck
 ```
 
-`egress.test.mjs` 用本地 SOCKS5 fixture 当节点、HTTP server 当目标，
+`egress.test.ts` 用本地 SOCKS5 fixture 当节点、HTTP server 当目标，
 并在检测到 mihomo 时额外验证"fixture 节点 → mihomo → 目标"。
 
 ---

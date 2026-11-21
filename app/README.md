@@ -18,22 +18,41 @@ VEXNAR Web 和桌面客户端共用隔离的运行时和本机 Go 服务。
 
 ```text
 app/                          # WebStorm 工程根（项目名 app）
-├─ package.json               # pnpm scripts：setup / web / desktop / build / ui:build / account:build
+├─ package.json               # pnpm scripts：setup / web / desktop / build / typecheck
 ├─ .idea/runConfigurations/   # npm 类型运行配置，package manager=pnpm（无 shell）
 ├─ dsh/                       # 上游源码（gitignored，fetch-dsh.sh 拉取）
-├─ scripts/
+├─ scripts/                   # 全部 .ts，由 tsx 执行
 │  ├─ fetch-dsh.sh            # 固定 tag 拉取/校验上游
-│  ├─ vexnar.mjs              # VEXNAR CLI
-│  ├─ vexnar-runtime.mjs      # 解析独立运行时与设置
-│  ├─ vexnar-web.mjs             # web 启动器（隔离 home / 端口 3099）
-│  ├─ vexnar-desktop.mjs         # 桌面启动器
-│  ├─ setup-app-profile.mjs   # 安装 VEXNAR bundle 和客户端插件
-│  └─ ide-mcp.mjs             # JetBrains IDE MCP 直连客户端
+│  ├─ vexnar.ts               # VEXNAR CLI
+│  ├─ vexnar-runtime.ts       # 解析独立运行时与设置
+│  ├─ vexnar-web.ts           # web 启动器（隔离 home / 端口 3099）
+│  ├─ vexnar-desktop.ts       # 桌面启动器（Electron 主进程）
+│  ├─ setup-app-profile.ts    # 安装 VEXNAR bundle 和客户端插件
+│  └─ ide-mcp.ts              # JetBrains IDE MCP 直连客户端
+├─ vexnar-mcp/                # @vexnar/dsh-vexnar-mcp：MCP 注册插件（index.ts → index.js）
 └─ vexnar/
    ├─ cordis.patch.yml        # provider + MCP + 品牌/账户的 profile 覆盖层
    ├─ ui/                     # @vexnar/dsh-ui：卡片 + 品牌槽位
-   └─ account/                # @vexnar/dsh-account：账户登录与状态
+   │  ├─ src/                 # 源（.ts / .tsx）
+   │  └─ lib/                 # 构建产物（index.js / client.js，由 build.ts 生成）
+   ├─ account/                # @vexnar/dsh-account：账户登录与状态
+   │  ├─ src/                 # 源（.ts / .tsx）
+   │  └─ lib/                 # 构建产物（宿主模块 + client.js + core-embedded.js）
 ```
+
+## 语言与构建：全员 TypeScript
+
+`app/` 下不再有手写的 `.js` / `.mjs`：脚本、测试、插件源码、构建脚本都是 TypeScript。
+
+| 位置 | 怎么执行 | 为什么 |
+|---|---|---|
+| `scripts/*.ts`、`vexnar-core/*.test.ts`、`vexnar-store/*.test.ts`、`spike/**/*.ts`、`vexnar/{ui,account}/build.ts` | `tsx <file>.ts`（或用 `node --test` 跑测试） | 直接跑源码，不经编译；`tsx` 负责类型擦除与 `.ts` 说明符 |
+| 桌面主进程 `scripts/vexnar-desktop.ts` | Electron 44 自带 Node 24 直接执行 | 主进程入口本身就是 `.ts`；Electron API 用 `createRequire` 取（ESM 裸说明符会解析到 npm 包） |
+| `vexnar/{ui,account}/src/*.ts`（宿主半边）、`vexnar-mcp/index.ts` | `pnpm run build` 生成 `lib/*.js` / `index.js` 后由 dsh 加载 | dsh 从 profile 的 `node_modules` 里 import 插件；Node 对 `node_modules` **不擦类型**（`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`），所以入口必须是真 JS |
+| `website/`（见 `website/`） | `vite` / `node --test` / `node scripts/prerender.ts` | vite 自己处理 TS；prerender 与测试用 Node 原生擦类型 |
+
+`pnpm run typecheck` 是统一闸门：`scripts/`、`spike/`、`vexnar-mcp/`、`@vexnar/core`、
+`@vexnar/store`、`@vexnar/dsh-ui`、`@vexnar/dsh-account` 各自一个 `tsconfig`，全部 `strict`。
 
 ## 包管理器：只用 pnpm
 
@@ -106,7 +125,7 @@ pnpm run web                 # 或 pnpm run desktop
    （环境里已给了 DSN 就尊重环境）。只要给了 DSN，`openStore()` 默认走 PostgreSQL；
    显式 `VEXNAR_STORE=sqlite` 可以退回单机 SQLite。
 2. 模型调用由账号插件在进程内起一个只监听 127.0.0.1 的 OpenAI 兼容网关
-   （`account/lib/model-gateway.js`），用登录拿到的密钥转发 `/chat/completions`
+   （`account/src/model-gateway.ts`，构建到 `lib/model-gateway.js`），用登录拿到的密钥转发 `/chat/completions`
    与 `/responses`，`VEXNAR_GATEWAY_URL`/`VEXNAR_GATEWAY_TOKEN` 由插件自己注入。
 3. Go 只在对照验证时启用：`VEXNAR_GO=on` 会按源码指纹编译
    （`app/.vexnar-bin/vexnar-<指纹>`）并拉起它；`VEXNAR_GO_DATA=on` 才把领域接口转发回 Go。
@@ -139,7 +158,7 @@ pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续�
 Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-claude-style)
 （Claude Code Desktop 风格主题，registry 包 `dsh-claude-style`）：
 
-- **接入方式**：`setup-app-profile.mjs` 把它装进 profile 依赖，并写进 profile 的
+- **接入方式**：`setup-app-profile.ts` 把它装进 profile 依赖，并写进 profile 的
   `dsh.profile.bundles`。它自带 `dsh.bundle.patch`，因此 `ui-skin-claude-style` 行由**它自己**插入，
   我们不再手写这一行，也不复制它的源码。
 - **层级位置**：dsh 的组装顺序是「各 bundle 的 patch → profile 的 `cordis.patch.yml` → `$DSH_HOME` 补丁」，

@@ -321,7 +321,7 @@ dsh home
 键设计：
 
 ```text
-# 已落地（seed.mjs 与 per-record.ts）
+# 已落地（seed.ts 与 per-record.ts）
 tasks/<id>          findings/<id>          nodes/<id>        assets/<id>     activity/<id>
 companies/<4 位序号>-<id>                 # 保持 PG 原始顺序
 edges/<src>-<rel>-<dst>                   # 复合键，仅 [a-zA-Z0-9_-]+
@@ -370,7 +370,7 @@ scope/<company_id>-<hash>                 # company_scope 尚未进 store
 # 存量导出（PG → JSON）
 cd app/vexnar-store && npm run seed && npm run compare
 # 读模型对账
-cd app/vexnar-core && node compare.mjs && node compare-domain.mjs
+cd app/vexnar-core && tsx compare.ts && tsx compare-domain.ts
 ```
 
 流程：

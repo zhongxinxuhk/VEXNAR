@@ -10,5 +10,5 @@
   // 整包一个程序：漏掉 src 下任何一个文件，编辑器就会把它退化成推断项目，
   // 丢掉 extends 带来的 types: ["node"] 与 allowImportingTsExtensions，
   // 从而出现假的 TS2591 / TS5097。
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "*.ts"]
 }
