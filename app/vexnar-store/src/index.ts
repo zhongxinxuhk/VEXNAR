@@ -25,12 +25,18 @@ export { metaStore } from './meta-store.js'
  * Default backend is SQLite (single file). `VEXNAR_STORE=json` falls back to the
  * dsh-style per-record files, and `VEXNAR_STORE=postgres` keeps the legacy
  * adapter for one-time imports only. `root` overrides the store directory.
+ *
+ * 只要给了 PG 连接串（`VEXNAR_PG_DSN` 是 Go 那边的变量名，`VEXNAR_PG_URL` 是本包
+ * 历史名字），就默认走 PostgreSQL：客户端与 `web/` 控制台、Go 服务读同一份数据，
+ * 不会出现"同一个任务在两个界面里不一样"。显式设 `VEXNAR_STORE=sqlite` 可以压回去。
  */
 export async function openStore(root?: string): Promise<Store> {
-  const mode = (process.env.VEXNAR_STORE || 'sqlite').toLowerCase()
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase()
+  const dsn = process.env.VEXNAR_PG_DSN?.trim() || process.env.VEXNAR_PG_URL?.trim()
+  const mode = explicit || (dsn ? 'postgres' : 'sqlite')
   if (mode === 'postgres') {
-    const connection = fromUrl(process.env.VEXNAR_PG_URL)
-    if (!connection) throw new Error('VEXNAR_STORE=postgres requires VEXNAR_PG_URL or a pg connection')
+    const connection = fromUrl(dsn)
+    if (!connection) throw new Error('VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL')
     const store = pgStore(connection)
     await store.init()
     return store

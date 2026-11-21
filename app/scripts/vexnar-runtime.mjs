@@ -12,7 +12,7 @@ export const profileName = 'vexnar'
 export const bundleFiles = {
   '@vexnar/app-bundle': ['cordis.patch.yml'],
   '@vexnar/dsh-ui': ['lib/index.js', 'lib/client.js'],
-  '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js']
+  '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/model-gateway.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js']
 }
 const binPart = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 
