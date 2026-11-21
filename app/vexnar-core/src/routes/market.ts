@@ -586,7 +586,7 @@ export function register(api: Hono) {
       const seen = new Set<string>()
       const merged: MarketItem[] = []
       for (const it of items) {
-        if (it.kind !== kind || seen.has(it.id)) continue
+        if (it.kind !== kind || !it.id || seen.has(it.id)) continue
         seen.add(it.id)
         merged.push(it)
       }
