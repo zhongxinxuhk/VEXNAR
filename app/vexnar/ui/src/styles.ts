@@ -344,6 +344,8 @@ body[data-ds-dark-theme] {
   height: 100%;
   overflow-y: auto;
   padding: 22px 24px 40px;
+  /* 自己铺底：宿主容器未必跟着主题换背景，插件不能透出上一层的白。 */
+  background: var(--vx-surface);
   color: var(--vx-text);
   font-size: 13px;
 }
@@ -1356,6 +1358,7 @@ body[data-ds-dark-theme] {
 
 /* ── 列表 ───────────────────────────────────────────────── */
 .vx-yak-grid {
+  background: var(--vx-surface);
   display: grid;
   grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
   border: 1px solid var(--vx-border);
@@ -1418,6 +1421,7 @@ body[data-ds-dark-theme] {
 .vx-yak-table {
   overflow: auto;
   max-height: 46vh;
+  background: var(--vx-surface);
 }
 
 .vx-yak-table table {
@@ -1522,20 +1526,21 @@ body[data-ds-dark-theme] {
   gap: 5px;
   padding: 1px 6px;
   border-radius: 6px;
-  border: 1px solid transparent;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  font-family: var(--vx-mono);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-.vx-method--get { background: rgba(14, 116, 144, 0.10); color: #0e7490; border-color: rgba(14, 116, 144, 0.22); }
-.vx-method--post { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
-.vx-method--put { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
-.vx-method--patch { background: rgba(109, 40, 217, 0.10); color: #6d28d9; border-color: rgba(109, 40, 217, 0.22); }
-.vx-method--delete { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
-.vx-method--options { background: rgba(15, 118, 110, 0.10); color: #0f766e; border-color: rgba(15, 118, 110, 0.22); }
-.vx-method--other { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+.vx-method--get { color: var(--vx-method-get); }
+.vx-method--post { color: var(--vx-method-post); }
+.vx-method--put { color: var(--vx-method-put); }
+.vx-method--patch { color: var(--vx-method-patch); }
+.vx-method--delete { color: var(--vx-method-delete); }
+.vx-method--options { color: var(--vx-method-options); }
+.vx-method--other { color: var(--vx-muted); }
 
 .vx-status {
   font-variant-numeric: tabular-nums;
@@ -1549,11 +1554,11 @@ body[data-ds-dark-theme] {
   background: currentColor;
 }
 
-.vx-status--success { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
-.vx-status--redirect { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
-.vx-status--warn { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
-.vx-status--error { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
-.vx-status--info { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+.vx-status--success { color: var(--vx-status-success); }
+.vx-status--redirect { color: var(--vx-status-redirect); }
+.vx-status--warn { color: var(--vx-status-warn); }
+.vx-status--error { color: var(--vx-status-error); }
+.vx-status--info { color: var(--vx-muted); }
 
 /* ── 报文详情 ───────────────────────────────────────────── */
 .vx-yak-detail {
@@ -1623,8 +1628,50 @@ body[data-ds-dark-theme] {
   font-weight: 600;
 }
 
-.vx-yak-chip--request { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
-.vx-yak-chip--response { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
+.vx-yak-chip--request { background: color-mix(in oklab, var(--vx-method-get) 10%, transparent); color: var(--vx-method-get); border-color: color-mix(in oklab, var(--vx-method-get) 28%, transparent); }
+.vx-yak-chip--response { background: color-mix(in oklab, var(--vx-status-success) 10%, transparent); color: var(--vx-status-success); border-color: color-mix(in oklab, var(--vx-status-success) 30%, transparent); }
+
+.vx-yak-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-search input {
+  width: 96px;
+  border: 0;
+  background: none;
+  color: var(--vx-text);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.vx-yak-search small {
+  color: var(--vx-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-search button {
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--vx-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vx-yak-search button:hover {
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+}
 
 .vx-yak-size {
   color: var(--vx-muted);
@@ -1698,27 +1745,94 @@ body[data-ds-dark-theme] {
   font-size: 11px;
 }
 
-/* 报文着色：请求行、头部、正文各一套 */
+/* 报文着色：颜色全部取自 dsh 的静态色板，深色由 body[data-ds-dark-theme] 切换，
+   组件自己不维护第二套主题。 */
+body {
+  --vx-syn-header: var(--dsw-static-blue-800, #1e40af);
+  --vx-syn-key: var(--dsw-static-blue-600, #2563eb);
+  --vx-syn-url: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-query-key: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-string: var(--dsw-static-green-900, #14532d);
+  --vx-syn-number: var(--dsw-static-amber-600, #d97706);
+  --vx-syn-literal: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-tag: var(--dsw-static-red-600, #dc2626);
+  --vx-syn-attr: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #4b5563);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-400, #94a3b8);
+  --vx-method-get: var(--dsw-static-blue-600, #2563eb);
+  --vx-method-post: var(--dsw-static-green-500, #22c55e);
+  --vx-method-put: var(--dsw-static-amber-600, #d97706);
+  --vx-method-patch: var(--dsw-static-violet-600, #7c3aed);
+  --vx-method-delete: var(--dsw-static-red-600, #dc2626);
+  --vx-method-options: var(--dsw-static-deepseek-500, #4d6bfe);
+  --vx-status-success: var(--dsw-static-green-500, #22c55e);
+  --vx-status-redirect: var(--dsw-static-blue-500, #3b82f6);
+  --vx-status-warn: var(--dsw-static-amber-500, #f59e0b);
+  --vx-status-error: var(--dsw-static-red-500, #ef4444);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 55%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 92%, transparent);
+}
+
+/* 深色：同一批语义换成色板里更亮的台阶。 */
+body[data-ds-dark-theme] {
+  --vx-syn-header: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-key: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-url: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-syn-query-key: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-string: var(--dsw-static-green-400, #4ade80);
+  --vx-syn-number: var(--dsw-static-amber-400, #fbbf24);
+  --vx-syn-literal: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-tag: var(--dsw-static-red-400, #f87171);
+  --vx-syn-attr: var(--dsw-static-deepseek-400, #7c93ff);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #cbd5e1);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-600, #64748b);
+  --vx-method-get: var(--dsw-static-blue-300, #93c5fd);
+  --vx-method-post: var(--dsw-static-green-400, #4ade80);
+  --vx-method-put: var(--dsw-static-amber-400, #fbbf24);
+  --vx-method-patch: var(--dsw-static-violet-400, #a78bfa);
+  --vx-method-delete: var(--dsw-static-red-400, #f87171);
+  --vx-method-options: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-status-success: var(--dsw-static-green-400, #4ade80);
+  --vx-status-redirect: var(--dsw-static-blue-300, #93c5fd);
+  --vx-status-warn: var(--dsw-static-amber-400, #fbbf24);
+  --vx-status-error: var(--dsw-static-red-400, #f87171);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 38%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 70%, transparent);
+}
+
 .vx-tone--method { font-weight: 600; }
-.vx-tone--url { color: #0e7490; }
-.vx-tone--query-key { color: #0f766e; }
-.vx-tone--query-value { color: #047857; }
+.vx-tone--url { color: var(--vx-syn-url); }
+.vx-tone--query-key { color: var(--vx-syn-query-key); }
+.vx-tone--query-value { color: var(--vx-syn-string); }
 .vx-tone--proto,
 .vx-tone--reason { color: var(--vx-muted); }
 .vx-tone--status { font-weight: 600; }
-.vx-tone--header { color: #4338ca; font-weight: 500; }
-.vx-tone--value { color: #475569; }
-.vx-tone--cookie-key { color: #4338ca; }
-.vx-tone--cookie-value { color: #475569; }
-.vx-tone--key { color: #0369a1; }
-.vx-tone--string { color: #047857; }
-.vx-tone--number { color: #b45309; }
-.vx-tone--literal { color: #a21caf; }
-.vx-tone--tag { color: #be123c; }
-.vx-tone--attr { color: #6d28d9; }
+.vx-tone--header { color: var(--vx-syn-header); font-weight: 500; }
+.vx-tone--value { color: var(--vx-syn-value); }
+.vx-tone--cookie-key { color: var(--vx-syn-header); }
+.vx-tone--cookie-value { color: var(--vx-syn-value); }
+.vx-tone--key { color: var(--vx-syn-key); }
+.vx-tone--string { color: var(--vx-syn-string); }
+.vx-tone--number { color: var(--vx-syn-number); }
+.vx-tone--literal { color: var(--vx-syn-literal); }
+.vx-tone--tag { color: var(--vx-syn-tag); }
+.vx-tone--attr { color: var(--vx-syn-attr); }
 .vx-tone--comment { color: var(--vx-muted); font-style: italic; }
-.vx-tone--punct { color: #94a3b8; }
+.vx-tone--punct { color: var(--vx-syn-punct); }
 .vx-tone--muted { color: var(--vx-muted); }
+
+/* 搜索命中 */
+.vx-hit {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--vx-hit-bg);
+  color: inherit;
+}
+
+.vx-hit[data-active="true"] {
+  background: var(--vx-hit-active);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--vx-syn-number) 60%, transparent);
+}
 
 .vx-yak-hint,
 .vx-yak-alert {
@@ -1728,7 +1842,7 @@ body[data-ds-dark-theme] {
 }
 
 .vx-yak-hint { color: var(--vx-muted); }
-.vx-yak-alert { color: #be123c; }
+.vx-yak-alert { color: var(--vx-negative); }
 
 .vx-yak-dialog {
   width: min(1180px, 93vw);

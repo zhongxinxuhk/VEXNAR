@@ -353,6 +353,8 @@ body[data-ds-dark-theme] {
   height: 100%;
   overflow-y: auto;
   padding: 22px 24px 40px;
+  /* \u81EA\u5DF1\u94FA\u5E95\uFF1A\u5BBF\u4E3B\u5BB9\u5668\u672A\u5FC5\u8DDF\u7740\u4E3B\u9898\u6362\u80CC\u666F\uFF0C\u63D2\u4EF6\u4E0D\u80FD\u900F\u51FA\u4E0A\u4E00\u5C42\u7684\u767D\u3002 */
+  background: var(--vx-surface);
   color: var(--vx-text);
   font-size: 13px;
 }
@@ -1365,6 +1367,7 @@ body[data-ds-dark-theme] {
 
 /* \u2500\u2500 \u5217\u8868 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-yak-grid {
+  background: var(--vx-surface);
   display: grid;
   grid-template-columns: minmax(110px, 170px) minmax(0, 1fr);
   border: 1px solid var(--vx-border);
@@ -1427,6 +1430,7 @@ body[data-ds-dark-theme] {
 .vx-yak-table {
   overflow: auto;
   max-height: 46vh;
+  background: var(--vx-surface);
 }
 
 .vx-yak-table table {
@@ -1531,20 +1535,21 @@ body[data-ds-dark-theme] {
   gap: 5px;
   padding: 1px 6px;
   border-radius: 6px;
-  border: 1px solid transparent;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid color-mix(in oklab, currentColor 28%, transparent);
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  font-family: var(--vx-mono);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-.vx-method--get { background: rgba(14, 116, 144, 0.10); color: #0e7490; border-color: rgba(14, 116, 144, 0.22); }
-.vx-method--post { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
-.vx-method--put { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
-.vx-method--patch { background: rgba(109, 40, 217, 0.10); color: #6d28d9; border-color: rgba(109, 40, 217, 0.22); }
-.vx-method--delete { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
-.vx-method--options { background: rgba(15, 118, 110, 0.10); color: #0f766e; border-color: rgba(15, 118, 110, 0.22); }
-.vx-method--other { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+.vx-method--get { color: var(--vx-method-get); }
+.vx-method--post { color: var(--vx-method-post); }
+.vx-method--put { color: var(--vx-method-put); }
+.vx-method--patch { color: var(--vx-method-patch); }
+.vx-method--delete { color: var(--vx-method-delete); }
+.vx-method--options { color: var(--vx-method-options); }
+.vx-method--other { color: var(--vx-muted); }
 
 .vx-status {
   font-variant-numeric: tabular-nums;
@@ -1558,11 +1563,11 @@ body[data-ds-dark-theme] {
   background: currentColor;
 }
 
-.vx-status--success { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
-.vx-status--redirect { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
-.vx-status--warn { background: rgba(180, 83, 9, 0.10); color: #b45309; border-color: rgba(180, 83, 9, 0.22); }
-.vx-status--error { background: rgba(190, 18, 60, 0.10); color: #be123c; border-color: rgba(190, 18, 60, 0.22); }
-.vx-status--info { background: var(--vx-surface-sunken); color: var(--vx-muted); border-color: var(--vx-border); }
+.vx-status--success { color: var(--vx-status-success); }
+.vx-status--redirect { color: var(--vx-status-redirect); }
+.vx-status--warn { color: var(--vx-status-warn); }
+.vx-status--error { color: var(--vx-status-error); }
+.vx-status--info { color: var(--vx-muted); }
 
 /* \u2500\u2500 \u62A5\u6587\u8BE6\u60C5 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-yak-detail {
@@ -1632,8 +1637,50 @@ body[data-ds-dark-theme] {
   font-weight: 600;
 }
 
-.vx-yak-chip--request { background: rgba(3, 105, 161, 0.10); color: #0369a1; border-color: rgba(3, 105, 161, 0.22); }
-.vx-yak-chip--response { background: rgba(4, 120, 87, 0.10); color: #047857; border-color: rgba(4, 120, 87, 0.22); }
+.vx-yak-chip--request { background: color-mix(in oklab, var(--vx-method-get) 10%, transparent); color: var(--vx-method-get); border-color: color-mix(in oklab, var(--vx-method-get) 28%, transparent); }
+.vx-yak-chip--response { background: color-mix(in oklab, var(--vx-status-success) 10%, transparent); color: var(--vx-status-success); border-color: color-mix(in oklab, var(--vx-status-success) 30%, transparent); }
+
+.vx-yak-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+}
+
+.vx-yak-search input {
+  width: 96px;
+  border: 0;
+  background: none;
+  color: var(--vx-text);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.vx-yak-search small {
+  color: var(--vx-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-yak-search button {
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--vx-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vx-yak-search button:hover {
+  background: var(--vx-surface-sunken);
+  color: var(--vx-text);
+}
 
 .vx-yak-size {
   color: var(--vx-muted);
@@ -1707,27 +1754,94 @@ body[data-ds-dark-theme] {
   font-size: 11px;
 }
 
-/* \u62A5\u6587\u7740\u8272\uFF1A\u8BF7\u6C42\u884C\u3001\u5934\u90E8\u3001\u6B63\u6587\u5404\u4E00\u5957 */
+/* \u62A5\u6587\u7740\u8272\uFF1A\u989C\u8272\u5168\u90E8\u53D6\u81EA dsh \u7684\u9759\u6001\u8272\u677F\uFF0C\u6DF1\u8272\u7531 body[data-ds-dark-theme] \u5207\u6362\uFF0C
+   \u7EC4\u4EF6\u81EA\u5DF1\u4E0D\u7EF4\u62A4\u7B2C\u4E8C\u5957\u4E3B\u9898\u3002 */
+body {
+  --vx-syn-header: var(--dsw-static-blue-800, #1e40af);
+  --vx-syn-key: var(--dsw-static-blue-600, #2563eb);
+  --vx-syn-url: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-query-key: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-string: var(--dsw-static-green-900, #14532d);
+  --vx-syn-number: var(--dsw-static-amber-600, #d97706);
+  --vx-syn-literal: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-tag: var(--dsw-static-red-600, #dc2626);
+  --vx-syn-attr: var(--dsw-static-deepseek-600, #3b5bdb);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #4b5563);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-400, #94a3b8);
+  --vx-method-get: var(--dsw-static-blue-600, #2563eb);
+  --vx-method-post: var(--dsw-static-green-500, #22c55e);
+  --vx-method-put: var(--dsw-static-amber-600, #d97706);
+  --vx-method-patch: var(--dsw-static-violet-600, #7c3aed);
+  --vx-method-delete: var(--dsw-static-red-600, #dc2626);
+  --vx-method-options: var(--dsw-static-deepseek-500, #4d6bfe);
+  --vx-status-success: var(--dsw-static-green-500, #22c55e);
+  --vx-status-redirect: var(--dsw-static-blue-500, #3b82f6);
+  --vx-status-warn: var(--dsw-static-amber-500, #f59e0b);
+  --vx-status-error: var(--dsw-static-red-500, #ef4444);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 55%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 92%, transparent);
+}
+
+/* \u6DF1\u8272\uFF1A\u540C\u4E00\u6279\u8BED\u4E49\u6362\u6210\u8272\u677F\u91CC\u66F4\u4EAE\u7684\u53F0\u9636\u3002 */
+body[data-ds-dark-theme] {
+  --vx-syn-header: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-key: var(--dsw-static-blue-300, #93c5fd);
+  --vx-syn-url: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-syn-query-key: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-string: var(--dsw-static-green-400, #4ade80);
+  --vx-syn-number: var(--dsw-static-amber-400, #fbbf24);
+  --vx-syn-literal: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-tag: var(--dsw-static-red-400, #f87171);
+  --vx-syn-attr: var(--dsw-static-deepseek-400, #7c93ff);
+  --vx-syn-value: var(--dsw-alias-label-secondary, #cbd5e1);
+  --vx-syn-punct: var(--dsw-static-neutral-bluish-600, #64748b);
+  --vx-method-get: var(--dsw-static-blue-300, #93c5fd);
+  --vx-method-post: var(--dsw-static-green-400, #4ade80);
+  --vx-method-put: var(--dsw-static-amber-400, #fbbf24);
+  --vx-method-patch: var(--dsw-static-violet-400, #a78bfa);
+  --vx-method-delete: var(--dsw-static-red-400, #f87171);
+  --vx-method-options: var(--dsw-static-deepseek-300, #93a5ff);
+  --vx-status-success: var(--dsw-static-green-400, #4ade80);
+  --vx-status-redirect: var(--dsw-static-blue-300, #93c5fd);
+  --vx-status-warn: var(--dsw-static-amber-400, #fbbf24);
+  --vx-status-error: var(--dsw-static-red-400, #f87171);
+  --vx-hit-bg: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 38%, transparent);
+  --vx-hit-active: color-mix(in oklab, var(--dsw-static-amber-400, #fbbf24) 70%, transparent);
+}
+
 .vx-tone--method { font-weight: 600; }
-.vx-tone--url { color: #0e7490; }
-.vx-tone--query-key { color: #0f766e; }
-.vx-tone--query-value { color: #047857; }
+.vx-tone--url { color: var(--vx-syn-url); }
+.vx-tone--query-key { color: var(--vx-syn-query-key); }
+.vx-tone--query-value { color: var(--vx-syn-string); }
 .vx-tone--proto,
 .vx-tone--reason { color: var(--vx-muted); }
 .vx-tone--status { font-weight: 600; }
-.vx-tone--header { color: #4338ca; font-weight: 500; }
-.vx-tone--value { color: #475569; }
-.vx-tone--cookie-key { color: #4338ca; }
-.vx-tone--cookie-value { color: #475569; }
-.vx-tone--key { color: #0369a1; }
-.vx-tone--string { color: #047857; }
-.vx-tone--number { color: #b45309; }
-.vx-tone--literal { color: #a21caf; }
-.vx-tone--tag { color: #be123c; }
-.vx-tone--attr { color: #6d28d9; }
+.vx-tone--header { color: var(--vx-syn-header); font-weight: 500; }
+.vx-tone--value { color: var(--vx-syn-value); }
+.vx-tone--cookie-key { color: var(--vx-syn-header); }
+.vx-tone--cookie-value { color: var(--vx-syn-value); }
+.vx-tone--key { color: var(--vx-syn-key); }
+.vx-tone--string { color: var(--vx-syn-string); }
+.vx-tone--number { color: var(--vx-syn-number); }
+.vx-tone--literal { color: var(--vx-syn-literal); }
+.vx-tone--tag { color: var(--vx-syn-tag); }
+.vx-tone--attr { color: var(--vx-syn-attr); }
 .vx-tone--comment { color: var(--vx-muted); font-style: italic; }
-.vx-tone--punct { color: #94a3b8; }
+.vx-tone--punct { color: var(--vx-syn-punct); }
 .vx-tone--muted { color: var(--vx-muted); }
+
+/* \u641C\u7D22\u547D\u4E2D */
+.vx-hit {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--vx-hit-bg);
+  color: inherit;
+}
+
+.vx-hit[data-active="true"] {
+  background: var(--vx-hit-active);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--vx-syn-number) 60%, transparent);
+}
 
 .vx-yak-hint,
 .vx-yak-alert {
@@ -1737,7 +1851,7 @@ body[data-ds-dark-theme] {
 }
 
 .vx-yak-hint { color: var(--vx-muted); }
-.vx-yak-alert { color: #be123c; }
+.vx-yak-alert { color: var(--vx-negative); }
 
 .vx-yak-dialog {
   width: min(1180px, 93vw);
@@ -3461,12 +3575,32 @@ function useHistory(body, revision = 0) {
     loading: body !== null && result?.key !== key
   };
 }
-function Tokens({ tokens }) {
+function splitOnQuery(text, query, counter) {
+  if (!query) return text;
+  const haystack = text.toLowerCase();
+  const needle = query.toLowerCase();
+  let at = haystack.indexOf(needle);
+  if (at < 0) return text;
+  const parts = [];
+  let cursor = 0;
+  while (at >= 0) {
+    if (at > cursor) parts.push(text.slice(cursor, at));
+    const ordinal = counter.value++;
+    parts.push(
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("mark", { className: "vx-hit", "data-match": ordinal, children: text.slice(at, at + needle.length) }, `${at}-${ordinal}`)
+    );
+    cursor = at + needle.length;
+    at = haystack.indexOf(needle, cursor);
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_jsx_runtime2.Fragment, { children: parts });
+}
+function Tokens({ tokens, query, counter }) {
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_jsx_runtime2.Fragment, { children: tokens.map(
-    (token, index) => token.tone ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-tone vx-tone--${token.tone}`, children: token.text }, index) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: token.text }, index)
+    (token, index) => token.tone ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { className: `vx-tone vx-tone--${token.tone}`, children: splitOnQuery(token.text, query, counter) }, index) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { children: splitOnQuery(token.text, query, counter) }, index)
   ) });
 }
-function PacketBody({ packet, side, format }) {
+function PacketBody({ packet, side, format, query }) {
   if (format === "hex") {
     const dump = hexDump(atob(packet.base64 ?? ""), 4096);
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-code", children: dump.rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("code", { children: [
@@ -3484,15 +3618,16 @@ function PacketBody({ packet, side, format }) {
   const pretty = format === "pretty" ? prettyJsonBody(parsed.body) : null;
   const bodyText = pretty ?? parsed.body;
   const bodyKind = pretty ? "json" : kind;
+  const counter = { value: 0 };
   const rows = [];
   if (parsed.startLine) {
     rows.push(
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line vx-yak-line--start", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeStartLine(parsed, side) }) }) }, "start")
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line vx-yak-line--start", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeStartLine(parsed, side), query, counter }) }) }, "start")
     );
   }
   for (const [index, header] of parsed.headers.entries()) {
     rows.push(
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeHeader(header) }) }) }, `h${index}`)
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeHeader(header), query, counter }) }) }, `h${index}`)
     );
   }
   if (parsed.body) {
@@ -3522,7 +3657,7 @@ function PacketBody({ packet, side, format }) {
     } else {
       for (const [index, line] of bodyText.split("\n").entries()) {
         rows.push(
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeBodyLine(bodyKind, line) }) }) }, `b${index}`)
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-line", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Tokens, { tokens: tokenizeBodyLine(bodyKind, line), query, counter }) }) }, `b${index}`)
         );
       }
     }
@@ -3532,6 +3667,24 @@ function PacketBody({ packet, side, format }) {
 function PacketPane({ label, packet, side }) {
   const [format, setFormat] = (0, import_react2.useState)("pretty");
   const [copied, setCopied] = (0, import_react2.useState)("");
+  const [query, setQuery] = (0, import_react2.useState)("");
+  const [hits, setHits] = (0, import_react2.useState)(0);
+  const [active, setActive] = (0, import_react2.useState)(-1);
+  const bodyRef = (0, import_react2.useRef)(null);
+  (0, import_react2.useEffect)(() => {
+    const nodes = bodyRef.current?.querySelectorAll(".vx-hit") ?? [];
+    setHits(nodes.length);
+    setActive(nodes.length > 0 ? 0 : -1);
+  }, [query, format, packet]);
+  (0, import_react2.useEffect)(() => {
+    const nodes = bodyRef.current?.querySelectorAll(".vx-hit") ?? [];
+    nodes.forEach((node, index) => node.toggleAttribute("data-active", index === active));
+    if (active >= 0) nodes[active]?.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [active, hits]);
+  const step = (delta) => {
+    if (hits === 0) return;
+    setActive((current) => (current + delta + hits) % hits);
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(packet.text);
@@ -3547,6 +3700,27 @@ function PacketPane({ label, packet, side }) {
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "vx-yak-size", children: [
         packet.bytes.toLocaleString(),
         " B"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "vx-yak-search", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "input",
+          {
+            "aria-label": `\u5728${label}\u91CC\u641C\u7D22`,
+            placeholder: "\u641C\u7D22",
+            value: query,
+            onChange: (event) => setQuery(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                step(event.shiftKey ? -1 : 1);
+              }
+              if (event.key === "Escape") setQuery("");
+            }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { children: query ? hits > 0 ? `${active + 1}/${hits}` : "0" : "" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "aria-label": "\u4E0A\u4E00\u4E2A\u547D\u4E2D", disabled: hits === 0, onClick: () => step(-1), children: "\u2191" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", "aria-label": "\u4E0B\u4E00\u4E2A\u547D\u4E2D", disabled: hits === 0, onClick: () => step(1), children: "\u2193" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "vx-yak-segmented", role: "group", "aria-label": `${label}\u663E\u793A\u683C\u5F0F`, children: [
         ["pretty", "\u7F8E\u5316"],
@@ -3567,7 +3741,7 @@ function PacketPane({ label, packet, side }) {
       )) }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", className: "vx-yak-copy", onClick: () => void copy(), children: copied || "\u590D\u5236" })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketBody, { packet, side, format }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { ref: bodyRef, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PacketBody, { packet, side, format, query }) }),
     packet.truncated && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("small", { className: "vx-yak-hint", children: "\u663E\u793A\u524D 128 KiB" })
   ] });
 }

@@ -84,7 +84,9 @@ function ensureProfileDeps(profile, thisCheckout) {
     )
   if (!missing && !stale) return true
   console.log(`[dsh] ${missing ? 'profile plugins missing' : 'plugin bundles changed'}; syncing profile`)
-  const result = spawnSync('pnpm', ['install', missing ? '--frozen-lockfile' : '--force'], {
+  // 本地 profile 的 file: 依赖就是这份数据的来源，package.json 才是权威；
+  // --frozen-lockfile 会用旧 lockfile 的解析结果覆盖它，把 profile 拉回上一棵树。
+  const result = spawnSync('pnpm', ['install', '--force'], {
     cwd: profile,
     stdio: 'inherit'
   })
