@@ -308,6 +308,25 @@ api.delete('/api/notify/channels/:id', async (c) => {
   catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.get('/api/agents/:key/triggers', async (c) => c.json({ triggers: await store.triggers.list(c.req.param('key')) }))
+
+api.post('/api/agents/:key/triggers', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.createTrigger(c.req.param('key'), body)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.patch('/api/agents/:key/triggers/:id', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try { return c.json(await operations.updateTrigger(c.req.param('key'), c.req.param('id'), body)) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/agents/:key/triggers/:id', async (c) => {
+  try { return c.json(await operations.deleteTrigger(c.req.param('key'), c.req.param('id'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.patch('/api/agents/:key', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try { const result = await operations.updateAgent(c.req.param('key'), body); meta.reload(); return c.json(result) }

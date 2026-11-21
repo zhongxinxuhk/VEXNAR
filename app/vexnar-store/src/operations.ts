@@ -1133,5 +1133,52 @@ export function storeOperations(root: string) {
     return { node_id: Number(nodeId), asset_id: Number(assetId) }
   }
 
-  return { writer, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function createTrigger(agentKey: string, input: any) {
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'agent_triggers'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'agent_triggers', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const interval = Number(input.interval_sec ?? 0)
+    const flags = ['on_finding', 'on_goal_met', 'on_task_timeout', 'on_tool_call', 'on_task_create'].filter((key) => input[key])
+    if (interval <= 0 && !flags.length) throw Object.assign(new Error('至少配置一个触发条件'), { status: 400 })
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const record = {
+      id, agent_key: agentKey, enabled: input.enabled ?? true, interval_sec: interval,
+      on_finding: Boolean(input.on_finding), on_goal_met: Boolean(input.on_goal_met),
+      on_task_timeout: Boolean(input.on_task_timeout), on_tool_call: Boolean(input.on_tool_call),
+      on_task_create: Boolean(input.on_task_create),
+      interval_message: String(input.interval_message ?? ''), finding_message: String(input.finding_message ?? ''),
+      goal_message: String(input.goal_message ?? ''), task_timeout_message: String(input.task_timeout_message ?? ''),
+      tool_call_message: String(input.tool_call_message ?? ''), task_create_message: String(input.task_create_message ?? ''),
+      tool_names: input.tool_names ?? [], last_fire: ''
+    }
+    await writer.commit([{ table: 'agent_triggers', key: String(id), record }])
+    return record
+  }
+
+  async function updateTrigger(agentKey: string, id: string, input: any) {
+    const current = await writer.readRecord('agent_triggers', id)
+    if (!current || current.agent_key !== agentKey) throw Object.assign(new Error('触发器不存在'), { status: 404 })
+    const next = { ...current }
+    for (const field of ['enabled', 'interval_sec', 'on_finding', 'on_goal_met', 'on_task_timeout', 'on_tool_call', 'on_task_create', 'interval_message', 'finding_message', 'goal_message', 'task_timeout_message', 'tool_call_message', 'task_create_message', 'tool_names']) {
+      if (input[field] !== undefined) next[field] = input[field]
+    }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'agent_triggers', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return written
+  }
+
+  async function deleteTrigger(agentKey: string, id: string) {
+    const current = await writer.readRecord('agent_triggers', id)
+    if (!current || current.agent_key !== agentKey) throw Object.assign(new Error('触发器不存在'), { status: 404 })
+    await rm(join(root, 'agent_triggers', `${id}.json`), { force: true })
+    return { deleted: Number(id) }
+  }
+
+  return { writer, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
