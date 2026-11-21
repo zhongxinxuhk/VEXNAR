@@ -96,6 +96,8 @@ test('apply registers every surface it owns', () => {
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
     'conversation.session.header.actions:vexnar-yak-history',
+    // 抓包开关也挂在会话头部：它作用的是当前会话的抓包范围，与流量入口并列。
+    'conversation.session.header.actions:vexnar-session-capture',
     'conversation.hero.options:vexnar-yak-history',
     ...['overview', 'tasks', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
@@ -164,6 +166,22 @@ test('the skin brand guard targets the skin-owned brand nodes', () => {
   assert.ok(bundle.includes('brand-identity'), 'brand-identity part must be rewritten')
   assert.ok(bundle.includes('rail-mark'), 'collapsed rail mark must be rewritten too')
   assert.ok(bundle.includes('vx-brand-word'), 'the injected wordmark needs its class')
+})
+
+test('拦截规则设置面用的就是 Web 控制台那组接口', () => {
+  // 设置页是 Web `/system/intercept` 的第二个客户端，不是第二份真相：
+  // 规则、拦截范围、模型兜底与用量必须落在同一组端点上。
+  for (const endpoint of [
+    '/api/intercept/rules',
+    '/api/intercept/tool-config',
+    '/api/intercept/judge',
+    '/api/intercept/judge/usage',
+    '/api/llm/profiles'
+  ]) {
+    assert.ok(bundle.includes(endpoint), `settings page must read ${endpoint}, the same endpoint the web console uses`)
+  }
+  assert.ok(bundle.includes('vx-int-table'), 'the rules table ships its own styles')
+  assert.ok(bundle.includes('vx-int-switch'), 'enable/disable is a switch, not a text column')
 })
 
 test('the stylesheet only references tokens dsh actually defines', () => {
