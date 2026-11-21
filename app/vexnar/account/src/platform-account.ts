@@ -39,9 +39,21 @@ const REQUEST_TIMEOUT_MS = 20_000
 /** 重试策略只有两档，见 `normalizeRetry`。 */
 export type RetryPolicy = 'normal' | 'always'
 
+/**
+ * 一行模型：`id` 与显示名是 VEXNAR 自己的最小集，其余字段与 pi-ai 的行同形，
+ * 原样写进 llm-pi-ai——模型页不该比 dsh 原生的模型编辑器少东西。
+ */
 export interface ProviderModel {
   id: string
   name?: string
+  /** 该模型接受的输入类型（`text` / `image`）；缺省时由适配器决定。 */
+  inputTypes?: string[] | undefined
+  /** 推理档位到上游取值的映射；`null` 表示该档不发任何值（Off）。 */
+  reasoningEfforts?: Record<string, string | null> | undefined
+  /** 上下文窗口（token）。 */
+  contextWindow?: number | undefined
+  /** 单次输出上限（token）。 */
+  maxOutputTokens?: number | undefined
 }
 
 export interface AccountProvider {
@@ -279,7 +291,35 @@ function normalizeModel(model: unknown): ProviderModel | undefined {
   const id = text(source?.id)
   if (!id) return undefined
   const name = text(source?.name)
-  return name && name !== id ? { id, name } : { id }
+  const normalized: ProviderModel = name && name !== id ? { id, name } : { id }
+  const inputTypes = source?.inputTypes
+  if (Array.isArray(inputTypes)) {
+    const kept = inputTypes.map((item) => text(item)).filter((item) => item !== '')
+    if (kept.length > 0) normalized.inputTypes = [...new Set(kept)]
+  }
+  const efforts = asRecord(source?.reasoningEfforts)
+  if (efforts !== undefined) {
+    const kept: Record<string, string | null> = {}
+    for (const [level, value] of Object.entries(efforts)) {
+      const key = text(level)
+      if (key === '') continue
+      if (value === null) kept[key] = null
+      else {
+        const wire = text(value)
+        if (wire !== '') kept[key] = wire
+      }
+    }
+    if (Object.keys(kept).length > 0) normalized.reasoningEfforts = kept
+  }
+  const contextWindow = source?.contextWindow
+  if (typeof contextWindow === 'number' && Number.isSafeInteger(contextWindow) && contextWindow > 0) {
+    normalized.contextWindow = contextWindow
+  }
+  const maxOutputTokens = source?.maxOutputTokens
+  if (typeof maxOutputTokens === 'number' && Number.isSafeInteger(maxOutputTokens) && maxOutputTokens > 0) {
+    normalized.maxOutputTokens = maxOutputTokens
+  }
+  return normalized
 }
 
 /**

@@ -83,7 +83,35 @@ function normalizeModel(model) {
   const id = text(source?.id);
   if (!id) return void 0;
   const name = text(source?.name);
-  return name && name !== id ? { id, name } : { id };
+  const normalized = name && name !== id ? { id, name } : { id };
+  const inputTypes = source?.inputTypes;
+  if (Array.isArray(inputTypes)) {
+    const kept = inputTypes.map((item) => text(item)).filter((item) => item !== "");
+    if (kept.length > 0) normalized.inputTypes = [...new Set(kept)];
+  }
+  const efforts = asRecord(source?.reasoningEfforts);
+  if (efforts !== void 0) {
+    const kept = {};
+    for (const [level, value] of Object.entries(efforts)) {
+      const key = text(level);
+      if (key === "") continue;
+      if (value === null) kept[key] = null;
+      else {
+        const wire = text(value);
+        if (wire !== "") kept[key] = wire;
+      }
+    }
+    if (Object.keys(kept).length > 0) normalized.reasoningEfforts = kept;
+  }
+  const contextWindow = source?.contextWindow;
+  if (typeof contextWindow === "number" && Number.isSafeInteger(contextWindow) && contextWindow > 0) {
+    normalized.contextWindow = contextWindow;
+  }
+  const maxOutputTokens = source?.maxOutputTokens;
+  if (typeof maxOutputTokens === "number" && Number.isSafeInteger(maxOutputTokens) && maxOutputTokens > 0) {
+    normalized.maxOutputTokens = maxOutputTokens;
+  }
+  return normalized;
 }
 function normalizeRetry(value) {
   return value === "always" ? "always" : "normal";

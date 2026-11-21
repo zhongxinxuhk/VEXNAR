@@ -11,7 +11,6 @@ import { join } from 'node:path'
 const root = await mkdtemp(join(tmpdir(), 'vexnar-visibility-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
-delete process.env.VEXNAR_GATEWAY_TOKEN
 
 const { meta, operations } = await import('./src/context.ts')
 const { register } = await import('./src/routes/visibility.ts')

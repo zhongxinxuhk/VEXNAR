@@ -20,7 +20,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Socket } from 'node:net'
 import type { Browser, BrowserContext, Page, Response as PlaywrightResponse } from 'playwright-core'
 import { loginPage, workspaceSessionScript } from './login-page.js'
-import { startModelGateway } from './model-gateway.js'
+import { createModelCompletion } from './model-channel.js'
 import {
   catalog,
   createPlatformAccount,
@@ -119,9 +119,6 @@ interface LlmProviderSetting {
   models: ProviderModel[]
   retryPolicy?: { mode: 'always' }
 }
-
-/** 模型网关对象：形状跟着 `startModelGateway` 自己的声明走。 */
-type ModelGateway = Awaited<ReturnType<typeof startModelGateway>>
 
 /** 平台登录窗口的状态机：`/login` 路由把它原样交给登录页。 */
 interface BrowserState {
@@ -305,7 +302,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   let syncedProviders = new Set<string>()
   let browserState: BrowserState = { state: 'idle', message: '' }
   let lastState: Account | undefined
-  let gateway: ModelGateway | undefined
+  let channelInstalled = false
   let browserTask: Promise<void> | undefined
   let chrome: Browser | undefined
   const life = new AbortController()
@@ -323,20 +320,27 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
    * 刚写进凭据库的键。dsh 每次请求自己解析密钥，不经过任何中转进程。
    */
   /**
-   * 引擎的模型调用走这里：一次启动、按请求读当前目录，登录换号或加提供方都不用重启。
-   * 以前这条路由是 Go 的 /api/desktop/openai/v1，现在由本进程给出同样的契约。
+   * 引擎的模型调用走这里：把进程内的完成函数装进 core。不开端口、不发令牌——
+   * 引擎与账号插件本来就在同一个 dsh 进程里，中间那条 loopback HTTP 只多了一
+   * 个监听口和一份要传的令牌。每次调用现读目录，换号或加提供方都不用重启。
    */
-  const ensureGateway = async (): Promise<ModelGateway> => {
-    if (gateway) return gateway
-    gateway = await startModelGateway(() => {
+  const ensureModelChannel = async (): Promise<void> => {
+    if (channelInstalled) return
+    const core = await import('./core-embedded.js')
+    core.setModelCompletion(createModelCompletion(() => {
       // 目录只在一次同步之后才存在；同步路径之外（理论上不会）读到的仍是错误。
       if (lastState === undefined) throw new Error('账号状态尚未同步')
       return catalog(lastState)
-    })
-    process.env.VEXNAR_GATEWAY_URL = gateway.url
-    process.env.VEXNAR_GATEWAY_TOKEN = gateway.token
-    console.log(`[vexnar] 模型网关 ${gateway.url}`)
-    return gateway
+    }, () => process.env.VEXNAR_MODEL))
+    channelInstalled = true
+  }
+
+  /** 退出登录或停用插件时摘掉通道：引擎随后只会说「模型通道未就绪」。 */
+  const clearModelChannel = async (): Promise<void> => {
+    if (!channelInstalled) return
+    channelInstalled = false
+    const core = await import('./core-embedded.js')
+    core.setModelCompletion(undefined)
   }
 
   const syncCatalog = async (state: Account) => {
@@ -371,8 +375,8 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
 
     const first = Object.keys(providers)[0]
     const firstModel = first === undefined ? undefined : providers[first]?.models[0]
-    if (firstModel !== undefined) process.env.VEXNAR_GATEWAY_MODEL = firstModel.id
-    if (Object.keys(providers).length > 0) await ensureGateway()
+    if (firstModel !== undefined) process.env.VEXNAR_MODEL = firstModel.id
+    if (Object.keys(providers).length > 0) await ensureModelChannel()
 
     const current = ctx.agentDefaultModel.currentSelection()
     const selected = providers[current.provider]?.models.find((model) => model.id === current.model)
@@ -597,8 +601,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       clearInterval(timer)
       life.abort()
       void chrome?.close().catch(() => {})
-      void gateway?.close().catch(() => {})
-      gateway = undefined
+      void clearModelChannel().catch(() => {})
     }
   })
   return () => ready

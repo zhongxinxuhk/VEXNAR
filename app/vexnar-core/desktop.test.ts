@@ -23,7 +23,6 @@ const root = await mkdtemp(join(tmpdir(), 'vexnar-desktop-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_DESKTOP_TOKEN = 'desktop-test-token'
-delete process.env.VEXNAR_GATEWAY_TOKEN
 
 const { register } = await import('./src/routes/desktop.ts')
 const { Hono } = await import('hono')

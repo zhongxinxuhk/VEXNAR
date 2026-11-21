@@ -544,6 +544,48 @@ var ACCOUNT_CSS = `
   .vxa-add-model:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.04)); }
 }
 .vxa-add-model:disabled { opacity: 0.4; cursor: default; }
+.vxa-model-more {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .vxa-model-more:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #111827); text-decoration: underline; }
+}
+.vxa-model-more:disabled { opacity: 0.4; cursor: default; }
+.vxa-capability {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: var(--dsw-alias-bg-layer-1, rgba(0, 0, 0, 0.02));
+}
+.vxa-capability-row { display: flex; align-items: center; gap: 8px; }
+.vxa-capability-label {
+  flex: 0 0 64px;
+  color: var(--dsw-alias-label-tertiary, #6b7280);
+  font-size: 11px;
+  line-height: 16px;
+}
+.vxa-capability-values { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.vxa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  font-size: 12px;
+  line-height: 18px;
+}
+.vxa-input-tiny { width: 64px; }
+.vxa-input-num { width: 110px; }
 
 .vxa-editor-footer { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -718,9 +760,100 @@ function AccountSection() {
   ];
   return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, initials), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
+var REASONING_LEVELS = [
+  { level: "low", label: "\u4F4E" },
+  { level: "medium", label: "\u4E2D" },
+  { level: "high", label: "\u9AD8" }
+];
+var INPUT_TYPES = [
+  { id: "text", label: "\u6587\u672C" },
+  { id: "image", label: "\u56FE\u50CF" }
+];
+function ModelCapability({ model, disabled, onChange }) {
+  const effortOn = model.reasoningEfforts !== void 0;
+  const effortValue = (level) => model.reasoningEfforts?.[level] ?? level;
+  const patch = (changes) => {
+    onChange({ ...model, ...changes });
+  };
+  const toggleInput = (id, on) => {
+    const current = new Set(model.inputTypes ?? []);
+    if (on) current.add(id);
+    else current.delete(id);
+    const ordered = INPUT_TYPES.map((entry) => entry.id).filter((entry) => current.has(entry));
+    patch(ordered.length === 0 ? { inputTypes: void 0 } : { inputTypes: ordered });
+  };
+  const setEffort = (level, value) => {
+    const next = { ...model.reasoningEfforts ?? {} };
+    next[level] = value.trim() === "" ? level === "off" ? null : level : value.trim();
+    patch({ reasoningEfforts: next });
+  };
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u8F93\u5165\u7C7B\u578B"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, INPUT_TYPES.map((entry) => /* @__PURE__ */ (0, import_react.createElement)("label", { key: entry.id, className: "vxa-check" }, /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      type: "checkbox",
+      checked: (model.inputTypes ?? []).includes(entry.id),
+      disabled,
+      onChange: (event) => {
+        toggleInput(entry.id, event.target.checked);
+      }
+    }
+  ), entry.label)))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u63A8\u7406\u6863\u4F4D"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-check" }, /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      type: "checkbox",
+      checked: effortOn,
+      disabled,
+      onChange: (event) => {
+        patch({ reasoningEfforts: event.target.checked ? { off: null, low: "low", medium: "medium", high: "high" } : void 0 });
+      }
+    }
+  ), "\u652F\u6301\u63A8\u7406"), effortOn && REASONING_LEVELS.map((entry) => /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      key: entry.level,
+      className: "vxa-input vxa-input-tiny",
+      value: effortValue(entry.level),
+      "aria-label": `\u63A8\u7406\u6863\u4F4D ${entry.label} \u7684\u4E0A\u6E38\u53D6\u503C`,
+      placeholder: entry.level,
+      disabled,
+      onChange: (event) => {
+        setEffort(entry.level, event.target.value);
+      }
+    }
+  )))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u4E0A\u9650"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      className: "vxa-input vxa-input-num",
+      inputMode: "numeric",
+      value: model.contextWindow === void 0 ? "" : String(model.contextWindow),
+      "aria-label": "\u4E0A\u4E0B\u6587\u7A97\u53E3",
+      placeholder: "\u4E0A\u4E0B\u6587\u7A97\u53E3",
+      disabled,
+      onChange: (event) => {
+        const digits = event.target.value.replace(/[^0-9]/g, "");
+        patch({ contextWindow: digits === "" ? void 0 : Number(digits) });
+      }
+    }
+  ), /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      className: "vxa-input vxa-input-num",
+      inputMode: "numeric",
+      value: model.maxOutputTokens === void 0 ? "" : String(model.maxOutputTokens),
+      "aria-label": "\u5355\u6B21\u8F93\u51FA\u4E0A\u9650",
+      placeholder: "\u8F93\u51FA\u4E0A\u9650",
+      disabled,
+      onChange: (event) => {
+        const digits = event.target.value.replace(/[^0-9]/g, "");
+        patch({ maxOutputTokens: digits === "" ? void 0 : Number(digits) });
+      }
+    }
+  ))));
+}
 function ModelCatalog({ models, disabled, onChange }) {
   const [dragging, setDragging] = (0, import_react.useState)();
   const [over, setOver] = (0, import_react.useState)();
+  const [capability, setCapability] = (0, import_react.useState)();
   const edit = (index, patch) => {
     onChange(models.map((model, current) => current === index ? { ...model, ...patch } : model));
   };
@@ -814,7 +947,30 @@ function ModelCatalog({ models, disabled, onChange }) {
         }
       },
       /* @__PURE__ */ (0, import_react.createElement)(TrashIcon, null)
-    ))
+    )),
+    /* @__PURE__ */ (0, import_react.createElement)(
+      "button",
+      {
+        type: "button",
+        className: "vxa-model-more",
+        "aria-expanded": capability === index,
+        disabled,
+        onClick: () => {
+          setCapability((current) => current === index ? void 0 : index);
+        }
+      },
+      capability === index ? "\u6536\u8D77\u80FD\u529B" : "\u80FD\u529B"
+    ),
+    capability === index && /* @__PURE__ */ (0, import_react.createElement)(
+      ModelCapability,
+      {
+        model,
+        disabled,
+        onChange: (next) => {
+          onChange(models.map((item, current) => current === index ? next : item));
+        }
+      }
+    )
   ))), /* @__PURE__ */ (0, import_react.createElement)(
     "button",
     {

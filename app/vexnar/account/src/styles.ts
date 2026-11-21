@@ -533,6 +533,48 @@ export const ACCOUNT_CSS = `
   .vxa-add-model:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.04)); }
 }
 .vxa-add-model:disabled { opacity: 0.4; cursor: default; }
+.vxa-model-more {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .vxa-model-more:hover:not(:disabled) { color: var(--dsw-alias-label-primary, #111827); text-decoration: underline; }
+}
+.vxa-model-more:disabled { opacity: 0.4; cursor: default; }
+.vxa-capability {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: var(--dsw-alias-bg-layer-1, rgba(0, 0, 0, 0.02));
+}
+.vxa-capability-row { display: flex; align-items: center; gap: 8px; }
+.vxa-capability-label {
+  flex: 0 0 64px;
+  color: var(--dsw-alias-label-tertiary, #6b7280);
+  font-size: 11px;
+  line-height: 16px;
+}
+.vxa-capability-values { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.vxa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dsw-alias-label-secondary, #4b5563);
+  font-size: 12px;
+  line-height: 18px;
+}
+.vxa-input-tiny { width: 64px; }
+.vxa-input-num { width: 110px; }
 
 .vxa-editor-footer { display: flex; justify-content: flex-end; gap: 8px; }
 

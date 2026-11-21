@@ -16,9 +16,14 @@ const platformProviderID = 'vexnar'
 
 type Retry = 'normal' | 'always'
 
+/** 一行模型：最小集是 id/显示名，其余与 pi-ai 的行同形，原样进 llm-pi-ai。 */
 interface ProviderModel {
   id: string
   name?: string
+  inputTypes?: string[] | undefined
+  reasoningEfforts?: Record<string, string | null> | undefined
+  contextWindow?: number | undefined
+  maxOutputTokens?: number | undefined
 }
 
 interface Provider {
@@ -197,6 +202,125 @@ export function AccountSection(): ReactNode {
   </div>
 }
 
+/* ── 模型能力 ───────────────────────────────────────────────────────────── */
+
+/** 推理档位：与 dsh 原生模型编辑器列出的那几档一致（Off 之外的三档）。 */
+const REASONING_LEVELS: readonly { level: string; label: string }[] = [
+  { level: 'low', label: '低' },
+  { level: 'medium', label: '中' },
+  { level: 'high', label: '高' }
+]
+
+const INPUT_TYPES: readonly { id: string; label: string }[] = [
+  { id: 'text', label: '文本' },
+  { id: 'image', label: '图像' }
+]
+
+/**
+ * 一行模型的「能力」：输入类型、推理档位、上下文与输出上限。
+ *
+ * dsh 原生的模型编辑器有这几项，VEXNAR 的模型页以前只编辑 id 与显示名，
+ * 手写提供方的模型就只能按适配器默认跑。这里把字段补齐——保存时原样写进
+ * llm-pi-ai，不再经过任何裁剪。
+ */
+function ModelCapability(
+  { model, disabled, onChange }: { model: ProviderModel; disabled: boolean; onChange: (next: ProviderModel) => void }
+): ReactNode {
+  const effortOn = model.reasoningEfforts !== undefined
+  const effortValue = (level: string): string => model.reasoningEfforts?.[level] ?? level
+  const patch = (changes: Partial<ProviderModel>): void => { onChange({ ...model, ...changes }) }
+
+  const toggleInput = (id: string, on: boolean): void => {
+    const current = new Set(model.inputTypes ?? [])
+    if (on) current.add(id)
+    else current.delete(id)
+    const ordered = INPUT_TYPES.map((entry) => entry.id).filter((entry) => current.has(entry))
+    patch(ordered.length === 0 ? { inputTypes: undefined } : { inputTypes: ordered })
+  }
+
+  const setEffort = (level: string, value: string): void => {
+    const next: Record<string, string | null> = { ...(model.reasoningEfforts ?? {}) }
+    // Off 档永远不发值：存 null，适配器据此知道「这一档什么都不带」。
+    next[level] = value.trim() === '' ? (level === 'off' ? null : level) : value.trim()
+    patch({ reasoningEfforts: next })
+  }
+
+  return <div className="vxa-capability">
+    <div className="vxa-capability-row">
+      <span className="vxa-capability-label">输入类型</span>
+      <span className="vxa-capability-values">
+        {INPUT_TYPES.map((entry) => <label key={entry.id} className="vxa-check">
+          <input
+            type="checkbox"
+            checked={(model.inputTypes ?? []).includes(entry.id)}
+            disabled={disabled}
+            onChange={(event) => { toggleInput(entry.id, event.target.checked) }}
+          />
+          {entry.label}
+        </label>)}
+      </span>
+    </div>
+
+    <div className="vxa-capability-row">
+      <span className="vxa-capability-label">推理档位</span>
+      <span className="vxa-capability-values">
+        <label className="vxa-check">
+          <input
+            type="checkbox"
+            checked={effortOn}
+            disabled={disabled}
+            onChange={(event) => {
+              patch({ reasoningEfforts: event.target.checked
+                ? { off: null, low: 'low', medium: 'medium', high: 'high' }
+                : undefined })
+            }}
+          />
+          支持推理
+        </label>
+        {effortOn && REASONING_LEVELS.map((entry) => <input
+          key={entry.level}
+          className="vxa-input vxa-input-tiny"
+          value={effortValue(entry.level)}
+          aria-label={`推理档位 ${entry.label} 的上游取值`}
+          placeholder={entry.level}
+          disabled={disabled}
+          onChange={(event) => { setEffort(entry.level, event.target.value) }}
+        />)}
+      </span>
+    </div>
+
+    <div className="vxa-capability-row">
+      <span className="vxa-capability-label">上限</span>
+      <span className="vxa-capability-values">
+        <input
+          className="vxa-input vxa-input-num"
+          inputMode="numeric"
+          value={model.contextWindow === undefined ? '' : String(model.contextWindow)}
+          aria-label="上下文窗口"
+          placeholder="上下文窗口"
+          disabled={disabled}
+          onChange={(event) => {
+            const digits = event.target.value.replace(/[^0-9]/g, '')
+            patch({ contextWindow: digits === '' ? undefined : Number(digits) })
+          }}
+        />
+        <input
+          className="vxa-input vxa-input-num"
+          inputMode="numeric"
+          value={model.maxOutputTokens === undefined ? '' : String(model.maxOutputTokens)}
+          aria-label="单次输出上限"
+          placeholder="输出上限"
+          disabled={disabled}
+          onChange={(event) => {
+            const digits = event.target.value.replace(/[^0-9]/g, '')
+            patch({ maxOutputTokens: digits === '' ? undefined : Number(digits) })
+          }}
+        />
+      </span>
+    </div>
+  </div>
+}
+
 /* ── 模型目录编辑器 ─────────────────────────────────────────────────────── */
 
 function ModelCatalog(
@@ -204,6 +328,7 @@ function ModelCatalog(
 ): ReactNode {
   const [dragging, setDragging] = useState<number>()
   const [over, setOver] = useState<number>()
+  const [capability, setCapability] = useState<number>()
 
   const edit = (index: number, patch: Partial<ProviderModel>): void => {
     onChange(models.map((model, current) => current === index ? { ...model, ...patch } : model))
@@ -285,6 +410,20 @@ function ModelCatalog(
             <TrashIcon />
           </button>
         </div>
+        <button
+          type="button"
+          className="vxa-model-more"
+          aria-expanded={capability === index}
+          disabled={disabled}
+          onClick={() => { setCapability((current) => current === index ? undefined : index) }}
+        >
+          {capability === index ? '收起能力' : '能力'}
+        </button>
+        {capability === index && <ModelCapability
+          model={model}
+          disabled={disabled}
+          onChange={(next) => { onChange(models.map((item, current) => current === index ? next : item)) }}
+        />}
       </li>)}
     </ul>
     <button
