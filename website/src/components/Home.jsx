@@ -74,7 +74,6 @@ export default function Home() {
       <div className="v-client-grid">
         <figure className="v-client-frame">
           <img src="assets/client/console-chat.jpg" alt="VEXNAR 客户端 Agent 首页：主 Agent 编排会话、工具调用与审批卡片" width="1600" height="1000" loading="eager" />
-          <img className="v-client-mobile" src="assets/client/console-chat-mobile.jpg" alt="客户端在窄屏下的会话列表" width="390" height="844" loading="lazy" />
           <figcaption>
             <span>客户端真实界面截图 · 演示数据 · 不连接服务端</span>
             <a href="console.html">打开客户端体验<Icon name="chevronRight" size={12} /></a>
