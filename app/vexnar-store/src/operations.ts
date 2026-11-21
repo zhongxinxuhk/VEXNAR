@@ -925,6 +925,17 @@ export function storeOperations(root: string) {
     deleted: []
   }
 
+  async function updateNodePayload(taskId: string, nodeId: string, patch: Record<string, unknown>) {
+    const task = await writer.readRecord('tasks', taskId)
+    const node = await writer.readRecord('nodes', nodeId)
+    if (!task || !node || String(node.exploration_id) !== String(task.exploration_id)) throw Object.assign(new Error('node 不存在'), { status: 404 })
+    const payload = { ...(typeof node.payload === 'string' ? JSON.parse(node.payload) : node.payload), ...patch }
+    const next = { ...node, payload }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'nodes', key: nodeId, record: next, expectedRev: Number(node.rev ?? 0) }])
+    return written
+  }
+
   async function setNodeState(taskId: string, nodeId: string, state: string) {
     const task = await writer.readRecord('tasks', taskId)
     const node = await writer.readRecord('nodes', nodeId)
@@ -1272,5 +1283,5 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  return { writer, updateNodePayload, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }

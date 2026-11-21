@@ -73,9 +73,9 @@ const many = await engine.workMany(task.id, async () => JSON.stringify({ tool: '
 check('workMany runs workers', many.filter((item) => item?.state === 'done').length >= 1, JSON.stringify(many))
 
 const blockedIntent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'blocked' }, state: 'open' })
-const blocked = await engine.work(task.id, async () => JSON.stringify({ tool: 'nope', args: {} }), 'work#9')
+const blocked = await engine.work(task.id, async () => JSON.stringify({ tool: 'nope', args: {} }), 'work#9', 4, { maxAttempts: 1 })
 const retried = await engine.retryBlocked(task.id, async () => JSON.stringify({ tool: 'finish', args: { summary: 'retry' } }))
-const reopenedNode = await ops.writer.readRecord('nodes', String(blockedIntent.id))
+const reopenedNode = await ops.writer.readRecord('nodes', String(retried.results[0]?.intent ?? blockedIntent.id))
 check('blocked retry', blocked?.state === 'blocked' && retried.reopened >= 1 && reopenedNode?.state === 'done', JSON.stringify({ blocked, retried, node: reopenedNode?.state }))
 
 let cancelChecks = 0
