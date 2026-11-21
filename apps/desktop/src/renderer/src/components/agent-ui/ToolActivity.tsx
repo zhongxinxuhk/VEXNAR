@@ -53,6 +53,7 @@ export function ToolActivity({
   events,
   running,
   executionStatus,
+  activeLabel,
   elapsedMs
 }: {
   conversationId: string
@@ -60,6 +61,7 @@ export function ToolActivity({
   events: ToolTraceEvent[]
   running: boolean
   executionStatus: keyof typeof executionStatusLabels
+  activeLabel?: string
   elapsedMs?: number
 }): React.JSX.Element {
   const t = useT()
@@ -127,7 +129,7 @@ export function ToolActivity({
         {calls.length > 0
           ? t('chat.toolActivity', { count: calls.length })
           : t('chat.toolEventCount', { count: events.length })}
-        {executionStatus !== 'unknown' ? ` · ${t(executionStatusLabels[executionStatus])}` : ''}
+        {executionStatus !== 'unknown' ? ` · ${activeLabel ?? t(executionStatusLabels[executionStatus])}` : ''}
         {counts.done > 0 ? ` · ${t('chat.toolDoneCount', { count: counts.done })}` : ''}
         {counts.running > 0 ? ` · ${t('chat.toolActiveCount', { count: counts.running })}` : ''}
         {counts.error > 0 ? ` · ${t('chat.toolFailedCount', { count: counts.error })}` : ''}

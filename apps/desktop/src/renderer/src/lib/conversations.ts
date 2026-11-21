@@ -287,6 +287,7 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
       case 'text': {
         const message = assistant(item)
         message.content += item.detail || item.summary
+        if (message.execution) message.execution.phase = 'answer'
         break
       }
       case 'model': {
@@ -298,11 +299,13 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         break
       }
       case 'thinking': {
-        assistant(item)
+        const message = assistant(item)
+        if (message.execution) message.execution.phase = 'reasoning'
         break
       }
       case 'tool_use': {
         const message = assistant(item)
+        if (message.execution) message.execution.phase = 'tools'
         const call: ToolCall = {
           id: item.tool_use_id || `t-${item.seq}`,
           name: item.tool || 'tool',
@@ -332,7 +335,9 @@ export function toChatMessages(activities: BackendActivity[], sessionId: string)
         const call = candidates.length === 1 ? candidates[0] : undefined
         const event = { sequence: item.seq, timestamp: item.ts }
         const outcome = item.is_error ? 'error' : 'done'
-        assistant(item).toolEvents?.push({
+        const message = assistant(item)
+        if (message.execution) message.execution.phase = 'tools'
+        message.toolEvents?.push({
           ...event,
           tool: item.tool || call?.name || 'tool',
           worker: item.worker,

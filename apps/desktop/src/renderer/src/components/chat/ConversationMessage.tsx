@@ -4,7 +4,8 @@
 
 import { useState } from 'react'
 import { Check, Copy, Paperclip, Pencil, RefreshCw } from 'lucide-react'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { CloudMark } from '@/components/brand'
 import { ConversationExecution } from './ConversationExecution'
 import { Markdown } from '@/components/Markdown'
 import { QuotaNotice } from '@/components/QuotaNotice'
@@ -16,21 +17,25 @@ import { useDrafts } from '@/store/drafts'
 
 export function ConversationMessage({
   message,
-  lastUser
+  retryUser
 }: {
   message: ChatMessage
-  lastUser?: ChatMessage
+  retryUser?: ChatMessage
 }): React.JSX.Element {
   const t = useT()
   const locale = useI18n((state) => state.locale)
   const isUser = message.role === 'user'
-  const [copied, setCopied] = useState(false)
+  const reducedMotion = useReducedMotion()
+  const [copyStatus, setCopyStatus] = useState<'copied' | 'failed' | null>(null)
   const patchDraft = useDrafts((state) => state.patch)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const send = useAppStore((state) => state.send)
   const busy = useAppStore((state) => state.busy)
-  const canRegenerate =
-    !isUser && !message.streaming && !busy && Boolean(lastUser?.content)
+  const canRegenerate = Boolean(retryUser?.content.trim()) && !retryUser?.files?.length &&
+    !isUser && !message.streaming && !busy
+  const retry = (): void => {
+    if (canRegenerate && retryUser) void send(retryUser.content, retryUser.attachments)
+  }
   const hasTrace = (message.toolEvents?.length ?? 0) > 0
   const execution = message.execution
   const startedAt = isUser ? message.createdAt : execution?.startedAt
@@ -44,32 +49,44 @@ export function ConversationMessage({
       ? stripFailureText(message.content, failureText)
       : message.content
   const copy = async (): Promise<void> => {
-    // 复制可见正文：余额不足时正文已剥掉 403 原文，不要把报错 JSON 当回答复制走。
-    const result = await window.vexnar.app.copyText(visibleContent || message.content)
-    if (result.ok) {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
+    try {
+      const result = await window.vexnar.app.copyText(visibleContent)
+      setCopyStatus(result.ok ? 'copied' : 'failed')
+    } catch {
+      setCopyStatus('failed')
     }
   }
+  const edit = (): void => {
+    if (!activeSessionId) return
+    patchDraft(activeSessionId, { text: message.content })
+    document.getElementById('conversation-composer-input')?.focus()
+  }
+  const canEdit = isUser && Boolean(activeSessionId && message.content)
+  const hasActions = !message.streaming && (Boolean(visibleContent) || canEdit || canRegenerate)
+  const actionClass = 'inline-flex min-h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-muted transition-colors hover:bg-panel-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent'
   return (
     <motion.article
       aria-label={t(isUser ? 'chat.userMessage' : 'chat.assistantMessage')}
-      initial={{ opacity: 0, y: 4 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}
+      className={cn('flex w-full items-start gap-2.5', isUser ? 'justify-end' : 'justify-start')}
     >
-      {/* group 落在气泡容器上：悬停气泡才浮出操作行，行本身不参与布局 */}
+      {!isUser ? (
+        <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-[9px] border border-accent/15 bg-accent/8 text-accent">
+          <CloudMark className="size-4" />
+        </span>
+      ) : null}
       <div
         className={cn(
-          'group relative min-w-0',
+          'min-w-0',
           isUser ? 'max-w-[78%]' : 'w-full max-w-[760px]'
         )}
       >
         <header className={cn('mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-muted', isUser && 'justify-end px-1')}>
-          {!isUser ? (
-            <span className="font-medium text-ink-soft">{execution?.worker || t('chat.assistantMessage')}</span>
-          ) : null}
+          <span className="text-[12px] font-semibold text-ink">
+            {isUser ? t('chat.you') : execution?.worker || t('chat.assistantMessage')}
+          </span>
           {!isUser && execution?.model ? (
             <span className="max-w-56 truncate" title={execution.model}>{execution.model}</span>
           ) : null}
@@ -82,8 +99,8 @@ export function ConversationMessage({
         {isUser ? null : <ConversationExecution message={message} />}
         <div
           className={cn(
-            'text-[13px] leading-[1.75]',
-            isUser ? 'rounded-[16px] bg-panel px-4 py-2.5 text-ink' : 'text-ink'
+            'text-[14px] leading-[1.75]',
+            isUser ? 'rounded-[16px] rounded-tr-md border border-line-soft bg-panel px-4 py-2.5 text-ink' : 'text-ink'
           )}
         >
           {message.attachments?.length ? (
@@ -117,7 +134,7 @@ export function ConversationMessage({
             <section aria-label={isUser ? undefined : t(message.streaming ? 'chat.streamingReply' : execution?.cancelled ? 'chat.partialReply' : 'chat.finalAnswer')}>
               <Markdown
                 content={visibleContent}
-                className={message.streaming ? 'answer-streaming' : undefined}
+                className={message.streaming && execution?.phase === 'answer' ? 'answer-streaming' : undefined}
               />
             </section>
           ) : message.streaming ||
@@ -131,20 +148,20 @@ export function ConversationMessage({
             quotaExhausted ? (
               <QuotaNotice
                 error={failureText}
-                onRetry={lastUser?.content ? () => void send(lastUser.content) : undefined}
+                onRetry={canRegenerate ? retry : undefined}
                 retrying={busy}
               />
             ) : (
               <div className="mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-2.5 py-1.5 font-mono text-[11px] text-danger">
                 <span className="min-w-0 flex-1">{t('chat.runtimeError')}</span>
-                {lastUser?.content ? (
+                {canRegenerate ? (
                   <button
                     type="button"
-                    onClick={() => void send(lastUser.content)}
+                    onClick={retry}
                     disabled={busy}
                     className="shrink-0 rounded px-1.5 py-0.5 font-sans text-[11px] text-danger/90 hover:bg-danger/10 disabled:opacity-50"
                   >
-                    重试
+                    {t('chat.retryMessage')}
                   </button>
                 ) : null}
               </div>
@@ -152,50 +169,30 @@ export function ConversationMessage({
           ) : null}
 
         </div>
-        {/* 操作行浮在气泡下方：不占气泡高度/宽度，只有鼠标靠近气泡才出现。
-            pt-0.5 而非 mt-0.5 —— 行盒子与气泡下沿贴合，指针从气泡滑到图标时
-            不会经过 2px 的空档把 group-hover 断掉。 */}
-        {message.content && !message.streaming ? (
-          <div
-            className={cn(
-              'pointer-events-none absolute top-full z-10 flex items-start gap-0.5 pt-0.5',
-              'opacity-0 transition-opacity duration-150',
-              'group-hover:pointer-events-auto group-hover:opacity-100',
-              'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
-              isUser ? 'right-0' : 'left-0'
-            )}
-          >
-            <button
-              type="button"
-              aria-label="复制消息"
-              title={copied ? '已复制' : '复制'}
-              onClick={() => void copy()}
-              className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-            >
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            </button>
-            {canRegenerate ? (
-              <button
-                type="button"
-                aria-label="重新生成"
-                title="重新生成"
-                onClick={() => void send(lastUser!.content)}
-                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-              >
-                <RefreshCw className="h-3 w-3" />
+        {hasActions ? (
+          <div role="group" aria-label={t('chat.messageActions')} className={cn(
+            'mt-1 flex flex-wrap items-center gap-0.5',
+            isUser && 'justify-end'
+          )}>
+            {visibleContent ? (
+              <button type="button" onClick={() => void copy()} className={actionClass}>
+                {copyStatus === 'copied' ? <Check className="size-3" /> : <Copy className="size-3" />}
+                {t(copyStatus === 'copied' ? 'chat.toolPayloadCopied' : 'chat.copyMessage')}
               </button>
             ) : null}
-            {isUser && activeSessionId ? (
-              <button
-                type="button"
-                aria-label="在输入框编辑"
-                title="在输入框编辑"
-                onClick={() => patchDraft(activeSessionId, { text: message.content })}
-                className="grid h-5 w-5 place-items-center rounded-md text-muted transition-colors hover:bg-panel-2 hover:text-ink"
-              >
-                <Pencil className="h-3 w-3" />
+            {canEdit ? (
+              <button type="button" onClick={edit} className={actionClass}>
+                <Pencil className="size-3" />
+                {t('chat.editMessage')}
               </button>
             ) : null}
+            {canRegenerate && !message.failed ? (
+              <button type="button" onClick={retry} className={actionClass}>
+                <RefreshCw className="size-3" />
+                {t('chat.regenerateMessage')}
+              </button>
+            ) : null}
+            {copyStatus === 'failed' ? <span role="status" className="px-1 text-xs text-danger">{t('chat.toolPayloadCopyFailed')}</span> : null}
           </div>
         ) : null}
       </div>

@@ -101,7 +101,7 @@ describe('toChatMessages', () => {
       startedAt: Date.parse(user.ts),
       completedAt: Date.parse(result.ts)
     }
-    expect(toChatMessages([user, text, result], '1')[1].execution).toEqual(expected)
+    expect(toChatMessages([user, text, result], '1')[1].execution).toMatchObject(expected)
     expect(toChatMessages([text, result], '1')[0].execution?.startedAt).toBeUndefined()
     expect(toChatMessages([user, text], '1')[1].execution?.completedAt).toBeUndefined()
   })
@@ -129,6 +129,17 @@ describe('toChatMessages', () => {
     expect(reply.execution?.cancelled).toBe(true)
     expect(reply.failed).toBeUndefined()
     expect(toChatMessages([user, cancelled], '1')[1].execution?.cancelled).toBe(true)
+  })
+
+  it('derives visible phases from observed events without displaying their private text', () => {
+    const user = step({ kind: 'user' })
+    const reasoning = step({ kind: 'thinking', summary: 'private', detail: 'secret thoughts' })
+    const tool = step({ kind: 'tool_use', tool_use_id: 'read-1' })
+    const reply = step({ kind: 'text', detail: '公开答复' })
+    const flow = [user, reasoning, tool, reply]
+    const phases = [2, 3, 4].map((limit) => toChatMessages(flow.slice(0, limit), 'turn')[1])
+    expect(phases.map((row) => row.execution?.phase)).toEqual(['reasoning', 'tools', 'answer'])
+    expect(JSON.stringify(phases)).not.toContain('secret thoughts')
   })
 
   it('preserves the assistant identity when a private reasoning row becomes an answer', () => {

@@ -426,6 +426,7 @@ function Composer(): React.JSX.Element {
             </div>
           )}
           <textarea
+            id="conversation-composer-input"
             ref={ref}
             value={text}
             aria-label="聊天消息"
@@ -626,7 +627,10 @@ export function ChatView(): React.JSX.Element {
   const sessions = useAppStore((state) => state.sessions)
   const activeSessionId = useAppStore((state) => state.activeSessionId)
   const messages = useAppStore((state) => state.messages)
-  const lastUser = useMemo(() => [...messages].reverse().find((item) => item.role === 'user'), [messages])
+  const lastMessage = messages.at(-1)
+  const retryUser = lastMessage?.role === 'assistant'
+    ? [...messages].reverse().find((item) => item.role === 'user')
+    : undefined
   const hasOlderMessages = useAppStore((state) => state.hasOlderMessages)
   const loadingOlderMessages = useAppStore((state) => state.loadingOlderMessages)
   const loadOlderMessages = useAppStore((state) => state.loadOlderMessages)
@@ -761,7 +765,7 @@ export function ChatView(): React.JSX.Element {
             setAway(!following.current)
           }}
         >
-          <div className="mx-auto flex w-full max-w-[820px] flex-col gap-6 px-8 pb-6 pt-16">
+          <div className="mx-auto flex w-full max-w-[860px] flex-col gap-8 px-4 pb-8 pt-16 sm:px-8">
             {hasOlderMessages ? (
               <button
                 type="button"
@@ -793,7 +797,7 @@ export function ChatView(): React.JSX.Element {
                 )) : <p className="py-12 text-center text-sm text-muted">{t('chat.workViewEmpty')}</p>}
               </section>
             ) : messages.map((message) => (
-              <ConversationMessage key={message.id} message={message} lastUser={lastUser} />
+              <ConversationMessage key={message.id} message={message} retryUser={message === lastMessage ? retryUser : undefined} />
             ))}
           </div>
         </div>

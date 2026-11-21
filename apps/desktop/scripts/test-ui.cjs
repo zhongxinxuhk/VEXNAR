@@ -255,6 +255,12 @@ app.whenReady().then(async () => {
     await wait(`document.querySelector('section[aria-label="最终答复"]')?.textContent.includes('已经搭好官网骨架')`)
     await wait(`document.querySelector('[data-testid="chat-composer"] textarea')?.value==='保留这份草稿'`)
     await changeDraft('')
+    await run(`[...document.querySelectorAll('article[aria-label="用户消息"] button')].find(e=>e.textContent.includes('在输入框编辑')).click()`)
+    await wait(`document.activeElement.id==='conversation-composer-input' && document.activeElement.value==='把官网搭起来'`)
+    await changeDraft('')
+    await run(`[...document.querySelectorAll('article[aria-label="助手消息"] button')].find(e=>e.textContent.includes('复制消息')).click()`)
+    await wait(`window.__uiFixture.snapshot().copiedTrace.includes('已经搭好官网骨架')`)
+
 
     await openMenu('选择推理强度与模型')
     await wait(`!!document.querySelector('[role="slider"]')`)

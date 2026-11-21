@@ -5,7 +5,13 @@
 import { AgentLoading } from '@/components/agent-ui/LoadingMark'
 import { ToolActivity, executionStatusLabels } from '@/components/agent-ui/ToolActivity'
 import { useT } from '@/lib/i18n'
-import type { ChatMessage } from '@/store/app'
+import type { ChatExecutionPhase, ChatMessage } from '@/store/app'
+
+const phaseLabels: Record<ChatExecutionPhase, 'chat.phaseReasoning' | 'chat.phaseTools' | 'chat.phaseAnswer'> = {
+  reasoning: 'chat.phaseReasoning',
+  tools: 'chat.phaseTools',
+  answer: 'chat.phaseAnswer'
+}
 
 export function ConversationExecution({
   message,
@@ -27,6 +33,9 @@ export function ConversationExecution({
         : completedAt !== undefined ? 'completed' : 'unknown'
   const elapsed = startedAt !== undefined && completedAt !== undefined ? completedAt - startedAt : NaN
 
+  const phase = message.execution?.phase
+  const activeLabel = message.streaming ? t(phase ? phaseLabels[phase] : 'chat.phaseWaiting') : undefined
+
   if (events.length > 0) {
     return (
       <div className="mb-2">
@@ -36,13 +45,18 @@ export function ConversationExecution({
           events={events}
           running={Boolean(message.streaming)}
           executionStatus={status}
+          activeLabel={activeLabel}
           elapsedMs={Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : undefined}
         />
       </div>
     )
   }
-  if (message.streaming && (workView || !message.content)) {
-    return <div className="mt-1"><AgentLoading label={t(executionStatusLabels.running)} /></div>
+  if (activeLabel && (workView || phase !== 'answer')) {
+    return (
+      <div data-execution-phase={phase ?? 'waiting'} className="mb-3 rounded-lg border border-line-soft bg-panel/60 px-3 py-2">
+        <AgentLoading label={activeLabel} />
+      </div>
+    )
   }
   return workView || status === 'cancelled' ? <p className="mt-1 text-xs text-muted">{t(executionStatusLabels[status])}</p> : null
 }
