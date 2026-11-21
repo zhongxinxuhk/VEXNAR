@@ -82,6 +82,18 @@ being rebuilt on an external agent framework in its own repository.
 - Client code, packaging, signing and auto-update belong to the client repository. This
   repository keeps the Go service, the web console and the deployment assets.
 
+## `app/` uses pnpm only
+
+- `app/` is one pnpm workspace: `app/pnpm-workspace.yaml` defines the packages, `app/pnpm-lock.yaml`
+  is the only lockfile, and `app/package.json` pins `packageManager`.
+- `npm`/`yarn` state under `app/` is a defect, not a missing file: a `package-lock.json` or
+  `yarn.lock` there means a second package manager resolved a second tree. Run `pnpm install` from
+  `app/` instead of adding a lockfile, and never restore a removed `package-lock.json`.
+  `pnpm run upstream:check` fails while one exists.
+- Sub-packages declare dependencies only; they carry no `pnpm-lock.yaml` and no
+  `pnpm-workspace.yaml` of their own. `node_modules/` under `app/` is never committed.
+- `app/dsh/` is the exception: the vendored upstream checkout keeps its own workspace and lockfile.
+
 ## Connect to the web console's API — do not rewrite the web console
 
 - `web/` is an existing, finished client. Work on other clients connects to its backend APIs; it
