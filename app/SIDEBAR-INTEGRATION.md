@@ -35,8 +35,8 @@ dsh 设置页
 
 dsh 设置页 · 内置插件
 ├─ 全部插件    → settings.plugins.tab: all（dsh 自带清单）
-├─ 工具        → settings.plugins.tab: vexnar-plugin-tools（只读）
-└─ MCP server  → settings.plugins.tab: vexnar-plugin-mcp（只读）
+├─ 工具        → settings.plugins.tab: vexnar-plugin-tools（系统/自定义工具卡片 + 详情编辑）
+└─ MCP server  → settings.plugins.tab: vexnar-plugin-mcp（卡片列表 + 详情增删改）
 ```
 
 ### 为什么合并
@@ -47,8 +47,10 @@ dsh 设置页 · 内置插件
 - **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
   工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
 - **MCP / 工具** 是同一件事的两半（工具从哪来），而「谁提供、能不能调」本来就是
-  插件与权限的问题。所以它们不占独立设置节，而是「内置插件」分区的两个标签页：清单
-  只读，启停与调用权限由 dsh（插件页 + 权限预设）统一管理，避免两处开关互相打架。
+  插件与权限的问题。所以它们不占独立设置节，而是「内置插件」分区的两个标签页，
+  形制照 dsh 插件页：卡片列表 → 整页详情。注册面（描述、参数说明与默认值、绑定
+  Agent、启停、自定义工具与 MCP server 的增删改）在这里完成；agent 侧能不能真正
+  调用仍由 dsh 的插件挂载与权限预设决定。
 
 ## 哪些入口复用 dsh，哪些新建
 
@@ -63,7 +65,7 @@ dsh 设置页 · 内置插件
 | 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
-| MCP / 工具 / Skill | 「内置插件」分区标签页（只读清单，权限归 dsh） | `/api/mcp`、`/api/tools` | 骨架 |
+| MCP / 工具 / Skill | 「内置插件」分区标签页：卡片列表 + 详情编辑 | `/api/tools`、`/api/tools/custom`、`/api/tools/{key}/reset`、`/api/mcp`、`/api/mcp/{id}/refresh` | 已接 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
 
