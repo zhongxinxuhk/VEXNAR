@@ -352,10 +352,74 @@ function installPermissionWarning(): () => void {
   return () => observer.disconnect()
 }
 
+const PANEL_ID = 'vexnar-console'
+
+const NAV_GROUPS: Array<{ title: string; items: Array<{ id: string; label: string; desc: string; badge?: number }> }> = [
+  { title: '功能', items: [
+    { id: 'dashboard', label: '仪表盘', desc: '任务、发现、资产与 Token 总览' },
+    { id: 'chat', label: '对话', desc: '主 Agent 会话与上下文' },
+    { id: 'tasks', label: '任务', desc: '任务列表、意图与目标' },
+    { id: 'findings', label: '发现', desc: '漏洞列表、分组与详情' },
+    { id: 'traffic', label: '流量', desc: '抓包、证据绑定与正文' },
+    { id: 'tools-run', label: '工具执行', desc: 'nmap / httpx / ffuf / sqlmap' },
+    { id: 'llm-record', label: 'LLM 录制', desc: '请求与响应记录' },
+    { id: 'assets', label: '资产', desc: '域名 / IP / 服务 / 端点' },
+    { id: 'assets-sync', label: '资产同步', desc: '外部资产源同步' },
+    { id: 'workspace', label: '工作空间', desc: '文件与产物' }
+  ] },
+  { title: '系统', items: [
+    { id: 'llm', label: 'LLM', desc: '模型配置与网关' },
+    { id: 'agents', label: 'Agent', desc: '规划者 / 执行者 / 触发' },
+    { id: 'mcp', label: 'MCP', desc: 'MCP server 与工具目录' },
+    { id: 'skill', label: 'Skill', desc: '技能包与可见性' },
+    { id: 'tools', label: '工具', desc: '内置与自定义工具' },
+    { id: 'notify', label: '通知推送', desc: '渠道与投递记录' },
+    { id: 'intercept', label: '拦截规则', desc: '请求拦截与改写' },
+    { id: 'asset-intercept', label: '资产拦截', desc: '资产范围与自动认领' },
+    { id: 'approvals', label: '审批记录', desc: '人工审批与操作日志', badge: 2 },
+    { id: 'logs', label: '日志', desc: '引擎与工具日志' },
+    { id: 'settings', label: '系统配置', desc: '运行参数与偏好' }
+  ] }
+]
+
+function ConsoleIcon({ size }: { size?: number }): ReactNode {
+  return h('svg', { width: size ?? 16, height: size ?? 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' },
+    h('path', { d: 'M12 3 3 7l9 4 9-4-9-4Z' }),
+    h('path', { d: 'm3 12 9 4 9-4' }),
+    h('path', { d: 'm3 17 9 4 9-4' }))
+}
+
+function VexnarConsole(): ReactNode {
+  const [active, setActive] = useState('dashboard')
+  const items = NAV_GROUPS.flatMap((group) => group.items)
+  const current = items.find((item) => item.id === active) ?? items[0]
+  return h('div', { style: { display: 'flex', height: '100%', minHeight: 0, background: 'var(--vx-bg, #fff)' } },
+    h('aside', { style: { width: 240, flex: '0 0 240px', borderRight: '1px solid var(--vx-border, #e5e7eb)', overflowY: 'auto', padding: '12px 8px' } },
+      NAV_GROUPS.map((group) => h('div', { key: group.title, style: { marginBottom: 14 } },
+        h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', padding: '6px 10px' } }, group.title),
+        group.items.map((item) => h('button', {
+          key: item.id,
+          type: 'button',
+          onClick: () => setActive(item.id),
+          style: {
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+            padding: '8px 10px', border: 0, borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+            background: item.id === active ? 'var(--vx-active, #eef2ff)' : 'transparent',
+            color: 'var(--vx-fg, #111827)', fontSize: 14
+          }
+        }, h('span', null, item.label), item.badge ? h('span', { style: { minWidth: 18, height: 18, borderRadius: 9, background: '#f59e0b', color: '#fff', fontSize: 11, lineHeight: '18px', textAlign: 'center' } }, String(item.badge)) : null)))),
+      h('div', { style: { fontSize: 11, color: 'var(--vx-muted, #9ca3af)', padding: '8px 10px' } }, '数据源：vexnar-core')),
+    h('section', { style: { flex: 1, minWidth: 0, overflowY: 'auto', padding: 24 } },
+      h('h1', { style: { fontSize: 22, margin: '0 0 6px' } }, current.label),
+      h('p', { style: { color: 'var(--vx-muted, #6b7280)', margin: '0 0 20px' } }, current.desc),
+      h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
+        '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
+}
+
 export function apply(ctx: {
   slots?: {
     inject: (name: string, register: () => unknown) => void
-    register: (options: { name: string; key?: string }, component: unknown) => unknown
+    register: (options: { name: string; key?: string; id?: string; order?: number; label?: () => string }, component: unknown) => unknown
   }
   effect?: (fn: () => () => void) => void
 }): void {
@@ -376,6 +440,10 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
+  slots.inject('main', () =>
+    slots.register({ name: 'main', key: PANEL_ID }, VexnarConsole))
+  slots.inject('sidebar.panellist', () =>
+    slots.register({ name: 'sidebar.panellist', id: PANEL_ID, order: 50, label: () => 'VEXNAR' }, ConsoleIcon))
   // Brand slots replace @deepseek-ai/dsh-client-ui-brand-official, which the
   // profile patch disables. Occupying the slot is the supported override route.
   slots.inject('sidebar.brand.mark', () =>
