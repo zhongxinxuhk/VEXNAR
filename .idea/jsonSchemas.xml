@@ -46,6 +46,9 @@
                   <Item>
                     <option name="path" value="apps/desktop/package.json" />
                   </Item>
+                  <Item>
+                    <option name="path" value="app/dsh/package.json" />
+                  </Item>
                 </list>
               </option>
             </SchemaInfo>

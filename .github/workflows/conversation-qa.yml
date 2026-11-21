@@ -10,44 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  desktop:
-    name: Desktop checks (${{ matrix.target }})
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: Windows x64
-            runner: windows-2025
-            arch: x64
-          - target: Linux x64
-            runner: ubuntu-24.04
-            arch: x64
-          - target: macOS arm64
-            runner: macos-15
-            arch: arm64
-    defaults:
-      run:
-        working-directory: apps/desktop
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: apps/desktop/package-lock.json
-      - name: Verify runner architecture
-        env:
-          EXPECTED_ARCH: ${{ matrix.arch }}
-        run: node -e "if (process.arch !== process.env.EXPECTED_ARCH) throw Error('Unexpected Node architecture '+process.arch)"
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - name: Run isolated Electron conversation UI fixture
-        if: runner.os == 'macOS'
-        run: npm run test:ui
-
   conversation-store:
     name: Go conversation API with PostgreSQL
     runs-on: ubuntu-24.04

@@ -10,6 +10,23 @@
 
 ## [Unreleased]
 
+### MCP Server
+
+#### 新增的功能
+
+- **新增 `/mcp` 工具端点**：Streamable HTTP + JSON-RPC 2.0，支持 `initialize` / `tools/list` / `tools/call` / `ping`；按 `Authorization: Bearer` 鉴权，默认只接受 loopback（`VEXNAR_MCP_ALLOW_REMOTE=1` 可放开），未配置 token 时端点整体关闭。
+- **首批只读工具**：`list_tasks`、`list_llm_profiles`，直接复用现有 agent 工具契约（`actool.CoreTool`），schema 与执行语义不变；工具 panic 被收敛为 `isError` 结果，不中断连接。
+- **token 管理**：`VEXNAR_MCP_TOKEN` 优先；未设置时每次启动生成随机 token 并写入 `<data>/mcp.token`（0600），供外部 agent 读取。
+- **测试**：协议握手、通知 202、工具列表/调用、未知工具、鉴权失败、远端拒绝、GET 405、解析错误与 panic 隔离。
+
+### 仓库结构
+
+#### 移除的功能
+
+- **移除第一方桌面客户端**：删除 `apps/desktop`（Electron 客户端、Node agent 运行时、打包脚本与 UI 测试）与旧 Tauri 壳 `desktop/`，共 191 个受版本控制的文件；同时删除 `.github/workflows/desktop-electron.yml`、`conversation-qa.yml` 的桌面任务、`pg-macos.yml` 与 `scripts/ci/build-pg-macos.sh`。客户端改为在独立仓库基于 agent 框架重建，本仓库保留 Go 服务、MCP/模型网关与 Web 控制台。
+- **移除过时的客户端化方案**：删除 `docs/客户端化与插件商城方案.md`（Tauri + 便携 PostgreSQL 路线）。新方向见 [`docs/mcp-server-方案.md`](docs/mcp-server-方案.md)。
+- **保留可回收产物**：最后一次 DSH 外观移植的完整 diff 存档在 `docs/archive/dsh-ui-port-2026-11-21.patch`，需要时可重新应用。
+
 ### 桌面客户端
 
 #### 新增的功能

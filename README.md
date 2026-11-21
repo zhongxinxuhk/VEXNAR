@@ -313,14 +313,19 @@ server {
 
 ## 开发
 
-### 独立 Electron 桌面端
+### 客户端与 Go 服务的关系
 
-`apps/desktop` 是与 Web/Go 后端解耦的独立桌面 Agent 客户端（Electron + React），不影响现有 `web/`、Go 服务和旧 Tauri `desktop/`。
+本仓库不再包含第一方桌面客户端。原 Electron 客户端（`apps/desktop`）与旧 Tauri 壳（`desktop/`）
+已于 2026-11-21 移除，界面层改为在独立仓库基于 agent 框架重建。
 
-- 桌面端使用 **内置便携 PostgreSQL**（不是 SQLite）；首次启动自动 `initdb`，退出时清理本地集群。
-- `apps/desktop/resources/pg` 由 GitHub Actions 按平台构建/注入，安装包随平台携带对应 PG。
-- 开发与打包命令见 [`apps/desktop/README.md`](apps/desktop/README.md)。
-- GoLand 的 `VEXNAR Desktop` 默认启动该 Electron 应用；旧 Tauri 壳层使用 `VEXNAR Desktop (Tauri)`。
+Go 服务仍是产品的唯一后端，对外提供两类接口：
+
+- **MCP Server**（`/mcp`，Streamable HTTP）：任务、漏洞、流量、资产、报告、技能等领域工具。
+- **模型网关**（`/api/desktop/openai/v1`，仅 loopback + 每次启动的 token）：外部 agent 的推理
+  请求统一回源到这里，供应商与密钥不出 Go 进程。
+
+Web 控制台（`web/`）保留，可独立部署或由 Go 以 `-tags embedui` 内嵌。客户端打包、签名与
+自动更新属于客户端仓库，不再由本项目承担。
 
 ### 手动漏洞复测
 

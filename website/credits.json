@@ -253,7 +253,7 @@
       "author": "OpenJS Foundation 与 Electron 贡献者",
       "category": "数据与运行时",
       "kind": "直接使用",
-      "usage": "当前桌面客户端的主进程、原生窗口、IPC 与打包运行时。",
+      "usage": "历史：已移除的桌面客户端曾使用 Electron 作为主进程与打包运行时。",
       "license": "MIT",
       "license_url": "https://github.com/electron/electron/blob/main/LICENSE",
       "logo": "assets/credits/electron.svg",
@@ -267,13 +267,13 @@
       "author": "Tauri Programme 与贡献者",
       "category": "数据与运行时",
       "kind": "直接使用",
-      "usage": "仓库中保留的 Tauri 桌面外壳与 sidecar 构建路径。",
+      "usage": "历史：已移除的 Tauri 桌面外壳（2026-11-21）。",
       "license": "MIT OR Apache-2.0",
       "license_url": "https://github.com/tauri-apps/tauri/blob/dev/LICENSE-MIT",
       "logo": "assets/credits/tauri.svg",
       "logo_kind": "项目 Logo（Simple Icons）",
       "logo_source": "https://github.com/simple-icons/simple-icons/blob/16.24.1/icons/tauri.svg",
-      "note": "仓库保留的桌面实现；与当前 Electron 客户端分别维护。"
+      "note": "仓库已无 Tauri 代码。"
     },
     {
       "name": "PostgreSQL",
@@ -435,7 +435,7 @@
       "author": "DeepSeek 与贡献者",
       "category": "参考与借鉴",
       "kind": "研究参考",
-      "usage": "插件化 Agent 架构、桌面交互与扩展机制的研究参考。",
+      "usage": "插件化 Agent 架构、交互与扩展机制的研究参考。",
       "license": "MIT",
       "license_url": "https://github.com/deepseek-ai/deepseek-harness/blob/master/LICENSE",
       "logo": "assets/credits/deepseek-harness.svg",
