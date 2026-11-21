@@ -30,6 +30,9 @@ const fake = {
     const output = command === 'nmap' ? nmap
       : command === 'httpx' ? JSON.stringify({ url: 'https://example.com', status_code: 200, title: 'Example', tech: ['nginx'], host: 'example.com' })
       : command === 'ffuf' ? JSON.stringify({ results: [{ url: 'https://example.com/admin', status: 200, length: 1234 }] })
+      : command === 'gobuster' ? '/admin (Status: 200) [Size: 42]'
+      : command === 'nikto' ? '+ /server-status: exposes status\n+ OSVDB-3092: /admin/: admin login'
+      : command === 'openssl' ? 'subject=CN=example.com\nissuer=C=US, O=Demo\nNot Before: Jan 1 00:00:00 2026 GMT\nNot After : Jan 1 00:00:00 2027 GMT'
       : command === 'katana' ? JSON.stringify({ request: { endpoint: 'https://example.com/login' }, response: { status_code: 200 } })
       : command === 'subfinder' ? JSON.stringify({ host: 'api.example.com', source: 'crtsh' })
       : command === 'nuclei' ? JSON.stringify({ 'template-id': 'CVE-2024-0001', info: { name: 'Demo RCE', severity: 'critical', description: 'demo' }, 'matched-at': 'https://example.com/x', 'extracted-results': ['root'] })
@@ -67,6 +70,19 @@ const subfinderRun = await runTool(fake, 'subfinder', 'example.com')
 const subfinderPersist = await persistToolResult(ops, task.id, String(intent.id), 'subfinder', subfinderRun.parsed, subfinderRun.stdout)
 const subdomain = await ops.writer.readRecord('assets', String(subfinderPersist[0]?.id))
 check('subfinder persists subdomain', subfinderPersist.length === 1 && subdomain?.type === 'subdomain' && subdomain?.domain === 'api.example.com', JSON.stringify({ persist: subfinderPersist, domain: subdomain?.domain }))
+
+const gobusterRun = await runTool(fake, 'gobuster', 'https://example.com')
+const gobusterPersist = await persistToolResult(ops, task.id, String(intent.id), 'gobuster', gobusterRun.parsed, 'https://example.com\n' + gobusterRun.stdout)
+check('gobuster persists path', gobusterPersist.length === 1 && gobusterRun.parsed.results[0]?.status === 200, JSON.stringify(gobusterPersist))
+
+const niktoRun = await runTool(fake, 'nikto', 'https://example.com')
+const niktoPersist = await persistToolResult(ops, task.id, String(intent.id), 'nikto', niktoRun.parsed, niktoRun.stdout)
+check('nikto reports findings', niktoRun.parsed.findings.length >= 1 && niktoPersist.filter((item) => item.kind === 'finding').length >= 1, JSON.stringify({ parsed: niktoRun.parsed.findings.length, created: niktoPersist.length }))
+
+const opensslRun = await runTool(fake, 'openssl', 'example.com:443')
+const opensslPersist = await persistToolResult(ops, task.id, String(intent.id), 'openssl', opensslRun.parsed, opensslRun.stdout)
+const tlsAsset = await ops.writer.readRecord('assets', String(opensslPersist[0]?.id))
+check('openssl persists service', opensslRun.parsed.has_cert && tlsAsset?.service_name === 'tls' && tlsAsset?.extra?.issuer.includes('Demo'), JSON.stringify({ parsed: opensslRun.parsed, asset: tlsAsset?.id }))
 
 const sqlmapRun = await runTool(fake, 'sqlmap', 'https://example.com/?id=1')
 const sqlmapPersist = await persistToolResult(ops, task.id, String(intent.id), 'sqlmap', sqlmapRun.parsed, sqlmapRun.stdout)
