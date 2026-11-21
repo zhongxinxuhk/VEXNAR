@@ -245,8 +245,8 @@ function HeroLogo({ size }: { size?: number }): ReactNode {
 function installHeroSlogan(): () => void {
   const slogan = () =>
     (navigator.language || 'zh').toLowerCase().startsWith('zh')
-      ? '以智能，破未至之境'
-      : 'Beyond the known attack surface'
+      ? '探索未知，突破边界'
+      : 'Explore the unknown. Break the boundaries.'
   const rewrite = (): void => {
     const group = document.querySelector('[class*="titleGroup"]')
     const title = group?.firstElementChild
