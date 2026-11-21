@@ -93,6 +93,16 @@ being rebuilt on an external agent framework in its own repository.
 - Sub-packages declare dependencies only; they carry no `pnpm-lock.yaml` and no
   `pnpm-workspace.yaml` of their own. `node_modules/` under `app/` is never committed.
 - `app/dsh/` is the exception: the vendored upstream checkout keeps its own workspace and lockfile.
+- Every worktree gets its own real `app/node_modules`. A `node_modules` symlinked into another
+  checkout makes the two trees share one dependency tree: an install in either one silently rewrites
+  the other, and `pnpm run <script>` inside that worktree fails with
+  `ERR_PNPM_UNSAFE_TASK_RUN_STATE_PATH`. Run `pnpm install --frozen-lockfile` in that worktree; do
+  not link it to a sibling checkout.
+- `pnpm typecheck` in `app/` covers `@vexnar/dsh-ui`, `@vexnar/dsh-account` and `@vexnar/core`. A
+  package whose `tsconfig.json` `include` names a couple of files is not a gate: `@vexnar/core`
+  compiled two route files and reported success while `auth.ts`, `server.ts` and most of
+  `src/routes/` were never type-checked. Widen the program to `src/**/*.ts` instead of adding files
+  one at a time.
 
 ## Connect to the web console's API — do not rewrite the web console
 
