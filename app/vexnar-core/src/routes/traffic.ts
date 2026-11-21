@@ -6,6 +6,8 @@ import { createHash } from 'node:crypto'
 import { crc32, deflateRawSync } from 'node:zlib'
 import type { Hono } from 'hono'
 import { blobStore, operations, store, storeRoot } from '../context.ts'
+import { parseScope } from '../traffic-scope.ts'
+import { activeCaptures, readCaptures } from '../capture-state.ts'
 
 /**
  * 流量证据路由层：在 dsh 进程内以 Hono 前缀 /vexnar-api 挂载，持久层为 SQLite
@@ -135,7 +137,7 @@ async function listExchanges(query: Record<string, string | undefined>) {
   return { all, rows }
 }
 
-function exchangeDto(row: any) {
+export function exchangeDto(row: any) {
   return {
     id: String(row.id),
     ts: rfc3339FromUnix(Number(row.ts ?? 0)),
@@ -161,7 +163,7 @@ async function listHosts() {
   return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest)
 }
 
-async function getExchangeRaw(id: string) {
+async function readExchangeRaw(id: string) {
   const row = ((await writer().list('traffic_exchanges')) as any[]).find((item) => String(item.id) === String(id))
   if (!row) return null
   return {
@@ -241,21 +243,49 @@ export interface CaptureExchange {
   resp_head?: string
   req_body?: Buffer | string
   resp_body?: Buffer | string
+  /** Attribution: conv-12 / task-7 / task-7-i31 (empty = global traffic). */
+  scope?: string
+  /** Capture plane: vexnar | yakit | worker | replay | import. */
+  source?: string
+  confidence?: string
+  duration_ms?: number
+  turn_seq?: number
+  flow_hash?: string
 }
 
-/** 采集流量落库：sidecar 捕获到一条 exchange 后写入 `traffic_exchanges`。 */
+/** Sequence seed for live cursors. Single process, so ++ is race-free. */
+let exchangeSeqSeed: number | null = null
+async function nextExchangeSeq(): Promise<number> {
+  if (exchangeSeqSeed == null) {
+    const rows = (await writer().list('traffic_exchanges')) as any[]
+    exchangeSeqSeed ??= rows.reduce<number>((max, row) => Math.max(max, Number(row.seq ?? 0)), 0)
+  }
+  return ++exchangeSeqSeed
+}
+
+/** 采集流量落库：sidecar/外部 hook 捕获到一条 exchange 后写入 `traffic_exchanges`。 */
 export async function recordExchange(exchange: CaptureExchange) {
   const now = exchange.ts ?? Math.floor(Date.now() / 1000)
   const id = exchange.id ?? `${now}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+  const method = String(exchange.method ?? '')
+  const url = String(exchange.url ?? '')
+  const scope = parseScope(exchange.scope)
+  const reqBody = Buffer.isBuffer(exchange.req_body)
+    ? exchange.req_body
+    : Buffer.from(String(exchange.req_body ?? ''), 'utf8')
+  const flowHash = String(exchange.flow_hash ?? '') ||
+    sha256hex(`${method}\n${url}\n${sha256hex(reqBody)}`)
+  const seq = await nextExchangeSeq()
   const req = await spillBody(exchange.content_type ?? '', exchange.req_body)
   const resp = await spillBody(exchange.content_type ?? '', exchange.resp_body)
   const record = {
     id,
+    seq,
     ts: now,
     host: String(exchange.host ?? ''),
-    method: String(exchange.method ?? ''),
+    method,
     url_template: String(exchange.url_template ?? ''),
-    url: String(exchange.url ?? ''),
+    url,
     status: Number(exchange.status ?? 0),
     content_type: String(exchange.content_type ?? ''),
     req_len: req.len,
@@ -265,11 +295,63 @@ export async function recordExchange(exchange: CaptureExchange) {
     req_body: req.inline,
     req_blob: req.hash,
     resp_body: resp.inline,
-    resp_blob: resp.hash
+    resp_blob: resp.hash,
+    scope: scope.raw,
+    conv_id: scope.convId,
+    task_id: scope.taskId,
+    intent_id: scope.intentId,
+    source: String(exchange.source ?? 'vexnar'),
+    confidence: String(exchange.confidence ?? 'exact'),
+    turn_seq: Number(exchange.turn_seq ?? 0),
+    duration_ms: Number(exchange.duration_ms ?? 0),
+    flow_hash: flowHash
   }
   await writer().commit([{ table: 'traffic_exchanges', key: id, record }])
   store.invalidate?.(['traffic_exchanges'])
   return record
+}
+
+/** One exchange's raw request/response, for the detail pane. */
+export async function getExchangeRaw(id: string) {
+  return readExchangeRaw(id)
+}
+
+/** Metadata window for one attribution scope, oldest-last. */
+export async function listScopedExchanges(scope: string, afterSeq: number, limit: number) {
+  const size = Math.min(Math.max(Number(limit) || 100, 1), 500)
+  const all = (await writer().list('traffic_exchanges')) as any[]
+  const rows = all
+    .filter((row) => String(row.scope ?? '') === String(scope ?? ''))
+    .filter((row) => Number(row.seq ?? 0) > 0)
+    .filter((row) => (afterSeq > 0 ? Number(row.seq ?? 0) > afterSeq : true))
+    .sort((a, b) => Number(a.seq ?? 0) - Number(b.seq ?? 0))
+  const window = afterSeq > 0 ? rows.slice(0, size) : rows.slice(Math.max(rows.length - size, 0))
+  return window.map(scopedExchangeDto)
+}
+
+function scopedExchangeDto(row: any) {
+  return {
+    id: String(row.id ?? ''),
+    seq: Number(row.seq ?? 0),
+    ts: Number(row.ts ?? 0),
+    source: String(row.source ?? ''),
+    scope: String(row.scope ?? ''),
+    conv_id: Number(row.conv_id ?? 0),
+    task_id: Number(row.task_id ?? 0),
+    intent_id: Number(row.intent_id ?? 0),
+    turn_seq: Number(row.turn_seq ?? 0),
+    confidence: String(row.confidence ?? 'exact'),
+    method: String(row.method ?? ''),
+    url: String(row.url ?? ''),
+    url_template: String(row.url_template ?? ''),
+    host: String(row.host ?? ''),
+    status: Number(row.status ?? 0),
+    req_len: Number(row.req_len ?? 0),
+    resp_len: Number(row.resp_len ?? 0),
+    duration_ms: Number(row.duration_ms ?? 0),
+    content_type: String(row.content_type ?? ''),
+    phase: 'response'
+  }
 }
 
 export interface IngestEvidenceExchange {
@@ -285,6 +367,14 @@ export interface IngestEvidenceExchange {
   resp_head?: string
   req_body?: Buffer | string
   resp_body?: Buffer | string
+  /** Attribution: conv-12 / task-7 / task-7-i31 (empty = global traffic). */
+  scope?: string
+  /** Capture plane: vexnar | yakit | worker | replay | import. */
+  source?: string
+  confidence?: string
+  duration_ms?: number
+  turn_seq?: number
+  flow_hash?: string
 }
 
 /**
@@ -464,8 +554,11 @@ export function register(api: Hono) {
         sort: c.req.query('sort'), order: c.req.query('order')
       })
       const pageRows = rows.slice(page * size, page * size + size)
+      // `enabled` reports whether a conversation is capturing right now: capture
+      // is armed per chat session, so a station-wide settings flag would lie.
+      const capturing = activeCaptures(await readCaptures()).length > 0
       return c.json({
-        enabled: false, // sidecar 采集开关尚未接入（MITM 采集为后续工作项）
+        enabled: capturing,
         proxy: '',
         count: all.length,
         total: rows.length,
@@ -492,7 +585,7 @@ export function register(api: Hono) {
     try {
       const id = String(c.req.query('id') ?? '')
       if (!id) return c.json({ error: 'missing id' }, 400)
-      const raw = await getExchangeRaw(id)
+      const raw = await readExchangeRaw(id)
       if (!raw) return c.json({ error: 'exchange 不存在' }, 404)
       return c.json(raw)
     } catch (e: any) {

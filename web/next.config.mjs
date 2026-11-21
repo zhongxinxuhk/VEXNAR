@@ -31,10 +31,17 @@ const nextConfig = {
           images: { unoptimized: true },
         }
       : {
-          // 开发：把 /api/* 反代到 Go 后端（默认 :8787，可用 AUTOPENTEST_API 覆盖）。
+          // 开发：/api/* → Go 后端（默认 :8787，可用 AUTOPENTEST_API 覆盖）；
+          // /vexnar-core/* → dsh 内嵌的 TS core（默认 :3099/vexnar-api）。会话级
+          // 抓包与系统状态只存在于 TS core，Go 的 MITM 是全局采集面，没有会话
+          // scope，所以这两组请求必须走各自的源，不能塞进同一个 /api。
           async rewrites() {
             const backend = process.env.AUTOPENTEST_API ?? "http://localhost:8787";
-            return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
+            const core = process.env.VEXNAR_CORE_API ?? "http://127.0.0.1:3099/vexnar-api";
+            return [
+              { source: "/vexnar-core/:path*", destination: `${core}/:path*` },
+              { source: "/api/:path*", destination: `${backend}/api/:path*` },
+            ];
           },
         }),
 };

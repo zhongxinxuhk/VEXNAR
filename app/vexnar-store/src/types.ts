@@ -113,6 +113,12 @@ export interface Store {
   traffic(findingId: string): Promise<any | null>
   activity: {
     history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
+    /**
+     * Cross-task newest-first-within-page feed, for surfaces that show "what the
+     * whole station is doing" instead of one task's transcript (dsh overview).
+     * A taskId is optional: when given, the feed narrows to that task.
+     */
+    recent(options?: { taskId?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
     tokenStats(taskId: string): Promise<{ workers: any[]; sessions: any[]; total: any }>
     dailyTokens(days: number): Promise<any[]>
   }

@@ -102,6 +102,10 @@ import type {
   TokenUsage,
   Tool,
   ToolStat,
+  ConversationTrafficCapture,
+  ConversationTrafficEndpoint,
+  ConversationTrafficResp,
+  TrafficCaptureSummary,
   TrafficDetail,
   TrafficEvidenceRef,
   TrafficEvidenceRole,
@@ -203,6 +207,40 @@ export function sseUrl(path: string): string {
   const sep = path.includes("?") ? "&" : "?";
   return token ? `${base}${path}${sep}token=${encodeURIComponent(token)}` : `${base}${path}`;
 }
+
+// Session traffic and the capture aggregate live in the dsh-embedded TS core, not
+// in the Go API: capture is armed per chat conversation there, and the Go MITM is a
+// station-wide collector with no conversation scope. `/vexnar-core` is the Next
+// rewrite to that core (see next.config.mjs); the JWT is the same HS256 token, so
+// the Authorization header authenticates both backends.
+async function coreHttp<T>(path: string, init?: RequestInit): Promise<T> {
+  if (MOCK) return mockHandle<T>(init?.method ?? "GET", path, init?.body ?? null);
+  const token = getToken();
+  const r = await fetch(`/vexnar-core${path}`, {
+    ...init,
+    headers: {
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
+  if (!r.ok) {
+    let message = `${init?.method ?? "GET"} ${path}: ${r.status}`;
+    try {
+      const payload = (await r.json()) as { error?: unknown };
+      if (typeof payload.error === "string" && payload.error.trim()) message = payload.error.trim();
+    } catch {
+      // Keep the status-based fallback for empty or non-JSON error responses.
+    }
+    throw new Error(message);
+  }
+  if (r.status === 204) return undefined as T;
+  return r.json();
+}
+
+const coreGet = <T>(p: string) => coreHttp<T>(p);
+const corePost = <T>(p: string, body?: unknown) =>
+  coreHttp<T>(p, { method: "POST", body: body ? JSON.stringify(body) : undefined });
 
 const get = <T>(p: string) => http<T>(p);
 const post = <T>(p: string, body?: unknown) =>
@@ -810,6 +848,30 @@ export const api = {
         (opts.order ? `&order=${encodeURIComponent(opts.order)}` : ""),
     ),
   trafficExchange: (id: string) => get<TrafficDetail>(`/traffic/exchange?id=${encodeURIComponent(id)}`),
+  // Session sidebar: metadata window for one conversation, then bodies on demand.
+  // These five talk to the TS core (see coreHttp) — the Go API has no per-session
+  // capture: capture is armed by the chat conversation in the core.
+  conversationTraffic: (convId: number, afterSeq = 0, limit = 200) =>
+    coreGet<ConversationTrafficResp>(
+      `/api/conversations/${convId}/traffic?after_seq=${afterSeq}&limit=${limit}`,
+    ),
+  conversationTrafficExchange: (convId: number, flowId: string) =>
+    coreGet<TrafficDetail>(
+      `/api/conversations/${convId}/traffic/exchange?id=${encodeURIComponent(flowId)}`,
+    ),
+  conversationTrafficEndpoint: (convId: number) =>
+    coreGet<ConversationTrafficEndpoint>(`/api/conversations/${convId}/traffic/endpoint`),
+  conversationTrafficCapture: (convId: number, action: "start" | "stop") =>
+    corePost<{
+      ok: boolean;
+      enabled: boolean;
+      scope: string;
+      capture: ConversationTrafficCapture | null;
+      ingest_url: string;
+      hook: string;
+    }>(`/api/conversations/${convId}/traffic/capture`, { action }),
+  // Station-wide capture aggregate (dashboards): armed sessions + recent sample.
+  trafficCapture: () => coreGet<TrafficCaptureSummary>(`/api/traffic/capture`),
   trafficHosts: () => get<{ hosts: TrafficHost[] }>(`/traffic/hosts`),
   trafficDeleteHost: (host: string) => del<{ deleted: number }>(`/traffic?host=${encodeURIComponent(host)}`),
   trafficDeleteHosts: (hosts: string[]) => del<{ deleted: number }>(`/traffic/hosts`, { hosts }),

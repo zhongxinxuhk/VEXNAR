@@ -14,6 +14,7 @@ import {
   PencilIcon,
   PinIcon,
   PinOffIcon,
+  RadioIcon,
   PlusIcon,
   Square,
   Trash2Icon,
@@ -23,6 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { MentionTextarea } from "@/components/mention-textarea";
+import { SessionTrafficPanel } from "@/components/session-traffic-panel";
 import { SideQuestionButton, SideQuestionWorkspace } from "@/components/side-question-workspace";
 import { TodoPopover } from "@/components/todo-popover";
 import { ApprovalExecutionFocus, useApprovalFocus, useApprovalHistory } from "@/components/approval-execution-focus";
@@ -48,10 +50,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useSessionTraffic } from "@/hooks/use-session-traffic";
 import { useSideQuestions } from "@/hooks/use-side-questions";
 import { mergeActivities } from "@/lib/activity-merge";
 import { api } from "@/lib/api";
@@ -512,6 +518,32 @@ function ChatView({
   const agent = agents.find((a) => a.key === conv.agent_key);
   const currentProfileId = conv.llm_profile_id ?? null;
   const side = useSideQuestions(`/api/conversations/${conv.id}`);
+  // Session traffic sidebar: opens by itself the first time this turn actually
+  // sends a request, so request/response testing is visible without a click.
+  const traffic = useSessionTraffic(conv.id);
+  const { markRead: markTrafficRead } = traffic;
+  const trafficMobile = useIsMobile();
+  const [trafficOpen, setTrafficOpen] = React.useState(false);
+  const trafficAutoOpened = React.useRef(false);
+  React.useEffect(() => {
+    trafficAutoOpened.current = false;
+    setTrafficOpen(false);
+  }, [conv.id]);
+  const wasRunning = React.useRef(false);
+  React.useEffect(() => {
+    // A new turn re-arms the auto-open: closing the panel silences it for the
+    // current turn, not for the whole conversation.
+    if (running && !wasRunning.current) trafficAutoOpened.current = false;
+    wasRunning.current = running;
+  }, [running]);
+  React.useEffect(() => {
+    if (!traffic.autoOpenTick || trafficAutoOpened.current) return;
+    trafficAutoOpened.current = true;
+    setTrafficOpen(true);
+  }, [traffic.autoOpenTick]);
+  React.useEffect(() => {
+    if (trafficOpen) markTrafficRead();
+  }, [trafficOpen, markTrafficRead]);
 
   async function changeProfile(id: number | null) {
     try {
@@ -762,6 +794,9 @@ function ChatView({
   }
 
   return (
+    <>
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0 flex-1">
+      <ResizablePanel id="chat-conversation" minSize="35%" className="flex min-h-0 min-w-0 flex-col">
     <SideQuestionWorkspace side={side} label={agent?.name ?? conv.agent_key} composerLayout="inline">
       {/* header: which agent + live + token meta */}
       <div className="flex min-w-0 flex-wrap items-center gap-2 border-b px-4 py-2.5">
@@ -778,6 +813,19 @@ function ChatView({
         )}
         {running && <LiveBadge />}
         <SideQuestionButton side={side} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setTrafficOpen((open) => !open);
+            markTrafficRead();
+          }}
+          title="本会话流量（请求/响应）"
+        >
+          <RadioIcon data-icon="inline-start" />
+          流量
+          {traffic.unread > 0 ? ` ${traffic.unread}` : traffic.items.length > 0 ? ` ${traffic.items.length}` : ""}
+        </Button>
         <div className="text-muted-foreground ml-auto flex min-w-0 max-w-full items-center justify-end gap-x-3 gap-y-1 text-xs max-sm:w-full max-sm:flex-wrap">
           {tokenTotal.turns > 0 && (
             <span title="agent 循环轮次（模型调用次数）" className="tabular-nums">
@@ -835,6 +883,26 @@ function ChatView({
         rightSlot={<TodoPopover seq={latestTodoSeq} fetchDetail={fetchDetail} />}
       />
     </SideQuestionWorkspace>
+      </ResizablePanel>
+      {trafficOpen && !trafficMobile && (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel id="session-traffic" defaultSize="34%" minSize="300px" maxSize="60%">
+            <SessionTrafficPanel convId={conv.id} traffic={traffic} onClose={() => setTrafficOpen(false)} />
+          </ResizablePanel>
+        </>
+      )}
+    </ResizablePanelGroup>
+    <Drawer open={trafficOpen && trafficMobile} onOpenChange={setTrafficOpen}>
+      <DrawerContent className="h-[80svh]">
+        <DrawerHeader className="sr-only">
+          <DrawerTitle>本会话流量</DrawerTitle>
+          <DrawerDescription>当前会话产生的请求与响应</DrawerDescription>
+        </DrawerHeader>
+        <SessionTrafficPanel convId={conv.id} traffic={traffic} onClose={() => setTrafficOpen(false)} />
+      </DrawerContent>
+    </Drawer>
+    </>
   );
 }
 

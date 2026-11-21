@@ -2266,6 +2266,37 @@ body[data-ds-dark-theme] {
 .vx-yak-hint { color: var(--vx-muted); }
 .vx-yak-alert { color: var(--vx-negative); }
 
+.vx-capture-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.vx-capture-action button {
+  font: inherit;
+  color: inherit;
+  background: color-mix(in srgb, var(--vx-chart-3) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--vx-chart-3) 38%, transparent);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.vx-capture-action button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.vx-capture-action em {
+  color: var(--vx-text-dim);
+  font-style: normal;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vx-yak-dialog {
   width: min(1180px, 93vw);
   max-height: 88vh;

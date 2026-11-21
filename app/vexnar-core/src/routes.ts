@@ -949,6 +949,7 @@ const routeModules: Array<{ load: () => Promise<RouteModule>; scope: string }> =
   { load: () => import('./routes/llm.ts'), scope: 'llm pool/records' },
   { load: () => import('./routes/intercept.ts'), scope: 'intercept approvals' },
   { load: () => import('./routes/traffic.ts'), scope: 'traffic evidence' },
+  { load: () => import('./routes/session-traffic.ts'), scope: 'session traffic' },
   { load: () => import('./routes/skills.ts'), scope: 'skills' },
   { load: () => import('./routes/market.ts'), scope: 'market' },
   { load: () => import('./routes/tasks-companies.ts'), scope: 'tasks/companies' },

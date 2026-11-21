@@ -24,7 +24,8 @@
     "craft:update": "node scripts/craft-update.mjs",
     "shop:check": "node scripts/shop-update.mjs --check",
     "shop:update": "node scripts/shop-update.mjs",
-    "vexnar": "node scripts/vexnar.mjs"
+    "vexnar": "node scripts/vexnar.mjs",
+    "migrate:store": "node scripts/migrate-store.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",
