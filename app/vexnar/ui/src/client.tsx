@@ -11,6 +11,7 @@ import { SessionCaptureAction } from './capture-action.js'
 import { CORE_BASE, callApi, responseError, useApi } from './api.js'
 import { McpTab, ToolsTab } from './catalog.js'
 import { TasksWorkspace } from './tasks/workspace.js'
+import { InterceptSettings as InterceptPanel } from './intercept/page.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -809,48 +810,6 @@ function ToolRunPage({ taskID = '' }: { taskID?: string }) {
     output ? h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output) : null)
 }
 
-function InterceptPage() {
-  const { data, error, loading } = useApi('/api/intercept/rules')
-  const [version, setVersion] = useState(0)
-  const [form, setForm] = useState<any>({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' })
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要 VEXNAR_GO_FALLBACK 代理 Go 拦截规则）`)
-  const rows = data?.rules ?? []
-  const submit = async () => {
-    try {
-      const body = { ...form, id: undefined }
-      if (form.id) await callApi(`/api/intercept/rules/${form.id}`, 'PUT', body)
-      else await callApi('/api/intercept/rules', 'POST', body)
-      setForm({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' })
-      setVersion(version + 1)
-    } catch (e: any) { window.alert(String(e?.message ?? e)) }
-  }
-  const remove = async (row: any) => { if (!window.confirm(`删除规则 #${row.id}?`)) return; try { await callApi(`/api/intercept/rules/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
-  const field = (key: string, placeholder: string, width = 140) =>
-    h('input', { value: form[key] ?? '', placeholder, onChange: (event: any) => setForm({ ...form, [key]: event.target.value }), style: { width } })
-  return h('div', { key: version, fontSize: 13 },
-    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' } },
-      field('name', '规则名'),
-      h('select', { value: form.match_target, onChange: (event: any) => setForm({ ...form, match_target: event.target.value }) }, ['tool_input', 'tool_name'].map((v) => h('option', { key: v, value: v }, v))),
-      h('select', { value: form.match_type, onChange: (event: any) => setForm({ ...form, match_type: event.target.value }) }, ['string', 'regex'].map((v) => h('option', { key: v, value: v }, v))),
-      field('pattern', '匹配内容', 240),
-      h('select', { value: form.action, onChange: (event: any) => setForm({ ...form, action: event.target.value }) }, ['allow', 'deny', 'ask'].map((v) => h('option', { key: v, value: v }, v))),
-      h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, form.id ? '保存' : '新增'),
-      form.id ? h('button', { type: 'button', onClick: () => setForm({ id: 0, name: '', enabled: true, priority: 100, match_target: 'tool_input', match_type: 'string', pattern: '', action: 'deny' }), style: { cursor: 'pointer' } }, '取消') : null),
-    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? rows.length} 条规则`),
-    h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-      h('thead', null, h('tr', null, ['ID', '名称', '匹配', '动作', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
-        h('td', { style: { padding: '6px 8px' } }, row.id),
-        h('td', { style: { padding: '6px 8px' } }, row.name),
-        h('td', { style: { padding: '6px 8px' } }, `${row.match_target}:${row.match_type}:${row.pattern ?? ''}`),
-        h('td', { style: { padding: '6px 8px' } }, row.action),
-        h('td', { style: { padding: '6px 8px' } }, row.enabled ? '是' : '否'),
-        h('td', { style: { padding: '6px 8px', display: 'flex', gap: 8 } },
-          h('button', { type: 'button', onClick: () => setForm({ ...row }), style: { cursor: 'pointer' } }, '编辑'),
-          h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
-}
-
 /**
  * 该任务的执行流。
  *
@@ -1105,7 +1064,7 @@ function NotifySettings() {
 }
 
 function InterceptSettings() {
-  return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
+  return h(PanelShell, { title: '拦截规则', desc: '工具执行前先按拦截规则匹配；未命中的命令可交由模型兜底判定' }, h(InterceptPanel))
 }
 
 // 侧边栏入口：任务是对象视图（清单 + 发现），工具执行与执行记录在任务详情里。

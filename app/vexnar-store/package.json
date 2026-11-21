@@ -9,6 +9,7 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
+    "test:meta": "tsx pg-meta.test.mjs",
     "seed": "tsx seed.mjs",
     "import:pg": "tsx import-pg.mjs",
     "compare": "tsx compare.mjs",

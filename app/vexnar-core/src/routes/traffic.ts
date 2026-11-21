@@ -8,6 +8,7 @@ import type { Hono } from 'hono'
 import { blobStore, operations, store, storeRoot } from '../context.ts'
 import { parseScope } from '../traffic-scope.ts'
 import { activeCaptures, readCaptures } from '../capture-state.ts'
+import { archivedExchanges, archivedRaw } from '../traffic-index.ts'
 
 /**
  * 流量证据路由层：在 dsh 进程内以 Hono 前缀 /vexnar-api 挂载，持久层为 SQLite
@@ -112,9 +113,24 @@ function statusMatches(status: number, token: string): boolean {
   return true // 未识别的 token 不过滤（对齐 Go statusFilter ok=false）
 }
 
-// ── 采集流量（traffic_exchanges） ──────────────────────────────────────────
+// ── 采集流量（traffic_exchanges + Go 索引） ────────────────────────────────
+/**
+ * 站点级流量视图：客户端自己采集的 kv 行 + 采集面（Go）归档的索引行。
+ *
+ * 两条采集路径写不同的库：会话抓包的 ingest 落在 kv，go-mitmproxy 写
+ * `data/traffic/_index`。概览和流量页要的是"这台机器抓到了什么"，只读其中一边
+ * 就会把另一边已经抓到的流量显示成 0。同一条 id 以本地为准（两端都有的只有
+ * 本地重放过的那条）。
+ */
+export async function allExchanges(): Promise<any[]> {
+  const local = (await writer().list('traffic_exchanges')) as any[]
+  const seen = new Set(local.map((row) => String(row.id)))
+  const archived = archivedExchanges().filter((row) => !seen.has(row.id))
+  return [...local, ...archived]
+}
+
 async function listExchanges(query: Record<string, string | undefined>) {
-  const all = (await writer().list('traffic_exchanges')) as any[]
+  const all = await allExchanges()
   const host = String(query.host ?? '').trim()
   const method = String(query.method ?? '').trim().toUpperCase()
   const keyword = String(query.q ?? '').trim().toLowerCase()
@@ -151,7 +167,7 @@ export function exchangeDto(row: any) {
 }
 
 async function listHosts() {
-  const all = (await writer().list('traffic_exchanges')) as any[]
+  const all = await allExchanges()
   const byHost = new Map<string, { host: string; count: number; last: number }>()
   for (const row of all) {
     const host = String(row.host ?? '')
@@ -164,8 +180,12 @@ async function listHosts() {
 }
 
 async function readExchangeRaw(id: string) {
-  const row = ((await writer().list('traffic_exchanges')) as any[]).find((item) => String(item.id) === String(id))
+  const row = ((await allExchanges()) as any[]).find((item) => String(item.id) === String(id))
   if (!row) return null
+  // Archived rows live in the capture plane's own index, which holds the bodies
+  // separately; the kv row carries them inline.
+  const archived = row.req_head === undefined && row.resp_head === undefined ? archivedRaw(String(id)) : null
+  if (archived) return archived
   return {
     req: assembleRaw(String(row.req_head ?? ''), String(row.req_body ?? ''), String(row.req_blob ?? ''), Number(row.req_len ?? 0)),
     resp: assembleRaw(String(row.resp_head ?? ''), String(row.resp_body ?? ''), String(row.resp_blob ?? ''), Number(row.resp_len ?? 0))
@@ -183,6 +203,8 @@ async function readBlobBuffer(hash: string) {
 }
 
 async function removeExchanges(predicate: (row: any) => boolean): Promise<number> {
+  // Only the kv rows are ours to delete: the capture plane's index and blobs are
+  // written and reclaimed by the Go process holding them.
   const all = (await writer().list('traffic_exchanges')) as any[]
   const ids = all.filter(predicate).map((row) => String(row.id))
   for (const id of ids) await writer().remove('traffic_exchanges', id)
@@ -561,6 +583,7 @@ export function register(api: Hono) {
         enabled: capturing,
         proxy: '',
         count: all.length,
+        archived: archivedExchanges().length,
         total: rows.length,
         page,
         size,

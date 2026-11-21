@@ -31,7 +31,7 @@ import { appDir, runtimeEnv } from './vexnar-runtime.mjs'
 
 /** Go 源码所在的仓库根；打包后没有它时只认 VEXNAR_GO_BIN。 */
 const repoRoot = resolve(appDir, '..')
-const goSourceDirs = ['cmd', 'server', 'agent', 'traffic', 'db', 'intercept', 'notify', 'selfupdate',
+const goSourceDirs = ['cmd', 'server', 'agent', 'traffic', 'egress', 'db', 'intercept', 'notify', 'selfupdate',
   'sidequestion', 'mcphttp', 'mcpserver', 'llmrec', 'llmpool', 'evidence', 'report', 'enrich',
   'vulnclass', 'capability', 'guard', 'config']
 const defaultPort = 8787
@@ -210,9 +210,11 @@ export async function startGoService(options = {}) {
   const log = options.log ?? console.log
   const env = runtimeEnv()
   const explicit = process.env.VEXNAR_GO_URL?.trim()
-  if (process.env.VEXNAR_GO === 'off') {
-    log('[vexnar] VEXNAR_GO=off：不启动内置 Go，沿用外部服务')
-    return { url: explicit || `http://127.0.0.1:${goPort()}`, version: '', stop: () => {} }
+  // 客户端默认不再需要 Go：领域接口由 TS core 回答，数据面走 PG（见 go-data.ts）。
+  // 只有显式 VEXNAR_GO=on 才编译/启动它，用于对照验证。
+  if (!/^(1|on|true|yes)$/i.test((process.env.VEXNAR_GO ?? '').trim())) {
+    log('[vexnar] 使用内置 TS core，不启动 Go（需要时设 VEXNAR_GO=on）')
+    return { url: explicit || '', version: '', stop: () => {} }
   }
   if (explicit) {
     log(`[vexnar] VEXNAR_GO_URL=${explicit}：使用外部 Go 服务`)

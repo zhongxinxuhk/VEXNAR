@@ -17,6 +17,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { loginPage, workspaceSessionScript } from './login-page.js'
+import { startModelGateway } from './model-gateway.js'
 import {
   catalog,
   createPlatformAccount,
@@ -115,6 +116,8 @@ export function installPlatform(ctx) {
   let lastCatalog = ''
   let syncedProviders = new Set()
   let browserState = { state: 'idle', message: '' }
+  let lastState
+  let gateway
   let browserTask
   let chrome
   const life = new AbortController()
@@ -131,7 +134,21 @@ export function installPlatform(ctx) {
    * 把账号里的提供方写进 llm-pi-ai：baseURL 指向真实上游，apiKeyEnv 指向本插件
    * 刚写进凭据库的键。dsh 每次请求自己解析密钥，不经过任何中转进程。
    */
+  /**
+   * 引擎的模型调用走这里：一次启动、按请求读当前目录，登录换号或加提供方都不用重启。
+   * 以前这条路由是 Go 的 /api/desktop/openai/v1，现在由本进程给出同样的契约。
+   */
+  const ensureGateway = async () => {
+    if (gateway) return gateway
+    gateway = await startModelGateway(() => catalog(lastState))
+    process.env.VEXNAR_GATEWAY_URL = gateway.url
+    process.env.VEXNAR_GATEWAY_TOKEN = gateway.token
+    console.log(`[vexnar] 模型网关 ${gateway.url}`)
+    return gateway
+  }
+
   const syncCatalog = async (state) => {
+    lastState = state
     const providers = {}
     const present = new Set()
     for (const provider of catalog(state)) {
@@ -156,6 +173,10 @@ export function installPlatform(ctx) {
       await ctx.settings.replace('llm-pi-ai', { providers })
       lastCatalog = fingerprint
     }
+
+    const first = Object.keys(providers)[0]
+    if (first && providers[first].models[0]) process.env.VEXNAR_GATEWAY_MODEL = providers[first].models[0].id
+    if (Object.keys(providers).length > 0) await ensureGateway()
 
     const current = ctx.agentDefaultModel.currentSelection()
     const selected = providers[current.provider]?.models.find((model) => model.id === current.model)
@@ -367,6 +388,8 @@ export function installPlatform(ctx) {
       clearInterval(timer)
       life.abort()
       void chrome?.close().catch(() => {})
+      void gateway?.close().catch(() => {})
+      gateway = undefined
     }
   })
   return () => ready

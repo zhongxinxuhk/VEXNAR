@@ -3,22 +3,46 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { spawn } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
-import { ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.mjs'
+import { appDir, ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.mjs'
 import { startGoService } from './vexnar-go.mjs'
+
+/**
+ * 与 Go 服务读同一份 `config.json`：把 `database` 段落折成 `VEXNAR_PG_DSN`。
+ *
+ * 客户端的领域数据由 TypeScript core 自己读写，但库必须是同一个——否则同一个任务
+ * 在客户端和 `web/` 控制台里会变成两行。环境里已经给了 DSN 就尊重环境。
+ */
+function databaseEnv() {
+  if (process.env.VEXNAR_PG_DSN || process.env.VEXNAR_PG_URL || process.env.VEXNAR_STORE) return {}
+  try {
+    const config = JSON.parse(readFileSync(join(appDir, '..', 'config.json'), 'utf8'))
+    const db = config?.database
+    if (!db?.host || !db?.dbname) return {}
+    const auth = db.user
+      ? `${encodeURIComponent(db.user)}${db.password ? `:${encodeURIComponent(db.password)}` : ''}@`
+      : ''
+    const ssl = db.sslmode === 'disable' ? '?sslmode=disable' : ''
+    return { VEXNAR_PG_DSN: `postgres://${auth}${db.host}:${db.port ?? 5432}/${db.dbname}${ssl}` }
+  } catch {
+    return {}
+  }
+}
 
 /**
  * 起 dsh web 客户端。
  *
- * Go 后端先由本模块拉起（或复用同版本实例），把 `VEXNAR_GO_URL` 注进客户端环境：
- * 客户端不再假设 8787 上碰巧有个能用的后端。返回 `{ child, go, stop }`，
- * `stop()` 一起杀掉两个进程，避免留下孤儿 Go 继续写库。
+ * 领域接口由内置 TS core 回答（`vexnar-core`），数据面走 `VEXNAR_PG_DSN` 指向的
+ * PostgreSQL。Go 后端默认不启动；`VEXNAR_GO=on` 才会编译并拉起它做对照验证。
+ * 返回 `{ child, go, stop }`，`stop()` 一起收掉这两个进程。
  */
 export async function startWeb(port, onReady, onAccountHandoff) {
   ensureProfile()
   const go = await startGoService()
-  const env = { ...runtimeEnv(), VEXNAR_GO_URL: go.url }
+  const env = { ...runtimeEnv(), ...databaseEnv(), ...(go.url ? { VEXNAR_GO_URL: go.url } : {}) }
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {

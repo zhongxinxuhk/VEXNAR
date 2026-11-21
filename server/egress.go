@@ -1186,3 +1186,15 @@ func (s *Server) egressSubscriptionPreview(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(w, http.StatusOK, egress.ParseInput(text))
 }
+
+// egressContractHeader stamps the egress contract version on every proxy-pool
+// response. The TS bridge (app/vexnar-core/src/proxy-bridge.ts) uses it to detect
+// an engine older than the client instead of guessing from payload shape.
+func egressContractHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/proxy" || strings.HasPrefix(r.URL.Path, "/api/proxy/") {
+			w.Header().Set("X-VEXNAR-Egress-Contract", egress.ContractVersion)
+		}
+		next.ServeHTTP(w, r)
+	})
+}

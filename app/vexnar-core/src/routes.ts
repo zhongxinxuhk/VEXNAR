@@ -980,3 +980,16 @@ for (const { load, scope } of routeModules) {
     console.error(`[vexnar] failed to load route module ${scope}:`, error)
   }
 }
+
+/**
+ * 未实现的接口给一句人话，而不是 Hono 默认的纯文本 404。
+ *
+ * 客户端现在由 TypeScript 自己回答领域接口（Go 默认不在环），漏掉的路由必须能一眼
+ * 看出"是没迁过来"还是"参数不对"，所以带上路径、方法和迁移开关提示。
+ */
+api.notFound((c) => c.json({
+  error: '该接口尚未在 TypeScript 侧实现',
+  path: c.req.path,
+  method: c.req.method,
+  hint: '需要旧 Go 后端对照时：VEXNAR_GO=on 启动它，并设 VEXNAR_GO_DATA=on 打开转发'
+}, 501))

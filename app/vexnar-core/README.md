@@ -36,6 +36,13 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 
 这样 web 可以先指向 TS core，未迁移的写接口仍由 Go 服务，逐条切换。
 
+## 代理池控制面（TS 桥）
+
+`/api/proxy/*` 由 `src/proxy-bridge.ts` 实现：端点清单校验 + 契约头 + SSE 直通 + 错误映射，
+受控转发给 app 自己编译启动的 Go 引擎（数据面仍在 Go）。`GET /api/proxy/_bridge` 可自检
+契约版本、端点清单与引擎可达性。契约类型在 `src/proxy-contract.ts`。设计说明见
+[`../docs/EGRESS-BRIDGE.md`](../docs/EGRESS-BRIDGE.md)。
+
 ## 引擎（E1/E2）
 
 `POST /api/engine/plan`、`POST /api/engine/work` 已接入引擎循环；模型经
@@ -70,6 +77,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/mcp` | ✅ |
 | `GET /api/notify/channels` | ✅ |
 | `GET /api/settings` | ✅（只暴露 Go 的 20 个白名单键） |
+| `/api/proxy/*` | ✅ 控制面桥（端点清单 + 契约 + SSE；数据面在 Go） |
 | `GET /api/assets/counts` | ✅ |
 | `GET /api/tasks/:id/coverage` | ✅ 范围/已测/by_type/pct，含直接来源任务上下文 |
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |

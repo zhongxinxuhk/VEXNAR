@@ -460,7 +460,7 @@ var init_request = __esm({
       * ```
       */
       json() {
-        return this.#cachedBody("text").then((text2) => JSON.parse(text2));
+        return this.#cachedBody("text").then((text3) => JSON.parse(text3));
       }
       /**
       * `.text()` can parse Request body of type `text/plain`
@@ -990,8 +990,8 @@ var init_context = __esm({
       * })
       * ```
       */
-      text = (text2, arg, headers) => {
-        return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text2) : this.#newResponse(text2, arg, setDefaultContentType(TEXT_PLAIN, headers));
+      text = (text3, arg, headers) => {
+        return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text3) : this.#newResponse(text3, arg, setDefaultContentType(TEXT_PLAIN, headers));
       };
       /**
       * `.json()` can render JSON as `Content-Type:application/json`.
@@ -2266,8 +2266,8 @@ var require_postgres_date = __commonJS({
     function bcYearToNegativeYear(year) {
       return -(year - 1);
     }
-    function is0To99(num) {
-      return num >= 0 && num < 100;
+    function is0To99(num2) {
+      return num2 >= 0 && num2 < 100;
     }
   }
 });
@@ -3273,11 +3273,11 @@ var require_utils2 = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha2562(text2) {
-      return await subtleCrypto.digest("SHA-256", text2);
+    async function sha2562(text3) {
+      return await subtleCrypto.digest("SHA-256", text3);
     }
-    async function hashByName(hashName, text2) {
-      return await subtleCrypto.digest(hashName, text2);
+    async function hashByName(hashName, text3) {
+      return await subtleCrypto.digest(hashName, text3);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -3498,21 +3498,21 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
-    function isPrintableChars(text2) {
-      if (typeof text2 !== "string") {
+    function isPrintableChars(text3) {
+      if (typeof text3 !== "string") {
         throw new TypeError("SASL: text must be a string");
       }
-      return text2.split("").map((_, i) => text2.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
+      return text3.split("").map((_, i) => text3.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
     }
-    function isBase64(text2) {
-      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text2);
+    function isBase64(text3) {
+      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text3);
     }
-    function parseAttributePairs(text2) {
-      if (typeof text2 !== "string") {
+    function parseAttributePairs(text3) {
+      if (typeof text3 !== "string") {
         throw new TypeError("SASL: attribute pairs text must be a string");
       }
       return new Map(
-        text2.split(",").map((attrValue) => {
+        text3.split(",").map((attrValue) => {
           if (!/^.=/.test(attrValue)) {
             throw new Error("SASL: Invalid attribute pair entry");
           }
@@ -4394,9 +4394,9 @@ var require_messages = __commonJS({
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text2) {
+      constructor(length, text3) {
         this.length = length;
-        this.text = text2;
+        this.text = text3;
         this.name = "commandComplete";
       }
     };
@@ -4443,18 +4443,18 @@ var require_buffer_writer = __commonJS({
           oldBuffer.copy(this.buffer, 0, 0, this.offset);
         }
       }
-      addInt32(num) {
+      addInt32(num2) {
         this.ensure(4);
-        this.buffer[this.offset++] = num >>> 24 & 255;
-        this.buffer[this.offset++] = num >>> 16 & 255;
-        this.buffer[this.offset++] = num >>> 8 & 255;
-        this.buffer[this.offset++] = num >>> 0 & 255;
+        this.buffer[this.offset++] = num2 >>> 24 & 255;
+        this.buffer[this.offset++] = num2 >>> 16 & 255;
+        this.buffer[this.offset++] = num2 >>> 8 & 255;
+        this.buffer[this.offset++] = num2 >>> 0 & 255;
         return this;
       }
-      addInt16(num) {
+      addInt16(num2) {
         this.ensure(2);
-        this.buffer[this.offset++] = num >>> 8 & 255;
-        this.buffer[this.offset++] = num >>> 0 & 255;
+        this.buffer[this.offset++] = num2 >>> 8 & 255;
+        this.buffer[this.offset++] = num2 >>> 0 & 255;
         return this;
       }
       addCString(string4) {
@@ -4577,8 +4577,8 @@ var require_serializer = __commonJS({
         /* code.startup */
       );
     };
-    var query = (text2) => {
-      return writer4.addCString(text2).flush(
+    var query = (text3) => {
+      return writer4.addCString(text3).flush(
         81
         /* code.query */
       );
@@ -4695,8 +4695,8 @@ var require_serializer = __commonJS({
       return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
     var close = (msg) => {
-      const text2 = `${msg.type}${msg.name || ""}`;
-      return cstringMessage(67, text2);
+      const text3 = `${msg.type}${msg.name || ""}`;
+      return cstringMessage(67, text3);
     };
     var copyData = (chunk) => {
       return writer4.add(chunk).flush(
@@ -4968,8 +4968,8 @@ var require_parser = __commonJS({
       return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
     };
     var parseCommandCompleteMessage = (reader) => {
-      const text2 = reader.cstring();
-      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text2);
+      const text3 = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text3);
     };
     var parseCopyData = (reader, length) => {
       const chunk = reader.bytes(length - 4);
@@ -5356,8 +5356,8 @@ var require_connection = __commonJS({
         }
         return this.stream.write(buffer);
       }
-      query(text2) {
-        this._send(serialize.query(text2));
+      query(text3) {
+        this._send(serialize.query(text3));
       }
       // send parse message
       parse(query) {
@@ -6752,9 +6752,9 @@ var require_pg_pool = __commonJS({
         this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
-      query(text2, values, cb) {
-        if (typeof text2 === "function") {
-          const response2 = promisify(this.Promise, text2);
+      query(text3, values, cb) {
+        if (typeof text3 === "function") {
+          const response2 = promisify(this.Promise, text3);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -6782,7 +6782,7 @@ var require_pg_pool = __commonJS({
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text2, values, (err5, res) => {
+            client.query(text3, values, (err5, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
@@ -12049,9 +12049,9 @@ function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
 function isRecursive(inst, stack, resolve4) {
-  const cached2 = recursive.get(inst);
-  if (cached2 !== void 0)
-    return cached2 ? PROVEN : NONE;
+  const cached3 = recursive.get(inst);
+  if (cached3 !== void 0)
+    return cached3 ? PROVEN : NONE;
   if (stack.has(inst))
     return PROVEN;
   stack.add(inst);
@@ -16496,8 +16496,8 @@ var capitalizeFirstCharacter, error33;
 var init_lt = __esm({
   "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js"() {
     init_util();
-    capitalizeFirstCharacter = (text2) => {
-      return text2.charAt(0).toUpperCase() + text2.slice(1);
+    capitalizeFirstCharacter = (text3) => {
+      return text3.charAt(0).toUpperCase() + text3.slice(1);
     };
     error33 = () => {
       const Sizable = {
@@ -23112,13 +23112,13 @@ function initializeContext(params) {
     external: params?.external ?? void 0
   };
 }
-function handleUnrepresentable(schema, ctx, json2, params, message) {
+function handleUnrepresentable(schema, ctx, json3, params, message) {
   const result = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
   if (result === "any")
     return false;
   if (result === void 0 || result === "throw")
     throw new Error(message);
-  Object.assign(json2, result);
+  Object.assign(json3, result);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -23352,12 +23352,12 @@ function foldObjects(members2) {
   }
   return folded;
 }
-function foldIntersection(json2) {
-  const allOf = json2.allOf;
+function foldIntersection(json3) {
+  const allOf = json3.allOf;
   if (!Array.isArray(allOf) || allOf.length < 2)
     return;
   for (const key of FOLDABLE_KEYS)
-    if (key in json2)
+    if (key in json3)
       return;
   const unions = allOf.filter((m) => UNION_KEYS.some((k) => Array.isArray(m[k])));
   let folded = null;
@@ -23376,8 +23376,8 @@ function foldIntersection(json2) {
   }
   if (!folded)
     return;
-  delete json2.allOf;
-  assignProps(json2, folded);
+  delete json3.allOf;
+  assignProps(json3, folded);
 }
 function finalize(ctx, schema) {
   const root = ctx.seen.get(schema);
@@ -23459,20 +23459,20 @@ function finalize(ctx, schema) {
     if (ctx.intersections.length) {
       const carriers = /* @__PURE__ */ new Map();
       for (const seen of ctx.seen.values()) {
-        for (const json2 of [seen.schema, seen.def]) {
-          const allOf = json2?.allOf;
+        for (const json3 of [seen.schema, seen.def]) {
+          const allOf = json3?.allOf;
           if (!Array.isArray(allOf))
             continue;
           const existing = carriers.get(allOf);
           if (existing)
-            existing.push(json2);
+            existing.push(json3);
           else
-            carriers.set(allOf, [json2]);
+            carriers.set(allOf, [json3]);
         }
       }
       for (const allOf of ctx.intersections) {
-        for (const json2 of carriers.get(allOf) ?? [])
-          foldIntersection(json2);
+        for (const json3 of carriers.get(allOf) ?? [])
+          foldIntersection(json3);
       }
     }
   }
@@ -23652,31 +23652,31 @@ function inputOptin(schema) {
   }
   return schema._zod.optin;
 }
-function stringifyKeyNames(bySchema, json2, visited) {
-  if (json2.$ref) {
-    if (visited.has(json2))
-      return json2;
-    visited.add(json2);
-    const def = bySchema.get(json2)?.def;
+function stringifyKeyNames(bySchema, json3, visited) {
+  if (json3.$ref) {
+    if (visited.has(json3))
+      return json3;
+    visited.add(json3);
+    const def = bySchema.get(json3)?.def;
     if (!def)
-      return json2;
+      return json3;
     const inlined = stringifyKeyNames(bySchema, def, visited);
-    return inlined === def ? json2 : inlined;
+    return inlined === def ? json3 : inlined;
   }
   for (const keyword of ["anyOf", "oneOf"]) {
-    const branches = json2[keyword];
+    const branches = json3[keyword];
     if (!Array.isArray(branches))
       continue;
     const mapped = branches.map((branch) => stringifyKeyNames(bySchema, branch, visited));
     if (mapped.some((branch, i) => branch !== branches[i]))
-      json2 = { ...json2, [keyword]: mapped };
+      json3 = { ...json3, [keyword]: mapped };
   }
-  const types2 = Array.isArray(json2.type) ? json2.type : [json2.type];
+  const types2 = Array.isArray(json3.type) ? json3.type : [json3.type];
   const numericType = !types2.includes("string") && types2.some((t) => t === "number" || t === "integer");
-  const values = json2.enum ?? (json2.const !== void 0 ? [json2.const] : void 0);
+  const values = json3.enum ?? (json3.const !== void 0 ? [json3.const] : void 0);
   if (!numericType && !values?.some((v) => typeof v === "number"))
-    return json2;
-  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json2;
+    return json3;
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, format, id, ...rest } = json3;
   if (rest.enum)
     rest.enum = rest.enum.map((v) => typeof v === "number" ? String(v) : v);
   else if (typeof rest.const === "number")
@@ -23714,7 +23714,7 @@ function rewriteKeyNames(ctx) {
     }
   }
 }
-function serializeDefaultValue(value, schema, ctx, json2, params) {
+function serializeDefaultValue(value, schema, ctx, json3, params) {
   let unrepresentable = false;
   const serialized2 = JSON.stringify(value, (_, val) => {
     if (typeof val !== "bigint")
@@ -23724,7 +23724,7 @@ function serializeDefaultValue(value, schema, ctx, json2, params) {
   });
   if (!unrepresentable)
     return JSON.parse(serialized2);
-  handleUnrepresentable(schema, ctx, json2, params, "BigInt defaults cannot be represented in JSON Schema");
+  handleUnrepresentable(schema, ctx, json3, params, "BigInt defaults cannot be represented in JSON Schema");
   return UNREPRESENTABLE_DEFAULT;
 }
 function toJSONSchema(input2, params) {
@@ -23842,29 +23842,29 @@ var init_json_schema_processors = __esm({
     ]);
     exactPattern = (p) => exactPatterns.get(p) ?? p;
     stringProcessor = (schema, ctx, _json, _params) => {
-      const json2 = _json;
-      json2.type = "string";
+      const json3 = _json;
+      json3.type = "string";
       const { minimum, maximum, format, patterns, contentEncoding, laxFormat } = aggregateChecks(schema);
       if (typeof minimum === "number")
-        json2.minLength = minimum;
+        json3.minLength = minimum;
       if (typeof maximum === "number")
-        json2.maxLength = maximum;
+        json3.maxLength = maximum;
       if (format) {
-        json2.format = formatMap[format] ?? format;
-        if (json2.format === "")
-          delete json2.format;
+        json3.format = formatMap[format] ?? format;
+        if (json3.format === "")
+          delete json3.format;
         if (format === "time" || laxFormat) {
-          delete json2.format;
+          delete json3.format;
         }
       }
       if (contentEncoding)
-        json2.contentEncoding = contentEncoding;
+        json3.contentEncoding = contentEncoding;
       if (patterns && patterns.size > 0) {
         const patternList = [...patterns].map(exactPattern);
         if (patternList.length === 1)
-          json2.pattern = patternList[0].source;
+          json3.pattern = patternList[0].source;
         else if (patternList.length > 1) {
-          json2.allOf = [
+          json3.allOf = [
             ...patternList.map((regex) => ({
               ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
               pattern: regex.source
@@ -23874,31 +23874,31 @@ var init_json_schema_processors = __esm({
       }
     };
     numberProcessor = (schema, ctx, _json, params) => {
-      const json2 = _json;
+      const json3 = _json;
       const { minimum, maximum, multipleOf, exclusiveMaximum, exclusiveMinimum, isInt } = aggregateChecks(schema);
-      json2.type = isInt ? "integer" : "number";
+      json3.type = isInt ? "integer" : "number";
       const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
       const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
       const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
       if (exMin) {
         if (legacy) {
-          json2.minimum = exclusiveMinimum;
-          json2.exclusiveMinimum = true;
+          json3.minimum = exclusiveMinimum;
+          json3.exclusiveMinimum = true;
         } else {
-          json2.exclusiveMinimum = exclusiveMinimum;
+          json3.exclusiveMinimum = exclusiveMinimum;
         }
       } else if (typeof minimum === "number") {
-        json2.minimum = minimum;
+        json3.minimum = minimum;
       }
       if (exMax) {
         if (legacy) {
-          json2.maximum = exclusiveMaximum;
-          json2.exclusiveMaximum = true;
+          json3.maximum = exclusiveMaximum;
+          json3.exclusiveMaximum = true;
         } else {
-          json2.exclusiveMaximum = exclusiveMaximum;
+          json3.exclusiveMaximum = exclusiveMaximum;
         }
       } else if (typeof maximum === "number") {
-        json2.maximum = maximum;
+        json3.maximum = maximum;
       }
       if (multipleOf) {
         const divisors = /* @__PURE__ */ new Set();
@@ -23906,75 +23906,75 @@ var init_json_schema_processors = __esm({
           if (Number.isFinite(divisor) && divisor !== 0)
             divisors.add(Math.abs(divisor));
           else
-            handleUnrepresentable(schema, ctx, json2, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
+            handleUnrepresentable(schema, ctx, json3, params, `A multipleOf divisor of ${divisor} cannot be represented in JSON Schema`);
         }
         const [first, ...rest] = divisors;
         if (first !== void 0)
-          json2.multipleOf = first;
+          json3.multipleOf = first;
         if (rest.length)
-          json2.allOf = [...json2.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
+          json3.allOf = [...json3.allOf ?? [], ...rest.map((m) => ({ multipleOf: m }))];
       }
     };
-    booleanProcessor = (_schema, _ctx, json2, _params) => {
-      json2.type = "boolean";
+    booleanProcessor = (_schema, _ctx, json3, _params) => {
+      json3.type = "boolean";
     };
-    bigintProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "BigInt cannot be represented in JSON Schema");
+    bigintProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "BigInt cannot be represented in JSON Schema");
     };
-    symbolProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Symbols cannot be represented in JSON Schema");
+    symbolProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Symbols cannot be represented in JSON Schema");
     };
-    nullProcessor = (_schema, ctx, json2, _params) => {
+    nullProcessor = (_schema, ctx, json3, _params) => {
       if (ctx.target === "openapi-3.0") {
-        json2.type = "string";
-        json2.nullable = true;
-        json2.enum = [null];
+        json3.type = "string";
+        json3.nullable = true;
+        json3.enum = [null];
       } else {
-        json2.type = "null";
+        json3.type = "null";
       }
     };
-    undefinedProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Undefined cannot be represented in JSON Schema");
+    undefinedProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Undefined cannot be represented in JSON Schema");
     };
-    voidProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Void cannot be represented in JSON Schema");
+    voidProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Void cannot be represented in JSON Schema");
     };
-    neverProcessor = (_schema, _ctx, json2, _params) => {
-      json2.not = {};
+    neverProcessor = (_schema, _ctx, json3, _params) => {
+      json3.not = {};
     };
     anyProcessor = (_schema, _ctx, _json, _params) => {
     };
     unknownProcessor = (_schema, _ctx, _json, _params) => {
     };
-    dateProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Date cannot be represented in JSON Schema");
+    dateProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Date cannot be represented in JSON Schema");
     };
-    enumProcessor = (schema, _ctx, json2, _params) => {
+    enumProcessor = (schema, _ctx, json3, _params) => {
       const def = schema._zod.def;
       const values = getEnumValues(def.entries);
       if (values.length === 0) {
-        json2.not = {};
+        json3.not = {};
         return;
       }
       if (values.every((v) => typeof v === "number"))
-        json2.type = "number";
+        json3.type = "number";
       if (values.every((v) => typeof v === "string"))
-        json2.type = "string";
-      json2.enum = values;
+        json3.type = "string";
+      json3.enum = values;
     };
-    literalProcessor = (schema, ctx, json2, params) => {
+    literalProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       if (def.values.length === 0) {
-        json2.not = {};
+        json3.not = {};
         return;
       }
       const vals = [];
       for (const val of def.values) {
         if (val === void 0) {
-          if (handleUnrepresentable(schema, ctx, json2, params, "Literal `undefined` cannot be represented in JSON Schema"))
+          if (handleUnrepresentable(schema, ctx, json3, params, "Literal `undefined` cannot be represented in JSON Schema"))
             return;
         } else if (typeof val === "bigint") {
-          if (handleUnrepresentable(schema, ctx, json2, params, "BigInt literals cannot be represented in JSON Schema"))
+          if (handleUnrepresentable(schema, ctx, json3, params, "BigInt literals cannot be represented in JSON Schema"))
             return;
           vals.push(Number(val));
         } else {
@@ -23984,37 +23984,37 @@ var init_json_schema_processors = __esm({
       if (vals.length === 0) {
       } else if (vals.length === 1) {
         const val = vals[0];
-        json2.type = val === null ? "null" : typeof val;
+        json3.type = val === null ? "null" : typeof val;
         if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-          json2.enum = [val];
+          json3.enum = [val];
         } else {
-          json2.const = val;
+          json3.const = val;
         }
       } else {
         if (vals.every((v) => typeof v === "number"))
-          json2.type = "number";
+          json3.type = "number";
         if (vals.every((v) => typeof v === "string"))
-          json2.type = "string";
+          json3.type = "string";
         if (vals.every((v) => typeof v === "boolean"))
-          json2.type = "boolean";
+          json3.type = "boolean";
         if (vals.every((v) => v === null))
-          json2.type = "null";
-        json2.enum = vals;
+          json3.type = "null";
+        json3.enum = vals;
       }
     };
-    nanProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "NaN cannot be represented in JSON Schema");
+    nanProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "NaN cannot be represented in JSON Schema");
     };
-    templateLiteralProcessor = (schema, _ctx, json2, _params) => {
-      const _json = json2;
+    templateLiteralProcessor = (schema, _ctx, json3, _params) => {
+      const _json = json3;
       const pattern = schema._zod.pattern;
       if (!pattern)
         throw new Error("Pattern not found in template literal");
       _json.type = "string";
       _json.pattern = pattern.source;
     };
-    fileProcessor = (schema, _ctx, json2, _params) => {
-      const _json = json2;
+    fileProcessor = (schema, _ctx, json3, _params) => {
+      const _json = json3;
       _json.type = "string";
       _json.format = "binary";
       _json.contentEncoding = "binary";
@@ -24032,50 +24032,50 @@ var init_json_schema_processors = __esm({
       else
         _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
     };
-    successProcessor = (_schema, _ctx, json2, _params) => {
-      json2.type = "boolean";
+    successProcessor = (_schema, _ctx, json3, _params) => {
+      json3.type = "boolean";
     };
-    customProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Custom types cannot be represented in JSON Schema");
+    customProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Custom types cannot be represented in JSON Schema");
     };
-    functionProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Function types cannot be represented in JSON Schema");
+    functionProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Function types cannot be represented in JSON Schema");
     };
-    transformProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Transforms cannot be represented in JSON Schema");
+    transformProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Transforms cannot be represented in JSON Schema");
     };
-    mapProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Map cannot be represented in JSON Schema");
+    mapProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Map cannot be represented in JSON Schema");
     };
-    setProcessor = (schema, ctx, json2, params) => {
-      handleUnrepresentable(schema, ctx, json2, params, "Set cannot be represented in JSON Schema");
+    setProcessor = (schema, ctx, json3, params) => {
+      handleUnrepresentable(schema, ctx, json3, params, "Set cannot be represented in JSON Schema");
     };
     arrayProcessor = (schema, ctx, _json, params) => {
-      const json2 = _json;
+      const json3 = _json;
       const def = schema._zod.def;
       const { minimum, maximum } = aggregateChecks(schema);
       if (typeof minimum === "number")
-        json2.minItems = minimum;
+        json3.minItems = minimum;
       if (typeof maximum === "number")
-        json2.maxItems = maximum;
-      json2.type = "array";
-      json2.items = processSchema(def.element, ctx, {
+        json3.maxItems = maximum;
+      json3.type = "array";
+      json3.items = processSchema(def.element, ctx, {
         ...params,
         path: [...params.path, "items"]
       });
     };
     objectProcessor = (schema, ctx, _json, params) => {
-      const json2 = _json;
+      const json3 = _json;
       const def = schema._zod.def;
       const shape = def.shape;
       const symbolKeys = Object.getOwnPropertySymbols(shape);
-      if (symbolKeys.length && handleUnrepresentable(schema, ctx, json2, params, "Symbol keys cannot be represented in JSON Schema")) {
+      if (symbolKeys.length && handleUnrepresentable(schema, ctx, json3, params, "Symbol keys cannot be represented in JSON Schema")) {
         return;
       }
-      json2.type = "object";
-      json2.properties = {};
+      json3.type = "object";
+      json3.properties = {};
       for (const key in shape) {
-        assignProp(json2.properties, key, processSchema(shape[key], ctx, {
+        assignProp(json3.properties, key, processSchema(shape[key], ctx, {
           ...params,
           path: [...params.path, "properties", key]
         }));
@@ -24088,21 +24088,21 @@ var init_json_schema_processors = __esm({
         }
       }
       if (requiredKeys.length > 0) {
-        json2.required = requiredKeys;
+        json3.required = requiredKeys;
       }
       if (def.catchall?._zod.def.type === "never") {
-        json2.additionalProperties = false;
+        json3.additionalProperties = false;
       } else if (!def.catchall) {
         if (ctx.io === "output")
-          json2.additionalProperties = false;
+          json3.additionalProperties = false;
       } else if (def.catchall) {
-        json2.additionalProperties = processSchema(def.catchall, ctx, {
+        json3.additionalProperties = processSchema(def.catchall, ctx, {
           ...params,
           path: [...params.path, "additionalProperties"]
         });
       }
     };
-    unionProcessor = (schema, ctx, json2, params) => {
+    unionProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const isExclusive = def.inclusive === false;
       const options = def.options.map((x, i) => processSchema(x, ctx, {
@@ -24110,12 +24110,12 @@ var init_json_schema_processors = __esm({
         path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
       }));
       if (isExclusive) {
-        json2.oneOf = options;
+        json3.oneOf = options;
       } else {
-        json2.anyOf = options;
+        json3.anyOf = options;
       }
     };
-    intersectionProcessor = (schema, ctx, json2, params) => {
+    intersectionProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const a = processSchema(def.left, ctx, {
         ...params,
@@ -24130,13 +24130,13 @@ var init_json_schema_processors = __esm({
         ...isSimpleIntersection(a) ? a.allOf : [a],
         ...isSimpleIntersection(b) ? b.allOf : [b]
       ];
-      json2.allOf = allOf;
+      json3.allOf = allOf;
       ctx.intersections.push(allOf);
     };
     tupleProcessor = (schema, ctx, _json, params) => {
-      const json2 = _json;
+      const json3 = _json;
       const def = schema._zod.def;
-      json2.type = "array";
+      json3.type = "array";
       const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
       const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
       const prefixItems = def.items.map((x, i) => processSchema(x, ctx, {
@@ -24158,50 +24158,50 @@ var init_json_schema_processors = __esm({
       const maxItems = def.items.length;
       const isClosed = !def.rest;
       if (ctx.target === "draft-2020-12") {
-        json2.prefixItems = prefixItems;
+        json3.prefixItems = prefixItems;
         if (isClosed) {
-          json2.items = false;
+          json3.items = false;
         } else if (rest) {
-          json2.items = rest;
+          json3.items = rest;
         }
         if (minItems > 0)
-          json2.minItems = minItems;
+          json3.minItems = minItems;
         if (isClosed)
-          json2.maxItems = maxItems;
+          json3.maxItems = maxItems;
       } else if (ctx.target === "openapi-3.0") {
-        json2.items = {
+        json3.items = {
           anyOf: prefixItems
         };
         if (rest) {
-          json2.items.anyOf.push(rest);
+          json3.items.anyOf.push(rest);
         }
         if (minItems > 0)
-          json2.minItems = minItems;
+          json3.minItems = minItems;
         if (isClosed)
-          json2.maxItems = maxItems;
+          json3.maxItems = maxItems;
       } else {
-        json2.items = prefixItems;
+        json3.items = prefixItems;
         if (isClosed) {
-          json2.additionalItems = false;
+          json3.additionalItems = false;
         } else if (rest) {
-          json2.additionalItems = rest;
+          json3.additionalItems = rest;
         }
         if (minItems > 0)
-          json2.minItems = minItems;
+          json3.minItems = minItems;
         if (isClosed)
-          json2.maxItems = maxItems;
+          json3.maxItems = maxItems;
       }
       const { minimum, maximum } = aggregateChecks(schema);
       if (typeof minimum === "number")
-        json2.minItems = minimum;
+        json3.minItems = minimum;
       if (typeof maximum === "number")
-        json2.maxItems = maximum;
+        json3.maxItems = maximum;
     };
     pendingRecords = /* @__PURE__ */ new WeakMap();
     recordProcessor = (schema, ctx, _json, params) => {
-      const json2 = _json;
+      const json3 = _json;
       const def = schema._zod.def;
-      json2.type = "object";
+      json3.type = "object";
       const keyType = def.keyType;
       const patterns = aggregateChecks(keyType).patterns;
       if (def.mode === "loose" && patterns && patterns.size > 0) {
@@ -24209,13 +24209,13 @@ var init_json_schema_processors = __esm({
           ...params,
           path: [...params.path, "patternProperties", "*"]
         });
-        json2.patternProperties = {};
+        json3.patternProperties = {};
         for (const pattern of patterns) {
-          assignProp(json2.patternProperties, exactPattern(pattern).source, valueSchema);
+          assignProp(json3.patternProperties, exactPattern(pattern).source, valueSchema);
         }
       } else {
         if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-          json2.propertyNames = processSchema(def.keyType, ctx, {
+          json3.propertyNames = processSchema(def.keyType, ctx, {
             ...params,
             path: [...params.path, "propertyNames"]
           });
@@ -24227,7 +24227,7 @@ var init_json_schema_processors = __esm({
           }
           pending.push(schema);
         }
-        json2.additionalProperties = processSchema(def.valueType, ctx, {
+        json3.additionalProperties = processSchema(def.valueType, ctx, {
           ...params,
           path: [...params.path, "additionalProperties"]
         });
@@ -24237,19 +24237,19 @@ var init_json_schema_processors = __esm({
       if (keyValues && !def.partial && !omittableOnInput) {
         const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
         if (validKeyValues.length > 0) {
-          json2.required = validKeyValues.map(String);
+          json3.required = validKeyValues.map(String);
         }
       }
     };
-    nullableProcessor = (schema, ctx, json2, params) => {
+    nullableProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const inner = processSchema(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       if (ctx.target === "openapi-3.0") {
         seen.ref = def.innerType;
-        json2.nullable = true;
+        json3.nullable = true;
       } else {
-        json2.anyOf = [inner, { type: "null" }];
+        json3.anyOf = [inner, { type: "null" }];
       }
     };
     nonoptionalProcessor = (schema, ctx, _json, params) => {
@@ -24259,27 +24259,27 @@ var init_json_schema_processors = __esm({
       seen.ref = def.innerType;
     };
     UNREPRESENTABLE_DEFAULT = Symbol();
-    defaultProcessor = (schema, ctx, json2, params) => {
+    defaultProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       processSchema(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
-      const value = serializeDefaultValue(def.defaultValue, schema, ctx, json2, params);
+      const value = serializeDefaultValue(def.defaultValue, schema, ctx, json3, params);
       if (value !== UNREPRESENTABLE_DEFAULT)
-        json2.default = value;
+        json3.default = value;
     };
-    prefaultProcessor = (schema, ctx, json2, params) => {
+    prefaultProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       processSchema(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
       if (ctx.io !== "input")
         return;
-      const value = serializeDefaultValue(def.defaultValue, schema, ctx, json2, params);
+      const value = serializeDefaultValue(def.defaultValue, schema, ctx, json3, params);
       if (value !== UNREPRESENTABLE_DEFAULT)
-        json2._prefault = value;
+        json3._prefault = value;
     };
-    catchProcessor = (schema, ctx, json2, params) => {
+    catchProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       processSchema(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
@@ -24288,10 +24288,10 @@ var init_json_schema_processors = __esm({
       try {
         catchValue = def.catchValue(void 0);
       } catch {
-        handleUnrepresentable(schema, ctx, json2, params, "Dynamic catch values are not supported in JSON Schema");
+        handleUnrepresentable(schema, ctx, json3, params, "Dynamic catch values are not supported in JSON Schema");
         return;
       }
-      json2.default = catchValue;
+      json3.default = catchValue;
     };
     pipeProcessor = (schema, ctx, _json, params) => {
       const def = schema._zod.def;
@@ -24301,12 +24301,12 @@ var init_json_schema_processors = __esm({
       const seen = ctx.seen.get(schema);
       seen.ref = innerType;
     };
-    readonlyProcessor = (schema, ctx, json2, params) => {
+    readonlyProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       processSchema(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
-      json2.readOnly = true;
+      json3.readOnly = true;
     };
     promiseProcessor = (schema, ctx, _json, params) => {
       const def = schema._zod.def;
@@ -25781,7 +25781,7 @@ var init_schemas2 = __esm({
       (inst, def) => {
         $ZodString.init(inst, def);
         ZodType.init(inst, def);
-        inst._zod.processJSONSchema = (ctx, json2, params) => stringProcessor(inst, ctx, json2, params);
+        inst._zod.processJSONSchema = (ctx, json3, params) => stringProcessor(inst, ctx, json3, params);
       },
       /* @__PURE__ */ util_exports.derived({
         format: (inst) => aggregateChecks(inst).format ?? null,
@@ -26035,7 +26035,7 @@ var init_schemas2 = __esm({
       (inst, def) => {
         $ZodNumber.init(inst, def);
         ZodType.init(inst, def);
-        inst._zod.processJSONSchema = (ctx, json2, params) => numberProcessor(inst, ctx, json2, params);
+        inst._zod.processJSONSchema = (ctx, json3, params) => numberProcessor(inst, ctx, json3, params);
         inst.isFinite = true;
       },
       /* @__PURE__ */ util_exports.derived({
@@ -26107,14 +26107,14 @@ var init_schemas2 = __esm({
     ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
       $ZodBoolean.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => booleanProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => booleanProcessor(inst, ctx, json3, params);
     });
     ZodBigInt = /* @__PURE__ */ $constructor(
       "ZodBigInt",
       (inst, def) => {
         $ZodBigInt.init(inst, def);
         ZodType.init(inst, def);
-        inst._zod.processJSONSchema = (ctx, json2, params) => bigintProcessor(inst, ctx, json2, params);
+        inst._zod.processJSONSchema = (ctx, json3, params) => bigintProcessor(inst, ctx, json3, params);
       },
       /* @__PURE__ */ util_exports.derived({
         minValue: (inst) => aggregateChecks(inst).minimum ?? null,
@@ -26163,44 +26163,44 @@ var init_schemas2 = __esm({
     ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
       $ZodSymbol.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => symbolProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => symbolProcessor(inst, ctx, json3, params);
     });
     ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
       $ZodUndefined.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => undefinedProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => undefinedProcessor(inst, ctx, json3, params);
     });
     ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
       $ZodNull.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => nullProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => nullProcessor(inst, ctx, json3, params);
     });
     ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
       $ZodAny.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => anyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => anyProcessor(inst, ctx, json3, params);
     });
     ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
       $ZodUnknown.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => unknownProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => unknownProcessor(inst, ctx, json3, params);
     });
     ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
       $ZodNever.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => neverProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => neverProcessor(inst, ctx, json3, params);
     });
     ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
       $ZodVoid.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => voidProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => voidProcessor(inst, ctx, json3, params);
     });
     ZodDate = /* @__PURE__ */ $constructor(
       "ZodDate",
       (inst, def) => {
         $ZodDate.init(inst, def);
         ZodType.init(inst, def);
-        inst._zod.processJSONSchema = (ctx, json2, params) => dateProcessor(inst, ctx, json2, params);
+        inst._zod.processJSONSchema = (ctx, json3, params) => dateProcessor(inst, ctx, json3, params);
         inst.min = (value, params) => inst.check(_gte(value, params));
         inst.max = (value, params) => inst.check(_lte(value, params));
       },
@@ -26219,7 +26219,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodArray.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => arrayProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => arrayProcessor(inst, ctx, json3, params);
       inst.element = def.element;
     }, {
       min(n, params) {
@@ -26242,7 +26242,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodObjectJIT.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => objectProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => objectProcessor(inst, ctx, json3, params);
       util_exports.installLazyProp(inst, "shape", (self) => self._zod.def.shape, false);
     }, {
       keyof() {
@@ -26291,13 +26291,13 @@ var init_schemas2 = __esm({
     ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
       $ZodUnion.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => unionProcessor(inst, ctx, json3, params);
       inst.options = def.options;
     });
     ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
       ZodUnion.init(inst, def);
       $ZodXor.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => unionProcessor(inst, ctx, json3, params);
       inst.options = def.options;
     });
     ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("ZodDiscriminatedUnion", (inst, def) => {
@@ -26307,13 +26307,13 @@ var init_schemas2 = __esm({
     ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
       $ZodIntersection.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => intersectionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => intersectionProcessor(inst, ctx, json3, params);
     });
     ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
       _ensureDefaultMemoizer();
       $ZodTuple.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => tupleProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => tupleProcessor(inst, ctx, json3, params);
     }, {
       rest(rest) {
         return this.clone({
@@ -26335,7 +26335,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodRecord.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => recordProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => recordProcessor(inst, ctx, json3, params);
       inst.keyType = def.keyType;
       inst.valueType = def.valueType;
     });
@@ -26343,7 +26343,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodMap.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => mapProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => mapProcessor(inst, ctx, json3, params);
       inst.keyType = def.keyType;
       inst.valueType = def.valueType;
       inst.min = (...args) => inst.check(_minSize(...args));
@@ -26355,7 +26355,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodSet.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => setProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => setProcessor(inst, ctx, json3, params);
       inst.min = (...args) => inst.check(_minSize(...args));
       inst.nonempty = (params) => inst.check(_minSize(1, params));
       inst.max = (...args) => inst.check(_maxSize(...args));
@@ -26364,7 +26364,7 @@ var init_schemas2 = __esm({
     ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
       $ZodEnum.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => enumProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => enumProcessor(inst, ctx, json3, params);
       inst.enum = def.entries;
       inst.options = [...inst._zod.values];
       const keys = new Set(Object.keys(def.entries));
@@ -26402,7 +26402,7 @@ var init_schemas2 = __esm({
     ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
       $ZodLiteral.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => literalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => literalProcessor(inst, ctx, json3, params);
       inst.values = new Set(def.values);
       Object.defineProperty(inst, "value", {
         get() {
@@ -26416,7 +26416,7 @@ var init_schemas2 = __esm({
     ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
       $ZodFile.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => fileProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => fileProcessor(inst, ctx, json3, params);
       inst.min = (size, params) => inst.check(_minSize(size, params));
       inst.max = (size, params) => inst.check(_maxSize(size, params));
       inst.mime = (types2, params) => inst.check(_mime(Array.isArray(types2) ? types2 : [types2], params));
@@ -26425,7 +26425,7 @@ var init_schemas2 = __esm({
       _ensureDefaultMemoizer();
       $ZodTransform.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => transformProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => transformProcessor(inst, ctx, json3, params);
       inst._zod.parse = (payload, _ctx) => {
         if (_ctx.direction === "backward") {
           throw new $ZodEncodeError(inst.constructor.name);
@@ -26458,62 +26458,62 @@ var init_schemas2 = __esm({
     ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
       $ZodOptional.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => optionalProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
       $ZodExactOptional.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => optionalProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
       $ZodNullable.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => nullableProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => nullableProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
       $ZodDefault.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => defaultProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => defaultProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
       inst.removeDefault = inst.unwrap;
     });
     ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
       $ZodPrefault.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => prefaultProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => prefaultProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
       $ZodNonOptional.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => nonoptionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => nonoptionalProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
       $ZodSuccess.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => successProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => successProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
       $ZodCatch.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => catchProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => catchProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
       inst.removeCatch = inst.unwrap;
     });
     ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
       $ZodNaN.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => nanProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => nanProcessor(inst, ctx, json3, params);
     });
     ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
       $ZodPipe.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => pipeProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => pipeProcessor(inst, ctx, json3, params);
       inst.in = def.in;
       inst.out = def.out;
     });
@@ -26528,35 +26528,35 @@ var init_schemas2 = __esm({
     ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
       $ZodReadonly.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => readonlyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => readonlyProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
       $ZodTemplateLiteral.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => templateLiteralProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => templateLiteralProcessor(inst, ctx, json3, params);
     });
     ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
       $ZodLazy.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => lazyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => lazyProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.getter();
     });
     ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
       $ZodPromise.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => promiseProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => promiseProcessor(inst, ctx, json3, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
       $ZodFunction.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => functionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => functionProcessor(inst, ctx, json3, params);
     });
     ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
       $ZodCustom.init(inst, def);
       ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => customProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json3, params) => customProcessor(inst, ctx, json3, params);
     });
     describe2 = describe;
     meta2 = meta;
@@ -27389,15 +27389,15 @@ function visit(schema, fnOrHandlers) {
   };
   const cache = /* @__PURE__ */ new Map();
   function run2(s) {
-    const cached2 = cache.get(s);
-    if (cached2 === RESOLVING) {
+    const cached3 = cache.get(s);
+    if (cached3 === RESOLVING) {
       return new $ZodLazy({
         type: "lazy",
         getter: () => cache.get(s)
       });
     }
-    if (cached2 !== void 0)
-      return cached2;
+    if (cached3 !== void 0)
+      return cached3;
     cache.set(s, RESOLVING);
     const inner = mapInner(s);
     const mapped = fn(inner, inner !== s);
@@ -27994,7 +27994,7 @@ var init_types = __esm({
 // ../vexnar-store/src/pg-store.ts
 function pgStore(connection) {
   const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
-  const q = async (text2, values = []) => (await pool.query(text2, values)).rows;
+  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
   const rfc2 = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
   const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
   const TASK_SELECT = `SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
@@ -28062,11 +28062,11 @@ function pgStore(connection) {
           filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
         }
         const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
-        const join13 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
+        const join14 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
         const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
         const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
           a.last_seen::text AS last_seen${linkSelect}
-          FROM assets a ${join13} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
+          FROM assets a ${join14} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
         const countValues = [];
         const countFilters = [];
         if (type) {
@@ -29075,7 +29075,204 @@ var init_sqlite = __esm({
     "use strict";
     init_json_store();
     init_writer();
-    parse3 = (json2) => JSON.parse(json2);
+    parse3 = (json3) => JSON.parse(json3);
+  }
+});
+
+// ../vexnar-store/src/pg-meta.ts
+function settingsRow(row) {
+  const raw2 = row.value ?? "";
+  if (raw2 === "") return [row.key, ""];
+  try {
+    return [row.key, JSON.parse(raw2)];
+  } catch {
+    return [row.key, raw2];
+  }
+}
+function settingsValue(value) {
+  if (typeof value === "string") return value;
+  if (value === null || value === void 0) return "";
+  return JSON.stringify(value);
+}
+function pgMetaStore(connection, fallback) {
+  const pool = new esm_default.Pool({
+    host: connection.host,
+    port: connection.port,
+    user: connection.user,
+    password: connection.password,
+    database: connection.database,
+    ssl: connection.ssl === false ? false : { rejectUnauthorized: false },
+    max: 4
+  });
+  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
+  async function settings() {
+    const rows = await q("SELECT key, value FROM settings ORDER BY key");
+    return Object.fromEntries(rows.filter((row) => !SENSITIVE_SETTING.test(row.key)).map(settingsRow));
+  }
+  async function read(name) {
+    if (name === "settings") return settings();
+    const loader = LOADERS[name];
+    if (!loader) return fallback.table(name);
+    const rows = await q(loader.sql);
+    return rows.map(loader.row);
+  }
+  async function writeSettings2(next) {
+    for (const [key, value] of Object.entries(next)) {
+      if (SENSITIVE_SETTING.test(key)) continue;
+      await q(
+        `INSERT INTO settings(key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+        [key, settingsValue(value)]
+      );
+    }
+  }
+  return {
+    backend: "postgres",
+    async load() {
+      const out = {};
+      for (const name of Object.keys(LOADERS)) out[name] = await read(name);
+      out.settings = await settings();
+      const local = await fallback.load();
+      for (const [name, rows] of Object.entries(local)) {
+        if (!(name in out)) out[name] = rows;
+      }
+      return out;
+    },
+    reload() {
+      fallback.reload();
+    },
+    async table(name) {
+      return await read(name);
+    },
+    async save(next) {
+      if ("settings" in next) await writeSettings2(next.settings ?? {});
+      const local = {};
+      for (const [name, rows] of Object.entries(next)) {
+        if (name === "settings" || name in LOADERS) continue;
+        local[name] = rows;
+      }
+      if (Object.keys(local).length > 0) await fallback.save({ ...await fallback.load(), ...local });
+      fallback.reload();
+    }
+  };
+}
+var iso, json2, LOADERS, SENSITIVE_SETTING;
+var init_pg_meta = __esm({
+  "../vexnar-store/src/pg-meta.ts"() {
+    "use strict";
+    init_esm();
+    esm_default.types.setTypeParser(20, (value) => Number(value));
+    iso = (value) => {
+      if (value instanceof Date) return value.toISOString();
+      return value;
+    };
+    json2 = (value) => {
+      if (value == null) return null;
+      if (typeof value !== "string") return value;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    };
+    LOADERS = {
+      // db/config.go · Agent
+      agents: {
+        sql: `SELECT id, key, name, COALESCE(description,'') AS description, role, builtin, enabled,
+        llm_profile_id, COALESCE(max_turns,0) AS max_turns, COALESCE(run_seconds,0) AS run_seconds,
+        COALESCE(web_search,false) AS web_search, COALESCE(interactive_shell,false) AS interactive_shell,
+        COALESCE(wrapup_prompt,'') AS wrapup_prompt, COALESCE(wrapup_max_turns,0) AS wrapup_max_turns,
+        COALESCE(task_timeout_wrapup_prompt,'') AS task_timeout_wrapup_prompt,
+        COALESCE(task_timeout_wrapup_max_turns,0) AS task_timeout_wrapup_max_turns,
+        COALESCE(trigger_run_mode,'serial') AS trigger_run_mode,
+        COALESCE(trigger_merge_mode,'all') AS trigger_merge_mode,
+        COALESCE(trigger_max_parallel,0) AS trigger_max_parallel
+      FROM agents ORDER BY id`,
+        row: (row) => ({ ...row })
+      },
+      // db/tools.go · Tool
+      tools: {
+        sql: `SELECT key, system, COALESCE(description,'') AS description, schema, COALESCE(agents,'[]'::jsonb) AS agents,
+        enabled, COALESCE(kind,'builtin') AS kind, exec, COALESCE(deferred,false) AS deferred
+      FROM tools ORDER BY key`,
+        row: (row) => ({
+          ...row,
+          schema: json2(row.schema) ?? {},
+          exec: json2(row.exec),
+          agents: json2(row.agents) ?? []
+        })
+      },
+      // db/config.go · MCPServer (+ cached tool names, as ListMCP attaches)
+      mcp: {
+        sql: `SELECT m.id, m.name, m.transport, COALESCE(m.command,'') AS command,
+        COALESCE(m.args,'[]'::jsonb) AS args, COALESCE(m.env,'{}'::jsonb) AS env,
+        COALESCE(m.url,'') AS url, m.enabled, m.insecure,
+        COALESCE((SELECT json_agg(t.tool_name ORDER BY t.tool_name)
+                    FROM mcp_tools_cache t WHERE t.server_id = m.id), '[]'::json) AS tools
+      FROM mcp_servers m ORDER BY m.id`,
+        row: (row) => ({
+          ...row,
+          args: json2(row.args) ?? [],
+          env: json2(row.env) ?? {},
+          tools: json2(row.tools) ?? []
+        })
+      },
+      // db/config.go · LLMProfile — `api_key` never leaves the database.
+      llmProfiles: {
+        sql: `SELECT id, name, COALESCE(format,'') AS format, COALESCE(base_url,'') AS base_url,
+        COALESCE(proxy,'') AS proxy, COALESCE(model,'') AS model, COALESCE(api_key_hint,'') AS api_key_hint,
+        COALESCE(rate_per_second,0) AS rate_per_second, COALESCE(rate_per_minute,0) AS rate_per_minute,
+        COALESCE(context_window_k,0) AS context_window_k,
+        COALESCE(thinking_type,'') AS thinking_type, COALESCE(reasoning_effort,'') AS reasoning_effort,
+        COALESCE(is_default,false) AS is_default, COALESCE(priority,0) AS priority,
+        COALESCE(pool_exclude,false) AS pool_exclude, COALESCE(streaming,true) AS streaming,
+        COALESCE(max_tokens,0) AS max_tokens, COALESCE(max_tokens_field,'') AS max_tokens_field,
+        COALESCE(session_header_key,'') AS session_header_key,
+        COALESCE(retry_connect_attempts,0) AS retry_connect_attempts,
+        COALESCE(retry_connect_interval_ms,0) AS retry_connect_interval_ms,
+        COALESCE(retry_empty_attempts,0) AS retry_empty_attempts,
+        COALESCE(retry_empty_interval_ms,0) AS retry_empty_interval_ms,
+        COALESCE(retry_stream_attempts,0) AS retry_stream_attempts,
+        COALESCE(retry_stream_interval_ms,0) AS retry_stream_interval_ms
+      FROM llm_profiles ORDER BY id`,
+        row: (row) => ({ ...row })
+      },
+      // db/task_categories.go · TaskCategory — `nkey` is not serialized by Go.
+      taskCategories: {
+        sql: `SELECT c.id, c.name,
+        (SELECT count(*) FROM tasks t WHERE t.category_id = c.id AND t.deleted_at IS NULL)::int AS task_count,
+        c.created_at, c.updated_at
+      FROM task_categories c ORDER BY c.id`,
+        row: (row) => ({ ...row, created_at: iso(row.created_at), updated_at: iso(row.updated_at) })
+      },
+      // db/task_templates.go · TaskTemplate — `nkey` is not serialized by Go.
+      taskTemplates: {
+        sql: `SELECT id, name, COALESCE(description,'') AS description, COALESCE(goal,'') AS goal,
+        category_id, COALESCE(intercept_rules,'[]'::jsonb) AS intercept_rules, created_at, updated_at
+      FROM task_templates ORDER BY id`,
+        row: (row) => ({
+          ...row,
+          intercept_rules: json2(row.intercept_rules) ?? [],
+          created_at: iso(row.created_at),
+          updated_at: iso(row.updated_at)
+        })
+      },
+      // db/notification.go · NotificationChannel
+      notify: {
+        sql: `SELECT id, name, kind, COALESCE(mode,'') AS mode, COALESCE(config,'{}'::jsonb) AS config,
+        COALESCE(filter,'{}'::jsonb) AS filter, enabled, COALESCE(rate_per_min,0) AS rate_per_min,
+        created_at, updated_at
+      FROM notification_channels ORDER BY id`,
+        row: (row) => ({
+          ...row,
+          config: json2(row.config) ?? {},
+          filter: json2(row.filter) ?? {},
+          created_at: iso(row.created_at),
+          updated_at: iso(row.updated_at)
+        })
+      }
+    };
+    SENSITIVE_SETTING = /(password|passwd|secret|credential|private_key|api_?key|(^|_)token)/i;
   }
 });
 
@@ -29091,11 +29288,32 @@ function dbPath(root = storeRoot()) {
 function backend() {
   return (process.env.VEXNAR_STORE || "sqlite").toLowerCase() === "json" ? "json" : "sqlite";
 }
+function pgConnection() {
+  const dsn = process.env.VEXNAR_PG_DSN?.trim() || process.env.VEXNAR_PG_URL?.trim();
+  if (!dsn) return void 0;
+  try {
+    const parsed = new URL(dsn);
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port || 5432),
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      database: parsed.pathname.replace(/^\//, "") || "postgres",
+      ssl: parsed.searchParams.get("sslmode") !== "disable"
+    };
+  } catch {
+    return void 0;
+  }
+}
 function openWriter(root = storeRoot()) {
   return backend() === "sqlite" ? sqliteWriter(dbPath(root)) : storeWriter(root);
 }
 function openMeta(root = storeRoot()) {
-  return backend() === "sqlite" ? sqliteMetaStore(dbPath(root)) : metaStore(root);
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
+  const connection = pgConnection();
+  const wantsPg = explicit === "postgres" || explicit !== "json" && explicit !== "sqlite" && connection !== void 0;
+  if (wantsPg && connection !== void 0) return pgMetaStore(connection, sqliteMetaStore(dbPath(root)));
+  return explicit === "json" ? metaStore(root) : sqliteMetaStore(dbPath(root));
 }
 async function openStore(root = storeRoot()) {
   const store2 = backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
@@ -29109,6 +29327,7 @@ var init_backend = __esm({
     init_meta_store();
     init_json_store();
     init_sqlite();
+    init_pg_meta();
   }
 });
 
@@ -29272,23 +29491,23 @@ function storeOperations(_root) {
     return { deleted: true, id: Number(id) };
   }
   async function createCategory(name) {
-    const text2 = String(name ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(name ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
-    if (rows.some((row2) => row2.name === text2)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
+    if (rows.some((row2) => row2.name === text3)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
     const now2 = rfc3339(/* @__PURE__ */ new Date());
-    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text2, task_count: 0, created_at: now2, updated_at: now2 };
+    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text3, task_count: 0, created_at: now2, updated_at: now2 };
     rows.push(row);
     await meta4.save(tables);
     return row;
   }
   async function renameCategory(id, name) {
-    const text2 = String(name ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(name ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
     const row = rows.find((item) => String(item.id) === String(id));
     if (!row) throw Object.assign(new Error("\u5206\u7C7B\u4E0D\u5B58\u5728"), { status: 404 });
-    row.name = text2;
+    row.name = text3;
     row.updated_at = rfc3339(/* @__PURE__ */ new Date());
     await meta4.save(tables);
     return row;
@@ -29667,12 +29886,12 @@ function storeOperations(_root) {
   async function addGoal(taskId, input2) {
     const task = await writer4.readRecord("tasks", taskId);
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const explorationId = Number(task.exploration_id);
     const nodes = await writer4.list("nodes");
     const nodeId = Math.max(0, ...nodes.map((node2) => Number(node2.id))) + 1;
-    const payload = { text: text2 };
+    const payload = { text: text3 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const record2 = {
       id: String(nodeId),
@@ -29691,11 +29910,11 @@ function storeOperations(_root) {
     return record2;
   }
   async function editGoal(taskId, goalId, input2) {
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const node2 = await writer4.readRecord("nodes", goalId);
     if (!node2 || node2.kind !== "goal") throw Object.assign(new Error("\u76EE\u6807\u4E0D\u5B58\u5728"), { status: 404 });
-    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text2 };
+    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text3 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const next = { ...node2, payload };
     delete next.rev;
@@ -29822,11 +30041,11 @@ function storeOperations(_root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const kind = String(input2.kind ?? "");
     if (kind !== "allow" && kind !== "deny") throw Object.assign(new Error("kind \u9700\u4E3A allow \u6216 deny"), { status: 400 });
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const rows = await writer4.list("constraints");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
-    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text2, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
+    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text3, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
     await writer4.commit([{ table: "constraints", key: String(id), record: record2 }]);
     return record2;
   }
@@ -29839,9 +30058,9 @@ function storeOperations(_root) {
       next.kind = input2.kind;
     }
     if (input2.text !== void 0) {
-      const text2 = String(input2.text).trim();
-      if (!text2) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-      next.text = text2;
+      const text3 = String(input2.text).trim();
+      if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+      next.text = text3;
     }
     delete next.rev;
     const [written] = await writer4.commit([{ table: "constraints", key: constraintId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
@@ -30383,10 +30602,10 @@ var init_tools = __esm({
         parse(output2) {
           const urls = [];
           for (const line of output2.split("\n")) {
-            const text2 = line.trim();
-            if (!text2.startsWith("{")) continue;
+            const text3 = line.trim();
+            if (!text3.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text2);
+              const row = JSON.parse(text3);
               urls.push({ url: row.url ?? row.input, status: Number(row.status_code ?? 0), title: row.title ?? "", tech: row.tech ?? row.technologies ?? [], host: row.host ?? "" });
             } catch {
             }
@@ -30443,10 +30662,10 @@ var init_tools = __esm({
         parse(output2) {
           const findings = [];
           for (const line of output2.split("\n")) {
-            const text2 = line.replace(/^\+\s*/, "").trim();
-            if (!text2 || text2.startsWith("Target") || text2.startsWith("Start Time") || text2.startsWith("End Time")) continue;
-            const osvdb = text2.match(/OSVDB-(\d+)/);
-            if (text2.includes(":") || osvdb) findings.push({ text: text2, osvdb: osvdb?.[1] ?? "" });
+            const text3 = line.replace(/^\+\s*/, "").trim();
+            if (!text3 || text3.startsWith("Target") || text3.startsWith("Start Time") || text3.startsWith("End Time")) continue;
+            const osvdb = text3.match(/OSVDB-(\d+)/);
+            if (text3.includes(":") || osvdb) findings.push({ text: text3, osvdb: osvdb?.[1] ?? "" });
           }
           return { findings };
         }
@@ -30474,10 +30693,10 @@ var init_tools = __esm({
         parse(output2) {
           const urls = [];
           for (const line of output2.split("\n")) {
-            const text2 = line.trim();
-            if (!text2.startsWith("{")) continue;
+            const text3 = line.trim();
+            if (!text3.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text2);
+              const row = JSON.parse(text3);
               const url2 = row.request?.endpoint ?? row.url ?? "";
               if (url2) urls.push({ url: url2, status: Number(row.response?.status_code ?? 0) });
             } catch {
@@ -30495,17 +30714,17 @@ var init_tools = __esm({
         parse(output2) {
           const hosts = [];
           for (const line of output2.split("\n")) {
-            const text2 = line.trim();
-            if (!text2) continue;
-            if (text2.startsWith("{")) {
+            const text3 = line.trim();
+            if (!text3) continue;
+            if (text3.startsWith("{")) {
               try {
-                const row = JSON.parse(text2);
+                const row = JSON.parse(text3);
                 if (row.host) hosts.push({ host: row.host, source: row.source ?? "" });
                 continue;
               } catch {
               }
             }
-            hosts.push({ host: text2, source: "subfinder" });
+            hosts.push({ host: text3, source: "subfinder" });
           }
           return { hosts };
         }
@@ -30522,10 +30741,10 @@ var init_tools = __esm({
         parse(output2) {
           const findings = [];
           for (const line of output2.split("\n")) {
-            const text2 = line.trim();
-            if (!text2.startsWith("{")) continue;
+            const text3 = line.trim();
+            if (!text3.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text2);
+              const row = JSON.parse(text3);
               findings.push({
                 template: row["template-id"] ?? row.templateID ?? "",
                 name: row.info?.name ?? "",
@@ -30560,8 +30779,8 @@ var init_tools = __esm({
 });
 
 // ../vexnar-store/src/engine.ts
-function parseJson(text2) {
-  const trimmed = text2.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
+function parseJson(text3) {
+  const trimmed = text3.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
   try {
     return JSON.parse(trimmed);
   } catch {
@@ -30595,8 +30814,8 @@ function createEngine(store2, ops, engineOptions = {}) {
     const root = page.items.find((node2) => node2.kind === "fact" && node2.state === "origin") ?? page.items.find((node2) => node2.kind === "fact");
     const existing = page.items.filter((node2) => node2.kind === "intent").map((node2) => (typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload)?.text).filter(Boolean);
     const created = [];
-    const normalize2 = (text2) => text2.toLowerCase().replace(/\s+/g, " ").trim();
-    const seen = new Set(existing.map((text2) => normalize2(text2)));
+    const normalize2 = (text3) => text3.toLowerCase().replace(/\s+/g, " ").trim();
+    const seen = new Set(existing.map((text3) => normalize2(text3)));
     for (let round = 0; round < rounds; round++) {
       const reply = await complete([
         { role: "system", content: '\u4F60\u662F\u6E17\u900F\u6D4B\u8BD5\u4EFB\u52A1\u7684\u89C4\u5212\u8005\u3002\u628A\u76EE\u6807\u62C6\u6210\u53EF\u72EC\u7ACB\u9A8C\u8BC1\u7684\u610F\u56FE\uFF0C\u53EA\u8F93\u51FA JSON\uFF1A{"intents":[{"text":"...","priority":0}]}\u3002\u4E0D\u8981\u91CD\u590D\u5DF2\u6709\u610F\u56FE\u3002' },
@@ -30609,14 +30828,14 @@ function createEngine(store2, ops, engineOptions = {}) {
       const intents = Array.isArray(data.intents) ? data.intents.slice(0, maxIntents) : [];
       let added = 0;
       for (const intent of intents) {
-        const text2 = String(intent.text ?? "").trim();
-        if (!text2) continue;
-        const key = normalize2(text2);
+        const text3 = String(intent.text ?? "").trim();
+        if (!text3) continue;
+        const key = normalize2(text3);
         if (seen.has(key)) continue;
         seen.add(key);
         created.push(await ops.addNode(taskId, {
           kind: "intent",
-          payload: { text: text2 },
+          payload: { text: text3 },
           state: "open",
           priority: Number(intent.priority ?? 0),
           origin: "planner",
@@ -30672,11 +30891,11 @@ function createEngine(store2, ops, engineOptions = {}) {
           return { intent: Number(claimed.id), state: "done", summary: String(action.args?.summary ?? "") };
         }
         if (action.tool === "add_fact") {
-          const text2 = String(action.args?.text ?? "").trim();
-          if (!text2) throw new Error("add_fact \u7F3A\u5C11 text");
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text2 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
-          facts.push(text2);
-          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text2 });
+          const text3 = String(action.args?.text ?? "").trim();
+          if (!text3) throw new Error("add_fact \u7F3A\u5C11 text");
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text3 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          facts.push(text3);
+          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text3 });
           continue;
         }
         if (action.tool === "list_assets") {
@@ -30718,12 +30937,12 @@ function createEngine(store2, ops, engineOptions = {}) {
         if (action.tool === "run_command") {
           if (!engineOptions.runner) throw new Error("run_command \u672A\u542F\u7528");
           const result = await engineOptions.runner.run(String(action.args?.command ?? ""), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 3e4) });
-          const text2 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
+          const text3 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
 ${result.stdout.slice(0, 4e3)}${result.stderr ? `
 ${result.stderr.slice(0, 2e3)}` : ""}`;
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text2, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text3, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
           await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "run_command", node_id: String(claimed.id), is_error: result.code !== 0, summary: `${result.command} code=${result.code}` });
-          facts.push(text2.slice(0, 500));
+          facts.push(text3.slice(0, 500));
           continue;
         }
         if (action.tool === "report_finding") {
@@ -30817,17 +31036,17 @@ function createRunner(options = {}) {
         let timedOut = false;
         const max = runOptions.maxOutput ?? defaultMaxOutput;
         const append = (target, chunk) => {
-          const text2 = chunk.toString("utf8");
+          const text3 = chunk.toString("utf8");
           if (target === "stdout") {
-            if (stdout.length + text2.length > max) {
-              stdout += text2.slice(0, Math.max(max - stdout.length, 0));
+            if (stdout.length + text3.length > max) {
+              stdout += text3.slice(0, Math.max(max - stdout.length, 0));
               truncated = true;
-            } else stdout += text2;
+            } else stdout += text3;
           } else {
-            if (stderr.length + text2.length > max) {
-              stderr += text2.slice(0, Math.max(max - stderr.length, 0));
+            if (stderr.length + text3.length > max) {
+              stderr += text3.slice(0, Math.max(max - stderr.length, 0));
               truncated = true;
-            } else stderr += text2;
+            } else stderr += text3;
           }
         };
         child.stdout.on("data", (chunk) => append("stdout", chunk));
@@ -31010,11 +31229,11 @@ var init_notify = __esm({
 
 // ../vexnar-store/src/triggers.ts
 async function spawnTriggerTask(ops, agentKey, fire) {
-  const text2 = String(fire.message || fire.event);
+  const text3 = String(fire.message || fire.event);
   return ops.createTask({
     name: `trigger:${fire.event}`,
-    description: `agent ${agentKey} ${fire.event}: ${text2}`,
-    goal: text2
+    description: `agent ${agentKey} ${fire.event}: ${text3}`,
+    goal: text3
   });
 }
 async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
@@ -31269,27 +31488,16 @@ var init_report = __esm({
 
 // ../vexnar-store/src/index.ts
 async function openStore2(root) {
-  const mode = (process.env.VEXNAR_STORE || "sqlite").toLowerCase();
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
+  const connection = pgConnection();
+  const mode = explicit || (connection ? "postgres" : "sqlite");
   if (mode === "postgres") {
-    const connection = fromUrl(process.env.VEXNAR_PG_URL);
-    if (!connection) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_URL or a pg connection");
+    if (connection === void 0) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
     const store2 = pgStore(connection);
     await store2.init();
     return store2;
   }
   return openStore(root);
-}
-function fromUrl(url2) {
-  if (!url2) return void 0;
-  const parsed = new URL(url2);
-  return {
-    host: parsed.hostname,
-    port: Number(parsed.port || 5432),
-    user: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\//, "") || "postgres",
-    ssl: parsed.searchParams.get("sslmode") !== "disable"
-  };
 }
 var init_src = __esm({
   "../vexnar-store/src/index.ts"() {
@@ -31337,9 +31545,9 @@ async function gatewayComplete(messages) {
     body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || "deepseek-flash", messages, stream: false })
   });
   if (response.status === 409) {
-    const text2 = await response.text();
-    if (text2.includes("openai-responses")) return responsesComplete(base, token, messages);
-    throw Object.assign(new Error(`gateway 409: ${text2}`), { status: 502 });
+    const text3 = await response.text();
+    if (text3.includes("openai-responses")) return responsesComplete(base, token, messages);
+    throw Object.assign(new Error(`gateway 409: ${text3}`), { status: 502 });
   }
   if (!response.ok) throw Object.assign(new Error(`gateway ${response.status}: ${await response.text()}`), { status: 502 });
   const data = await response.json();
@@ -31354,51 +31562,51 @@ var init_gateway = __esm({
 });
 
 // src/dsl.ts
-function readToken(text2, pos) {
-  if (text2[pos] === '"') {
-    const end = text2.indexOf('"', pos + 1);
-    return [text2.slice(pos + 1, end < 0 ? text2.length : end), end < 0 ? text2.length : end + 1];
+function readToken(text3, pos) {
+  if (text3[pos] === '"') {
+    const end = text3.indexOf('"', pos + 1);
+    return [text3.slice(pos + 1, end < 0 ? text3.length : end), end < 0 ? text3.length : end + 1];
   }
   let i = pos;
-  while (i < text2.length && !/\s|\(|\)/.test(text2[i])) i++;
-  return [text2.slice(pos, i), i];
+  while (i < text3.length && !/\s|\(|\)/.test(text3[i])) i++;
+  return [text3.slice(pos, i), i];
 }
-function tokenize(text2) {
+function tokenize(text3) {
   const tokens = [];
   let i = 0;
-  while (i < text2.length) {
-    while (i < text2.length && /\s/.test(text2[i])) i++;
-    if (i >= text2.length) break;
-    if (text2[i] === "(") {
+  while (i < text3.length) {
+    while (i < text3.length && /\s/.test(text3[i])) i++;
+    if (i >= text3.length) break;
+    if (text3[i] === "(") {
       tokens.push({ kind: "LP" });
       i++;
       continue;
     }
-    if (text2[i] === ")") {
+    if (text3[i] === ")") {
       tokens.push({ kind: "RP" });
       i++;
       continue;
     }
     let matched = false;
-    if (/[A-Za-z_]/.test(text2[i])) {
+    if (/[A-Za-z_]/.test(text3[i])) {
       let j = i;
-      while (j < text2.length && /[A-Za-z0-9_]/.test(text2[j])) j++;
-      const field = text2.slice(i, j).toLowerCase();
-      if (isField(field) && j < text2.length && "=!><".includes(text2[j])) {
-        let op = text2[j];
+      while (j < text3.length && /[A-Za-z0-9_]/.test(text3[j])) j++;
+      const field = text3.slice(i, j).toLowerCase();
+      if (isField(field) && j < text3.length && "=!><".includes(text3[j])) {
+        let op = text3[j];
         j++;
-        if (j < text2.length && text2[j] === "=") {
+        if (j < text3.length && text3[j] === "=") {
           op += "=";
           j++;
         }
-        const [value, end2] = readToken(text2, j);
+        const [value, end2] = readToken(text3, j);
         tokens.push({ kind: "FIELD", expr: { field, op, value } });
         i = end2;
         matched = true;
       }
     }
     if (matched) continue;
-    const [word, end] = readToken(text2, i);
+    const [word, end] = readToken(text3, i);
     if (!word) {
       i++;
       continue;
@@ -31666,15 +31874,15 @@ function paginationParam(raw2, fallback, upperBound) {
   return value;
 }
 function normFilter(value) {
-  const text2 = String(value ?? "").trim();
-  return text2 === "all" ? "" : text2;
+  const text3 = String(value ?? "").trim();
+  return text3 === "all" ? "" : text3;
 }
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
-function sliceRunes(text2, max) {
-  const chars = [...text2];
-  return chars.length > max ? chars.slice(0, max).join("") : text2;
+function sliceRunes(text3, max) {
+  const chars = [...text3];
+  return chars.length > max ? chars.slice(0, max).join("") : text3;
 }
 async function resolveTask(raw2) {
   const key = String(raw2 ?? "").trim();
@@ -31886,8 +32094,8 @@ async function buildFindingAssetTree(rows, maxNodes = ASSET_TREE_MAX_NODES) {
   const parentKeyCache = /* @__PURE__ */ new Map();
   const parentKeyOf = (row) => {
     const id = Number(row.id);
-    const cached2 = parentKeyCache.get(id);
-    if (cached2 !== void 0) return cached2;
+    const cached3 = parentKeyCache.get(id);
+    if (cached3 !== void 0) return cached3;
     const kind = String(row.type ?? "");
     const domain2 = String(row.domain ?? "");
     const ip = String(row.ip ?? "");
@@ -32106,8 +32314,8 @@ function singleFindingMarkdown(row, taskNames, generatedAt) {
   return lines.join("\n");
 }
 function csvCell(value) {
-  const text2 = String(value ?? "");
-  return /[",\r\n]/.test(text2) ? `"${text2.replace(/"/g, '""')}"` : text2;
+  const text3 = String(value ?? "");
+  return /[",\r\n]/.test(text3) ? `"${text3.replace(/"/g, '""')}"` : text3;
 }
 function findingsCsv(rows, taskNames) {
   const items = exportOrder(rows);
@@ -32425,10 +32633,10 @@ function register(api2) {
       if (scope === "selected") {
         const ids = [];
         for (const part of String(c.req.query("ids") ?? "").split(",")) {
-          const text2 = part.trim();
-          if (!text2) continue;
-          const id = Number(text2);
-          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text2}` }, 400);
+          const text3 = part.trim();
+          if (!text3) continue;
+          const id = Number(text3);
+          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text3}` }, 400);
           ids.push(id);
         }
         if (!ids.length) return c.json({ error: "no findings selected" }, 400);
@@ -32836,12 +33044,12 @@ function err2(c, e) {
   return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
 }
 function firstLine(s, max) {
-  let text2 = String(s ?? "").trim();
-  const nl = text2.search(/[\r\n]/);
-  if (nl >= 0) text2 = text2.slice(0, nl);
-  const runes = [...text2];
-  if (runes.length > max) text2 = runes.slice(0, max).join("") + "\u2026";
-  return text2;
+  let text3 = String(s ?? "").trim();
+  const nl = text3.search(/[\r\n]/);
+  if (nl >= 0) text3 = text3.slice(0, nl);
+  const runes = [...text3];
+  if (runes.length > max) text3 = runes.slice(0, max).join("") + "\u2026";
+  return text3;
 }
 function humanBytes(n) {
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
@@ -33431,16 +33639,16 @@ var init_conversations = __esm({
       kind = "";
       text = "";
       created = "";
-      async push(kind, text2) {
+      async push(kind, text3) {
         if (this.id && this.kind !== kind) this.seal();
         this.kind = kind;
-        this.text = text2;
+        this.text = text3;
         if (!this.id) {
           this.created = nowIso();
-          const row = await appendActivity(this.convId, { worker: this.worker, kind, summary: firstLine(text2, 200), detail: text2, created_at: this.created });
+          const row = await appendActivity(this.convId, { worker: this.worker, kind, summary: firstLine(text3, 200), detail: text3, created_at: this.created });
           this.id = Number(row.id);
         } else {
-          await updateActivityText(this.convId, this.id, firstLine(text2, 200), text2);
+          await updateActivityText(this.convId, this.id, firstLine(text3, 200), text3);
         }
       }
       snapshot() {
@@ -33644,8 +33852,8 @@ function transcriptText(row) {
   if ((kind === "text" || kind === "result") && !row.is_error) return String(row.detail ?? row.summary ?? "");
   return String(row.summary ?? "");
 }
-function firstLine2(text2, max) {
-  let s = String(text2 ?? "").trim();
+function firstLine2(text3, max) {
+  let s = String(text3 ?? "").trim();
   const nl = s.search(/[\r\n]/);
   if (nl >= 0) s = s.slice(0, nl);
   const chars = [...s];
@@ -34716,14 +34924,14 @@ async function listModels2(body) {
   for (const cand of candidates) {
     try {
       const resp = await fetch(cand.url, { method: "GET", headers: cand.headers, signal: AbortSignal.timeout(3e4) });
-      const text2 = await resp.text();
+      const text3 = await resp.text();
       if (resp.status !== 200) {
-        lastErr = `API \u8FD4\u56DE ${resp.status}: ${text2.slice(0, 512)}`;
+        lastErr = `API \u8FD4\u56DE ${resp.status}: ${text3.slice(0, 512)}`;
         continue;
       }
       let parsed;
       try {
-        parsed = JSON.parse(text2);
+        parsed = JSON.parse(text3);
       } catch (error62) {
         lastErr = `\u89E3\u6790\u54CD\u5E94\u5931\u8D25: ${error62?.message ?? error62}`;
         continue;
@@ -34762,11 +34970,11 @@ async function minimalCompletion(opts) {
     payload = JSON.stringify({ model: opts.model || "claude-opus-4-8", max_tokens: 32, messages });
   }
   const resp = await fetch(url2, { method: "POST", headers, body: payload, signal: AbortSignal.timeout(3e4) });
-  const text2 = await resp.text();
-  if (!resp.ok) throw new Error(`status ${resp.status}: ${text2.slice(0, 512)}`);
+  const text3 = await resp.text();
+  if (!resp.ok) throw new Error(`status ${resp.status}: ${text3.slice(0, 512)}`);
   let data;
   try {
-    data = JSON.parse(text2);
+    data = JSON.parse(text3);
   } catch {
     throw new Error("\u89E3\u6790\u54CD\u5E94\u5931\u8D25");
   }
@@ -35188,6 +35396,15 @@ function isCidr(pattern) {
   if (version2 === 6) return n >= 0 && n <= 128;
   return false;
 }
+function regexLooksParsable(pattern) {
+  const neutral = pattern.replace(/\(\?[imsUx-]+\)/g, "").replace(/\(\?[imsUx-]+:/g, "(?:");
+  try {
+    new RegExp(neutral);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function validateInterceptRule(body) {
   const req = {
     name: String(body.name ?? "").trim(),
@@ -35207,13 +35424,7 @@ function validateInterceptRule(body) {
   if (req.match_type !== "string" && req.match_type !== "regex") fail2(400, "match_type \u5FC5\u987B\u662F string \u6216 regex");
   if (!req.pattern) fail2(400, "pattern \u4E0D\u80FD\u4E3A\u7A7A");
   if (req.action !== "allow" && req.action !== "deny" && req.action !== "ask") fail2(400, "action \u5FC5\u987B\u662F allow\u3001deny \u6216 ask");
-  if (req.match_type === "regex") {
-    try {
-      new RegExp(req.pattern);
-    } catch {
-      fail2(400, "pattern \u4E0D\u662F\u6709\u6548\u6B63\u5219");
-    }
-  }
+  if (req.match_type === "regex" && !regexLooksParsable(req.pattern)) fail2(400, "pattern \u4E0D\u662F\u6709\u6548\u6B63\u5219");
   return req;
 }
 function validateAssetRule(body) {
@@ -35580,8 +35791,11 @@ function register6(api2) {
   });
   api2.get("/api/intercept/tool-config", async (c) => {
     try {
-      const tools = await meta3.table(TABLE_TOOL_CONFIG);
-      return c.json({ enabled_tools: Array.isArray(tools) ? tools : [] });
+      meta3.reload();
+      const tables = await meta3.load();
+      const stored = tables[TABLE_TOOL_CONFIG];
+      if (stored === void 0) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] });
+      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] });
     } catch (error62) {
       return errResponse2(c, error62);
     }
@@ -35589,7 +35803,7 @@ function register6(api2) {
   api2.put("/api/intercept/tool-config", async (c) => {
     const body = await c.req.json().catch(() => ({}));
     try {
-      const tools = Array.isArray(body.enabled_tools) ? body.enabled_tools.map((t) => String(t)) : [];
+      const tools = Array.isArray(body.enabled_tools) ? [...new Set(body.enabled_tools.map((t) => String(t).trim()).filter(Boolean))] : [];
       const { tables } = await metaTable(TABLE_TOOL_CONFIG);
       tables[TABLE_TOOL_CONFIG] = tools;
       await meta3.save(tables);
@@ -35778,7 +35992,7 @@ function register6(api2) {
     }
   });
 }
-var TABLE_RULES, TABLE_ASSET_RULES, TABLE_TASK_RULES, TABLE_PENDING, TABLE_TOOL_CONFIG, TABLE_JUDGE_CONFIG, DEFAULT_JUDGE_PROMPT;
+var TABLE_RULES, TABLE_ASSET_RULES, TABLE_TASK_RULES, TABLE_PENDING, TABLE_TOOL_CONFIG, TABLE_JUDGE_CONFIG, DEFAULT_INTERCEPT_TOOLS, DEFAULT_JUDGE_PROMPT;
 var init_intercept = __esm({
   async "src/routes/intercept.ts"() {
     "use strict";
@@ -35789,6 +36003,16 @@ var init_intercept = __esm({
     TABLE_PENDING = "intercept_pending";
     TABLE_TOOL_CONFIG = "intercept_tool_config";
     TABLE_JUDGE_CONFIG = "intercept_judge_config";
+    DEFAULT_INTERCEPT_TOOLS = [
+      "Bash",
+      "WebFetch",
+      "web_search",
+      "shell_open",
+      "shell_send",
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ];
     DEFAULT_JUDGE_PROMPT = `# \u89D2\u8272
 \u4F60\u662F\u4E00\u6B21\u300C\u5DF2\u83B7\u6388\u6743\u7684\u6E17\u900F\u6D4B\u8BD5\u300D\u4E2D\u7684\u64CD\u4F5C\u5B89\u5168\u88C1\u5224\u3002\u7CFB\u7EDF\u5DF2\u7528\u89C4\u5219\u8FC7\u6EE4\u8FC7\u547D\u4EE4\uFF0C\u4F60\u5BF9\u300C\u89C4\u5219\u6CA1\u6709\u8986\u76D6\u5230\u300D\u7684\u8FD9\u4E00\u6B21\u5DE5\u5177\u8C03\u7528\u505A\u4E0A\u4E0B\u6587\u5BA1\u67E5\u3002\u5224\u65AD\u5F53\u524D\u52A8\u4F5C\u7684\u76F4\u63A5\u6548\u679C\uFF1A\u662F\u5426\u5BF9\u76EE\u6807\u771F\u5B9E\u8D44\u4EA7\u9020\u6210\u96BE\u4EE5\u6062\u590D\u7684\u7834\u574F\uFF0C\u6216\u4F7F\u771F\u5B9E\u7528\u6237\u4E0D\u53EF\u7528\u3002
 \u4F1A \u2192 deny\uFF1B\u663E\u7136\u4E0D\u4F1A\uFF08\u6B63\u5E38\u653B\u51FB/\u4FA6\u5BDF/\u8BFB\u53D6\uFF09\u2192 allow\uFF1B\u4FE1\u606F\u4E0D\u8DB3\u4E14\u5224\u9519\u4EE3\u4EF7\u662F\u771F\u5B9E\u7834\u574F \u2192 ask\u3002
@@ -35800,20 +36024,20 @@ var init_intercept = __esm({
 
 // src/traffic-scope.ts
 function parseScope(raw2) {
-  const text2 = String(raw2 ?? "").trim();
-  const global2 = { raw: text2, kind: "global", convId: 0, taskId: 0, intentId: 0 };
-  if (text2.startsWith("conv-")) {
-    const id = Number(text2.slice(5));
+  const text3 = String(raw2 ?? "").trim();
+  const global2 = { raw: text3, kind: "global", convId: 0, taskId: 0, intentId: 0 };
+  if (text3.startsWith("conv-")) {
+    const id = Number(text3.slice(5));
     if (Number.isInteger(id) && id > 0) return { ...global2, kind: "conv", convId: id };
     return global2;
   }
-  if (text2.startsWith("session-")) {
-    const id = text2.slice(8);
+  if (text3.startsWith("session-")) {
+    const id = text3.slice(8);
     if (SESSION_ID.test(id)) return { ...global2, kind: "session" };
     return global2;
   }
-  if (text2.startsWith("task-")) {
-    const rest = text2.slice(5);
+  if (text3.startsWith("task-")) {
+    const rest = text3.slice(5);
     const intentAt = rest.indexOf("-i");
     if (intentAt > 0) {
       const taskId2 = Number(rest.slice(0, intentAt));
@@ -35911,9 +36135,156 @@ var init_capture_state = __esm({
   }
 });
 
+// src/traffic-index.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { existsSync, statSync } from "node:fs";
+import { dirname as dirname3, join as join8 } from "node:path";
+import { fileURLToPath } from "node:url";
+function trafficDir() {
+  return process.env.VEXNAR_TRAFFIC_DIR || join8(here, "..", "..", "..", "data", "traffic");
+}
+function indexPath() {
+  return join8(trafficDir(), "_index", "index.sqlite");
+}
+function open4() {
+  const path = indexPath();
+  if (!existsSync(path)) return null;
+  try {
+    return new DatabaseSync2(path, { readOnly: true });
+  } catch {
+    return null;
+  }
+}
+function columns(db, table) {
+  try {
+    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    return new Set(rows.map((row) => String(row.name)));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+function text(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (value instanceof Uint8Array) return Buffer.from(value).toString("utf8");
+  return String(value);
+}
+function num(value) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+function archivedExchanges() {
+  const now2 = Date.now();
+  if (cached2 !== null && now2 - cached2.at < TTL_MS) return cached2.rows;
+  const db = open4();
+  if (db === null) {
+    cached2 = { at: now2, rows: [] };
+    return [];
+  }
+  try {
+    const cols = columns(db, "exchanges");
+    const pick2 = (name, fallback) => cols.has(name) ? name : `${fallback} AS ${name}`;
+    const sql = `SELECT id, ts, host, method, url_template, url, status, content_type, req_len, resp_len, path,
+      ${pick2("scope", "''")}, ${pick2("session", "''")} FROM exchanges ORDER BY ts DESC`;
+    const rows = db.prepare(sql).all();
+    const mapped = rows.map((row) => ({
+      id: text(row.id),
+      ts: num(row.ts),
+      host: text(row.host),
+      method: text(row.method),
+      url: text(row.url),
+      url_template: text(row.url_template),
+      status: num(row.status),
+      content_type: text(row.content_type),
+      req_len: num(row.req_len),
+      resp_len: num(row.resp_len),
+      path: text(row.path),
+      scope: text(row.scope),
+      session: text(row.session)
+    }));
+    cached2 = { at: now2, rows: mapped };
+    return mapped;
+  } catch {
+    cached2 = { at: now2, rows: [] };
+    return [];
+  } finally {
+    try {
+      db.close();
+    } catch {
+    }
+  }
+}
+function bodyText(contentType, body) {
+  if (body == null) return "";
+  const buf = body instanceof Uint8Array ? Buffer.from(body) : Buffer.from(String(body), "utf8");
+  if (buf.length === 0) return "";
+  const ct = String(contentType ?? "").toLowerCase().split(";")[0].trim();
+  const binary = BINARY_TYPES.some((prefix) => ct.startsWith(prefix)) || buf.subarray(0, 512).includes(0);
+  return binary ? `[binary ${ct || "application/octet-stream"}, ${buf.length} bytes]` : buf.toString("utf8");
+}
+function assemble(head, inline, blob, total) {
+  let out = `${head}
+${inline}`;
+  if (blob) out += `
+\u2026[truncated] @blob sha256:${blob} (len=${total})`;
+  return out;
+}
+function archivedRaw(id) {
+  const db = open4();
+  if (db === null) return null;
+  try {
+    const cols = columns(db, "exchange_bodies");
+    if (cols.size === 0) return null;
+    const row = db.prepare("SELECT req_head, req_body, req_blob, resp_head, resp_body, resp_blob FROM exchange_bodies WHERE id = ?").get(String(id));
+    if (row === void 0) return null;
+    const meta4 = db.prepare("SELECT content_type, req_len, resp_len FROM exchanges WHERE id = ?").get(String(id));
+    const contentType = text(meta4?.content_type);
+    return {
+      req: assemble(text(row.req_head), bodyText(contentType, row.req_body), text(row.req_blob), num(meta4?.req_len)),
+      resp: assemble(text(row.resp_head), bodyText(contentType, row.resp_body), text(row.resp_blob), num(meta4?.resp_len))
+    };
+  } catch {
+    return null;
+  } finally {
+    try {
+      db.close();
+    } catch {
+    }
+  }
+}
+var here, cached2, TTL_MS, BINARY_TYPES;
+var init_traffic_index = __esm({
+  "src/traffic-index.ts"() {
+    "use strict";
+    here = dirname3(fileURLToPath(import.meta.url));
+    cached2 = null;
+    TTL_MS = 2e3;
+    BINARY_TYPES = [
+      "image/",
+      "audio/",
+      "video/",
+      "font/",
+      "application/octet-stream",
+      "application/zip",
+      "application/gzip",
+      "application/x-gzip",
+      "application/x-tar",
+      "application/x-7z-compressed",
+      "application/x-rar",
+      "application/pdf",
+      "application/x-msdownload",
+      "application/vnd.android.package-archive",
+      "application/java-archive",
+      "application/wasm",
+      "application/x-shockwave-flash"
+    ];
+  }
+});
+
 // src/routes/traffic.ts
 var traffic_exports = {};
 __export(traffic_exports, {
+  allExchanges: () => allExchanges,
   exchangeDto: () => exchangeDto,
   getExchangeRaw: () => getExchangeRaw,
   ingestTrafficEvidence: () => ingestTrafficEvidence,
@@ -35934,7 +36305,7 @@ function rfc3339FromUnix(sec) {
 }
 function isBinaryBody(contentType, body) {
   const ct = String(contentType ?? "").toLowerCase().split(";")[0].trim();
-  if (BINARY_TYPES.some((prefix) => ct.startsWith(prefix))) return true;
+  if (BINARY_TYPES2.some((prefix) => ct.startsWith(prefix))) return true;
   const head = body.subarray(0, Math.min(body.length, 512));
   return head.includes(0);
 }
@@ -35962,12 +36333,12 @@ function toBuffer(body) {
 async function spillBody(contentType, body) {
   const buf = toBuffer(body);
   if (!buf) return { hash: "", inline: "", len: 0 };
-  const text2 = !isBinaryBody(contentType, buf);
+  const text3 = !isBinaryBody(contentType, buf);
   if (buf.length <= MAX_INLINE_BODY) {
-    return { hash: "", inline: text2 ? buf.toString("utf8") : binaryTag(contentType, buf), len: buf.length };
+    return { hash: "", inline: text3 ? buf.toString("utf8") : binaryTag(contentType, buf), len: buf.length };
   }
   const { hash: hash2 } = await blobs().put(buf);
-  return { hash: hash2, inline: text2 ? truncateUTF8(buf, BLOB_PREVIEW) : binaryTag(contentType, buf), len: buf.length };
+  return { hash: hash2, inline: text3 ? truncateUTF8(buf, BLOB_PREVIEW) : binaryTag(contentType, buf), len: buf.length };
 }
 function assembleRaw(head, inline, blob, total) {
   let out = `${head}
@@ -35987,8 +36358,14 @@ function statusMatches(status, token) {
   if (Number.isFinite(n)) return status === n;
   return true;
 }
+async function allExchanges() {
+  const local = await writer2().list("traffic_exchanges");
+  const seen = new Set(local.map((row) => String(row.id)));
+  const archived = archivedExchanges().filter((row) => !seen.has(row.id));
+  return [...local, ...archived];
+}
 async function listExchanges(query) {
-  const all = await writer2().list("traffic_exchanges");
+  const all = await allExchanges();
   const host = String(query.host ?? "").trim();
   const method = String(query.method ?? "").trim().toUpperCase();
   const keyword = String(query.q ?? "").trim().toLowerCase();
@@ -36022,7 +36399,7 @@ function exchangeDto(row) {
   };
 }
 async function listHosts() {
-  const all = await writer2().list("traffic_exchanges");
+  const all = await allExchanges();
   const byHost = /* @__PURE__ */ new Map();
   for (const row of all) {
     const host = String(row.host ?? "");
@@ -36034,8 +36411,10 @@ async function listHosts() {
   return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest);
 }
 async function readExchangeRaw(id) {
-  const row = (await writer2().list("traffic_exchanges")).find((item) => String(item.id) === String(id));
+  const row = (await allExchanges()).find((item) => String(item.id) === String(id));
   if (!row) return null;
+  const archived = row.req_head === void 0 && row.resp_head === void 0 ? archivedRaw(String(id)) : null;
+  if (archived) return archived;
   return {
     req: assembleRaw(String(row.req_head ?? ""), String(row.req_body ?? ""), String(row.req_blob ?? ""), Number(row.req_len ?? 0)),
     resp: assembleRaw(String(row.resp_head ?? ""), String(row.resp_body ?? ""), String(row.resp_blob ?? ""), Number(row.resp_len ?? 0))
@@ -36328,6 +36707,7 @@ function register7(api2) {
         enabled: capturing2,
         proxy: "",
         count: all.length,
+        archived: archivedExchanges().length,
         total: rows.length,
         page,
         size,
@@ -36455,18 +36835,19 @@ function register7(api2) {
     }
   });
 }
-var TRAFFIC_ROLES, MAX_INLINE_BODY, BLOB_PREVIEW, BLOB_HASH_RE, BINARY_TYPES, writer2, blobs, exchangeSeqSeed;
+var TRAFFIC_ROLES, MAX_INLINE_BODY, BLOB_PREVIEW, BLOB_HASH_RE, BINARY_TYPES2, writer2, blobs, exchangeSeqSeed;
 var init_traffic = __esm({
   async "src/routes/traffic.ts"() {
     "use strict";
     await init_context2();
     init_traffic_scope();
     await init_capture_state();
+    init_traffic_index();
     TRAFFIC_ROLES = /* @__PURE__ */ new Set(["baseline", "proof", "verification", "supporting"]);
     MAX_INLINE_BODY = 256 * 1024;
     BLOB_PREVIEW = 8 * 1024;
     BLOB_HASH_RE = /^[0-9a-f]{64}$/;
-    BINARY_TYPES = [
+    BINARY_TYPES2 = [
       "image/",
       "audio/",
       "video/",
@@ -36947,7 +37328,7 @@ function register8(api2) {
   api2.get("/api/traffic/capture", async (c) => {
     try {
       const origin = originOf(c);
-      const rows = await operations.writer.list("traffic_exchanges");
+      const rows = await allExchanges();
       const byScope = /* @__PURE__ */ new Map();
       let lastTs = 0;
       for (const row of rows) {
@@ -36969,7 +37350,7 @@ function register8(api2) {
         items: byScope.get(row.scope)?.items ?? 0,
         last_ts: byScope.get(row.scope)?.last_ts ?? 0
       }));
-      const recent = [...rows].sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0)).slice(0, 12).map(exchangeDto);
+      const recent = [...rows].sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0)).slice(0, RECENT_SAMPLE).map(exchangeDto);
       return c.json({
         active: sessions.length > 0,
         sessions,
@@ -37027,7 +37408,7 @@ function register8(api2) {
 function yakitHook(scope, origin) {
   return yakitMirrorHook.replaceAll("__VEXNAR_BASE__", origin).replaceAll("__VEXNAR_KEY__", trafficIngestKey).replaceAll("__VEXNAR_SCOPE__", String(scope ?? ""));
 }
-var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, SESSION_ID2, yakitMirrorHook;
+var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, RECENT_SAMPLE, SESSION_ID2, yakitMirrorHook;
 var init_session_traffic = __esm({
   async "src/routes/session-traffic.ts"() {
     "use strict";
@@ -37040,6 +37421,7 @@ var init_session_traffic = __esm({
     MAX_INGEST_BODY = 16 << 20;
     STREAM_POLL_MS2 = 600;
     STREAM_PING_MS2 = 2e4;
+    RECENT_SAMPLE = 60;
     SESSION_ID2 = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
     yakitMirrorHook = `// VEXNAR \xD7 Yakit MITM \u6D41\u91CF\u955C\u50CF\uFF08\u70ED\u52A0\u8F7D\u811A\u672C\uFF09
 // \u7528\u6CD5\uFF1AYakit \u2192 MITM \u2192 \u70ED\u52A0\u8F7D \u2192 \u7C98\u8D34\u672C\u6587\u4EF6 \u2192 \u52A0\u8F7D\u3002
@@ -37070,7 +37452,7 @@ __export(skills_exports, {
 });
 import { inflateRawSync, gunzipSync } from "node:zlib";
 import { mkdir as mkdir8, readFile as readFile6, readdir as readdir4, rename as rename6, rm as rm3, stat as stat4, writeFile as writeFile7 } from "node:fs/promises";
-import { basename as basename3, dirname as dirname3, join as join8, posix } from "node:path";
+import { basename as basename3, dirname as dirname4, join as join9, posix } from "node:path";
 async function loadTable(name) {
   meta3.reload();
   const tables = await meta3.load();
@@ -37258,7 +37640,7 @@ async function walkSkillFiles(root) {
     items.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const item of items) {
       const rel = prefix ? `${prefix}/${item.name}` : item.name;
-      const full = join8(dir, item.name);
+      const full = join9(dir, item.name);
       if (item.isDirectory()) {
         out.push(`${rel}/`);
         await walk(full, rel);
@@ -37369,16 +37751,16 @@ async function ensureSkillDir() {
   await mkdir8(skillsRoot(), { recursive: true, mode: 493 });
 }
 function skillDir(name) {
-  return join8(skillsRoot(), name);
+  return join9(skillsRoot(), name);
 }
 async function writeProvenance(dir, p) {
-  await writeFile7(join8(dir, provFile), `${JSON.stringify(p, null, 2)}
+  await writeFile7(join9(dir, provFile), `${JSON.stringify(p, null, 2)}
 `, "utf8");
 }
 async function installSkillDir(srcDir, overwrite, prov) {
   let md;
   try {
-    md = await readFile6(join8(srcDir, "SKILL.md"), "utf8");
+    md = await readFile6(join9(srcDir, "SKILL.md"), "utf8");
   } catch {
     throw Object.assign(new Error("\u672A\u627E\u5230 SKILL.md"), { status: 400 });
   }
@@ -37387,7 +37769,7 @@ async function installSkillDir(srcDir, overwrite, prov) {
   const dst = skillDir(name);
   if (await exists2(dst) && !overwrite) throw Object.assign(new Error(`\u6280\u80FD ${name} \u5DF2\u5B58\u5728\uFF08\u66F4\u65B0\u8BF7\u52FE\u9009\u8986\u76D6\uFF09`), { status: 409 });
   await ensureSkillDir();
-  const backup = join8(skillsRoot(), `.backup-${name}-${Date.now()}`);
+  const backup = join9(skillsRoot(), `.backup-${name}-${Date.now()}`);
   let hadPrevious = false;
   if (await exists2(dst)) {
     await rename6(dst, backup);
@@ -37542,7 +37924,7 @@ function register9(api2) {
 3. 
 `;
       try {
-        await writeFile7(join8(dir, "SKILL.md"), sb, "utf8");
+        await writeFile7(join9(dir, "SKILL.md"), sb, "utf8");
       } catch (e) {
         await rm3(dir, { recursive: true, force: true }).catch(() => {
         });
@@ -37598,7 +37980,7 @@ function register9(api2) {
       const overwrite = c.req.query("overwrite") === "true";
       if (await exists2(skillDir(name)) && !overwrite) throw Object.assign(new Error(`skill \u5DF2\u5B58\u5728\uFF1A${name}\uFF08\u5982\u9700\u8986\u76D6\u8BF7\u786E\u8BA4\u540E\u91CD\u8BD5\uFF09`), { status: 409 });
       await ensureSkillDir();
-      const tmp = join8(skillsRoot(), `.upload-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+      const tmp = join9(skillsRoot(), `.upload-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
       await mkdir8(tmp, { recursive: true, mode: 493 });
       let total = 0;
       let count = 0;
@@ -37613,11 +37995,11 @@ function register9(api2) {
           if (e.content.length > maxSkillFileBytes) throw Object.assign(new Error(`\u6587\u4EF6\u8FC7\u5927\uFF1A${rel}`), { status: 400 });
           total += e.content.length;
           if (total > maxSkillTotalBytes) throw Object.assign(new Error("\u538B\u7F29\u5305\u89E3\u538B\u540E\u8FC7\u5927"), { status: 400 });
-          const dst = join8(tmp, clean);
-          await mkdir8(dirname3(dst), { recursive: true, mode: 493 });
+          const dst = join9(tmp, clean);
+          await mkdir8(dirname4(dst), { recursive: true, mode: 493 });
           await writeFile7(dst, e.content);
         }
-        if (!await exists2(join8(tmp, "SKILL.md"))) throw Object.assign(new Error("\u89E3\u538B\u540E\u7F3A\u5C11 SKILL.md"), { status: 400 });
+        if (!await exists2(join9(tmp, "SKILL.md"))) throw Object.assign(new Error("\u89E3\u538B\u540E\u7F3A\u5C11 SKILL.md"), { status: 400 });
         if (await exists2(skillDir(name))) await rm3(skillDir(name), { recursive: true, force: true });
         await rename6(tmp, skillDir(name));
       } catch (e) {
@@ -37659,17 +38041,17 @@ function register9(api2) {
         throw Object.assign(new Error("\u4E0B\u8F7D\u5185\u5BB9\u4E0D\u662F\u6709\u6548\u7684 tar.gz\uFF08\u4ED3\u5E93\u53EF\u80FD\u4E0D\u5B58\u5728\u6216\u9700\u8981\u9274\u6743\uFF09"), { status: 502 });
       }
       await ensureSkillDir();
-      const tmp = join8(skillsRoot(), `.github-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+      const tmp = join9(skillsRoot(), `.github-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
       await mkdir8(tmp, { recursive: true, mode: 493 });
       try {
         await extractTar(tar, tmp);
         const roots = await findSkillRoots(tmp);
         const target = pickSkillRoot(roots, path);
         if (!target) throw Object.assign(new Error(path ? `\u4ED3\u5E93 ${repo} \u7684 ${JSON.stringify(path)} \u76EE\u5F55\u4E0B\u6CA1\u6709 SKILL.md` : `\u4ED3\u5E93 ${repo} \u91CC\u6CA1\u6709\u627E\u5230 SKILL.md`), { status: 400 });
-        const srcDir = join8(tmp, target);
+        const srcDir = join9(tmp, target);
         const prov = { repo, ref: branch, ...path ? { path } : {}, installed_at: (/* @__PURE__ */ new Date()).toISOString() };
         const { name, files } = await installSkillDir(srcDir, Boolean(body.overwrite), prov);
-        const md = await readFile6(join8(skillDir(name), "SKILL.md"), "utf8");
+        const md = await readFile6(join9(skillDir(name), "SKILL.md"), "utf8");
         const m = skillMetaFromFile(md);
         const { tables, rows } = await loadTable("skills");
         const idx = rows.findIndex((r) => r.name === name);
@@ -37725,8 +38107,8 @@ function register9(api2) {
       if (typeof body.enabled !== "boolean") throw Object.assign(new Error("\u7F3A\u5C11 enabled \u5B57\u6BB5"), { status: 400 });
       const dir = skillDir(name);
       if (!await exists2(dir)) throw Object.assign(new Error("skill not found"), { status: 404 });
-      const enabledMd = join8(dir, "SKILL.md");
-      const disabledMd = join8(dir, "SKILL.md.disabled");
+      const enabledMd = join9(dir, "SKILL.md");
+      const disabledMd = join9(dir, "SKILL.md.disabled");
       if (body.enabled) {
         if (await exists2(disabledMd) && !await exists2(enabledMd)) await rename6(disabledMd, enabledMd);
       } else {
@@ -37747,7 +38129,7 @@ function register9(api2) {
     const body = await c.req.json().catch(() => ({}));
     try {
       if (!validSkillName(name)) throw Object.assign(new Error("invalid skill name"), { status: 400 });
-      const mdPath = join8(skillDir(name), "SKILL.md");
+      const mdPath = join9(skillDir(name), "SKILL.md");
       let raw2;
       try {
         raw2 = await readFile6(mdPath, "utf8");
@@ -37798,7 +38180,7 @@ function register9(api2) {
       if (msg) throw Object.assign(new Error(msg), { status: 400 });
       let data;
       try {
-        data = await readFile6(join8(skillDir(name), clean), "utf8");
+        data = await readFile6(join9(skillDir(name), clean), "utf8");
       } catch {
         throw Object.assign(new Error("file not found"), { status: 404 });
       }
@@ -37818,8 +38200,8 @@ function register9(api2) {
       if (msg) throw Object.assign(new Error(msg), { status: 400 });
       const dir = skillDir(name);
       if (!await exists2(dir)) throw Object.assign(new Error("skill not found"), { status: 404 });
-      const full = join8(dir, clean);
-      await mkdir8(dirname3(full), { recursive: true, mode: 493 });
+      const full = join9(dir, clean);
+      await mkdir8(dirname4(full), { recursive: true, mode: 493 });
       await writeFile7(full, String(body.content ?? ""), "utf8");
       return c.json({ ok: true });
     } catch (e) {
@@ -37835,7 +38217,7 @@ function register9(api2) {
       if (msg) throw Object.assign(new Error(msg), { status: 400 });
       const dirPath = skillDir(name);
       if (!await exists2(dirPath)) throw Object.assign(new Error("skill not found"), { status: 404 });
-      await mkdir8(join8(dirPath, dir), { recursive: true, mode: 493 });
+      await mkdir8(join9(dirPath, dir), { recursive: true, mode: 493 });
       return c.json({ dir }, 201);
     } catch (e) {
       return errResponse3(c, e);
@@ -37849,7 +38231,7 @@ function register9(api2) {
       if (error62) throw Object.assign(new Error(error62), { status: 400 });
       const [clean, msg] = skillRelPath(file2);
       if (msg) throw Object.assign(new Error(msg), { status: 400 });
-      const full = join8(skillDir(name), clean);
+      const full = join9(skillDir(name), clean);
       if (!await exists2(full)) throw Object.assign(new Error("not found"), { status: 404 });
       await rm3(full, { recursive: true, force: true });
       return c.json({ deleted: clean });
@@ -37899,8 +38281,8 @@ async function extractTar(tar, dst) {
       if (nameRaw && !nameRaw.startsWith("__MACOSX/") && !nameRaw.includes("/__MACOSX/") && basename3(nameRaw) !== ".DS_Store") {
         const [clean, msg] = skillRelPath(nameRaw);
         if (msg) throw Object.assign(new Error(`\u538B\u7F29\u5305\u542B\u975E\u6CD5\u8DEF\u5F84 ${nameRaw}\uFF1A${msg}`), { status: 400 });
-        const full = join8(dst, clean);
-        await mkdir8(dirname3(full), { recursive: true, mode: 493 });
+        const full = join9(dst, clean);
+        await mkdir8(dirname4(full), { recursive: true, mode: 493 });
         await writeFile7(full, tar.subarray(dataOffset, dataOffset + size));
       }
     }
@@ -37918,7 +38300,7 @@ async function findSkillRoots(root) {
     }
     for (const item of items) {
       const rel = prefix ? `${prefix}/${item.name}` : item.name;
-      const full = join8(dir, item.name);
+      const full = join9(dir, item.name);
       if (item.isDirectory()) await walk(full, rel);
       else if (item.name === "SKILL.md") dirs.push(prefix);
     }
@@ -37946,7 +38328,7 @@ var init_skills = __esm({
   async "src/routes/skills.ts"() {
     "use strict";
     await init_context2();
-    skillsRoot = () => join8(storeRoot(), "skills");
+    skillsRoot = () => join9(storeRoot(), "skills");
     provFile = ".vexnar-skill.json";
     maxSkillZipBytes = 20 << 20;
     maxSkillTotalBytes = 100 << 20;
@@ -38427,10 +38809,10 @@ function register10(api2) {
       for (const src of rows) {
         const hasKind = src.kind === "all" || src.kind === kind;
         if (!hasKind) continue;
-        const cached2 = decodeItems(src);
+        const cached3 = decodeItems(src);
         const stale = !src.synced_at || Date.now() - new Date(src.synced_at).getTime() > 10 * 60 * 1e3;
-        if (!refresh && !stale && cached2.length) {
-          items.push(...cached2);
+        if (!refresh && !stale && cached3.length) {
+          items.push(...cached3);
           continue;
         }
         try {
@@ -38448,7 +38830,7 @@ function register10(api2) {
           items.push(...fresh);
         } catch (e) {
           warnings.push(`${src.name} \u540C\u6B65\u5931\u8D25\uFF1A${e?.message ?? e}`);
-          items.push(...cached2);
+          items.push(...cached3);
         }
       }
       const seen = /* @__PURE__ */ new Set();
@@ -38575,7 +38957,7 @@ function normalizeBatchTaskIDs(raw2) {
   return out;
 }
 function profileKeySet(profile) {
-  return Boolean(text(profile?.api_key_hint)) || profile?.key_set === true;
+  return Boolean(text2(profile?.api_key_hint)) || profile?.key_set === true;
 }
 function taskLLMChain(task) {
   const raw2 = Array.isArray(task?.llm_profile_ids) ? task.llm_profile_ids : [];
@@ -38620,7 +39002,7 @@ function resolutionFromProfile(profile, source) {
     available: false
   };
   if (!profileKeySet(profile)) return { ...base, reason: "LLM \u914D\u7F6E\u672A\u8BBE\u7F6E API Key" };
-  if (!text(profile.format) || !text(profile.model)) return { ...base, reason: "LLM \u914D\u7F6E\u683C\u5F0F\u6216\u53C2\u6570\u65E0\u6548" };
+  if (!text2(profile.format) || !text2(profile.model)) return { ...base, reason: "LLM \u914D\u7F6E\u683C\u5F0F\u6216\u53C2\u6570\u65E0\u6548" };
   return { ...base, available: true };
 }
 async function resolveRoleLLM(task, agentKey, profiles) {
@@ -38643,12 +39025,12 @@ async function resolveRoleLLM(task, agentKey, profiles) {
     const resolved = resolutionFromProfile(globalProfile, "global_profile");
     if (resolved.available) return resolved;
   }
-  const token = text(process.env.VEXNAR_GATEWAY_TOKEN);
+  const token = text2(process.env.VEXNAR_GATEWAY_TOKEN);
   if (token) {
     return {
       name: "\u5168\u5C40\u914D\u7F6E",
-      format: text(process.env.VEXNAR_GATEWAY_FORMAT) || "openai",
-      model: text(process.env.VEXNAR_GATEWAY_MODEL) || "deepseek-flash",
+      format: text2(process.env.VEXNAR_GATEWAY_FORMAT) || "openai",
+      model: text2(process.env.VEXNAR_GATEWAY_MODEL) || "deepseek-flash",
       source: "environment",
       available: true
     };
@@ -38706,7 +39088,7 @@ function maskOf(version2, bits) {
   return full ^ (1n << BigInt(size - bits)) - 1n;
 }
 function parseNetText(raw2) {
-  const value = text(raw2);
+  const value = text2(raw2);
   if (!value) return null;
   const slash = value.lastIndexOf("/");
   const address = slash >= 0 ? value.slice(0, slash).trim() : value;
@@ -38725,12 +39107,12 @@ function parseNetText(raw2) {
   return { version: ip.version, bits, network, text: `${label}/${bits}` };
 }
 function netContains(net, ipText) {
-  const ip = ipBigInt(text(ipText));
+  const ip = ipBigInt(text2(ipText));
   if (!ip || ip.version !== net.version) return false;
   return (ip.value & maskOf(net.version, net.bits)) === net.network;
 }
 function looksLikeIPAddress(value) {
-  const candidate = text(value);
+  const candidate = text2(value);
   if (candidate.includes("://") || /\s/.test(candidate)) return false;
   if ((candidate.match(/:/g) ?? []).length >= 2) {
     const parts = candidate.split(":");
@@ -38758,7 +39140,7 @@ function registrableDomain(host) {
   return lastTwo;
 }
 function scopeHostname(raw2) {
-  const candidate = text(raw2);
+  const candidate = text2(raw2);
   if (!candidate) throw bad2("\u4E3B\u673A\u540D\u4E3A\u7A7A");
   let parsed;
   try {
@@ -38779,7 +39161,7 @@ function scopeHostname(raw2) {
   return host;
 }
 function parseScopeLine(line) {
-  const raw2 = text(line);
+  const raw2 = text2(line);
   if (!raw2) throw bad2("\u7A7A\u884C");
   const cidr = raw2.includes("/") ? parseNetText(raw2) : null;
   if (cidr) {
@@ -38805,7 +39187,7 @@ function normalizeKeyword(value) {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 function parseAutoScopeLine(line) {
-  const raw2 = text(line);
+  const raw2 = text2(line);
   if (!raw2) throw bad2("\u7A7A\u884C");
   if (raw2.includes("/") && parseNetText(raw2)) return parseScopeLine(raw2);
   if (ipBigInt(raw2)) return parseScopeLine(raw2);
@@ -38828,8 +39210,8 @@ function parseAutoScopeLine(line) {
   return { kind: "keyword", value: keyword, raw: raw2 };
 }
 function parseScopeInput(input2) {
-  const kind = text(input2?.kind).toLowerCase();
-  const raw2 = text(input2?.value);
+  const kind = text2(input2?.kind).toLowerCase();
+  const raw2 = text2(input2?.value);
   if (!kind) return parseAutoScopeLine(raw2);
   if (!SCOPE_KINDS.has(kind)) throw bad2(`\u4E0D\u652F\u6301\u7684\u8303\u56F4\u7C7B\u578B: ${kind}`);
   if (kind === "domain" || kind === "ip" || kind === "cidr") {
@@ -38871,7 +39253,7 @@ function parseScopeInputs(inputs) {
       if (runeCount2(rule.value ?? "") > MAX_SCOPE_RUNES) throw bad2(`\u4F01\u4E1A\u8303\u56F4\u89C4\u8303\u5316\u503C\u8FC7\u957F: \u6700\u591A ${MAX_SCOPE_RUNES} \u4E2A\u5B57\u7B26`);
       rules.push(rule);
     } catch (error62) {
-      errors.push(`${text(input2?.value)}: ${String(error62?.message ?? error62)}`);
+      errors.push(`${text2(input2?.value)}: ${String(error62?.message ?? error62)}`);
     }
   }
   return { rules, invalid: errors.length, errors };
@@ -38910,7 +39292,7 @@ function netRuleOf(scope) {
   return null;
 }
 function malformedIPWarning(assets) {
-  const offenders = assets.filter((asset) => NET_ATTRIBUTION_TYPES.has(String(asset.type ?? "")) && text(asset.ip) !== "" && ipBigInt(text(asset.ip)) === null);
+  const offenders = assets.filter((asset) => NET_ATTRIBUTION_TYPES.has(String(asset.type ?? "")) && text2(asset.ip) !== "" && ipBigInt(text2(asset.ip)) === null);
   if (!offenders.length) return void 0;
   const samples = offenders.slice(0, 5).map((asset) => `#${asset.id} ${asset.ip}`).join("\u3001");
   const suffix = offenders.length > 5 ? ` \u7B49 ${offenders.length} \u6761` : "";
@@ -38919,12 +39301,12 @@ function malformedIPWarning(assets) {
 async function recomputeAttribution() {
   const assets = await writer3().list("assets");
   const scopes = await scopeRows();
-  const domainRules = scopes.filter((scope) => scope.kind === "domain" && text(scope.domain)).map((scope) => ({ company_id: Number(scope.company_id), domain: String(scope.domain) })).sort((a, b) => b.domain.length - a.domain.length || a.company_id - b.company_id);
+  const domainRules = scopes.filter((scope) => scope.kind === "domain" && text2(scope.domain)).map((scope) => ({ company_id: Number(scope.company_id), domain: String(scope.domain) })).sort((a, b) => b.domain.length - a.domain.length || a.company_id - b.company_id);
   const netRules = scopes.map((scope) => {
     const net = netRuleOf(scope);
     return net ? { company_id: Number(scope.company_id), net } : null;
   }).filter((rule) => rule !== null).sort((a, b) => b.net.bits - a.net.bits || a.company_id - b.company_id);
-  const icpRules = scopes.filter((scope) => scope.kind === "icp" && text(scope.value)).map((scope) => ({ company_id: Number(scope.company_id), value: normalizeICP(scope.value) })).sort((a, b) => a.company_id - b.company_id);
+  const icpRules = scopes.filter((scope) => scope.kind === "icp" && text2(scope.value)).map((scope) => ({ company_id: Number(scope.company_id), value: normalizeICP(scope.value) })).sort((a, b) => a.company_id - b.company_id);
   const ops = [];
   for (const asset of assets) {
     const derived2 = String(asset.company_source ?? "") === "scope";
@@ -38932,15 +39314,15 @@ async function recomputeAttribution() {
     if (!derived2 && !unowned) continue;
     let next = null;
     const type = String(asset.type ?? "");
-    if (DOMAIN_ATTRIBUTION_TYPES.has(type) && text(asset.root_domain)) {
+    if (DOMAIN_ATTRIBUTION_TYPES.has(type) && text2(asset.root_domain)) {
       const hit = domainRules.find((rule) => rule.domain === String(asset.root_domain));
       if (hit) next = hit.company_id;
     }
-    if (next == null && NET_ATTRIBUTION_TYPES.has(type) && text(asset.ip)) {
+    if (next == null && NET_ATTRIBUTION_TYPES.has(type) && text2(asset.ip)) {
       const hit = netRules.find((rule) => netContains(rule.net, String(asset.ip)));
       if (hit) next = hit.company_id;
     }
-    if (next == null && (text(asset.icp) || text(asset.app_icp))) {
+    if (next == null && (text2(asset.icp) || text2(asset.app_icp))) {
       const icp = normalizeICP(asset.icp);
       const appICP = normalizeICP(asset.app_icp);
       const hit = icpRules.find((rule) => icp !== "" && rule.value === icp || appICP !== "" && rule.value === appICP);
@@ -39015,25 +39397,25 @@ function scopeDTO(row) {
 function scopeMatchesAsset(scope, asset) {
   const kind = String(scope?.kind ?? "");
   const type = String(asset?.type ?? "");
-  const value = text(scope?.value);
-  const domain2 = text(scope?.domain);
+  const value = text2(scope?.value);
+  const domain2 = text2(scope?.domain);
   if (kind === "company") return asset?.company_id != null && Number(asset.company_id) === Number(scope.company_id);
   if (kind === "root_domain") {
     const expected = domain2 || value;
-    return SCOPE_MATCH_TYPES.has(type) && expected !== "" && text(asset.root_domain) === expected;
+    return SCOPE_MATCH_TYPES.has(type) && expected !== "" && text2(asset.root_domain) === expected;
   }
   if (kind === "subdomain") {
     const expected = domain2 || value;
-    return expected !== "" && text(asset.domain) === expected;
+    return expected !== "" && text2(asset.domain) === expected;
   }
   if (kind === "domain") {
     const expected = domain2 || value;
     if (!expected) return false;
-    return SCOPE_MATCH_TYPES.has(type) && text(asset.root_domain) === expected || text(asset.domain) === expected;
+    return SCOPE_MATCH_TYPES.has(type) && text2(asset.root_domain) === expected || text2(asset.domain) === expected;
   }
   if (kind === "ip" || kind === "cidr") {
-    const net = parseNetText(text(scope.net) || value);
-    return net ? netContains(net, text(asset.ip)) : false;
+    const net = parseNetText(text2(scope.net) || value);
+    return net ? netContains(net, text2(asset.ip)) : false;
   }
   if (kind === "icp") {
     const expected = normalizeICP(value);
@@ -39061,20 +39443,20 @@ function assetLabel2(asset) {
   switch (type) {
     case "root_domain":
     case "subdomain":
-      return text(asset.domain);
+      return text2(asset.domain);
     case "ip":
-      return text(asset.ip);
+      return text2(asset.ip);
     case "app":
-      return text(asset.app_name);
+      return text2(asset.app_name);
     case "service": {
-      const host = text(asset.domain) || text(asset.ip);
-      const viaURL = text(asset.url);
+      const host = text2(asset.domain) || text2(asset.ip);
+      const viaURL = text2(asset.url);
       if (viaURL) return viaURL;
       if (host && Number(asset.port ?? 0) > 0) return `${host}:${Number(asset.port)}`;
-      return text(asset.service_name) || `#${asset.id}`;
+      return text2(asset.service_name) || `#${asset.id}`;
     }
     case "endpoint":
-      return text(asset.url) || `#${asset.id}`;
+      return text2(asset.url) || `#${asset.id}`;
     default:
       return `#${asset.id}`;
   }
@@ -39136,14 +39518,14 @@ async function buildCoverageGraph(task) {
       in_scope: true,
       asset_id: Number(asset.id),
       ...companyID > 0 ? { company_id: companyID } : {},
-      ...text(asset.domain) ? { domain: text(asset.domain) } : {},
-      ...text(asset.root_domain) ? { root_domain: text(asset.root_domain) } : {},
-      ...text(asset.ip) ? { ip: text(asset.ip) } : {},
-      ...text(asset.url) ? { url: text(asset.url) } : {},
+      ...text2(asset.domain) ? { domain: text2(asset.domain) } : {},
+      ...text2(asset.root_domain) ? { root_domain: text2(asset.root_domain) } : {},
+      ...text2(asset.ip) ? { ip: text2(asset.ip) } : {},
+      ...text2(asset.url) ? { url: text2(asset.url) } : {},
       ...Number(asset.port ?? 0) > 0 ? { port: Number(asset.port) } : {},
-      ...text(asset.service_type) ? { service_type: text(asset.service_type) } : {},
-      ...text(asset.app_name) ? { app_name: text(asset.app_name) } : {},
-      ...text(asset.page_title) ? { page_title: text(asset.page_title) } : {},
+      ...text2(asset.service_type) ? { service_type: text2(asset.service_type) } : {},
+      ...text2(asset.app_name) ? { app_name: text2(asset.app_name) } : {},
+      ...text2(asset.page_title) ? { page_title: text2(asset.page_title) } : {},
       ...Number(asset.status_code ?? 0) > 0 ? { status_code: Number(asset.status_code) } : {}
     };
     node2.label = coverageNodeLabel(node2);
@@ -39176,7 +39558,7 @@ async function buildCoverageGraph(task) {
     if (!rootByDomain.has(String(node2.root_domain))) missingRoots.add(String(node2.root_domain));
   }
   for (const root of missingRoots) {
-    const existing = assets.find((asset) => String(asset.type) === "root_domain" && text(asset.domain) === root);
+    const existing = assets.find((asset) => String(asset.type) === "root_domain" && text2(asset.domain) === root);
     if (existing) {
       const companyID = Number(existing.company_id ?? 0);
       const node2 = {
@@ -39517,7 +39899,7 @@ function register11(api2) {
   api2.post("/api/companies", async (c) => {
     try {
       const payload = await jsonBody2(c);
-      const name = text(payload.name);
+      const name = text2(payload.name);
       if (!name) return c.json({ error: "name required" }, 400);
       const inputs = normalizeScopeInputs(payload.scope);
       validateScopeInputBounds(inputs);
@@ -39533,7 +39915,7 @@ function register11(api2) {
         id,
         name,
         nkey,
-        ...text(payload.logo) ? { logo: text(payload.logo) } : {},
+        ...text2(payload.logo) ? { logo: text2(payload.logo) } : {},
         created_at: stamp2,
         updated_at: stamp2
       };
@@ -39597,7 +39979,7 @@ function register11(api2) {
       const inputs = normalizeScopeInputs(payload.scope);
       validateScopeInputBounds(inputs);
       const parsed = parseScopeInputs(inputs);
-      const reason = text(payload.reason);
+      const reason = text2(payload.reason);
       const reset = payload.reset === true;
       const company = (await companyRows()).find((row) => Number(row.id) === id);
       if (!company) return c.json({ error: "company not found" }, 404);
@@ -39640,14 +40022,14 @@ function register11(api2) {
     }
   });
 }
-var writer3, now, text, runeCount2, MAX_BATCH_IDS, MAX_CATEGORY_BATCH_IDS, TERMINAL_TASK_STATUS, INTENT_TERMINAL_STATES, MAX_SCOPE_RUNES, SCOPE_KINDS, MULTI_PART_SUFFIXES, DOMAIN_ATTRIBUTION_TYPES, NET_ATTRIBUTION_TYPES, SCOPE_MATCH_TYPES;
+var writer3, now, text2, runeCount2, MAX_BATCH_IDS, MAX_CATEGORY_BATCH_IDS, TERMINAL_TASK_STATUS, INTENT_TERMINAL_STATES, MAX_SCOPE_RUNES, SCOPE_KINDS, MULTI_PART_SUFFIXES, DOMAIN_ATTRIBUTION_TYPES, NET_ATTRIBUTION_TYPES, SCOPE_MATCH_TYPES;
 var init_tasks_companies = __esm({
   async "src/routes/tasks-companies.ts"() {
     "use strict";
     await init_context2();
     writer3 = () => operations.writer;
     now = () => rfc33395(/* @__PURE__ */ new Date());
-    text = (value) => String(value ?? "").trim();
+    text2 = (value) => String(value ?? "").trim();
     runeCount2 = (value) => [...value].length;
     MAX_BATCH_IDS = 100;
     MAX_CATEGORY_BATCH_IDS = 200;
@@ -39798,9 +40180,9 @@ async function notifyPost(url2, init) {
   } catch (error62) {
     throw new Error(`\u8BF7\u6C42\u5931\u8D25: ${String(error62?.message ?? error62)}`);
   }
-  const text2 = await response.text().catch(() => "");
-  if (!response.ok) throw new Error(`HTTP ${response.status}${text2 ? `: ${truncate(text2, 200)}` : ""}`);
-  return text2;
+  const text3 = await response.text().catch(() => "");
+  if (!response.ok) throw new Error(`HTTP ${response.status}${text3 ? `: ${truncate(text3, 200)}` : ""}`);
+  return text3;
 }
 function renderWebhookTemplate(template, msg) {
   const scalars = {
@@ -39843,11 +40225,11 @@ function markdownFor(msg) {
     ...msg.detail_url ? ["", `[\u67E5\u770B\u8BE6\u60C5](${msg.detail_url})`] : []
   ].join("\n");
 }
-async function expectJsonOk(text2, keys) {
-  if (!text2.trim()) return;
+async function expectJsonOk(text3, keys) {
+  if (!text3.trim()) return;
   let doc = null;
   try {
-    doc = JSON.parse(text2);
+    doc = JSON.parse(text3);
   } catch {
     return;
   }
@@ -40127,8 +40509,8 @@ async function discoverStdioTools(server, timeoutMs) {
     settleAll();
   }
 }
-function parseRpcPayload(text2, contentType) {
-  const trimmed = text2.trim();
+function parseRpcPayload(text3, contentType) {
+  const trimmed = text3.trim();
   if (!trimmed) return null;
   if (contentType.includes("text/event-stream") || trimmed.startsWith("event:") || trimmed.startsWith("data:")) {
     let last = null;
@@ -40176,9 +40558,9 @@ async function discoverHttpTools(server, timeoutMs) {
     }
     const sid = response.headers.get("mcp-session-id");
     if (sid) session = sid;
-    const text2 = await response.text().catch(() => "");
-    if (!response.ok) throw new Error(`HTTP ${response.status}${text2 ? `: ${truncate(text2, 200)}` : ""}`);
-    const message = parseRpcPayload(text2, response.headers.get("content-type") ?? "");
+    const text3 = await response.text().catch(() => "");
+    if (!response.ok) throw new Error(`HTTP ${response.status}${text3 ? `: ${truncate(text3, 200)}` : ""}`);
+    const message = parseRpcPayload(text3, response.headers.get("content-type") ?? "");
     if (message?.error) throw new Error(String(message.error?.message ?? "JSON-RPC \u9519\u8BEF"));
     return message?.result ?? null;
   };
@@ -40351,13 +40733,13 @@ function register12(api2) {
   });
   api2.post("/api/mcp/import", async (c) => {
     try {
-      const text2 = await c.req.text().catch(() => "");
-      if (text2.length > MCP_MAX_IMPORT_BYTES) throw fail4("\u5BFC\u5165\u5185\u5BB9\u8D85\u8FC7 1MB", 400);
+      const text3 = await c.req.text().catch(() => "");
+      if (text3.length > MCP_MAX_IMPORT_BYTES) throw fail4("\u5BFC\u5165\u5185\u5BB9\u8D85\u8FC7 1MB", 400);
       let body = {};
-      if (text2.trim()) {
+      if (text3.trim()) {
         try {
-          const parsed = JSON.parse(text2);
-          body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { raw: text2 };
+          const parsed = JSON.parse(text3);
+          body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { raw: text3 };
         } catch (error62) {
           throw fail4(`\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON\uFF1A${String(error62?.message ?? error62)}`, 400);
         }
@@ -40469,11 +40851,11 @@ function register12(api2) {
   });
   api2.post("/api/side-questions", async (c) => {
     try {
-      const text2 = await c.req.text().catch(() => "");
-      if (text2.length > 32 * 1024) throw fail4("\u8BF7\u6C42\u4F53\u8FC7\u5927", 400);
+      const text3 = await c.req.text().catch(() => "");
+      if (text3.length > 32 * 1024) throw fail4("\u8BF7\u6C42\u4F53\u8FC7\u5927", 400);
       let body;
       try {
-        body = text2.trim() ? JSON.parse(text2) : {};
+        body = text3.trim() ? JSON.parse(text3) : {};
       } catch {
         throw fail4("bad json", 400);
       }
@@ -40552,11 +40934,11 @@ var init_notify_mcp = __esm({
     SIDE_PAGE_DEFAULT = 20;
     SIDE_PAGE_MAX = 50;
     rfc33396 = (date5) => date5.toISOString().replace(/\.\d{3}Z$/, "Z");
-    truncate = (text2, max = NOTIFY_MAX_ERROR_CHARS) => {
-      if (text2.length <= max) return text2;
+    truncate = (text3, max = NOTIFY_MAX_ERROR_CHARS) => {
+      if (text3.length <= max) return text3;
       let cut = max;
-      while (cut > 0 && (text2.charCodeAt(cut) & 192) === 128) cut--;
-      return `${text2.slice(0, cut)}\u2026`;
+      while (cut > 0 && (text3.charCodeAt(cut) & 192) === 128) cut--;
+      return `${text3.slice(0, cut)}\u2026`;
     };
     isMasked = (value) => typeof value === "string" && value.startsWith(NOTIFY_MASKED_PREFIX);
     LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
@@ -40581,11 +40963,11 @@ ${secret}`).digest("base64");
             const glue = webhook.includes("?") ? "&" : "?";
             url2 = `${webhook}${glue}timestamp=${ts}&sign=${encodeURIComponent(sign)}`;
           }
-          const text2 = await notifyPost(url2, {
+          const text3 = await notifyPost(url2, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ msgtype: "markdown", markdown: { title: msg.title, text: markdownFor(msg) } })
           });
-          await expectJsonOk(text2, ["errcode"]);
+          await expectJsonOk(text3, ["errcode"]);
         }
       },
       email: {
@@ -40621,11 +41003,11 @@ ${msg.summary}` } };
             payload.sign = createHmac("sha256", `${ts}
 ${secret}`).update("").digest("base64");
           }
-          const text2 = await notifyPost(webhook, {
+          const text3 = await notifyPost(webhook, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify(payload)
           });
-          await expectJsonOk(text2, ["code", "StatusCode"]);
+          await expectJsonOk(text3, ["code", "StatusCode"]);
         }
       },
       telegram: {
@@ -40641,15 +41023,15 @@ ${secret}`).update("").digest("base64");
           const chatId = cfgString(cfg, "chat_id");
           const base = (cfgString(cfg, "base_url") || "https://api.telegram.org").replace(/\/+$/, "");
           await validateHttpTarget(base);
-          const text2 = await notifyPost(`${base}/bot${token}/sendMessage`, {
+          const text3 = await notifyPost(`${base}/bot${token}/sendMessage`, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text: `${msg.title}
 ${msg.summary}`, disable_web_page_preview: true })
           });
-          if (text2.trim()) {
+          if (text3.trim()) {
             let doc = null;
             try {
-              doc = JSON.parse(text2);
+              doc = JSON.parse(text3);
             } catch {
               doc = null;
             }
@@ -40680,12 +41062,12 @@ ${msg.summary}`, disable_web_page_preview: true })
           for (const [key, value] of Object.entries(extra)) headers[key] = String(value);
           const contentType = cfgString(cfg, "content_type") || "application/json";
           if (method !== "GET") headers["content-type"] = headers["content-type"] ?? contentType;
-          const text2 = await notifyPost(url2, {
+          const text3 = await notifyPost(url2, {
             method,
             headers,
             body: method === "GET" ? void 0 : webhookBody(cfg, msg)
           });
-          void text2;
+          void text3;
         }
       },
       wecom: {
@@ -40698,11 +41080,11 @@ ${msg.summary}`, disable_web_page_preview: true })
         async send(cfg, msg) {
           const webhook = cfgString(cfg, "webhook");
           await validateHttpTarget(webhook);
-          const text2 = await notifyPost(webhook, {
+          const text3 = await notifyPost(webhook, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ msgtype: "markdown", markdown: { content: markdownFor(msg) } })
           });
-          await expectJsonOk(text2, ["errcode"]);
+          await expectJsonOk(text3, ["errcode"]);
         }
       }
     };
@@ -41465,7 +41847,7 @@ __export(workspace_exports, {
 import { createReadStream } from "node:fs";
 import { mkdir as mkdir9, readdir as readdir5, readFile as readFile7, rm as rm4, stat as stat5, writeFile as writeFile8 } from "node:fs/promises";
 import { Readable } from "node:stream";
-import { basename as basename4, dirname as dirname4, join as join9, relative, resolve as resolve2, sep } from "node:path";
+import { basename as basename4, dirname as dirname5, join as join10, relative, resolve as resolve2, sep } from "node:path";
 function workspaceRoot() {
   return resolve2(storeRoot(), "workspace");
 }
@@ -41519,13 +41901,13 @@ function register14(api2) {
     for (const entry of ents) {
       let info;
       try {
-        info = await stat5(join9(abs, entry.name));
+        info = await stat5(join10(abs, entry.name));
       } catch {
         continue;
       }
       out.push({
         name: entry.name,
-        path: wsRel(join9(abs, entry.name)),
+        path: wsRel(join10(abs, entry.name)),
         dir: entry.isDirectory(),
         size: info.size,
         mtime: Math.round(info.mtimeMs)
@@ -41561,7 +41943,7 @@ function register14(api2) {
     try {
       const fi = await stat5(abs).catch(() => null);
       if (fi && fi.isDirectory()) return c.json({ error: "\u76EE\u6807\u662F\u76EE\u5F55" }, 400);
-      await mkdir9(dirname4(abs), { recursive: true, mode: 493 });
+      await mkdir9(dirname5(abs), { recursive: true, mode: 493 });
       await writeFile8(abs, String(body.content ?? ""), { mode: 420 });
       return c.json({ ok: true, path: wsRel(abs) });
     } catch (e) {
@@ -41600,7 +41982,7 @@ function register14(api2) {
       const buf = Buffer.from(await f.arrayBuffer());
       totalBytes += buf.length;
       if (totalBytes > maxWorkspaceUpload) return c.json({ error: "\u4E0A\u4F20\u8D85\u51FA\u5927\u5C0F\u9650\u5236" }, 400);
-      const { abs: dest, ok: okd } = wsResolve(join9(wsRel(abs), name));
+      const { abs: dest, ok: okd } = wsResolve(join10(wsRel(abs), name));
       if (!okd) continue;
       try {
         await writeFile8(dest, buf);
@@ -41695,8 +42077,8 @@ async function findMCPByName(name) {
   const all = await meta3.table("mcp");
   return all.find((m) => m.name === name) ?? null;
 }
-function parseSSEJson(text2, id) {
-  for (const line of text2.split("\n")) {
+function parseSSEJson(text3, id) {
+  for (const line of text3.split("\n")) {
     if (!line.startsWith("data:")) continue;
     const payload = line.slice(5).trim();
     if (!payload) continue;
@@ -41793,8 +42175,8 @@ async function addCompanyScope(companyId, roots, reason) {
   });
 }
 async function ssProjectMeta(cl, projectID) {
-  const text2 = await cl.call("get_project", { id: projectID });
-  const p = JSON.parse(text2);
+  const text3 = await cl.call("get_project", { id: projectID });
+  const p = JSON.parse(text3);
   const roots = String(p?.target ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
   return { name: String(p?.name ?? ""), roots };
 }
@@ -41804,8 +42186,8 @@ async function ssPageAll(cl, ssType, filter, pageSize) {
   for (let page = 1; ; page++) {
     const args = { asset_type: ssType, pageIndex: page, pageSize };
     if (Object.keys(filter).length) args.filter = filter;
-    const text2 = await cl.call("list_assets", args);
-    const env = JSON.parse(text2);
+    const text3 = await cl.call("list_assets", args);
+    const env = JSON.parse(text3);
     const list = env?.list ?? [];
     if (!list.length) break;
     items.push(...list);
@@ -41951,15 +42333,15 @@ function register15(api2) {
     const args = { pageIndex: queryInt(c, "page", 1), pageSize: queryInt(c, "size", 50) };
     const search = c.req.query("search");
     if (search) args.search = search;
-    let text2;
+    let text3;
     try {
-      text2 = await cl.call("list_projects_data", args);
+      text3 = await cl.call("list_projects_data", args);
     } catch (e) {
       return c.json({ error: `list_projects_data \u5931\u8D25: ${e?.message ?? e}` }, 502);
     }
     let env = {};
     try {
-      env = JSON.parse(text2);
+      env = JSON.parse(text3);
     } catch (e) {
       return c.json({ error: "\u89E3\u6790\u9879\u76EE\u5217\u8868\u5931\u8D25: " + String(e?.message ?? e) }, 502);
     }
@@ -41977,15 +42359,15 @@ function register15(api2) {
     const args = { pageIndex: queryInt(c, "page", 1), pageSize: queryInt(c, "size", 50) };
     const search = c.req.query("search");
     if (search) args.search = search;
-    let text2;
+    let text3;
     try {
-      text2 = await cl.call("list_tasks", args);
+      text3 = await cl.call("list_tasks", args);
     } catch (e) {
       return c.json({ error: `list_tasks \u5931\u8D25: ${e?.message ?? e}` }, 502);
     }
     let env = {};
     try {
-      env = JSON.parse(text2);
+      env = JSON.parse(text3);
     } catch (e) {
       return c.json({ error: "\u89E3\u6790\u4EFB\u52A1\u5217\u8868\u5931\u8D25: " + String(e?.message ?? e) }, 502);
     }
@@ -42116,12 +42498,12 @@ var init_sync = __esm({
       async call(tool, args) {
         const result = await this.roundTrip("tools/call", { name: tool, arguments: args }, true);
         const content = Array.isArray(result?.content) ? result.content : [];
-        let text2 = "";
+        let text3 = "";
         for (const blk of content) {
-          if (blk && blk.type === "text" && blk.text != null) text2 += String(blk.text);
+          if (blk && blk.type === "text" && blk.text != null) text3 += String(blk.text);
         }
-        if (result?.isError) throw new Error(`mcp tool "${tool}" error: ${text2}`);
-        return text2;
+        if (result?.isError) throw new Error(`mcp tool "${tool}" error: ${text3}`);
+        return text3;
       }
       async tools() {
         const result = await this.roundTrip("tools/list", {}, true);
@@ -42137,9 +42519,9 @@ __export(update_exports, {
   register: () => register16,
   restartRequestedForExit: () => restartRequestedForExit
 });
-import { chmod, open as open4, readFile as readFile8, rename as rename7, rm as rm5, writeFile as writeFile9 } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { basename as basename5, extname as extname2, join as join10, resolve as resolve3 } from "node:path";
+import { chmod, open as open5, readFile as readFile8, rename as rename7, rm as rm5, writeFile as writeFile9 } from "node:fs/promises";
+import { existsSync as existsSync2, readFileSync } from "node:fs";
+import { basename as basename5, extname as extname2, join as join11, resolve as resolve3 } from "node:path";
 import { createHash as createHash3 } from "node:crypto";
 import { inflateRawSync as inflateRawSync2 } from "node:zlib";
 import { spawn as spawn3 } from "node:child_process";
@@ -42179,7 +42561,7 @@ function compareVersions(a, b) {
   return { cmp: 0, comparable: true };
 }
 function inDocker() {
-  if (existsSync("/.dockerenv")) return true;
+  if (existsSync2("/.dockerenv")) return true;
   try {
     const s = readFileSync("/proc/1/cgroup", "utf8");
     return s.includes("docker") || s.includes("containerd");
@@ -42215,21 +42597,21 @@ function resolvePaths() {
   return {
     dir,
     current,
-    new: join10(dir, `${stem}.new${ext}`),
-    sum: join10(dir, `${stem}.new${ext}.sha256`),
-    old: join10(dir, `${stem}.old${ext}`),
-    marker: join10(dir, `${stem}.upgrade.json`)
+    new: join11(dir, `${stem}.new${ext}`),
+    sum: join11(dir, `${stem}.new${ext}.sha256`),
+    old: join11(dir, `${stem}.old${ext}`),
+    marker: join11(dir, `${stem}.upgrade.json`)
   };
 }
 function hasBackup() {
   try {
-    return existsSync(resolvePaths().old);
+    return existsSync2(resolvePaths().old);
   } catch {
     return false;
   }
 }
 async function checkWritable(dir) {
-  const probe = join10(dir, `.vexnar-update-probe-${Date.now()}`);
+  const probe = join11(dir, `.vexnar-update-probe-${Date.now()}`);
   try {
     await writeFile9(probe, "");
     await rm5(probe, { force: true });
@@ -42280,7 +42662,7 @@ async function download(url2, dst, total, prog) {
   const res = await fetch(url2, { headers: { "user-agent": "vexnar-selfupdate" } });
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const h = createHash3("sha256");
-  const fh = await open4(dst, "w");
+  const fh = await open5(dst, "w");
   const reader = res.body.getReader();
   let written = 0;
   let last = 0;
@@ -42408,7 +42790,7 @@ async function stage(rel, currentVersion, prog) {
 }
 async function rollback() {
   const p = resolvePaths();
-  if (!existsSync(p.old)) throw new Error(`\u6CA1\u6709\u53EF\u56DE\u6EDA\u7684\u4E0A\u4E00\u7248\u672C\uFF08${p.old} \u4E0D\u5B58\u5728\uFF09`);
+  if (!existsSync2(p.old)) throw new Error(`\u6CA1\u6709\u53EF\u56DE\u6EDA\u7684\u4E0A\u4E00\u7248\u672C\uFF08${p.old} \u4E0D\u5B58\u5728\uFF09`);
   await rm5(p.new, { force: true }).catch(() => {
   });
   await rm5(p.sum, { force: true }).catch(() => {
@@ -43899,9 +44281,9 @@ var require_semver = __commonJS({
         } else {
           this.prerelease = m[4].split(".").map((id) => {
             if (/^[0-9]+$/.test(id)) {
-              const num = +id;
-              if (num >= 0 && num < MAX_SAFE_INTEGER) {
-                return num;
+              const num2 = +id;
+              if (num2 >= 0 && num2 < MAX_SAFE_INTEGER) {
+                return num2;
               }
             }
             return id;
@@ -44849,9 +45231,9 @@ var require_range = __commonJS({
         range = range.replace(BUILDSTRIPRE, "");
         const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
         const memoKey = memoOpts + ":" + range;
-        const cached2 = cache.get(memoKey);
-        if (cached2) {
-          return cached2;
+        const cached3 = cache.get(memoKey);
+        if (cached3) {
+          return cached3;
         }
         const loose = this.options.loose;
         const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
@@ -46812,8 +47194,8 @@ __export(auth_exports, {
 });
 import { randomBytes as randomBytes2, randomInt, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
 import { readFileSync as readFileSync2, writeFileSync } from "node:fs";
-import { join as join11 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join as join12 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 function apiError(status, message) {
   return Object.assign(new Error(message), { status });
 }
@@ -46838,9 +47220,9 @@ function toLine(value) {
 function jwtSigningKey() {
   if (cachedKey) return cachedKey;
   try {
-    const text2 = readFileSync2(JWT_KEY_PATH, "utf8").trim();
-    if (text2.length >= 32) {
-      cachedKey = Buffer.from(text2);
+    const text3 = readFileSync2(JWT_KEY_PATH, "utf8").trim();
+    if (text3.length >= 32) {
+      cachedKey = Buffer.from(text3);
       return cachedKey;
     }
   } catch {
@@ -47010,12 +47392,12 @@ function bcryptBase64(bytes) {
   }
   return out;
 }
-function bcryptUnbase64(text2, bytes) {
+function bcryptUnbase64(text3, bytes) {
   const out = Buffer.alloc(bytes);
   let acc = 0;
   let bits = 0;
   let cursor = 0;
-  for (const char of text2) {
+  for (const char of text3) {
     const value = BCRYPT_REVERSE[char];
     if (value === void 0) throw apiError(400, "\u5BC6\u7801\u54C8\u5E0C\u683C\u5F0F\u9519\u8BEF");
     acc = (acc << 6 | value) & 16777215;
@@ -47104,8 +47486,8 @@ function validatePassword(password) {
   if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) return `\u5BC6\u7801\u957F\u5EA6\u4E0D\u80FD\u8D85\u8FC7 ${MAX_PASSWORD_BYTES} \u5B57\u8282`;
   return "";
 }
-function levelOf(text2) {
-  const low = text2.toLowerCase();
+function levelOf(text3) {
+  const low = text3.toLowerCase();
   for (const key of ["fatal", "panic", "error", "err:", "\u5931\u8D25", "\u4E22\u5F03", "\u62D2\u7EDD", "\u2715", "\u4E0D\u53EF\u8FBE"]) {
     if (low.includes(key)) return "error";
   }
@@ -47115,17 +47497,17 @@ function levelOf(text2) {
   return "info";
 }
 function normalizeLine(line) {
-  let text2 = line.replace(/\n+$/, "");
-  if (text2.length >= 20 && text2[4] === "/" && text2[7] === "/" && text2[10] === " ") text2 = text2.slice(19).trim();
+  let text3 = line.replace(/\n+$/, "");
+  if (text3.length >= 20 && text3[4] === "/" && text3[7] === "/" && text3[10] === " ") text3 = text3.slice(19).trim();
   let tag = "";
-  if (text2.startsWith("[")) {
-    const end = text2.indexOf("]");
-    if (end > 1) tag = text2.slice(1, end);
+  if (text3.startsWith("[")) {
+    const end = text3.indexOf("]");
+    if (end > 1) tag = text3.slice(1, end);
   }
-  return { tag, text: text2 };
+  return { tag, text: text3 };
 }
-function appendLog(text2, levelOverride) {
-  const cleaned = normalizeLine(text2);
+function appendLog(text3, levelOverride) {
+  const cleaned = normalizeLine(text3);
   if (!cleaned.text.trim()) return null;
   const line = {
     seq: ++logSeq,
@@ -47562,8 +47944,8 @@ var init_auth = __esm({
     import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
     init_streaming();
     await init_context2();
-    REPO_ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
-    JWT_KEY_PATH = join11(REPO_ROOT, "jwt.key");
+    REPO_ROOT = fileURLToPath2(new URL("../../../../", import.meta.url));
+    JWT_KEY_PATH = join12(REPO_ROOT, "jwt.key");
     JWT_SUBJECT = "VEXNAR";
     JWT_TTL_SECONDS = 7 * 24 * 60 * 60;
     KEY_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -47776,8 +48158,8 @@ function register18(api2) {
         const method = String(exec.method ?? "GET").toUpperCase();
         if (!url2) return c.json({ error: "url \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
         const r = await fetch(url2, { method, headers: exec.headers ?? {} });
-        const text2 = await r.text();
-        return c.json({ output: text2.slice(0, 64 * 1024), is_error: !r.ok });
+        const text3 = await r.text();
+        return c.json({ output: text3.slice(0, 64 * 1024), is_error: !r.ok });
       }
       return c.json({ error: `\u672A\u77E5\u5DE5\u5177\u7C7B\u578B: ${kind}` }, 400);
     } catch (e) {
@@ -47829,7 +48211,7 @@ await init_context2();
 await init_exploration();
 init_task_status();
 import { readFile as readFile9 } from "node:fs/promises";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 var api = new Hono3();
 register(api);
 api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
@@ -48766,7 +49148,7 @@ api.get("/api/tasks/:id/reports/:reportId", async (c) => {
   const id = c.req.param("reportId");
   if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: "bad report id" }, 400);
   try {
-    const content = await readFile9(join12(storeRoot(), "reports", `${id}.md`), "utf8");
+    const content = await readFile9(join13(storeRoot(), "reports", `${id}.md`), "utf8");
     return new Response(content, { headers: { "content-type": "text/markdown; charset=utf-8" } });
   } catch {
     return c.json({ error: "\u62A5\u544A\u4E0D\u5B58\u5728" }, 404);
@@ -48895,6 +49277,215 @@ for (const { load, scope } of routeModules) {
     console.error(`[vexnar] failed to load route module ${scope}:`, error62);
   }
 }
+api.notFound((c) => c.json({
+  error: "\u8BE5\u63A5\u53E3\u5C1A\u672A\u5728 TypeScript \u4FA7\u5B9E\u73B0",
+  path: c.req.path,
+  method: c.req.method,
+  hint: "\u9700\u8981\u65E7 Go \u540E\u7AEF\u5BF9\u7167\u65F6\uFF1AVEXNAR_GO=on \u542F\u52A8\u5B83\uFF0C\u5E76\u8BBE VEXNAR_GO_DATA=on \u6253\u5F00\u8F6C\u53D1"
+}, 501));
+
+// src/proxy-contract.ts
+var PROXY_CONTRACT_VERSION = 1;
+var PROXY_CONTRACT_HEADER = "x-vexnar-egress-contract";
+var PROXY_ENDPOINTS = [
+  { method: "GET", pattern: "/api/proxy/state" },
+  { method: "GET", pattern: "/api/proxy/pools" },
+  { method: "POST", pattern: "/api/proxy/pools" },
+  { method: "PATCH", pattern: "/api/proxy/pools/:id" },
+  { method: "DELETE", pattern: "/api/proxy/pools/:id" },
+  { method: "GET", pattern: "/api/proxy/pools/:id/nodes" },
+  { method: "POST", pattern: "/api/proxy/pools/:id/nodes" },
+  { method: "DELETE", pattern: "/api/proxy/pools/:id/nodes/:nodeID" },
+  { method: "POST", pattern: "/api/proxy/pools/:id/check" },
+  { method: "GET", pattern: "/api/proxy/nodes" },
+  { method: "POST", pattern: "/api/proxy/nodes" },
+  { method: "POST", pattern: "/api/proxy/nodes/parse" },
+  { method: "POST", pattern: "/api/proxy/nodes/import" },
+  { method: "POST", pattern: "/api/proxy/nodes/batch" },
+  { method: "PATCH", pattern: "/api/proxy/nodes/:id" },
+  { method: "DELETE", pattern: "/api/proxy/nodes/:id" },
+  { method: "POST", pattern: "/api/proxy/nodes/:id/check" },
+  { method: "POST", pattern: "/api/proxy/leases/reset" },
+  { method: "PUT", pattern: "/api/proxy/default-pool" },
+  { method: "POST", pattern: "/api/proxy/fanout" },
+  { method: "GET", pattern: "/api/proxy/subscriptions" },
+  { method: "POST", pattern: "/api/proxy/subscriptions" },
+  { method: "POST", pattern: "/api/proxy/subscriptions/preview" },
+  { method: "PATCH", pattern: "/api/proxy/subscriptions/:id" },
+  { method: "DELETE", pattern: "/api/proxy/subscriptions/:id" },
+  { method: "POST", pattern: "/api/proxy/subscriptions/:id/refresh" },
+  { method: "GET", pattern: "/api/proxy/events" }
+];
+function validateProxyState(value) {
+  const problems = [];
+  if (typeof value !== "object" || value === null) return ["state \u4E0D\u662F\u5BF9\u8C61"];
+  const state = value;
+  for (const key of ["enabled", "gateway", "default_pool", "pools", "nodes", "sessions"]) {
+    if (!(key in state)) problems.push(`\u7F3A\u5C11\u5B57\u6BB5 ${key}`);
+  }
+  if (typeof state.enabled !== "boolean") problems.push("enabled \u4E0D\u662F\u5E03\u5C14");
+  if (typeof state.gateway !== "string") problems.push("gateway \u4E0D\u662F\u5B57\u7B26\u4E32");
+  if (typeof state.default_pool !== "number") problems.push("default_pool \u4E0D\u662F\u6570\u5B57");
+  if (state.pools !== null && !Array.isArray(state.pools)) problems.push("pools \u4E0D\u662F\u6570\u7EC4\u6216 null");
+  return problems;
+}
+
+// src/proxy-bridge.ts
+var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
+var PROXY_PREFIX = "/api/proxy";
+var STATE_PATH = "/api/proxy/state";
+var EVENTS_PATH = "/api/proxy/events";
+var BRIDGE_META_PATH = "/api/proxy/_bridge";
+var JSON_TIMEOUT_MS = 18e4;
+var PROBE_TIMEOUT_MS = 2e3;
+function isProxyPath(pathname) {
+  return pathname === PROXY_PREFIX || pathname.startsWith(`${PROXY_PREFIX}/`);
+}
+var compiled = PROXY_ENDPOINTS.map((entry) => ({
+  method: entry.method,
+  re: new RegExp(
+    "^" + entry.pattern.split("/").map((seg) => seg.startsWith(":") ? "[^/]+" : seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("/") + "$"
+  ),
+  pattern: entry.pattern
+}));
+function endpointAllowed(method, pathname) {
+  return compiled.some((entry) => entry.method === method && entry.re.test(pathname));
+}
+function jsonError(status, error62, extra = {}) {
+  return Response.json({ error: error62, code: "EGRESS_BRIDGE", ...extra }, { status, headers: { "cache-control": "no-store" } });
+}
+function localPeerAllowed(request, localPeer) {
+  if (!localPeer) return false;
+  const host = request.headers.get("host") ?? "";
+  const origin = request.headers.get("origin");
+  const site = request.headers.get("sec-fetch-site");
+  try {
+    const hostname3 = new URL(`http://${host}`).hostname;
+    if (!loopback.has(hostname3)) return false;
+    if (origin && new URL(origin).host !== host) return false;
+    if (site && site !== "same-origin" && site !== "none") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+function engineOrigin() {
+  const raw2 = (process.env.VEXNAR_GO_URL || "http://127.0.0.1:8787").trim();
+  let backend2;
+  try {
+    backend2 = new URL(raw2);
+  } catch {
+    throw Object.assign(new Error("VEXNAR_GO_URL \u4E0D\u662F\u5408\u6CD5 URL"), { status: 503 });
+  }
+  if (!["http:", "https:"].includes(backend2.protocol) || !loopback.has(backend2.hostname) || backend2.hostname === "localhost" || backend2.username || backend2.password) {
+    throw Object.assign(new Error("VEXNAR_GO_URL \u5FC5\u987B\u6307\u5411 loopback IP \u4E0A\u7684 Go \u670D\u52A1"), { status: 503 });
+  }
+  return new URL(backend2.origin);
+}
+function desktopToken2() {
+  const token = (process.env.VEXNAR_DESKTOP_TOKEN ?? "").trim();
+  if (!token) {
+    throw Object.assign(new Error("\u5BA2\u6237\u7AEF\u542F\u52A8\u5668\u7F3A\u5C11 Go \u670D\u52A1\u4EE4\u724C"), { status: 503 });
+  }
+  return token;
+}
+async function probeEngine(origin, token) {
+  try {
+    const res = await fetch(new URL(STATE_PATH, origin), {
+      headers: { "x-vexnar-desktop-token": token },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS)
+    });
+    const contract = res.headers.get(PROXY_CONTRACT_HEADER);
+    if (!res.ok) return { reachable: false, status: res.status, contract: contract ?? null };
+    const body = await res.json();
+    return {
+      reachable: true,
+      status: res.status,
+      contract: contract ?? null,
+      problems: validateProxyState(body),
+      summary: {
+        enabled: body.enabled,
+        gateway: body.gateway,
+        pools: body.pools?.length ?? 0,
+        nodes: body.nodes?.length ?? 0
+      }
+    };
+  } catch {
+    return { reachable: false, status: 0, contract: null };
+  }
+}
+async function bridgeMeta(origin, token) {
+  const probe = await probeEngine(origin, token);
+  return Response.json(
+    {
+      contract: PROXY_CONTRACT_VERSION,
+      header: PROXY_CONTRACT_HEADER,
+      engine: { url: origin.origin, ...probe },
+      endpoints: PROXY_ENDPOINTS,
+      note: "\u6570\u636E\u9762\uFF08mihomo/SOCKS5/HTTP \u7F51\u5173/\u79DF\u7EA6/\u5065\u5EB7\u63A2\u6D4B/MITM\uFF09\u7531 Go \u5F15\u64CE\u6301\u6709\uFF1B\u672C\u6865\u53EA\u505A\u53D7\u63A7\u8F6C\u53D1\u3002"
+    },
+    { headers: { "cache-control": "no-store", [PROXY_CONTRACT_HEADER]: String(PROXY_CONTRACT_VERSION) } }
+  );
+}
+async function proxyBridge(request, localPeer) {
+  const url2 = new URL(request.url);
+  if (!isProxyPath(url2.pathname)) return void 0;
+  if (!localPeerAllowed(request, localPeer)) {
+    return jsonError(403, "\u6B64\u63A5\u53E3\u4EC5\u4F9B\u672C\u673A VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE");
+  }
+  let origin;
+  let token;
+  try {
+    origin = engineOrigin();
+    token = desktopToken2();
+  } catch (error62) {
+    return jsonError(error62.status ?? 503, error62.message);
+  }
+  if (url2.pathname === BRIDGE_META_PATH) {
+    if (request.method !== "GET") return jsonError(405, "\u4EC5\u652F\u6301 GET");
+    return bridgeMeta(origin, token);
+  }
+  if (!endpointAllowed(request.method, url2.pathname)) {
+    return jsonError(404, `\u672A\u5728\u5951\u7EA6\u4E2D\u767B\u8BB0\u7684\u4EE3\u7406\u6C60\u7AEF\u70B9\uFF1A${request.method} ${url2.pathname}`, {
+      hint: `GET ${BRIDGE_META_PATH} \u67E5\u770B\u7AEF\u70B9\u6E05\u5355`
+    });
+  }
+  const sse = url2.pathname === EVENTS_PATH;
+  const headers = new Headers({
+    "x-vexnar-desktop-token": token,
+    accept: sse ? "text/event-stream" : "application/json"
+  });
+  const contentType = request.headers.get("content-type");
+  if (contentType) headers.set("content-type", contentType);
+  try {
+    const upstream = await fetch(new URL(url2.pathname + url2.search, origin), {
+      method: request.method,
+      body: request.method === "GET" || request.method === "HEAD" ? void 0 : await request.arrayBuffer(),
+      headers,
+      redirect: "error",
+      // SSE 常驻连接不能加总超时；其余请求给订阅拉取/批量体检留足 180s。
+      signal: sse ? request.signal : AbortSignal.timeout(JSON_TIMEOUT_MS)
+    });
+    if (upstream.status === 401) {
+      return jsonError(502, "Go \u670D\u52A1\u9274\u6743\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u5BA2\u6237\u7AEF\u4E0E Go \u670D\u52A1\u7684\u542F\u52A8\u4EE4\u724C");
+    }
+    const out = new Headers();
+    for (const key of ["content-type", "cache-control", "content-disposition", "etag", PROXY_CONTRACT_HEADER]) {
+      const value = upstream.headers.get(key);
+      if (value) out.set(key, value);
+    }
+    if (!out.has(PROXY_CONTRACT_HEADER)) out.set(PROXY_CONTRACT_HEADER, String(PROXY_CONTRACT_VERSION));
+    out.set("cache-control", "no-store");
+    if (sse) {
+      out.set("content-type", "text/event-stream");
+      out.set("x-accel-buffering", "no");
+    }
+    return new Response(upstream.body, { status: upstream.status, headers: out });
+  } catch (error62) {
+    const message = error62 instanceof Error ? error62.message : String(error62);
+    return jsonError(503, `\u65E0\u6CD5\u8FDE\u63A5 Go \u5F15\u64CE\uFF1A${message}`, { engine: origin.origin });
+  }
+}
 
 // src/go-data.ts
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
@@ -48910,24 +49501,27 @@ var prefixes = [
   "/api/intercept",
   "/api/yak/history"
 ];
+var forwarding = () => /^(1|on|true|yes)$/i.test(process.env.VEXNAR_GO_DATA ?? "");
 var coreTraffic = ["/api/traffic/capture", "/api/traffic/ingest"];
 function isCoreTraffic(path) {
   return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 function isGoDataRequest(method, path) {
+  if (!forwarding()) return false;
   if (isCoreTraffic(path)) return false;
   if (routes.has(`${method} ${path}`)) return true;
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
-var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
+var loopback2 = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
 async function goData(request, localPeer) {
   const url2 = new URL(request.url);
+  if (isProxyPath(url2.pathname)) return proxyBridge(request, localPeer);
   if (!isGoDataRequest(request.method, url2.pathname)) return void 0;
   const host = request.headers.get("host") ?? "";
   const origin = request.headers.get("origin");
   const site = request.headers.get("sec-fetch-site");
   try {
-    if (!localPeer || !loopback.has(new URL(`http://${host}`).hostname) || origin && new URL(origin).host !== host || site && site !== "same-origin" && site !== "none") {
+    if (!localPeer || !loopback2.has(new URL(`http://${host}`).hostname) || origin && new URL(origin).host !== host || site && site !== "same-origin" && site !== "none") {
       return Response.json({ error: "\u6B64\u63A5\u53E3\u4EC5\u4F9B\u672C\u673A VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }, { status: 403 });
     }
   } catch {
@@ -48937,7 +49531,7 @@ async function goData(request, localPeer) {
   if (!token) return Response.json({ error: "\u5BA2\u6237\u7AEF\u542F\u52A8\u5668\u7F3A\u5C11 Go \u670D\u52A1\u4EE4\u724C" }, { status: 503 });
   try {
     const backend2 = new URL(process.env.VEXNAR_GO_URL || "http://127.0.0.1:8787");
-    if (!["http:", "https:"].includes(backend2.protocol) || !loopback.has(backend2.hostname) || backend2.hostname === "localhost" || backend2.username || backend2.password) {
+    if (!["http:", "https:"].includes(backend2.protocol) || !loopback2.has(backend2.hostname) || backend2.hostname === "localhost" || backend2.username || backend2.password) {
       return Response.json({ error: "VEXNAR_GO_URL \u5FC5\u987B\u6307\u5411 loopback IP \u4E0A\u7684 Go \u670D\u52A1" }, { status: 503 });
     }
     const headers = new Headers({ "x-vexnar-desktop-token": token });

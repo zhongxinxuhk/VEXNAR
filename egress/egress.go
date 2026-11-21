@@ -13,3 +13,8 @@
 //
 // 工具侧只看到一个带会话凭据的回环代理 URL；节点选择、失败切换、审计都在网关内完成。
 package egress
+
+// ContractVersion is the JSON contract the TS bridge in app/vexnar-core consumes.
+// Bump it when a field changes meaning (additive fields do not need a bump) and
+// keep app/vexnar-core/src/proxy-contract.ts in sync.
+const ContractVersion = "1"

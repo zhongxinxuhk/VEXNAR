@@ -21,11 +21,14 @@ import { operations, store } from '../context.ts'
 import { activeCaptures, captureOf, readCaptures, startCapture, stopCapture } from '../capture-state.ts'
 import { trafficIngestAuthorized, trafficIngestKey } from '../traffic-key.ts'
 import { convScope, sessionScope } from '../traffic-scope.ts'
-import { exchangeDto, getExchangeRaw, listScopedExchanges, recordExchange } from './traffic.ts'
+import { exchangeDto, getExchangeRaw, listScopedExchanges, recordExchange, allExchanges } from './traffic.ts'
 
 const MAX_INGEST_BODY = 16 << 20
 const STREAM_POLL_MS = 600
 const STREAM_PING_MS = 20_000
+// 概览的“流量健康度”按这批最近样本算状态码/方法分布，样本太小时 0 条 4xx 也会
+// 显示成成功率高得离谱；60 条足以让分布稳定，又不至于让响应变大。
+const RECENT_SAMPLE = 60
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 
 function err(c: any, e: any) {
@@ -314,10 +317,12 @@ export function register(api: Hono) {
 
   // 概览用：跨会话的抓包态与最近流量。active 只看会话抓包记录，不看
   // settings.traffic_capture——那个开关管的是采集面自身，不代表有人在抓。
+  // 总量与最近样本覆盖两条采集路径（客户端 kv + 采集面归档索引），否则已经
+  // 抓到的历史流量在概览里显示成 0。
   api.get('/api/traffic/capture', async (c) => {
     try {
       const origin = originOf(c)
-      const rows = (await operations.writer.list('traffic_exchanges')) as any[]
+      const rows = await allExchanges()
       const byScope = new Map<string, { items: number; last_ts: number }>()
       let lastTs = 0
       for (const row of rows) {
@@ -341,7 +346,7 @@ export function register(api: Hono) {
       }))
       const recent = [...rows]
         .sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0))
-        .slice(0, 12)
+        .slice(0, RECENT_SAMPLE)
         .map(exchangeDto)
       return c.json({
         active: sessions.length > 0,

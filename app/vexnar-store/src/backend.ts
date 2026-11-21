@@ -7,9 +7,10 @@ import { storeWriter } from './writer.js'
 import { metaStore as jsonMetaStore } from './meta-store.js'
 import { jsonStore } from './json-store.js'
 import { sqliteWriter, sqliteMetaStore, sqliteStore } from './sqlite.js'
+import { pgMetaStore, type PgConnection } from './pg-meta.js'
 import type { Store } from './types.js'
 
-export type Backend = 'json' | 'sqlite'
+export type Backend = 'json' | 'sqlite' | 'postgres'
 
 /** Base directory for the store (file blobs, reports, and the SQLite file). */
 export function storeRoot(): string {
@@ -25,12 +26,48 @@ export function backend(): Backend {
   return (process.env.VEXNAR_STORE || 'sqlite').toLowerCase() === 'json' ? 'json' : 'sqlite'
 }
 
+/**
+ * The PostgreSQL the Go service owns, or undefined when no DSN is configured.
+ *
+ * `VEXNAR_PG_DSN` is the Go-side variable name; `VEXNAR_PG_URL` is this package's
+ * historical one. A deploy that sets either one is talking to the same database
+ * as the console, so the configuration domain has to be read from it too —
+ * otherwise the client reports 0 agents/tools/MCP while the console lists them.
+ */
+export function pgConnection(): PgConnection | undefined {
+  const dsn = process.env.VEXNAR_PG_DSN?.trim() || process.env.VEXNAR_PG_URL?.trim()
+  if (!dsn) return undefined
+  try {
+    const parsed = new URL(dsn)
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port || 5432),
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      database: parsed.pathname.replace(/^\//, '') || 'postgres',
+      ssl: parsed.searchParams.get('sslmode') !== 'disable'
+    }
+  } catch {
+    return undefined
+  }
+}
+
 export function openWriter(root = storeRoot()) {
   return backend() === 'sqlite' ? sqliteWriter(dbPath(root)) : storeWriter(root)
 }
 
+/**
+ * Configuration domain reader. Follows the same backend selection as
+ * `openStore`: an explicit `VEXNAR_STORE` wins, otherwise a PostgreSQL DSN
+ * decides. Tables PostgreSQL does not have (client-owned state such as
+ * `trafficCaptures`) stay in the local SQLite meta store.
+ */
 export function openMeta(root = storeRoot()) {
-  return backend() === 'sqlite' ? sqliteMetaStore(dbPath(root)) : jsonMetaStore(root)
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase()
+  const connection = pgConnection()
+  const wantsPg = explicit === 'postgres' || (explicit !== 'json' && explicit !== 'sqlite' && connection !== undefined)
+  if (wantsPg && connection !== undefined) return pgMetaStore(connection, sqliteMetaStore(dbPath(root)))
+  return explicit === 'json' ? jsonMetaStore(root) : sqliteMetaStore(dbPath(root))
 }
 
 export async function openStore(root = storeRoot()): Promise<Store> {
