@@ -931,7 +931,14 @@ function TrafficExchange({ id, onBack }) {
   );
 }
 function TrafficPage() {
-  const { data, error, loading } = useApi("/api/traffic?page=1&size=50");
+  const [host, setHost] = (0, import_react.useState)("");
+  const [method, setMethod] = (0, import_react.useState)("");
+  const [q, setQ] = (0, import_react.useState)("");
+  const params = new URLSearchParams({ page: "1", size: "50" });
+  if (host) params.set("host", host);
+  if (method) params.set("method", method);
+  if (q) params.set("q", q);
+  const { data, error, loading } = useApi(`/api/traffic?${params.toString()}`, [host, method, q]);
   const [exchangeId, setExchangeId] = (0, import_react.useState)("");
   if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981\u4EE5 VEXNAR_GO_FALLBACK \u542F\u52A8 core \u624D\u80FD\u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09`);
@@ -940,6 +947,17 @@ function TrafficPage() {
   return (0, import_react.createElement)(
     "div",
     { style: { fontSize: 13 } },
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, marginBottom: 10 } },
+      (0, import_react.createElement)("input", { placeholder: "host", value: host, onChange: (event) => setHost(event.target.value.trim()) }),
+      (0, import_react.createElement)(
+        "select",
+        { value: method, onChange: (event) => setMethod(event.target.value) },
+        ["", "GET", "POST", "PUT", "DELETE", "PATCH"].map((item) => (0, import_react.createElement)("option", { key: item || "all", value: item }, item || "\u5168\u90E8\u65B9\u6CD5"))
+      ),
+      (0, import_react.createElement)("input", { placeholder: "URL \u5173\u952E\u5B57", value: q, onChange: (event) => setQ(event.target.value.trim()) })
+    ),
     (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? data?.total ?? rows.length} \u6761\u6293\u5305`),
     (0, import_react.createElement)(
       "table",

@@ -18,7 +18,7 @@
 dsh 侧边栏
 ├─ 任务        → main: vexnar-tasks    （仪表盘计数 + 列表 + 详情）
 ├─ 发现        → main: vexnar-findings
-├─ 流量        → main: vexnar-traffic（列表 + exchange 详情）
+├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
 ├─ 资产        → main: vexnar-assets
 ├─ 工具执行    → main: vexnar-tool-run
 └─ 日志        → main: vexnar-logs
