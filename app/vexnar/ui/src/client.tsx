@@ -209,7 +209,9 @@ declare const __VEXNAR_LOGO__: string
 const VEXNAR_LOGO = __VEXNAR_LOGO__
 
 function BrandMark({ size }: { size?: number }): ReactNode {
-  const px = size ?? 24
+  // The shell asks for 24px; the mark reads small beside the wordmark, so draw
+  // it larger while keeping the slot geometry.
+  const px = Math.round((size ?? 24) * 1.35)
   return h('img', {
     src: VEXNAR_LOGO,
     width: px,
@@ -228,7 +230,8 @@ function BrandName(): ReactNode {
 }
 
 function HeroLogo({ size }: { size?: number }): ReactNode {
-  const px = size ?? 34
+  // Hero copy is 26px; a 34px mark disappears next to it.
+  const px = Math.round((size ?? 34) * 1.55)
   return h('img', {
     src: VEXNAR_LOGO,
     width: px,
