@@ -75,7 +75,14 @@ export function jsonStore(root: string): Store {
       list: async ({ type, taskId, limit = 20, offset = 0 }) => {
         let rows = await load('assets', assetRow)
         if (type) rows = rows.filter((row) => row.type === type)
-        if (taskId) rows = rows.filter((row) => Array.isArray(row.task_ids) && row.task_ids.map(Number).includes(Number(taskId)))
+        if (taskId) {
+          rows = rows.filter((row) => Array.isArray(row.task_ids) && row.task_ids.map(Number).includes(Number(taskId)))
+          const links = await load('task_asset_links', { parse: (value) => value })
+          rows = rows.map((row) => {
+            const link = links.find((item) => String(item.task_id) === String(taskId) && String(item.asset_id) === String(row.id))
+            return link ? { ...row, task_source: link.source, task_source_summary: link.source_summary, task_source_node_id: link.source_node_id } : row
+          })
+        }
         rows = [...rows].sort((a, b) => String(b.last_seen ?? '').localeCompare(String(a.last_seen ?? '')) || b.id - a.id)
         return { rows: rows.slice(offset, offset + limit), total: rows.length }
       },

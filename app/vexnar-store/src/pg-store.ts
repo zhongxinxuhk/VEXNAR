@@ -78,17 +78,21 @@ export function pgStore(connection: {
       list: async ({ type, taskId, limit = 20, offset = 0 }) => {
         const filters: string[] = []
         const values: unknown[] = [limit, offset]
-        if (type) { values.push(type); filters.push(`type = $${values.length}`) }
-        if (taskId) { values.push(taskId); filters.push(`$${values.length}::bigint = ANY(task_ids)`) }
+        if (type) { values.push(type); filters.push(`a.type = $${values.length}`) }
+        let linkIndex = 0
+        if (taskId) { values.push(taskId); linkIndex = values.length; filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`) }
+        const linkSelect = taskId ? ', l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id' : ''
+        const join = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : ''
         const where = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
-        const rows = await q(`SELECT id, type, company_id, task_ids, domain, root_domain, ip, port, url, last_seen::text AS last_seen
-          FROM assets ${where} ORDER BY last_seen DESC, id DESC LIMIT $1 OFFSET $2`, values)
+        const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
+          a.last_seen::text AS last_seen${linkSelect}
+          FROM assets a ${join} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values)
         const countValues: unknown[] = []
         const countFilters: string[] = []
         if (type) { countValues.push(type); countFilters.push(`type = $${countValues.length}`) }
         if (taskId) { countValues.push(taskId); countFilters.push(`$${countValues.length}::bigint = ANY(task_ids)`) }
         const [count] = await q(`SELECT count(*)::int AS n FROM assets ${countFilters.length ? `WHERE ${countFilters.join(' AND ')}` : ''}`, countValues)
-        return { rows: rows.map((row) => assetRow.parse({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id) })), total: Number(count.n) }
+        return { rows: rows.map((row) => assetRow.parse({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id), task_source_node_id: row.task_source_node_id == null ? undefined : Number(row.task_source_node_id) })), total: Number(count.n) }
       },
       counts: async (taskId?: string) => {
         const rows = await q(`SELECT type, count(*)::int AS n FROM assets ${taskId ? 'WHERE $1::bigint = ANY(task_ids)' : ''} GROUP BY type`, taskId ? [taskId] : [])

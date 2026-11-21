@@ -64,7 +64,7 @@ VEXNAR_GO_FALLBACK=http://127.0.0.1:8787 pnpm start
 | `GET /api/exploration/findings/stats` | ✅（含任务下拉） |
 | `GET /api/tasks`、`/api/tasks/:id` | ✅ 核心字段 + tokens/goals/in_flight/findings 已对账；`last_activity_unix` 为引擎内存值，暂不比较 |
 | `GET /api/tasks/:id/metrics` | 🟡 漏洞计数已填，其余验证类指标待迁移 |
-| `GET /api/assets` | 🟡 核心字段 + `task_id` 过滤已对账；`task_source*` 与 DSL 未迁 |
+| `GET /api/assets` | ✅ `task_id` 过滤与完整资产 DTO 已对账；DSL 搜索未迁 |
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
 | `GET /api/tasks/:id/goals` | ✅ 目标列表（id/text/vulnclass/state/origin/ts） |

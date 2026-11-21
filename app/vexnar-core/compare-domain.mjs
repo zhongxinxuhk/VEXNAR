@@ -87,7 +87,7 @@ const goTaskAssets = await get(GO, '/api/assets?task_id=1137&limit=10')
 const tsTaskAssets = await get(TS, '/api/assets?task_id=1137&limit=10')
 const assetFields2 = ['id', 'type', 'task_ids', 'domain', 'root_domain', 'port', 'url', 'last_seen']
 const pickAsset2 = (row) => Object.fromEntries(assetFields2.filter((key) => key in row).map((key) => [key, row[key]]))
-check('task assets', same(goTaskAssets.assets.map(pickAsset2), tsTaskAssets.assets.map(pickAsset2)) && goTaskAssets.total === tsTaskAssets.total, `${goTaskAssets.total}/${tsTaskAssets.total}`)
+check('task assets', same(goTaskAssets, tsTaskAssets), `${goTaskAssets.total}/${tsTaskAssets.total}`)
 const goTaskCounts = await get(GO, '/api/assets/counts?task_id=1137')
 const tsTaskCounts = await get(TS, '/api/assets/counts?task_id=1137')
 check('task asset counts', same(goTaskCounts, tsTaskCounts))
