@@ -99,7 +99,7 @@ function Step({ step, open, onToggle, approvals, decideApproval, conversation })
   </div>;
 }
 
-export default function Chat({ approvals, decideApproval, notify, theme, onToggleTheme }) {
+export default function Chat({ approvals, decideApproval, notify }) {
   const [active, setActive] = useState('main');
   const [newChats, setNewChats] = useState([]);
   const [sent, setSent] = useState({});
@@ -232,7 +232,6 @@ export default function Chat({ approvals, decideApproval, notify, theme, onToggl
             </div>}
           </div>
           <Badge tone="green" dot>可交互</Badge>
-          <button type="button" className="cx-icon-btn" aria-label="切换界面外观" onClick={onToggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} /></button>
         </div>
       </header>
 

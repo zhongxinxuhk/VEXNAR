@@ -18,7 +18,6 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
   const client = mode === 'client';
   const [view, setView] = useState(initialView);
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState('light');
   const [palette, setPalette] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [navOpen, setNavOpen] = useState(false);
@@ -82,7 +81,7 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
   const content = (() => {
     switch (view) {
       case 'dashboard': return <Dashboard onNavigate={go} onCreateTask={() => setCreateOpen(true)} notify={notify} />;
-      case 'chat': return <Chat approvals={decisions} decideApproval={decide} notify={notify} theme={theme} onToggleTheme={() => setTheme(value => value === 'dark' ? 'light' : 'dark')} />;
+      case 'chat': return <Chat approvals={decisions} decideApproval={decide} notify={notify} />;
       case 'tasks': return <Tasks rows={rows} setRows={setRows} notify={notify} onCreateTask={() => setCreateOpen(true)} />;
       case 'findings': return <Findings notify={notify} />;
       case 'traffic': return <Traffic />;
@@ -106,7 +105,7 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
     }
   })();
 
-  return <div className={`cx-window ${client ? 'is-client' : ''} ${className}`} data-theme={theme}>
+  return <div className={`cx-window ${client ? 'is-client' : ''} ${className}`}>
     {client ? <div className="cx-titlebar">
       <span className="cx-lights" aria-hidden="true"><i /><i /><i /></span>
       <span className="cx-app"><img src="assets/logo.png" width="15" height="15" alt="" /><b>VEXNAR</b><em>v1.0.0</em></span>
@@ -154,7 +153,6 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
           <div className="cx-top-right">
             <Badge tone="green" dot>LLM 已配置</Badge>
             <span className="cx-taskchip"><Icon name="target" size={12} />T-2407 · 探索中</span>
-            <button type="button" className="cx-icon-btn" aria-label="切换外观" onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} /></button>
             <button type="button" className="cx-icon-btn" aria-label="通知" onClick={() => go('notify')}><Icon name="bell" size={15} /></button>
             <span className="cx-avatar cx-avatar-sm" aria-hidden="true">X</span>
           </div>

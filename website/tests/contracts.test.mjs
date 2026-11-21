@@ -132,6 +132,7 @@ test('client page is a bare application shell, architecture ships interactive ma
   assert.ok(!consolePage.includes('class="header'), 'client page must not render the site header');
   assert.ok(!consolePage.includes('footer-top'), 'client page must not render the site footer');
   assert.ok(!consolePage.includes('class="skip"'), 'client page must not render site chrome');
+  assert.ok(!consolePage.includes('data-theme'), 'client page ships a single light appearance');
   const architecturePage = await read('../dist/architecture.html');
   for (const marker of ['INTERACTION', 'ORCHESTRATION', 'SUBSTRATE', 'EVENT LIFECYCLE', '层间契约', '剖析导览']) assert.ok(architecturePage.includes(marker), marker);
   assert.ok(architecturePage.includes('layer-evidence'));
