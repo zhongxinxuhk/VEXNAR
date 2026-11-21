@@ -12,7 +12,7 @@ bundle 层。Go 服务仍是产品本体，app 只通过两个接口消费它：
 | 方向 | 走哪条链路 | 说明 |
 |---|---|---|
 | 模型推理 | **TS 直连 NewAPI** | 登录后由账户插件写入 dsh 凭据库与 `llm-pi-ai` 设置 |
-| 模型目录 | `GET {newapi}/v1/models` | 登录时自动拉取，写入 provider 的 models |
+| 模型目录 | `GET {api}/v1/models` | 登录时自动拉取，写入 provider 的 models |
 | 领域工具 | Go `POST /mcp`（过渡） | 任务/漏洞/流量工具尚未迁移到 TS |
 
 ## 目录
