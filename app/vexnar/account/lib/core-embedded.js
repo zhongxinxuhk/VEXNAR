@@ -261,7 +261,7 @@ var require_postgres_interval = __commonJS({
       if (!(this instanceof PostgresInterval)) {
         return new PostgresInterval(raw2);
       }
-      extend2(this, parse4(raw2));
+      extend2(this, parse5(raw2));
     }
     var properties = ["seconds", "minutes", "hours", "days", "months", "years"];
     PostgresInterval.prototype.toPostgres = function() {
@@ -322,7 +322,7 @@ var require_postgres_interval = __commonJS({
       var microseconds = fraction + "000000".slice(fraction.length);
       return parseInt(microseconds, 10) / 1e3;
     }
-    function parse4(interval) {
+    function parse5(interval) {
       if (!interval) return {};
       var matches = INTERVAL.exec(interval);
       var isNegative = matches[8] === "-";
@@ -809,13 +809,13 @@ var require_binaryParsers = __commonJS({
           console.log("ERROR: ElementType not implemented: " + elementType2);
         }
       };
-      var parse4 = function(dimension, elementType2) {
+      var parse5 = function(dimension, elementType2) {
         var array2 = [];
         var i2;
         if (dimension.length > 1) {
           var count = dimension.shift();
           for (i2 = 0; i2 < count; i2++) {
-            array2[i2] = parse4(dimension, elementType2);
+            array2[i2] = parse5(dimension, elementType2);
           }
           dimension.unshift(count);
         } else {
@@ -825,7 +825,7 @@ var require_binaryParsers = __commonJS({
         }
         return array2;
       };
-      return parse4(dims, elementType);
+      return parse5(dims, elementType);
     };
     var parseText = function(value) {
       return value.toString("utf8");
@@ -1588,7 +1588,7 @@ var require_type_overrides = __commonJS({
 var require_pg_connection_string = __commonJS({
   "../node_modules/.pnpm/pg-connection-string@2.14.1/node_modules/pg-connection-string/index.js"(exports, module) {
     "use strict";
-    function parse4(str, options = {}) {
+    function parse5(str, options = {}) {
       if (str.charAt(0) === "/") {
         const config3 = str.split(" ");
         return { host: config3[0], database: config3[1] };
@@ -1750,7 +1750,7 @@ var require_pg_connection_string = __commonJS({
       return poolConfig;
     }
     function parseIntoClientConfig(str) {
-      return toClientConfig(parse4(str));
+      return toClientConfig(parse5(str));
     }
     function deprecatedSslModeWarning(sslmode) {
       if (!deprecatedSslModeWarning.warned && typeof process !== "undefined" && process.emitWarning) {
@@ -1765,10 +1765,10 @@ To prepare for this change:
 See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.`);
       }
     }
-    module.exports = parse4;
-    parse4.parse = parse4;
-    parse4.toClientConfig = toClientConfig;
-    parse4.parseIntoClientConfig = parseIntoClientConfig;
+    module.exports = parse5;
+    parse5.parse = parse5;
+    parse5.toClientConfig = toClientConfig;
+    parse5.parseIntoClientConfig = parseIntoClientConfig;
   }
 });
 
@@ -1778,7 +1778,7 @@ var require_connection_parameters = __commonJS({
     "use strict";
     var dns = __require("dns");
     var defaults2 = require_defaults();
-    var parse4 = require_pg_connection_string().parse;
+    var parse5 = require_pg_connection_string().parse;
     var val = function(key, config2, envVar) {
       if (config2[key]) {
         return config2[key];
@@ -1816,9 +1816,9 @@ var require_connection_parameters = __commonJS({
     };
     var ConnectionParameters = class {
       constructor(config2) {
-        config2 = typeof config2 === "string" ? parse4(config2) : config2 || {};
+        config2 = typeof config2 === "string" ? parse5(config2) : config2 || {};
         if (config2.connectionString) {
-          config2 = Object.assign({}, config2, parse4(config2.connectionString));
+          config2 = Object.assign({}, config2, parse5(config2.connectionString));
         }
         this.user = val("user", config2);
         this.database = val("database", config2);
@@ -2544,7 +2544,7 @@ var require_serializer = __commonJS({
       );
     };
     var emptyArray = [];
-    var parse4 = (query2) => {
+    var parse5 = (query2) => {
       const name = query2.name || "";
       if (name.length > 63) {
         console.error("Warning! Postgres only supports 63 characters for query names.");
@@ -2691,7 +2691,7 @@ var require_serializer = __commonJS({
       sendSASLInitialResponseMessage,
       sendSCRAMClientFinalMessage,
       query,
-      parse: parse4,
+      parse: parse5,
       bind,
       execute,
       describe: describe3,
@@ -3080,7 +3080,7 @@ var require_dist = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.DatabaseError = exports.serialize = void 0;
-    exports.parse = parse4;
+    exports.parse = parse5;
     var messages_1 = require_messages();
     Object.defineProperty(exports, "DatabaseError", { enumerable: true, get: function() {
       return messages_1.DatabaseError;
@@ -3090,7 +3090,7 @@ var require_dist = __commonJS({
       return serializer_1.serialize;
     } });
     var parser_1 = require_parser();
-    function parse4(stream, callback) {
+    function parse5(stream, callback) {
       const parser = new parser_1.Parser();
       stream.on("data", (buffer) => parser.parse(buffer, callback));
       return new Promise((resolve) => stream.on("end", () => resolve()));
@@ -3178,7 +3178,7 @@ var require_connection = __commonJS({
   "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/connection.js"(exports, module) {
     "use strict";
     var EventEmitter = __require("events").EventEmitter;
-    var { parse: parse4, serialize } = require_dist();
+    var { parse: parse5, serialize } = require_dist();
     var stream = require_stream();
     var { getStream } = stream;
     var flushBuffer = serialize.flush();
@@ -3284,7 +3284,7 @@ var require_connection = __commonJS({
         self.emit("sslconnect");
       }
       attachListeners(stream2) {
-        parse4(stream2, (msg) => {
+        parse5(stream2, (msg) => {
           const eventName = msg.name === "error" ? "errorMessage" : msg.name;
           if (this._emitMessage) {
             this.emit("message", msg);
@@ -7207,15 +7207,23 @@ var Hono3 = class extends Hono {
 };
 
 // src/routes.ts
-import { readFile as readFile7 } from "node:fs/promises";
-import { join as join8 } from "node:path";
-
-// ../vexnar-store/src/index.ts
-import { homedir } from "node:os";
+import { readFile as readFile6 } from "node:fs/promises";
 import { join as join7 } from "node:path";
 
-// ../vexnar-store/src/json-store.ts
-import { mkdir as mkdir2 } from "node:fs/promises";
+// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs
+var import_lib = __toESM(require_lib2(), 1);
+var Client = import_lib.default.Client;
+var Pool = import_lib.default.Pool;
+var Connection = import_lib.default.Connection;
+var types = import_lib.default.types;
+var Query = import_lib.default.Query;
+var DatabaseError = import_lib.default.DatabaseError;
+var escapeIdentifier = import_lib.default.escapeIdentifier;
+var escapeLiteral = import_lib.default.escapeLiteral;
+var Result = import_lib.default.Result;
+var TypeOverrides = import_lib.default.TypeOverrides;
+var defaults = import_lib.default.defaults;
+var esm_default = import_lib.default;
 
 // ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js
 var external_exports = {};
@@ -9075,18 +9083,18 @@ var validateAsync = async (schema, value, _ctx) => {
   return result.issues.length === 0;
 };
 var _encode = (_Err) => {
-  const parse4 = _parse(_Err);
+  const parse5 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
     const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-    return parse4(schema, value, ctx, finalizeParams(fn, _params));
+    return parse5(schema, value, ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
 var encode = /* @__PURE__ */ _encode($ZodRealError);
 var _decode = (_Err) => {
-  const parse4 = _parse(_Err);
+  const parse5 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
-    return parse4(schema, value, _ctx, finalizeParams(fn, _params));
+    return parse5(schema, value, _ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
@@ -10581,7 +10589,7 @@ function capSize(inst, size) {
   if (!caps.length)
     return;
   const cap = Math.min(...caps.map((c) => c[0]));
-  const parse4 = inst._zod.parse;
+  const parse5 = inst._zod.parse;
   inst._zod.parse = (payload, ctx) => {
     const n = size(payload.value);
     if (n > cap && !ctx?.skipChecks && ctx?.direction !== "backward") {
@@ -10595,7 +10603,7 @@ function capSize(inst, size) {
         }
       }
     }
-    return parse4(payload, ctx);
+    return parse5(payload, ctx);
   };
 }
 var arraySize = (input2) => Array.isArray(input2) ? input2.length : -1;
@@ -26999,14 +27007,559 @@ var companyRow = external_exports.object({
   asset_count: external_exports.number().default(0)
 }).passthrough();
 
-// ../vexnar-store/src/per-record.ts
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+// ../vexnar-store/src/pg-store.ts
+esm_default.types.setTypeParser(20, (value) => Number(value));
+function pgStore(connection) {
+  const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
+  const q = async (text, values = []) => (await pool.query(text, values)).rows;
+  const rfc = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
+  const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
+  return {
+    backend: "postgres",
+    pool,
+    async init() {
+      await pool.query("select 1");
+    },
+    tasks: {
+      list: async () => {
+        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
+          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
+          ${rfc("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
+          ${rfc("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
+          FROM tasks ORDER BY tasks.id DESC`);
+        return rows.map((row) => taskRow.parse({ ...row, exploration_id: Number(row.exploration_id) }));
+      },
+      get: async (id) => {
+        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
+          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
+          ${rfc("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
+          ${rfc("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
+          FROM tasks WHERE id = $1`, [id]);
+        return rows[0] ? taskRow.parse({ ...rows[0], exploration_id: Number(rows[0].exploration_id) }) : void 0;
+      }
+    },
+    findings: {
+      list: async (limit = 500) => {
+        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, evidence_version, report_evidence_version,
+          task_id::text AS task_id, ${rfc("created_at")} AS created_at_text
+          FROM findings ORDER BY created_at DESC LIMIT $1`, [limit]);
+        return rows.map((row) => findingRow.parse(row));
+      },
+      get: async (id) => {
+        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, report, evidence_version, report_evidence_version,
+          task_id::text AS task_id, ${rfc("created_at")} AS created_at_text
+          FROM findings WHERE id = $1 OR node_id = $1 LIMIT 1`, [id]);
+        return rows[0] ? findingRow.parse(rows[0]) : void 0;
+      },
+      stats: async () => {
+        const [row] = await q(`SELECT count(*)::int AS total,
+          count(*) FILTER (WHERE status = 'pending')::int AS pending,
+          count(*) FILTER (WHERE severity = 'critical')::int AS critical,
+          count(*) FILTER (WHERE severity = 'high')::int AS high,
+          count(*) FILTER (WHERE severity = 'medium')::int AS medium,
+          count(*) FILTER (WHERE severity = 'low')::int AS low FROM findings`);
+        const classes = await q(`SELECT DISTINCT vulnclass FROM findings WHERE vulnclass <> '' ORDER BY vulnclass`);
+        const tasks = await q(`SELECT f.task_id AS id, coalesce(t.name,'') AS name, coalesce(t.description,'') AS description,
+          count(*)::int AS count FROM findings f LEFT JOIN tasks t ON t.id = f.task_id
+          WHERE f.task_id IS NOT NULL GROUP BY f.task_id, t.name, t.description ORDER BY max(f.created_at) DESC`);
+        return { ...row, vulnclasses: classes.map((c) => c.vulnclass), tasks };
+      }
+    },
+    assets: {
+      list: async ({ type, taskId, limit = 20, offset = 0 }) => {
+        const filters = [];
+        const values = [limit, offset];
+        if (type) {
+          values.push(type);
+          filters.push(`a.type = $${values.length}`);
+        }
+        let linkIndex = 0;
+        if (taskId) {
+          values.push(taskId);
+          linkIndex = values.length;
+          filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
+        }
+        const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
+        const join8 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
+        const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+        const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
+          a.last_seen::text AS last_seen${linkSelect}
+          FROM assets a ${join8} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
+        const countValues = [];
+        const countFilters = [];
+        if (type) {
+          countValues.push(type);
+          countFilters.push(`type = $${countValues.length}`);
+        }
+        if (taskId) {
+          countValues.push(taskId);
+          countFilters.push(`$${countValues.length}::bigint = ANY(task_ids)`);
+        }
+        const [count] = await q(`SELECT count(*)::int AS n FROM assets ${countFilters.length ? `WHERE ${countFilters.join(" AND ")}` : ""}`, countValues);
+        return { rows: rows.map((row) => assetRow.parse({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id), task_source_node_id: row.task_source_node_id == null ? void 0 : Number(row.task_source_node_id) })), total: Number(count.n) };
+      },
+      counts: async (taskId) => {
+        const rows = await q(`SELECT type, count(*)::int AS n FROM assets ${taskId ? "WHERE $1::bigint = ANY(task_ids)" : ""} GROUP BY type`, taskId ? [taskId] : []);
+        return Object.fromEntries(rows.map((row) => [row.type, Number(row.n)]));
+      }
+    },
+    companies: {
+      list: async () => {
+        const rows = await q(`SELECT c.id, c.name, c.nkey, c.created_at::text AS created_at, c.updated_at::text AS updated_at,
+          (SELECT count(*)::int FROM assets a WHERE a.company_id = c.id) AS asset_count
+          FROM companies c ORDER BY c.name`);
+        const scopes = await q("SELECT id, company_id, kind, domain, net, value, raw, reason FROM company_scope");
+        const byCompany = /* @__PURE__ */ new Map();
+        for (const scope of scopes) {
+          const list = byCompany.get(Number(scope.company_id)) ?? [];
+          list.push({
+            id: Number(scope.id),
+            company_id: Number(scope.company_id),
+            kind: scope.kind,
+            ...scope.domain ? { domain: scope.domain } : {},
+            ...scope.net ? { net: scope.net } : {},
+            ...scope.value ? { value: scope.value } : {},
+            raw: scope.raw,
+            ...scope.reason ? { reason: scope.reason } : {}
+          });
+          byCompany.set(Number(scope.company_id), list);
+        }
+        return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }));
+      }
+    },
+    traffic: async (findingId) => {
+      const [finding] = await q("SELECT id, evidence_version, report_evidence_version FROM findings WHERE id = $1", [findingId]);
+      if (!finding) return null;
+      const rows = await q(`SELECT b.id, b.finding_id, b.snapshot_id, b.role, b.note, b.position,
+        to_char(b.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(b.created_at, 'OF') || ':00' AS created_at,
+        to_jsonb(s) AS snapshot FROM finding_traffic_bindings b JOIN traffic_evidence_snapshots s ON s.id=b.snapshot_id
+        WHERE b.finding_id=$1 ORDER BY b.position, b.id`, [findingId]);
+      return {
+        finding_id: String(finding.id),
+        version: Number(finding.evidence_version),
+        report_version: Number(finding.report_evidence_version),
+        bindings: rows.map((row) => ({ id: String(row.id), finding_id: String(row.finding_id), snapshot_id: String(row.snapshot_id), role: row.role, note: row.note ?? "", position: Number(row.position), created_at: row.created_at, snapshot: row.snapshot }))
+      };
+    },
+    schedules: {
+      list: async () => q(`SELECT id, name, prompt, frequency, time_of_day, run_on_device, notify, new_chat_each_run, model, effort, agent_key, enabled,
+        created_at::text AS created_at, COALESCE(last_fired_at::text,'') AS last_fired_at, COALESCE(next_fire_at::text,'') AS next_fire_at FROM schedules ORDER BY id`)
+    },
+    triggers: {
+      list: async (agentKey) => await q(`SELECT id, agent_key, enabled, interval_sec, on_finding, on_goal_met, on_task_timeout, on_tool_call, on_task_create,
+        interval_message, finding_message, goal_message, task_timeout_message, tool_call_message, task_create_message, tool_names,
+        COALESCE(last_fire::text,'') AS last_fire FROM agent_triggers WHERE agent_key=$1 ORDER BY id`, [agentKey])
+    },
+    coverage: async (taskId) => {
+      const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
+      if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] };
+      const [scope] = await q(`SELECT count(*)::int AS n FROM task_scope ts JOIN (SELECT $1::bigint AS task_id UNION ALL SELECT source_task_id FROM task_relations WHERE task_id=$1) ctx ON ctx.task_id=ts.task_id`, [taskId]);
+      const rows = await q(`WITH context_tasks AS (
+        SELECT t.id AS task_id, t.exploration_id FROM tasks t WHERE t.id=$1 AND t.deleted_at IS NULL
+        UNION ALL
+        SELECT source.id, source.exploration_id FROM task_relations relation
+        JOIN tasks source ON source.id=relation.source_task_id AND source.deleted_at IS NULL WHERE relation.task_id=$1),
+        target AS (
+          SELECT DISTINCT a.id, a.type FROM assets a JOIN task_scope ts ON (
+            (ts.kind='company' AND a.company_id = ts.company_id)
+            OR (ts.kind='root_domain' AND a.root_domain = ts.domain)
+            OR (ts.kind='subdomain' AND a.domain = ts.domain)
+            OR (ts.kind IN ('ip','cidr') AND ts.net >>= try_inet(a.ip))
+            OR (ts.kind='icp' AND (lower(regexp_replace(COALESCE(a.icp,''), '[[:space:]]+', '', 'g')) = ts.value
+              OR lower(regexp_replace(COALESCE(a.app_icp,''), '[[:space:]]+', '', 'g')) = ts.value)))
+          JOIN context_tasks ctx ON ctx.task_id=ts.task_id
+          UNION
+          SELECT a.id, a.type FROM assets a
+          JOIN exploration_anchors ea ON ea.asset_id=a.id
+          JOIN exploration_nodes en ON en.id=ea.node_id
+          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id),
+        tested AS (
+          SELECT DISTINCT ea.asset_id FROM exploration_anchors ea
+          JOIN exploration_nodes en ON en.id=ea.node_id AND en.kind='fact'
+          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id)
+        SELECT t.type, count(*)::int AS total, count(*) FILTER (WHERE t.id IN (SELECT asset_id FROM tested))::int AS tested
+        FROM target t GROUP BY t.type ORDER BY t.type`, [taskId]);
+      const denominator = rows.reduce((sum, row) => sum + Number(row.total), 0);
+      const tested = rows.reduce((sum, row) => sum + Number(row.tested), 0);
+      return {
+        scope_rows: Number(scope.n),
+        denominator,
+        tested,
+        pct: denominator > 0 ? tested / denominator : null,
+        by_type: rows.map((row) => ({ type: row.type, total: Number(row.total), tested: Number(row.tested) }))
+      };
+    },
+    constraints: {
+      list: async (taskId) => {
+        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
+        if (!task) return [];
+        return q("SELECT id, kind, text, COALESCE(origin,'') AS origin, created_at::text AS created_at FROM task_constraints WHERE exploration_id = $1 ORDER BY (kind='deny'), id", [task.exploration_id]);
+      }
+    },
+    activity: {
+      history: async ({ taskId, session = "", before = 0, limit = 200 }) => {
+        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
+        if (!task) return { items: [], snapshot: 0, hasMore: false };
+        const [max] = await q("SELECT coalesce(max(id),0)::bigint AS n FROM activity WHERE exploration_id = $1", [task.exploration_id]);
+        const filters = ["exploration_id = $1"];
+        const values = [task.exploration_id, limit + 1];
+        if (session.startsWith("intent:")) {
+          values.push(Number(session.slice(7)));
+          filters.push(`node_id = $${values.length}`);
+        } else if (session === "plan") filters.push("worker = 'planner'");
+        else {
+          filters.push("worker = 'mainagent'");
+          if (session.startsWith("main:")) {
+            values.push(Number(session.slice(5)));
+            filters.push(`coalesce(main_seg,0) = $${values.length}`);
+          }
+        }
+        if (before) {
+          values.push(before);
+          filters.push(`id < $${values.length}`);
+        }
+        const rows = await q(`SELECT id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata,
+          input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg,
+          to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at
+          FROM activity WHERE ${filters.join(" AND ")} ORDER BY id DESC LIMIT $2`, values);
+        return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit };
+      },
+      dailyTokens: async (days) => {
+        const rows = await q(`SELECT TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
+          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens
+          FROM activity WHERE kind='result' AND created_at >= NOW() - ($1 * INTERVAL '1 day')
+          GROUP BY day ORDER BY day`, [Math.max(Number(days) || 30, 1)]);
+        return rows.map((row) => ({ day: row.day, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens) }));
+      },
+      tokenStats: async (taskId) => {
+        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
+        if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } };
+        const workers = await q(`SELECT COALESCE(worker,'') AS worker,
+          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
+          COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
+          FROM activity WHERE exploration_id = $1 AND kind = 'result' GROUP BY worker ORDER BY worker`, [task.exploration_id]);
+        const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
+        for (const row of workers) for (const key of Object.keys(total)) total[key] += Number(row[key]);
+        const sessions = await q(`SELECT CASE
+            WHEN COALESCE(a.worker,'')='mainagent' THEN 'main:' || COALESCE(a.main_seg,0)::text
+            WHEN COALESCE(a.worker,'')='planner' THEN 'plan'
+            WHEN n.id IS NOT NULL THEN 'intent:' || n.id::text
+            ELSE '' END AS session,
+          COALESCE(SUM(a.input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(a.output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(a.cache_read_tokens),0)::bigint AS cache_read_tokens,
+          COALESCE(SUM(a.cache_write_tokens),0)::bigint AS cache_write_tokens
+          FROM activity a LEFT JOIN exploration_nodes n ON n.id=a.node_id AND n.exploration_id=a.exploration_id AND n.kind='intent'
+          WHERE a.exploration_id=$1 AND a.kind='result' AND (COALESCE(a.worker,'') IN ('mainagent','planner') OR n.id IS NOT NULL)
+          GROUP BY session ORDER BY session`, [task.exploration_id]);
+        return { workers: workers.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), sessions: sessions.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), total };
+      }
+    },
+    async taskMetrics() {
+      const rows = await q(`
+        SELECT task.exploration_id,
+          COALESCE(token_metrics.input_tokens,0)::bigint AS input_tokens,
+          COALESCE(token_metrics.output_tokens,0)::bigint AS output_tokens,
+          COALESCE(token_metrics.cache_read_tokens,0)::bigint AS cache_read_tokens,
+          COALESCE(token_metrics.cache_write_tokens,0)::bigint AS cache_write_tokens,
+          COALESCE(latest_activity.created_at,0)::bigint AS last_activity_unix,
+          COALESCE(goal_metrics.total,0)::int AS goals_total,
+          COALESCE(goal_metrics.met,0)::int AS goals_met,
+          COALESCE(intent_metrics.running,0)::int AS in_flight,
+          COALESCE(finding_metrics.critical,0)::int AS critical,
+          COALESCE(finding_metrics.high,0)::int AS high,
+          COALESCE(finding_metrics.medium,0)::int AS medium,
+          COALESCE(finding_metrics.low,0)::int AS low
+        FROM tasks task
+        LEFT JOIN LATERAL (
+          SELECT SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,
+                 SUM(cache_read_tokens) AS cache_read_tokens, SUM(cache_write_tokens) AS cache_write_tokens
+          FROM activity WHERE exploration_id = task.exploration_id AND kind = 'result'
+        ) token_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT EXTRACT(EPOCH FROM created_at)::bigint AS created_at FROM activity
+          WHERE exploration_id = task.exploration_id ORDER BY created_at DESC LIMIT 1
+        ) latest_activity ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE state = 'met') AS met
+          FROM exploration_nodes WHERE exploration_id = task.exploration_id AND kind = 'goal'
+        ) goal_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS running FROM exploration_nodes
+          WHERE exploration_id = task.exploration_id AND kind = 'intent' AND state = 'running'
+        ) intent_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) FILTER (WHERE severity = 'critical') AS critical,
+                 COUNT(*) FILTER (WHERE severity = 'high') AS high,
+                 COUNT(*) FILTER (WHERE severity = 'medium') AS medium,
+                 COUNT(*) FILTER (WHERE severity = 'low') AS low
+          FROM findings WHERE task_id = task.id
+        ) finding_metrics ON true
+        WHERE task.deleted_at IS NULL`);
+      const out = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        out.set(Number(row.exploration_id), {
+          input_tokens: Number(row.input_tokens),
+          output_tokens: Number(row.output_tokens),
+          cache_read_tokens: Number(row.cache_read_tokens),
+          cache_write_tokens: Number(row.cache_write_tokens),
+          last_activity_unix: Number(row.last_activity_unix),
+          goals_total: Number(row.goals_total),
+          goals_met: Number(row.goals_met),
+          in_flight: Number(row.in_flight),
+          findings: { critical: Number(row.critical), high: Number(row.high), medium: Number(row.medium), low: Number(row.low) }
+        });
+      }
+      return out;
+    },
+    nodes: {
+      page: async ({ taskId, page, size, order: order2 = "desc", kinds = [], states = [], before }) => {
+        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
+        if (!task) return { items: [], total: 0, edges: [] };
+        const filters = ["exploration_id = $1"];
+        const values = [task.exploration_id];
+        if (kinds.length) {
+          values.push(kinds);
+          filters.push(`kind = ANY($${values.length})`);
+        }
+        if (states.length) {
+          values.push(states);
+          filters.push(`state = ANY($${values.length})`);
+        }
+        if (before) {
+          values.push(Number(before));
+          filters.push(`id < $${values.length}`);
+        }
+        const where = filters.join(" AND ");
+        const [count] = await q(`SELECT count(*)::int AS n FROM exploration_nodes WHERE ${where}`, values);
+        const rows = await q(
+          `SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin,
+          ${ts("created_at")} AS created_at FROM exploration_nodes WHERE ${where}
+          ORDER BY id ${order2.toUpperCase()} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+          [...values, size, (page - 1) * size]
+        );
+        const items = rows.map((row) => nodeRow.parse(row));
+        const ids = items.map((row) => row.id);
+        const edges = ids.length ? await q("SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $2 AND (src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[]))", [ids, task.exploration_id]) : [];
+        return { items, total: Number(count.n), edges };
+      }
+    },
+    async edges(explorationId) {
+      return q("SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $1", [explorationId]);
+    }
+  };
+}
+
+// ../vexnar-store/src/backend.ts
+import { homedir } from "node:os";
+import { join as join4 } from "node:path";
+
+// ../vexnar-store/src/writer.ts
+import { mkdir, open as open2, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+var StoreConflict = class extends Error {
+  constructor(table, key, expected, actual) {
+    super(`${table}/${key} revision ${actual}, expected ${expected}`);
+    this.table = table;
+    this.key = key;
+    this.expected = expected;
+    this.actual = actual;
+    this.name = "StoreConflict";
+  }
+};
+var SAFE = /^[a-zA-Z0-9_-]+$/;
+function storeWriter(root) {
+  const journalDir = join(root, "journal");
+  async function readRecord(table, key) {
+    try {
+      const doc = JSON.parse(await readFile(join(root, table, `${key}.json`), "utf8"));
+      return doc.record ?? doc;
+    } catch {
+      return null;
+    }
+  }
+  async function writeRecord(table, key, record2) {
+    if (!SAFE.test(key)) throw new Error(`unsafe key ${key}`);
+    const dir = join(root, table);
+    await mkdir(dir, { recursive: true, mode: 448 });
+    const file2 = join(dir, `${key}.json`);
+    const temp = `${file2}.tmp`;
+    await writeFile(temp, `${JSON.stringify({ version: 1, record: record2 }, null, 2)}
+`, { mode: 384 });
+    await rename(temp, file2);
+  }
+  async function apply(op) {
+    const current = await readRecord(op.table, op.key);
+    const actual = Number(current?.rev ?? 0);
+    if (op.expectedRev !== void 0 && actual !== op.expectedRev) {
+      throw new StoreConflict(op.table, op.key, op.expectedRev, actual);
+    }
+    const next = { ...op.record, rev: actual + 1 };
+    await writeRecord(op.table, op.key, next);
+    return next;
+  }
+  async function list(table) {
+    const dir = join(root, table);
+    const rows = [];
+    try {
+      for (const name of await readdir(dir)) {
+        if (!name.endsWith(".json")) continue;
+        const doc = JSON.parse(await readFile(join(dir, name), "utf8"));
+        rows.push(doc.record ?? doc);
+      }
+    } catch {
+    }
+    return rows;
+  }
+  async function maxKey(table) {
+    const dir = join(root, table);
+    let max = 0;
+    try {
+      for (const name of await readdir(dir)) {
+        if (!name.endsWith(".json")) continue;
+        const key = Number(name.slice(0, -5));
+        if (Number.isFinite(key)) max = Math.max(max, key);
+      }
+    } catch {
+    }
+    return max;
+  }
+  async function remove(table, key) {
+    await rm(join(root, table, `${key}.json`), { force: true });
+  }
+  return {
+    readRecord,
+    list,
+    maxKey,
+    remove,
+    async put(op) {
+      return apply(op);
+    },
+    /** Journaled multi-entity commit: prepared → apply → committed. */
+    async commit(ops) {
+      await mkdir(journalDir, { recursive: true, mode: 448 });
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const file2 = join(journalDir, `${id}.json`);
+      await writeFile(file2, `${JSON.stringify({ state: "prepared", ops }, null, 2)}
+`, { mode: 384 });
+      const written = [];
+      try {
+        for (const op of ops) written.push(await apply(op));
+      } catch (error62) {
+        await writeFile(file2, `${JSON.stringify({ state: "failed", ops, error: String(error62) }, null, 2)}
+`, { mode: 384 });
+        throw error62;
+      }
+      await writeFile(file2, `${JSON.stringify({ state: "committed", ops }, null, 2)}
+`, { mode: 384 });
+      return written;
+    },
+    /** Replay prepared or failed commits after a crash. */
+    async recover() {
+      let names = [];
+      try {
+        names = await readdir(journalDir);
+      } catch {
+        return { replayed: 0 };
+      }
+      let replayed = 0;
+      for (const name of names.filter((file2) => file2.endsWith(".json"))) {
+        const path = join(journalDir, name);
+        const journal = JSON.parse(await readFile(path, "utf8"));
+        if (journal.state !== "prepared") continue;
+        for (const op of journal.ops) await apply({ ...op, expectedRev: void 0 });
+        await writeFile(path, `${JSON.stringify({ ...journal, state: "committed" }, null, 2)}
+`, { mode: 384 });
+        replayed += 1;
+      }
+      return { replayed };
+    },
+    /** Single-writer lock; a second process fails fast. */
+    async lock() {
+      const path = join(root, "store.lock");
+      await mkdir(root, { recursive: true, mode: 448 });
+      let handle2;
+      try {
+        handle2 = await open2(path, "wx", 384);
+      } catch {
+        let stale = false;
+        try {
+          const pid = Number((await readFile(path, "utf8")).trim());
+          if (!Number.isFinite(pid) || pid <= 0) stale = true;
+          else process.kill(pid, 0);
+        } catch (error62) {
+          stale = error62?.code === "ESRCH";
+        }
+        if (!stale) throw new Error(`store is already open for writing: ${path}`);
+        await rm(path, { force: true });
+        handle2 = await open2(path, "wx", 384);
+      }
+      await handle2.writeFile(`${process.pid}
+`);
+      await handle2.close();
+      return async () => {
+        try {
+          const held = (await readFile(path, "utf8")).trim();
+          if (held === String(process.pid)) await rm(path, { force: true });
+        } catch {
+        }
+      };
+    }
+  };
+}
+
+// ../vexnar-store/src/meta-store.ts
+import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
+function metaStore(root) {
+  const file2 = join2(root, "meta.json");
+  let cache = null;
+  async function load() {
+    if (cache) return cache;
+    try {
+      const parsed = JSON.parse(await readFile2(file2, "utf8"));
+      cache = parsed.tables ?? parsed;
+    } catch {
+      cache = {};
+    }
+    return cache;
+  }
+  return {
+    backend: "json",
+    load,
+    reload() {
+      cache = null;
+    },
+    async table(name) {
+      const tables = await load();
+      return tables[name] ?? [];
+    },
+    async save(next) {
+      cache = next;
+      await mkdir2(dirname(file2), { recursive: true, mode: 448 });
+      const temp = `${file2}.tmp`;
+      await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
+`, { mode: 384 });
+      await rename2(temp, file2);
+    }
+  };
+}
+
+// ../vexnar-store/src/json-store.ts
+import { mkdir as mkdir4 } from "node:fs/promises";
+
+// ../vexnar-store/src/per-record.ts
+import { mkdir as mkdir3, readdir as readdir2, readFile as readFile3, rename as rename3, rm as rm2, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join3 } from "node:path";
 async function readPerRecord(root, table, schema) {
-  const dir = join(root, table);
+  const dir = join3(root, table);
   let names;
   try {
-    names = await readdir(dir);
+    names = await readdir2(dir);
   } catch {
     return [];
   }
@@ -27015,7 +27568,7 @@ async function readPerRecord(root, table, schema) {
   for (const name of names) {
     if (!name.endsWith(".json") || name.endsWith(".tmp")) continue;
     try {
-      const doc = JSON.parse(await readFile(join(dir, name), "utf8"));
+      const doc = JSON.parse(await readFile3(join3(dir, name), "utf8"));
       rows.push(schema.parse(doc.record ?? doc));
     } catch {
     }
@@ -27024,19 +27577,20 @@ async function readPerRecord(root, table, schema) {
 }
 
 // ../vexnar-store/src/json-store.ts
-function jsonStore(root) {
+function createStore(backend2, readTable, init = async () => {
+}, cacheEnabled = true) {
   const cache = {};
   async function load(key, schema) {
-    if (cache[key]) return cache[key];
-    cache[key] = await readPerRecord(root, key, schema);
-    return cache[key];
+    if (cacheEnabled && cache[key]) return cache[key];
+    const rows = await readTable(key, schema);
+    if (cacheEnabled) cache[key] = rows;
+    return rows;
   }
   return {
-    backend: "json",
-    async init() {
-      await mkdir2(root, { recursive: true, mode: 448 });
-    },
-    invalidate(tables) {
+    backend: backend2,
+    init,
+    async invalidate(tables) {
+      if (!cacheEnabled) return;
       if (!tables) {
         for (const key of Object.keys(cache)) delete cache[key];
         return;
@@ -27322,530 +27876,165 @@ function jsonStore(root) {
     }
   };
 }
-
-// ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs
-var import_lib = __toESM(require_lib2(), 1);
-var Client = import_lib.default.Client;
-var Pool = import_lib.default.Pool;
-var Connection = import_lib.default.Connection;
-var types = import_lib.default.types;
-var Query = import_lib.default.Query;
-var DatabaseError = import_lib.default.DatabaseError;
-var escapeIdentifier = import_lib.default.escapeIdentifier;
-var escapeLiteral = import_lib.default.escapeLiteral;
-var Result = import_lib.default.Result;
-var TypeOverrides = import_lib.default.TypeOverrides;
-var defaults = import_lib.default.defaults;
-var esm_default = import_lib.default;
-
-// ../vexnar-store/src/pg-store.ts
-esm_default.types.setTypeParser(20, (value) => Number(value));
-function pgStore(connection) {
-  const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
-  const q = async (text, values = []) => (await pool.query(text, values)).rows;
-  const rfc = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
-  const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
-  return {
-    backend: "postgres",
-    pool,
-    async init() {
-      await pool.query("select 1");
-    },
-    tasks: {
-      list: async () => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks ORDER BY tasks.id DESC`);
-        return rows.map((row) => taskRow.parse({ ...row, exploration_id: Number(row.exploration_id) }));
-      },
-      get: async (id) => {
-        const rows = await q(`SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
-          category_id, pinned_at, llm_profile_id, active_llm_profile_id, coverage_enabled,
-          ${rfc("created_at")} AS created_at_text, floor(extract(epoch from created_at))::bigint AS created_unix,
-          ${rfc("completed_at")} AS completed_at_text, coalesce(floor(extract(epoch from completed_at)),0)::bigint AS completed_unix
-          FROM tasks WHERE id = $1`, [id]);
-        return rows[0] ? taskRow.parse({ ...rows[0], exploration_id: Number(rows[0].exploration_id) }) : void 0;
-      }
-    },
-    findings: {
-      list: async (limit = 500) => {
-        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, evidence_version, report_evidence_version,
-          task_id::text AS task_id, ${rfc("created_at")} AS created_at_text
-          FROM findings ORDER BY created_at DESC LIMIT $1`, [limit]);
-        return rows.map((row) => findingRow.parse(row));
-      },
-      get: async (id) => {
-        const rows = await q(`SELECT id::text AS id, node_id::text AS node_id, vulnclass, name, severity, status, summary, evidence, report, evidence_version, report_evidence_version,
-          task_id::text AS task_id, ${rfc("created_at")} AS created_at_text
-          FROM findings WHERE id = $1 OR node_id = $1 LIMIT 1`, [id]);
-        return rows[0] ? findingRow.parse(rows[0]) : void 0;
-      },
-      stats: async () => {
-        const [row] = await q(`SELECT count(*)::int AS total,
-          count(*) FILTER (WHERE status = 'pending')::int AS pending,
-          count(*) FILTER (WHERE severity = 'critical')::int AS critical,
-          count(*) FILTER (WHERE severity = 'high')::int AS high,
-          count(*) FILTER (WHERE severity = 'medium')::int AS medium,
-          count(*) FILTER (WHERE severity = 'low')::int AS low FROM findings`);
-        const classes = await q(`SELECT DISTINCT vulnclass FROM findings WHERE vulnclass <> '' ORDER BY vulnclass`);
-        const tasks = await q(`SELECT f.task_id AS id, coalesce(t.name,'') AS name, coalesce(t.description,'') AS description,
-          count(*)::int AS count FROM findings f LEFT JOIN tasks t ON t.id = f.task_id
-          WHERE f.task_id IS NOT NULL GROUP BY f.task_id, t.name, t.description ORDER BY max(f.created_at) DESC`);
-        return { ...row, vulnclasses: classes.map((c) => c.vulnclass), tasks };
-      }
-    },
-    assets: {
-      list: async ({ type, taskId, limit = 20, offset = 0 }) => {
-        const filters = [];
-        const values = [limit, offset];
-        if (type) {
-          values.push(type);
-          filters.push(`a.type = $${values.length}`);
-        }
-        let linkIndex = 0;
-        if (taskId) {
-          values.push(taskId);
-          linkIndex = values.length;
-          filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
-        }
-        const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
-        const join9 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
-        const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-        const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
-          a.last_seen::text AS last_seen${linkSelect}
-          FROM assets a ${join9} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
-        const countValues = [];
-        const countFilters = [];
-        if (type) {
-          countValues.push(type);
-          countFilters.push(`type = $${countValues.length}`);
-        }
-        if (taskId) {
-          countValues.push(taskId);
-          countFilters.push(`$${countValues.length}::bigint = ANY(task_ids)`);
-        }
-        const [count] = await q(`SELECT count(*)::int AS n FROM assets ${countFilters.length ? `WHERE ${countFilters.join(" AND ")}` : ""}`, countValues);
-        return { rows: rows.map((row) => assetRow.parse({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id), task_source_node_id: row.task_source_node_id == null ? void 0 : Number(row.task_source_node_id) })), total: Number(count.n) };
-      },
-      counts: async (taskId) => {
-        const rows = await q(`SELECT type, count(*)::int AS n FROM assets ${taskId ? "WHERE $1::bigint = ANY(task_ids)" : ""} GROUP BY type`, taskId ? [taskId] : []);
-        return Object.fromEntries(rows.map((row) => [row.type, Number(row.n)]));
-      }
-    },
-    companies: {
-      list: async () => {
-        const rows = await q(`SELECT c.id, c.name, c.nkey, c.created_at::text AS created_at, c.updated_at::text AS updated_at,
-          (SELECT count(*)::int FROM assets a WHERE a.company_id = c.id) AS asset_count
-          FROM companies c ORDER BY c.name`);
-        const scopes = await q("SELECT id, company_id, kind, domain, net, value, raw, reason FROM company_scope");
-        const byCompany = /* @__PURE__ */ new Map();
-        for (const scope of scopes) {
-          const list = byCompany.get(Number(scope.company_id)) ?? [];
-          list.push({
-            id: Number(scope.id),
-            company_id: Number(scope.company_id),
-            kind: scope.kind,
-            ...scope.domain ? { domain: scope.domain } : {},
-            ...scope.net ? { net: scope.net } : {},
-            ...scope.value ? { value: scope.value } : {},
-            raw: scope.raw,
-            ...scope.reason ? { reason: scope.reason } : {}
-          });
-          byCompany.set(Number(scope.company_id), list);
-        }
-        return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }));
-      }
-    },
-    traffic: async (findingId) => {
-      const [finding] = await q("SELECT id, evidence_version, report_evidence_version FROM findings WHERE id = $1", [findingId]);
-      if (!finding) return null;
-      const rows = await q(`SELECT b.id, b.finding_id, b.snapshot_id, b.role, b.note, b.position,
-        to_char(b.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(b.created_at, 'OF') || ':00' AS created_at,
-        to_jsonb(s) AS snapshot FROM finding_traffic_bindings b JOIN traffic_evidence_snapshots s ON s.id=b.snapshot_id
-        WHERE b.finding_id=$1 ORDER BY b.position, b.id`, [findingId]);
-      return {
-        finding_id: String(finding.id),
-        version: Number(finding.evidence_version),
-        report_version: Number(finding.report_evidence_version),
-        bindings: rows.map((row) => ({ id: String(row.id), finding_id: String(row.finding_id), snapshot_id: String(row.snapshot_id), role: row.role, note: row.note ?? "", position: Number(row.position), created_at: row.created_at, snapshot: row.snapshot }))
-      };
-    },
-    schedules: {
-      list: async () => q(`SELECT id, name, prompt, frequency, time_of_day, run_on_device, notify, new_chat_each_run, model, effort, agent_key, enabled,
-        created_at::text AS created_at, COALESCE(last_fired_at::text,'') AS last_fired_at, COALESCE(next_fire_at::text,'') AS next_fire_at FROM schedules ORDER BY id`)
-    },
-    triggers: {
-      list: async (agentKey) => await q(`SELECT id, agent_key, enabled, interval_sec, on_finding, on_goal_met, on_task_timeout, on_tool_call, on_task_create,
-        interval_message, finding_message, goal_message, task_timeout_message, tool_call_message, task_create_message, tool_names,
-        COALESCE(last_fire::text,'') AS last_fire FROM agent_triggers WHERE agent_key=$1 ORDER BY id`, [agentKey])
-    },
-    coverage: async (taskId) => {
-      const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
-      if (!task) return { scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] };
-      const [scope] = await q(`SELECT count(*)::int AS n FROM task_scope ts JOIN (SELECT $1::bigint AS task_id UNION ALL SELECT source_task_id FROM task_relations WHERE task_id=$1) ctx ON ctx.task_id=ts.task_id`, [taskId]);
-      const rows = await q(`WITH context_tasks AS (
-        SELECT t.id AS task_id, t.exploration_id FROM tasks t WHERE t.id=$1 AND t.deleted_at IS NULL
-        UNION ALL
-        SELECT source.id, source.exploration_id FROM task_relations relation
-        JOIN tasks source ON source.id=relation.source_task_id AND source.deleted_at IS NULL WHERE relation.task_id=$1),
-        target AS (
-          SELECT DISTINCT a.id, a.type FROM assets a JOIN task_scope ts ON (
-            (ts.kind='company' AND a.company_id = ts.company_id)
-            OR (ts.kind='root_domain' AND a.root_domain = ts.domain)
-            OR (ts.kind='subdomain' AND a.domain = ts.domain)
-            OR (ts.kind IN ('ip','cidr') AND ts.net >>= try_inet(a.ip))
-            OR (ts.kind='icp' AND (lower(regexp_replace(COALESCE(a.icp,''), '[[:space:]]+', '', 'g')) = ts.value
-              OR lower(regexp_replace(COALESCE(a.app_icp,''), '[[:space:]]+', '', 'g')) = ts.value)))
-          JOIN context_tasks ctx ON ctx.task_id=ts.task_id
-          UNION
-          SELECT a.id, a.type FROM assets a
-          JOIN exploration_anchors ea ON ea.asset_id=a.id
-          JOIN exploration_nodes en ON en.id=ea.node_id
-          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id),
-        tested AS (
-          SELECT DISTINCT ea.asset_id FROM exploration_anchors ea
-          JOIN exploration_nodes en ON en.id=ea.node_id AND en.kind='fact'
-          JOIN context_tasks ctx ON ctx.exploration_id=en.exploration_id)
-        SELECT t.type, count(*)::int AS total, count(*) FILTER (WHERE t.id IN (SELECT asset_id FROM tested))::int AS tested
-        FROM target t GROUP BY t.type ORDER BY t.type`, [taskId]);
-      const denominator = rows.reduce((sum, row) => sum + Number(row.total), 0);
-      const tested = rows.reduce((sum, row) => sum + Number(row.tested), 0);
-      return {
-        scope_rows: Number(scope.n),
-        denominator,
-        tested,
-        pct: denominator > 0 ? tested / denominator : null,
-        by_type: rows.map((row) => ({ type: row.type, total: Number(row.total), tested: Number(row.tested) }))
-      };
-    },
-    constraints: {
-      list: async (taskId) => {
-        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
-        if (!task) return [];
-        return q("SELECT id, kind, text, COALESCE(origin,'') AS origin, created_at::text AS created_at FROM task_constraints WHERE exploration_id = $1 ORDER BY (kind='deny'), id", [task.exploration_id]);
-      }
-    },
-    activity: {
-      history: async ({ taskId, session = "", before = 0, limit = 200 }) => {
-        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
-        if (!task) return { items: [], snapshot: 0, hasMore: false };
-        const [max] = await q("SELECT coalesce(max(id),0)::bigint AS n FROM activity WHERE exploration_id = $1", [task.exploration_id]);
-        const filters = ["exploration_id = $1"];
-        const values = [task.exploration_id, limit + 1];
-        if (session.startsWith("intent:")) {
-          values.push(Number(session.slice(7)));
-          filters.push(`node_id = $${values.length}`);
-        } else if (session === "plan") filters.push("worker = 'planner'");
-        else {
-          filters.push("worker = 'mainagent'");
-          if (session.startsWith("main:")) {
-            values.push(Number(session.slice(5)));
-            filters.push(`coalesce(main_seg,0) = $${values.length}`);
-          }
-        }
-        if (before) {
-          values.push(before);
-          filters.push(`id < $${values.length}`);
-        }
-        const rows = await q(`SELECT id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata,
-          input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, main_seg,
-          to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at
-          FROM activity WHERE ${filters.join(" AND ")} ORDER BY id DESC LIMIT $2`, values);
-        return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit };
-      },
-      dailyTokens: async (days) => {
-        const rows = await q(`SELECT TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
-          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
-          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
-          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens
-          FROM activity WHERE kind='result' AND created_at >= NOW() - ($1 * INTERVAL '1 day')
-          GROUP BY day ORDER BY day`, [Math.max(Number(days) || 30, 1)]);
-        return rows.map((row) => ({ day: row.day, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens) }));
-      },
-      tokenStats: async (taskId) => {
-        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
-        if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } };
-        const workers = await q(`SELECT COALESCE(worker,'') AS worker,
-          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
-          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
-          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens,
-          COALESCE(SUM(cache_write_tokens),0)::bigint AS cache_write_tokens
-          FROM activity WHERE exploration_id = $1 AND kind = 'result' GROUP BY worker ORDER BY worker`, [task.exploration_id]);
-        const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
-        for (const row of workers) for (const key of Object.keys(total)) total[key] += Number(row[key]);
-        const sessions = await q(`SELECT CASE
-            WHEN COALESCE(a.worker,'')='mainagent' THEN 'main:' || COALESCE(a.main_seg,0)::text
-            WHEN COALESCE(a.worker,'')='planner' THEN 'plan'
-            WHEN n.id IS NOT NULL THEN 'intent:' || n.id::text
-            ELSE '' END AS session,
-          COALESCE(SUM(a.input_tokens),0)::bigint AS input_tokens,
-          COALESCE(SUM(a.output_tokens),0)::bigint AS output_tokens,
-          COALESCE(SUM(a.cache_read_tokens),0)::bigint AS cache_read_tokens,
-          COALESCE(SUM(a.cache_write_tokens),0)::bigint AS cache_write_tokens
-          FROM activity a LEFT JOIN exploration_nodes n ON n.id=a.node_id AND n.exploration_id=a.exploration_id AND n.kind='intent'
-          WHERE a.exploration_id=$1 AND a.kind='result' AND (COALESCE(a.worker,'') IN ('mainagent','planner') OR n.id IS NOT NULL)
-          GROUP BY session ORDER BY session`, [task.exploration_id]);
-        return { workers: workers.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), sessions: sessions.map((row) => ({ ...row, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens) })), total };
-      }
-    },
-    async taskMetrics() {
-      const rows = await q(`
-        SELECT task.exploration_id,
-          COALESCE(token_metrics.input_tokens,0)::bigint AS input_tokens,
-          COALESCE(token_metrics.output_tokens,0)::bigint AS output_tokens,
-          COALESCE(token_metrics.cache_read_tokens,0)::bigint AS cache_read_tokens,
-          COALESCE(token_metrics.cache_write_tokens,0)::bigint AS cache_write_tokens,
-          COALESCE(latest_activity.created_at,0)::bigint AS last_activity_unix,
-          COALESCE(goal_metrics.total,0)::int AS goals_total,
-          COALESCE(goal_metrics.met,0)::int AS goals_met,
-          COALESCE(intent_metrics.running,0)::int AS in_flight,
-          COALESCE(finding_metrics.critical,0)::int AS critical,
-          COALESCE(finding_metrics.high,0)::int AS high,
-          COALESCE(finding_metrics.medium,0)::int AS medium,
-          COALESCE(finding_metrics.low,0)::int AS low
-        FROM tasks task
-        LEFT JOIN LATERAL (
-          SELECT SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,
-                 SUM(cache_read_tokens) AS cache_read_tokens, SUM(cache_write_tokens) AS cache_write_tokens
-          FROM activity WHERE exploration_id = task.exploration_id AND kind = 'result'
-        ) token_metrics ON true
-        LEFT JOIN LATERAL (
-          SELECT EXTRACT(EPOCH FROM created_at)::bigint AS created_at FROM activity
-          WHERE exploration_id = task.exploration_id ORDER BY created_at DESC LIMIT 1
-        ) latest_activity ON true
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE state = 'met') AS met
-          FROM exploration_nodes WHERE exploration_id = task.exploration_id AND kind = 'goal'
-        ) goal_metrics ON true
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*) AS running FROM exploration_nodes
-          WHERE exploration_id = task.exploration_id AND kind = 'intent' AND state = 'running'
-        ) intent_metrics ON true
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*) FILTER (WHERE severity = 'critical') AS critical,
-                 COUNT(*) FILTER (WHERE severity = 'high') AS high,
-                 COUNT(*) FILTER (WHERE severity = 'medium') AS medium,
-                 COUNT(*) FILTER (WHERE severity = 'low') AS low
-          FROM findings WHERE task_id = task.id
-        ) finding_metrics ON true
-        WHERE task.deleted_at IS NULL`);
-      const out = /* @__PURE__ */ new Map();
-      for (const row of rows) {
-        out.set(Number(row.exploration_id), {
-          input_tokens: Number(row.input_tokens),
-          output_tokens: Number(row.output_tokens),
-          cache_read_tokens: Number(row.cache_read_tokens),
-          cache_write_tokens: Number(row.cache_write_tokens),
-          last_activity_unix: Number(row.last_activity_unix),
-          goals_total: Number(row.goals_total),
-          goals_met: Number(row.goals_met),
-          in_flight: Number(row.in_flight),
-          findings: { critical: Number(row.critical), high: Number(row.high), medium: Number(row.medium), low: Number(row.low) }
-        });
-      }
-      return out;
-    },
-    nodes: {
-      page: async ({ taskId, page, size, order: order2 = "desc", kinds = [], states = [], before }) => {
-        const [task] = await q("SELECT exploration_id FROM tasks WHERE id = $1", [taskId]);
-        if (!task) return { items: [], total: 0, edges: [] };
-        const filters = ["exploration_id = $1"];
-        const values = [task.exploration_id];
-        if (kinds.length) {
-          values.push(kinds);
-          filters.push(`kind = ANY($${values.length})`);
-        }
-        if (states.length) {
-          values.push(states);
-          filters.push(`state = ANY($${values.length})`);
-        }
-        if (before) {
-          values.push(Number(before));
-          filters.push(`id < $${values.length}`);
-        }
-        const where = filters.join(" AND ");
-        const [count] = await q(`SELECT count(*)::int AS n FROM exploration_nodes WHERE ${where}`, values);
-        const rows = await q(
-          `SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin,
-          ${ts("created_at")} AS created_at FROM exploration_nodes WHERE ${where}
-          ORDER BY id ${order2.toUpperCase()} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-          [...values, size, (page - 1) * size]
-        );
-        const items = rows.map((row) => nodeRow.parse(row));
-        const ids = items.map((row) => row.id);
-        const edges = ids.length ? await q("SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $2 AND (src_id = ANY($1::bigint[]) OR dst_id = ANY($1::bigint[]))", [ids, task.exploration_id]) : [];
-        return { items, total: Number(count.n), edges };
-      }
-    },
-    async edges(explorationId) {
-      return q("SELECT src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges WHERE exploration_id = $1", [explorationId]);
-    }
-  };
+function jsonStore(root) {
+  return createStore("json", (table, schema) => readPerRecord(root, table, schema), async () => {
+    await mkdir4(root, { recursive: true, mode: 448 });
+  });
 }
 
-// ../vexnar-store/src/meta-store.ts
-import { mkdir as mkdir3, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
-import { dirname, join as join2 } from "node:path";
-function metaStore(root) {
-  const file2 = join2(root, "meta.json");
-  let cache = null;
-  async function load() {
-    if (cache) return cache;
-    try {
-      const parsed = JSON.parse(await readFile2(file2, "utf8"));
-      cache = parsed.tables ?? parsed;
-    } catch {
-      cache = {};
-    }
-    return cache;
-  }
-  return {
-    backend: "json",
-    load,
-    reload() {
-      cache = null;
-    },
-    async table(name) {
-      const tables = await load();
-      return tables[name] ?? [];
-    },
-    async save(next) {
-      cache = next;
-      await mkdir3(dirname(file2), { recursive: true, mode: 448 });
-      const temp = `${file2}.tmp`;
-      await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
-`, { mode: 384 });
-      await rename2(temp, file2);
-    }
-  };
+// ../vexnar-store/src/sqlite.ts
+import { DatabaseSync } from "node:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname as dirname2 } from "node:path";
+function open3(path) {
+  mkdirSync(dirname2(path), { recursive: true, mode: 448 });
+  const db = new DatabaseSync(path);
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA synchronous = NORMAL");
+  db.exec("PRAGMA foreign_keys = ON");
+  db.exec("CREATE TABLE IF NOT EXISTS kv (tbl TEXT NOT NULL, key TEXT NOT NULL, record TEXT NOT NULL, PRIMARY KEY (tbl, key))");
+  db.exec("CREATE TABLE IF NOT EXISTS meta (tbl TEXT PRIMARY KEY, record TEXT NOT NULL)");
+  return db;
 }
-
-// ../vexnar-store/src/operations.ts
-import { readFile as readFile4, readdir as readdir3, rm as rm3 } from "node:fs/promises";
-import { join as join4 } from "node:path";
-
-// ../vexnar-store/src/writer.ts
-import { mkdir as mkdir4, open as open2, readFile as readFile3, readdir as readdir2, rename as rename3, rm as rm2, writeFile as writeFile3 } from "node:fs/promises";
-import { join as join3 } from "node:path";
-var StoreConflict = class extends Error {
-  constructor(table, key, expected, actual) {
-    super(`${table}/${key} revision ${actual}, expected ${expected}`);
-    this.table = table;
-    this.key = key;
-    this.expected = expected;
-    this.actual = actual;
-    this.name = "StoreConflict";
+var parse3 = (json2) => JSON.parse(json2);
+function sqliteWriter(path) {
+  const db = open3(path);
+  const getRec = db.prepare("SELECT record FROM kv WHERE tbl = ? AND key = ?");
+  const setRec = db.prepare("INSERT INTO kv (tbl, key, record) VALUES (?, ?, ?) ON CONFLICT(tbl, key) DO UPDATE SET record = excluded.record");
+  const delRec = db.prepare("DELETE FROM kv WHERE tbl = ? AND key = ?");
+  const listRec = db.prepare("SELECT key, record FROM kv WHERE tbl = ?");
+  function readSync(table, key) {
+    const row = getRec.get(table, key);
+    return row ? parse3(row.record) : null;
   }
-};
-var SAFE = /^[a-zA-Z0-9_-]+$/;
-function storeWriter(root) {
-  const journalDir = join3(root, "journal");
-  async function readRecord(table, key) {
-    try {
-      const doc = JSON.parse(await readFile3(join3(root, table, `${key}.json`), "utf8"));
-      return doc.record ?? doc;
-    } catch {
-      return null;
-    }
-  }
-  async function writeRecord(table, key, record2) {
-    if (!SAFE.test(key)) throw new Error(`unsafe key ${key}`);
-    const dir = join3(root, table);
-    await mkdir4(dir, { recursive: true, mode: 448 });
-    const file2 = join3(dir, `${key}.json`);
-    const temp = `${file2}.tmp`;
-    await writeFile3(temp, `${JSON.stringify({ version: 1, record: record2 }, null, 2)}
-`, { mode: 384 });
-    await rename3(temp, file2);
-  }
-  async function apply(op) {
-    const current = await readRecord(op.table, op.key);
+  function applySync(op) {
+    const current = readSync(op.table, op.key);
     const actual = Number(current?.rev ?? 0);
     if (op.expectedRev !== void 0 && actual !== op.expectedRev) {
       throw new StoreConflict(op.table, op.key, op.expectedRev, actual);
     }
     const next = { ...op.record, rev: actual + 1 };
-    await writeRecord(op.table, op.key, next);
+    setRec.run(op.table, op.key, JSON.stringify(next));
     return next;
   }
   return {
-    readRecord,
-    async put(op) {
-      return apply(op);
+    async readRecord(table, key) {
+      return readSync(table, key);
     },
-    /** Journaled multi-entity commit: prepared → apply → committed. */
-    async commit(ops) {
-      await mkdir4(journalDir, { recursive: true, mode: 448 });
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const file2 = join3(journalDir, `${id}.json`);
-      await writeFile3(file2, `${JSON.stringify({ state: "prepared", ops }, null, 2)}
-`, { mode: 384 });
-      const written = [];
+    async put(op) {
+      db.exec("BEGIN IMMEDIATE");
       try {
-        for (const op of ops) written.push(await apply(op));
+        const written = applySync(op);
+        db.exec("COMMIT");
+        return written;
       } catch (error62) {
-        await writeFile3(file2, `${JSON.stringify({ state: "failed", ops, error: String(error62) }, null, 2)}
-`, { mode: 384 });
+        db.exec("ROLLBACK");
         throw error62;
       }
-      await writeFile3(file2, `${JSON.stringify({ state: "committed", ops }, null, 2)}
-`, { mode: 384 });
-      return written;
     },
-    /** Replay prepared or failed commits after a crash. */
+    async commit(ops) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const written = [];
+        for (const op of ops) written.push(applySync(op));
+        db.exec("COMMIT");
+        return written;
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
+    },
+    async list(table) {
+      const rows = listRec.all(table);
+      return rows.map((row) => parse3(row.record));
+    },
+    async maxKey(table) {
+      let max = 0;
+      for (const row of listRec.all(table)) {
+        const key = Number(row.key);
+        if (Number.isFinite(key)) max = Math.max(max, key);
+      }
+      return max;
+    },
+    async remove(table, key) {
+      delRec.run(table, key);
+    },
     async recover() {
-      let names = [];
-      try {
-        names = await readdir2(journalDir);
-      } catch {
-        return { replayed: 0 };
-      }
-      let replayed = 0;
-      for (const name of names.filter((file2) => file2.endsWith(".json"))) {
-        const path = join3(journalDir, name);
-        const journal = JSON.parse(await readFile3(path, "utf8"));
-        if (journal.state !== "prepared") continue;
-        for (const op of journal.ops) await apply({ ...op, expectedRev: void 0 });
-        await writeFile3(path, `${JSON.stringify({ ...journal, state: "committed" }, null, 2)}
-`, { mode: 384 });
-        replayed += 1;
-      }
-      return { replayed };
+      return { replayed: 0 };
     },
-    /** Single-writer lock; a second process fails fast. */
     async lock() {
-      const path = join3(root, "store.lock");
-      await mkdir4(root, { recursive: true, mode: 448 });
-      let handle2;
-      try {
-        handle2 = await open2(path, "wx", 384);
-      } catch {
-        let stale = false;
-        try {
-          const pid = Number((await readFile3(path, "utf8")).trim());
-          if (!Number.isFinite(pid) || pid <= 0) stale = true;
-          else process.kill(pid, 0);
-        } catch (error62) {
-          stale = error62?.code === "ESRCH";
-        }
-        if (!stale) throw new Error(`store is already open for writing: ${path}`);
-        await rm2(path, { force: true });
-        handle2 = await open2(path, "wx", 384);
-      }
-      await handle2.writeFile(`${process.pid}
-`);
-      await handle2.close();
-      return async () => {
-        try {
-          const held = (await readFile3(path, "utf8")).trim();
-          if (held === String(process.pid)) await rm2(path, { force: true });
-        } catch {
-        }
+      return () => {
       };
     }
   };
+}
+function sqliteMetaStore(path) {
+  const db = open3(path);
+  const getMeta = db.prepare("SELECT record FROM meta WHERE tbl = ?");
+  const setMeta = db.prepare("INSERT INTO meta (tbl, record) VALUES (?, ?) ON CONFLICT(tbl) DO UPDATE SET record = excluded.record");
+  const listMeta = db.prepare("SELECT tbl, record FROM meta");
+  return {
+    backend: "sqlite",
+    async load() {
+      const out = {};
+      for (const row of listMeta.all()) out[row.tbl] = parse3(row.record);
+      return out;
+    },
+    reload() {
+    },
+    async table(name) {
+      const row = getMeta.get(name);
+      return row ? parse3(row.record) : [];
+    },
+    async save(next) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        for (const [tbl, rows] of Object.entries(next)) setMeta.run(tbl, JSON.stringify(rows));
+        db.exec("COMMIT");
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
+    }
+  };
+}
+function sqliteStore(path) {
+  const db = open3(path);
+  const listRec = db.prepare("SELECT record FROM kv WHERE tbl = ?");
+  return createStore("sqlite", async (table, schema) => {
+    const rows = listRec.all(table);
+    const out = [];
+    for (const row of rows) {
+      try {
+        out.push(schema.parse(parse3(row.record)));
+      } catch {
+      }
+    }
+    return out;
+  }, async () => {
+  }, false);
+}
+
+// ../vexnar-store/src/backend.ts
+function storeRoot() {
+  return process.env.VEXNAR_STORE_ROOT || join4(process.env.DSH_HOME || join4(homedir(), ".dsh"), "vexnar", "store");
+}
+function dbPath(root = storeRoot()) {
+  return process.env.VEXNAR_SQLITE_PATH || join4(root, "vexnar.sqlite");
+}
+function backend() {
+  return (process.env.VEXNAR_STORE || "sqlite").toLowerCase() === "json" ? "json" : "sqlite";
+}
+function openWriter(root = storeRoot()) {
+  return backend() === "sqlite" ? sqliteWriter(dbPath(root)) : storeWriter(root);
+}
+function openMeta(root = storeRoot()) {
+  return backend() === "sqlite" ? sqliteMetaStore(dbPath(root)) : metaStore(root);
+}
+async function openStore(root = storeRoot()) {
+  const store2 = backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
+  await store2.init();
+  return store2;
 }
 
 // ../vexnar-store/src/operations.ts
@@ -27857,21 +28046,9 @@ function rfc3339(date5) {
   const pad = (value) => String(Math.floor(Math.abs(value))).padStart(2, "0");
   return `${date5.toISOString().slice(0, 23)}${sign}${pad(offset / 60)}:${pad(offset % 60)}`.replace("Z", "");
 }
-async function maxNumericKey(dir) {
-  let max = 0;
-  try {
-    for (const name of await readdir3(dir)) {
-      if (!name.endsWith(".json")) continue;
-      const key = Number(name.slice(0, -5));
-      if (Number.isFinite(key)) max = Math.max(max, key);
-    }
-  } catch {
-  }
-  return max;
-}
-function storeOperations(root) {
-  const writer = storeWriter(root);
-  const meta4 = metaStore(root);
+function storeOperations(_root) {
+  const writer = openWriter(_root);
+  const meta4 = openMeta(_root);
   async function metaTable(name) {
     meta4.reload();
     const tables = await meta4.load();
@@ -27884,16 +28061,10 @@ function storeOperations(root) {
     const goal = String(input2.goal ?? "").trim();
     if (!description) throw Object.assign(new Error("description \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     if (!goal) throw Object.assign(new Error("goal \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-    const taskDir = join4(root, "tasks");
-    const id = await maxNumericKey(taskDir) + 1;
+    const id = await writer.maxKey("tasks") + 1;
     let explorationId = 1;
-    try {
-      for (const name of await readdir3(taskDir)) {
-        if (!name.endsWith(".json")) continue;
-        const doc = JSON.parse(await readFile4(join4(taskDir, name), "utf8"));
-        explorationId = Math.max(explorationId, Number(doc.record?.exploration_id ?? 0) + 1);
-      }
-    } catch {
+    for (const task of await writer.list("tasks")) {
+      explorationId = Math.max(explorationId, Number(task.exploration_id ?? 0) + 1);
     }
     const now = /* @__PURE__ */ new Date();
     const record2 = {
@@ -27950,8 +28121,8 @@ function storeOperations(root) {
       }
       intentKey = String(input2.intent_id);
     }
-    const nodeId = await maxNumericKey(join4(root, "nodes")) + 1;
-    const findingId = await maxNumericKey(join4(root, "findings")) + 1;
+    const nodeId = await writer.maxKey("nodes") + 1;
+    const findingId = await writer.maxKey("findings") + 1;
     const now = /* @__PURE__ */ new Date();
     const worker = String(input2.worker ?? "");
     const node2 = {
@@ -28055,16 +28226,11 @@ function storeOperations(root) {
     if (index < 0) throw Object.assign(new Error("\u5206\u7C7B\u4E0D\u5B58\u5728"), { status: 404 });
     rows.splice(index, 1);
     await meta4.save(tables);
-    try {
-      for (const name of await readdir3(join4(root, "tasks"))) {
-        if (!name.endsWith(".json")) continue;
-        const doc = JSON.parse(await readFile4(join4(root, "tasks", name), "utf8"));
-        if (String(doc.record?.category_id ?? "") !== String(id)) continue;
-        const next = { ...doc.record, category_id: null };
-        delete next.rev;
-        await writer.commit([{ table: "tasks", key: String(doc.record.id), record: next, expectedRev: Number(doc.record.rev ?? 0) }]);
-      }
-    } catch {
+    for (const task of await writer.list("tasks")) {
+      if (String(task.category_id ?? "") !== String(id)) continue;
+      const next = { ...task, category_id: null };
+      delete next.rev;
+      await writer.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
     }
     return { deleted: Number(id) };
   }
@@ -28159,7 +28325,7 @@ function storeOperations(root) {
     const next = { ...asset, task_ids: ids.filter((id) => id !== Number(taskId)) };
     delete next.rev;
     await writer.commit([{ table: "assets", key: assetId, record: next, expectedRev: Number(asset.rev ?? 0) }]);
-    await rm3(join4(root, "task_asset_links", `${taskId}-${assetId}.json`), { force: true });
+    await writer.remove("task_asset_links", `${taskId}-${assetId}`);
     return { detached: Number(assetId) };
   }
   async function addScope(taskId, input2) {
@@ -28172,14 +28338,7 @@ function storeOperations(root) {
     let scopesExisting = 0;
     let assetsLinked = 0;
     let assetsExisting = 0;
-    const existing = [];
-    try {
-      for (const name of await readdir3(join4(root, "task_scope"))) {
-        if (!name.endsWith(".json")) continue;
-        existing.push(JSON.parse(await readFile4(join4(root, "task_scope", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const existing = await writer.list("task_scope");
     const duplicate = existing.some((row) => String(row.task_id) === String(task.id) && row.kind === kind && row.value === value);
     const scopeId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1;
     const ops = [];
@@ -28194,14 +28353,7 @@ function storeOperations(root) {
       scopesAdded += 1;
     }
     if (kind === "domain" || kind === "ip") {
-      const assets = await (async () => {
-        const rows = [];
-        for (const name of await readdir3(join4(root, "assets"))) {
-          if (!name.endsWith(".json")) continue;
-          rows.push(JSON.parse(await readFile4(join4(root, "assets", name), "utf8")).record);
-        }
-        return rows;
-      })();
+      const assets = await writer.list("assets");
       const found = assets.find((asset) => kind === "domain" ? asset.domain === value : asset.ip === value);
       if (found) {
         assetsExisting += 1;
@@ -28219,17 +28371,10 @@ function storeOperations(root) {
     return { requested: 1, assets_linked: assetsLinked, assets_existing: assetsExisting, scopes_added: scopesAdded, scopes_existing: scopesExisting };
   }
   async function deleteScope(taskId, scopeId) {
-    let rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "task_scope"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "task_scope", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("task_scope");
     const row = rows.find((item) => String(item.id) === String(scopeId) && String(item.task_id) === String(taskId));
     if (!row) throw Object.assign(new Error("scope \u4E0D\u5B58\u5728"), { status: 404 });
-    await rm3(join4(root, "task_scope", `${scopeId}.json`), { force: true });
+    await writer.remove("task_scope", `${scopeId}`);
     return { deleted: Number(scopeId) };
   }
   async function createChannel(input2) {
@@ -28385,14 +28530,7 @@ function storeOperations(root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     if (task.archived_at_text) throw Object.assign(new Error("task \u5DF2\u5F52\u6863"), { status: 409 });
     const now = /* @__PURE__ */ new Date();
-    const existing = [];
-    try {
-      for (const name of await readdir3(join4(root, "archives"))) {
-        if (!name.endsWith(".json")) continue;
-        existing.push(JSON.parse(await readFile4(join4(root, "archives", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const existing = await writer.list("archives");
     const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1;
     const archive = {
       id: archiveId,
@@ -28425,14 +28563,7 @@ function storeOperations(root) {
     return archive;
   }
   async function listArchives() {
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "archives"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "archives", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("archives");
     return rows.sort((a, b) => Number(b.id) - Number(a.id));
   }
   async function restoreArchive(archiveId) {
@@ -28444,7 +28575,7 @@ function storeOperations(root) {
       delete next.rev;
       await writer.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
     }
-    await rm3(join4(root, "archives", `${archiveId}.json`), { force: true });
+    await writer.remove("archives", `${archiveId}`);
     return archive;
   }
   async function deleteArchive(archiveId) {
@@ -28457,7 +28588,7 @@ function storeOperations(root) {
       delete next.rev;
       await writer.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
     }
-    await rm3(join4(root, "archives", `${archiveId}.json`), { force: true });
+    await writer.remove("archives", `${archiveId}`);
     return archive;
   }
   async function addGoal(taskId, input2) {
@@ -28466,14 +28597,7 @@ function storeOperations(root) {
     const text = String(input2.text ?? "").trim();
     if (!text) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const explorationId = Number(task.exploration_id);
-    const nodes = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        nodes.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const nodes = await writer.list("nodes");
     const nodeId = Math.max(0, ...nodes.map((node2) => Number(node2.id))) + 1;
     const payload = { text };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
@@ -28508,15 +28632,11 @@ function storeOperations(root) {
   async function deleteGoal(taskId, goalId) {
     const node2 = await writer.readRecord("nodes", goalId);
     if (!node2 || node2.kind !== "goal") throw Object.assign(new Error("\u76EE\u6807\u4E0D\u5B58\u5728"), { status: 404 });
-    await rm3(join4(root, "nodes", `${goalId}.json`), { force: true });
-    try {
-      for (const name of await readdir3(join4(root, "edges"))) {
-        if (!name.endsWith(".json")) continue;
-        const path = join4(root, "edges", name);
-        const edge = JSON.parse(await readFile4(path, "utf8")).record;
-        if (String(edge.src) === String(goalId) || String(edge.dst) === String(goalId)) await rm3(path, { force: true });
+    await writer.remove("nodes", `${goalId}`);
+    for (const edge of await writer.list("edges")) {
+      if (String(edge.src) === String(goalId) || String(edge.dst) === String(goalId)) {
+        await writer.remove("edges", `${edge.src}-${edge.rel}-${edge.dst}`);
       }
-    } catch {
     }
     return { deleted: Number(goalId) };
   }
@@ -28553,15 +28673,11 @@ function storeOperations(root) {
       await writer.commit([{ table: "nodes", key: intentId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
       return { id: Number(intentId), state: "deleted" };
     }
-    await rm3(join4(root, "nodes", `${intentId}.json`), { force: true });
-    try {
-      for (const name of await readdir3(join4(root, "edges"))) {
-        if (!name.endsWith(".json")) continue;
-        const path = join4(root, "edges", name);
-        const edge = JSON.parse(await readFile4(path, "utf8")).record;
-        if (String(edge.src) === String(intentId) || String(edge.dst) === String(intentId)) await rm3(path, { force: true });
+    await writer.remove("nodes", `${intentId}`);
+    for (const edge of await writer.list("edges")) {
+      if (String(edge.src) === String(intentId) || String(edge.dst) === String(intentId)) {
+        await writer.remove("edges", `${edge.src}-${edge.rel}-${edge.dst}`);
       }
-    } catch {
     }
     return { id: Number(intentId), state: "", deleted: { intents: 1, facts: 0, findings: 0, activities: 0 } };
   }
@@ -28579,14 +28695,7 @@ function storeOperations(root) {
   async function rerunBlocked(taskId) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    let rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("nodes");
     const blocked = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === "intent" && row.state === "blocked");
     for (const row of blocked) {
       const next = { ...row, state: "open" };
@@ -28611,14 +28720,7 @@ function storeOperations(root) {
     if (node2.state !== "paused") throw Object.assign(new Error("\u4EC5\u5DF2\u6682\u505C\u7684 Worker \u53EF\u4EE5\u53D1\u9001\u6D88\u606F\uFF0C\u8BF7\u5148\u6682\u505C"), { status: 409 });
     const next = { ...node2, state: "running" };
     delete next.rev;
-    const activity = [];
-    try {
-      for (const name of await readdir3(join4(root, "activity"))) {
-        if (!name.endsWith(".json")) continue;
-        activity.push(JSON.parse(await readFile4(join4(root, "activity", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const activity = await writer.list("activity");
     const activityId = Math.max(0, ...activity.map((row) => Number(row.id))) + 1;
     const now = /* @__PURE__ */ new Date();
     await writer.commit([
@@ -28649,14 +28751,7 @@ function storeOperations(root) {
     if (kind !== "allow" && kind !== "deny") throw Object.assign(new Error("kind \u9700\u4E3A allow \u6216 deny"), { status: 400 });
     const text = String(input2.text ?? "").trim();
     if (!text) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "constraints"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "constraints", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("constraints");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const record2 = { id, exploration_id: Number(task.exploration_id), kind, text, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
     await writer.commit([{ table: "constraints", key: String(id), record: record2 }]);
@@ -28682,7 +28777,7 @@ function storeOperations(root) {
   async function deleteConstraint(taskId, constraintId) {
     const node2 = await writer.readRecord("constraints", constraintId);
     if (!node2) throw Object.assign(new Error("\u7EA6\u675F\u4E0D\u5B58\u5728"), { status: 404 });
-    await rm3(join4(root, "constraints", `${constraintId}.json`), { force: true });
+    await writer.remove("constraints", `${constraintId}`);
     return { deleted: Number(constraintId) };
   }
   async function addNode(taskId, input2) {
@@ -28690,14 +28785,7 @@ function storeOperations(root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const kind = String(input2.kind ?? "");
     if (!["fact", "intent", "goal", "finding"].includes(kind)) throw Object.assign(new Error("kind \u9700\u4E3A fact/intent/goal/finding"), { status: 400 });
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("nodes");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const record2 = {
       id: String(id),
@@ -28755,14 +28843,7 @@ function storeOperations(root) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     await reclaimExpired(taskId);
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("nodes");
     const next = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === "intent" && row.state === "open").sort((a, b) => Number(b.priority) - Number(a.priority) || Number(a.id) - Number(b.id))[0];
     if (!next) return null;
     const leaseUntil = Math.floor(Date.now() / 1e3) + Math.max(Number(leaseSeconds) || 600, 1);
@@ -28775,14 +28856,7 @@ function storeOperations(root) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const now = Math.floor(Date.now() / 1e3);
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("nodes");
     const expired = rows.filter((row) => {
       if (Number(row.exploration_id) !== Number(task.exploration_id) || row.kind !== "intent" || row.state !== "running") return false;
       const payload = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
@@ -28798,14 +28872,7 @@ function storeOperations(root) {
   async function appendActivity(taskId, input2) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "activity"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "activity", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("activity");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const now = /* @__PURE__ */ new Date();
     const record2 = {
@@ -28826,14 +28893,7 @@ function storeOperations(root) {
   async function graphOverview(taskId) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    const nodes = [];
-    try {
-      for (const name of await readdir3(join4(root, "nodes"))) {
-        if (!name.endsWith(".json")) continue;
-        nodes.push(JSON.parse(await readFile4(join4(root, "nodes", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const nodes = await writer.list("nodes");
     const scoped = nodes.filter((node2) => Number(node2.exploration_id) === Number(task.exploration_id));
     const byKind = {};
     const byState = {};
@@ -28841,38 +28901,16 @@ function storeOperations(root) {
       byKind[node2.kind] = (byKind[node2.kind] ?? 0) + 1;
       byState[node2.state] = (byState[node2.state] ?? 0) + 1;
     }
-    let edges = 0;
-    try {
-      for (const name of await readdir3(join4(root, "edges"))) {
-        if (!name.endsWith(".json")) continue;
-        const edge = JSON.parse(await readFile4(join4(root, "edges", name), "utf8")).record;
-        if (Number(edge.exploration_id) === Number(task.exploration_id)) edges += 1;
-      }
-    } catch {
-    }
+    const edges = (await writer.list("edges")).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length;
     const anchors = (await (async () => {
-      const rows = [];
-      try {
-        for (const name of await readdir3(join4(root, "anchors"))) {
-          if (!name.endsWith(".json")) continue;
-          rows.push(JSON.parse(await readFile4(join4(root, "anchors", name), "utf8")).record);
-        }
-      } catch {
-      }
+      const rows = await writer.list("anchors");
       return rows;
     })()).filter((anchor2) => scoped.some((node2) => String(node2.id) === String(anchor2.node_id)));
     const openIntents = scoped.filter((node2) => node2.kind === "intent" && node2.state === "open").map((node2) => ({ id: String(node2.id), text: (typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload)?.text ?? "" }));
     return { by_kind: byKind, by_state: byState, edges, anchors: anchors.length, open_intents: openIntents.slice(0, 20) };
   }
   async function importAssets(inputs) {
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "assets"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "assets", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("assets");
     let nextId = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     let created = 0;
     let existing = 0;
@@ -28906,14 +28944,7 @@ function storeOperations(root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const type = String(input2.type ?? "").trim();
     if (!type) throw Object.assign(new Error("type \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "assets"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "assets", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("assets");
     const sameAsset = (row) => {
       if (row.type !== type) return false;
       if (input2.url) return row.url === input2.url;
@@ -28976,14 +29007,7 @@ function storeOperations(root) {
     return { node_id: Number(nodeId), asset_id: Number(assetId) };
   }
   async function createTrigger(agentKey, input2) {
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "agent_triggers"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "agent_triggers", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("agent_triggers");
     const interval = Number(input2.interval_sec ?? 0);
     const flags = ["on_finding", "on_goal_met", "on_task_timeout", "on_tool_call", "on_task_create"].filter((key) => input2[key]);
     if (interval <= 0 && !flags.length) throw Object.assign(new Error("\u81F3\u5C11\u914D\u7F6E\u4E00\u4E2A\u89E6\u53D1\u6761\u4EF6"), { status: 400 });
@@ -29024,7 +29048,7 @@ function storeOperations(root) {
   async function deleteTrigger(agentKey, id) {
     const current = await writer.readRecord("agent_triggers", id);
     if (!current || current.agent_key !== agentKey) throw Object.assign(new Error("\u89E6\u53D1\u5668\u4E0D\u5B58\u5728"), { status: 404 });
-    await rm3(join4(root, "agent_triggers", `${id}.json`), { force: true });
+    await writer.remove("agent_triggers", `${id}`);
     return { deleted: Number(id) };
   }
   function nextFire2(frequency, timeOfDay, from = /* @__PURE__ */ new Date()) {
@@ -29043,14 +29067,7 @@ function storeOperations(root) {
     if (!name) throw Object.assign(new Error("name \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     if (!prompt) throw Object.assign(new Error("prompt \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     if (!["daily", "weekly", "monthly"].includes(frequency)) throw Object.assign(new Error("frequency \u9700\u4E3A daily/weekly/monthly"), { status: 400 });
-    const rows = [];
-    try {
-      for (const file2 of await readdir3(join4(root, "schedules"))) {
-        if (!file2.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "schedules", file2), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("schedules");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const now = /* @__PURE__ */ new Date();
     const record2 = {
@@ -29088,14 +29105,7 @@ function storeOperations(root) {
     return written;
   }
   async function recordDelivery(input2) {
-    const rows = [];
-    try {
-      for (const name of await readdir3(join4(root, "notification_deliveries"))) {
-        if (!name.endsWith(".json")) continue;
-        rows.push(JSON.parse(await readFile4(join4(root, "notification_deliveries", name), "utf8")).record);
-      }
-    } catch {
-    }
+    const rows = await writer.list("notification_deliveries");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const record2 = {
       id,
@@ -29121,7 +29131,7 @@ function storeOperations(root) {
   async function deleteSchedule(id) {
     const current = await writer.readRecord("schedules", id);
     if (!current) throw Object.assign(new Error("schedule \u4E0D\u5B58\u5728"), { status: 404 });
-    await rm3(join4(root, "schedules", `${id}.json`), { force: true });
+    await writer.remove("schedules", `${id}`);
     return { deleted: Number(id) };
   }
   return { writer, importAssets, updateNodePayload, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer };
@@ -29742,7 +29752,7 @@ function createRunner(options = {}) {
 
 // ../vexnar-store/src/blobs.ts
 import { createHash } from "node:crypto";
-import { mkdir as mkdir5, readFile as readFile5, rename as rename4, stat, writeFile as writeFile4 } from "node:fs/promises";
+import { mkdir as mkdir5, readFile as readFile4, rename as rename4, stat, writeFile as writeFile4 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 function blobStore(root) {
   const dir = join5(root, "evidence", "blobs", "sha256");
@@ -29759,7 +29769,7 @@ function blobStore(root) {
       return { hash: hash2, size: buffer.length };
     },
     async read(hash2) {
-      return readFile5(path(hash2));
+      return readFile4(path(hash2));
     },
     async size(hash2) {
       try {
@@ -30016,7 +30026,7 @@ function createTaskQueue(options = {}) {
 }
 
 // ../vexnar-store/src/report.ts
-import { mkdir as mkdir6, readdir as readdir4, readFile as readFile6, rename as rename5, writeFile as writeFile5 } from "node:fs/promises";
+import { mkdir as mkdir6, readdir as readdir3, readFile as readFile5, rename as rename5, writeFile as writeFile5 } from "node:fs/promises";
 import { join as join6 } from "node:path";
 async function saveReport(root, taskId, markdown, stats, ext = "md") {
   const dir = join6(root, "reports");
@@ -30063,9 +30073,9 @@ async function listReports(root, taskId) {
   const dir = join6(root, "reports");
   const out = [];
   try {
-    for (const name of await readdir4(dir)) {
+    for (const name of await readdir3(dir)) {
       if (!name.endsWith(".md") || !name.startsWith(`${taskId}-`)) continue;
-      const content = await readFile6(join6(dir, name), "utf8");
+      const content = await readFile5(join6(dir, name), "utf8");
       out.push({ id: name.slice(0, -3), bytes: Buffer.byteLength(content) });
     }
   } catch {
@@ -30113,21 +30123,16 @@ function buildReport(input2) {
 }
 
 // ../vexnar-store/src/index.ts
-function storeRoot() {
-  return process.env.VEXNAR_STORE_ROOT || join7(process.env.DSH_HOME || join7(homedir(), ".dsh"), "vexnar", "store");
-}
-async function openStore(pgConnection) {
-  const backend = (process.env.VEXNAR_STORE || "json").toLowerCase();
-  if (backend === "postgres") {
-    const connection = pgConnection ?? fromUrl(process.env.VEXNAR_PG_URL);
+async function openStore2(root) {
+  const mode = (process.env.VEXNAR_STORE || "sqlite").toLowerCase();
+  if (mode === "postgres") {
+    const connection = fromUrl(process.env.VEXNAR_PG_URL);
     if (!connection) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_URL or a pg connection");
-    const store3 = pgStore(connection);
-    await store3.init();
-    return store3;
+    const store2 = pgStore(connection);
+    await store2.init();
+    return store2;
   }
-  const store2 = jsonStore(storeRoot());
-  await store2.init();
-  return store2;
+  return openStore(root);
 }
 function fromUrl(url2) {
   if (!url2) return void 0;
@@ -30174,6 +30179,52 @@ async function gatewayComplete(messages) {
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== "string") throw Object.assign(new Error("gateway \u8FD4\u56DE\u7F3A\u5C11 content"), { status: 502 });
   return content;
+}
+
+// src/craft.ts
+import { spawn as spawn2 } from "node:child_process";
+var CLI = process.env.CRAFT_ANYTHING_CLI || `${process.env.HOME}/.dsh/plugins-data/craft-anything/craft-anything-cli`;
+function probe(args, input2, timeoutMs) {
+  return new Promise((resolve) => {
+    const child = spawn2(CLI, args, { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+    child.on("error", (error62) => {
+      clearTimeout(timer);
+      resolve({ code: null, stdout, stderr: String(error62) });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr });
+    });
+    child.stdin.end(input2);
+  });
+}
+async function craftStatus() {
+  const versionRun = await probe(["--version"], "", 5e3);
+  const version2 = versionRun.stdout.trim().split(" ").pop() ?? "";
+  const probeRun = await probe(["mcp"], [
+    JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "vexnar", version: "1" } } }),
+    JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
+    ""
+  ].join("\n"), 1e4);
+  const tools = [];
+  for (const line of probeRun.stdout.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const message = JSON.parse(line);
+      if (message.id === 2) for (const tool of message.result?.tools ?? []) tools.push(tool.name);
+    } catch {
+    }
+  }
+  return { installed: Boolean(version2), version: version2, path: CLI, tools, error: version2 ? "" : probeRun.stderr.slice(0, 200) };
 }
 
 // src/dsl.ts
@@ -30240,7 +30291,7 @@ function tokenize(text) {
   tokens.push({ kind: "EOF" });
   return tokens;
 }
-function parse3(tokens) {
+function parse4(tokens) {
   let pos = 0;
   const peek = () => tokens[pos];
   const consume = () => tokens[pos++];
@@ -30339,7 +30390,7 @@ function evalNode(asset, node2) {
 }
 function queryDSL(assets, dsl) {
   if (!dsl.trim()) return assets;
-  const node2 = parse3(tokenize(dsl));
+  const node2 = parse4(tokenize(dsl));
   if (!node2) return assets;
   return assets.filter((asset) => evalNode(asset, node2));
 }
@@ -30353,8 +30404,8 @@ function parseJson2(value) {
     return value;
   }
 }
-var store = await openStore();
-var meta3 = metaStore(storeRoot());
+var store = await openStore2();
+var meta3 = openMeta();
 var operations = storeOperations(storeRoot());
 var engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
 var scheduler = createScheduler({ concurrency: 4 });
@@ -31250,6 +31301,7 @@ api.post("/api/engine/work", async (c) => {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 500);
   }
 });
+api.get("/api/craft/status", async (c) => c.json(await craftStatus()));
 api.get("/api/engine/queue", (c) => c.json({ active: taskQueue.active, paused: taskQueue.pausedTasks, entries: taskQueue.status() }));
 api.post("/api/engine/queue/:taskId", async (c) => {
   const body = await c.req.json().catch(() => ({}));
@@ -31334,7 +31386,7 @@ api.get("/api/tasks/:id/reports/:reportId", async (c) => {
   const id = c.req.param("reportId");
   if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: "bad report id" }, 400);
   try {
-    const content = await readFile7(join8(storeRoot(), "reports", `${id}.md`), "utf8");
+    const content = await readFile6(join7(storeRoot(), "reports", `${id}.md`), "utf8");
     return new Response(content, { headers: { "content-type": "text/markdown; charset=utf-8" } });
   } catch {
     return c.json({ error: "\u62A5\u544A\u4E0D\u5B58\u5728" }, 404);

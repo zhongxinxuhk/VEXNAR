@@ -1,15 +1,12 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { jsonStore } from './json-store.js'
-import { metaStore } from './meta-store.js'
 import { pgStore } from './pg-store.js'
 import type { Store } from './types.js'
+import { backend, dbPath, openStore as openDefaultStore, openMeta, openWriter, storeRoot } from './backend.js'
 
 export type { Store } from './types.js'
-export { metaStore } from './meta-store.js'
+export { storeRoot, dbPath, backend, openWriter, openMeta } from './backend.js'
 export { storeOperations } from './operations.js'
 export { createEngine } from './engine.js'
 export { createRunner } from './exec.js'
@@ -22,28 +19,27 @@ export { startSchedules } from './schedules.js'
 export { createTaskQueue } from './queue.js'
 export { buildReport, buildReportHtml, escapeHtml, saveReport, listReports } from './report.js'
 export { storeWriter, StoreConflict } from './writer.js'
-
-export function storeRoot() {
-  return process.env.VEXNAR_STORE_ROOT || join(process.env.DSH_HOME || join(homedir(), '.dsh'), 'vexnar', 'store')
-}
+export { metaStore } from './meta-store.js'
 
 /**
- * Default backend is the dsh-style JSON store. PostgreSQL is opt-in:
- *   VEXNAR_STORE=postgres VEXNAR_PG_URL=postgres://...
+ * Default backend is SQLite (single file). `VEXNAR_STORE=json` falls back to the
+ * dsh-style per-record files, and `VEXNAR_STORE=postgres` keeps the legacy
+ * adapter for one-time imports only. `root` overrides the store directory.
  */
-export async function openStore(pgConnection?: Parameters<typeof pgStore>[0]): Promise<Store> {
-  const backend = (process.env.VEXNAR_STORE || 'json').toLowerCase()
-  if (backend === 'postgres') {
-    const connection = pgConnection ?? fromUrl(process.env.VEXNAR_PG_URL)
+export async function openStore(root?: string): Promise<Store> {
+  const mode = (process.env.VEXNAR_STORE || 'sqlite').toLowerCase()
+  if (mode === 'postgres') {
+    const connection = fromUrl(process.env.VEXNAR_PG_URL)
     if (!connection) throw new Error('VEXNAR_STORE=postgres requires VEXNAR_PG_URL or a pg connection')
     const store = pgStore(connection)
     await store.init()
     return store
   }
-  const store = jsonStore(storeRoot())
-  await store.init()
-  return store
+  return openDefaultStore(root)
 }
+
+void backend
+void dbPath
 
 function fromUrl(url?: string) {
   if (!url) return undefined

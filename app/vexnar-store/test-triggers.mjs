@@ -13,10 +13,7 @@ const ops = storeOperations(root)
 const scheduler = createScheduler({ concurrency: 4 })
 const store = { triggers: { list: async (agentKey) => {
   const rows = []
-  const { readdir, readFile } = await import('node:fs/promises')
-  for (const name of await readdir(join(root, 'agent_triggers')).catch(() => [])) {
-    if (name.endsWith('.json')) rows.push(JSON.parse(await readFile(join(root, 'agent_triggers', name), 'utf8')).record)
-  }
+  rows.push(...await ops.writer.list('agent_triggers'))
   return rows.filter((row) => row.agent_key === agentKey)
 } } }
 

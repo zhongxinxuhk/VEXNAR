@@ -13,13 +13,13 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, metaStore, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { craftStatus } from './craft.ts'
 import { queryDSL } from './dsl.ts'
 
 const store = await openStore()
-const meta = metaStore(storeRoot())
+const meta = openMeta()
 const operations = storeOperations(storeRoot())
 const engine = createEngine(store as any, operations as any, { runner: createRunner({ concurrency: 2 }) })
 const scheduler = createScheduler({ concurrency: 4 })

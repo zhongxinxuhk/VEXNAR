@@ -1,10 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { readFile, readdir, rm } from 'node:fs/promises'
-import { join } from 'node:path'
-import { storeWriter } from './writer.js'
-import { metaStore } from './meta-store.js'
+import { openWriter, openMeta } from './backend.js'
 
 const STATUSES = new Set(['pending', 'in_progress', 'confirmed', 'resolved', 'fixed', 'false_positive', 'ignored', 'duplicate', 'risk_accepted'])
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low'])
@@ -17,23 +14,9 @@ function rfc3339(date: Date) {
     .replace('Z', '')
 }
 
-async function maxNumericKey(dir: string) {
-  let max = 0
-  try {
-    for (const name of await readdir(dir)) {
-      if (!name.endsWith('.json')) continue
-      const key = Number(name.slice(0, -5))
-      if (Number.isFinite(key)) max = Math.max(max, key)
-    }
-  } catch {
-    // empty table
-  }
-  return max
-}
-
-export function storeOperations(root: string) {
-  const writer = storeWriter(root)
-  const meta = metaStore(root)
+export function storeOperations(_root?: string) {
+  const writer = openWriter(_root)
+  const meta = openMeta(_root)
 
   async function metaTable(name: string) {
     meta.reload()
@@ -49,17 +32,10 @@ export function storeOperations(root: string) {
     if (!description) throw Object.assign(new Error('description 不能为空'), { status: 400 })
     if (!goal) throw Object.assign(new Error('goal 不能为空'), { status: 400 })
 
-    const taskDir = join(root, 'tasks')
-    const id = (await maxNumericKey(taskDir)) + 1
+    const id = (await writer.maxKey('tasks')) + 1
     let explorationId = 1
-    try {
-      for (const name of await readdir(taskDir)) {
-        if (!name.endsWith('.json')) continue
-        const doc = JSON.parse(await readFile(join(taskDir, name), 'utf8'))
-        explorationId = Math.max(explorationId, Number(doc.record?.exploration_id ?? 0) + 1)
-      }
-    } catch {
-      // first task
+    for (const task of await writer.list('tasks')) {
+      explorationId = Math.max(explorationId, Number(task.exploration_id ?? 0) + 1)
     }
 
     const now = new Date()
@@ -131,8 +107,8 @@ export function storeOperations(root: string) {
       intentKey = String(input.intent_id)
     }
 
-    const nodeId = (await maxNumericKey(join(root, 'nodes'))) + 1
-    const findingId = (await maxNumericKey(join(root, 'findings'))) + 1
+    const nodeId = (await writer.maxKey('nodes')) + 1
+    const findingId = (await writer.maxKey('findings')) + 1
     const now = new Date()
     const worker = String(input.worker ?? '')
     const node = {
@@ -245,17 +221,11 @@ export function storeOperations(root: string) {
     rows.splice(index, 1)
     await meta.save(tables)
     // Detach tasks that referenced the category.
-    try {
-      for (const name of await readdir(join(root, 'tasks'))) {
-        if (!name.endsWith('.json')) continue
-        const doc = JSON.parse(await readFile(join(root, 'tasks', name), 'utf8'))
-        if (String(doc.record?.category_id ?? '') !== String(id)) continue
-        const next = { ...doc.record, category_id: null }
-        delete next.rev
-        await writer.commit([{ table: 'tasks', key: String(doc.record.id), record: next, expectedRev: Number(doc.record.rev ?? 0) }])
-      }
-    } catch {
-      // no tasks
+    for (const task of await writer.list('tasks')) {
+      if (String(task.category_id ?? '') !== String(id)) continue
+      const next = { ...task, category_id: null }
+      delete next.rev
+      await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
     }
     return { deleted: Number(id) }
   }
@@ -353,7 +323,7 @@ export function storeOperations(root: string) {
     const next = { ...asset, task_ids: ids.filter((id) => id !== Number(taskId)) }
     delete next.rev
     await writer.commit([{ table: 'assets', key: assetId, record: next, expectedRev: Number(asset.rev ?? 0) }])
-    await rm(join(root, 'task_asset_links', `${taskId}-${assetId}.json`), { force: true })
+    await writer.remove('task_asset_links', `${taskId}-${assetId}`)
     return { detached: Number(assetId) }
   }
 
@@ -367,15 +337,7 @@ export function storeOperations(root: string) {
     let scopesExisting = 0
     let assetsLinked = 0
     let assetsExisting = 0
-    const existing = []
-    try {
-      for (const name of await readdir(join(root, 'task_scope'))) {
-        if (!name.endsWith('.json')) continue
-        existing.push(JSON.parse(await readFile(join(root, 'task_scope', name), 'utf8')).record)
-      }
-    } catch {
-      // empty
-    }
+    const existing = await writer.list('task_scope')
     const duplicate = existing.some((row) => String(row.task_id) === String(task.id) && row.kind === kind && row.value === value)
     const scopeId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1
     const ops: Array<{ table: string; key: string; record: Record<string, unknown> }> = []
@@ -390,14 +352,7 @@ export function storeOperations(root: string) {
       scopesAdded += 1
     }
     if (kind === 'domain' || kind === 'ip') {
-      const assets = await (async () => {
-        const rows = []
-        for (const name of await readdir(join(root, 'assets'))) {
-          if (!name.endsWith('.json')) continue
-          rows.push(JSON.parse(await readFile(join(root, 'assets', name), 'utf8')).record)
-        }
-        return rows
-      })()
+      const assets = await writer.list('assets')
       const found = assets.find((asset) => (kind === 'domain' ? asset.domain === value : asset.ip === value))
       if (found) {
         assetsExisting += 1
@@ -416,18 +371,10 @@ export function storeOperations(root: string) {
   }
 
   async function deleteScope(taskId: string, scopeId: string) {
-    let rows = []
-    try {
-      for (const name of await readdir(join(root, 'task_scope'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'task_scope', name), 'utf8')).record)
-      }
-    } catch {
-      // empty
-    }
+    const rows = await writer.list('task_scope')
     const row = rows.find((item) => String(item.id) === String(scopeId) && String(item.task_id) === String(taskId))
     if (!row) throw Object.assign(new Error('scope 不存在'), { status: 404 })
-    await rm(join(root, 'task_scope', `${scopeId}.json`), { force: true })
+    await writer.remove('task_scope', `${scopeId}`)
     return { deleted: Number(scopeId) }
   }
 
@@ -584,15 +531,7 @@ export function storeOperations(root: string) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
     if (task.archived_at_text) throw Object.assign(new Error('task 已归档'), { status: 409 })
     const now = new Date()
-    const existing = []
-    try {
-      for (const name of await readdir(join(root, 'archives'))) {
-        if (!name.endsWith('.json')) continue
-        existing.push(JSON.parse(await readFile(join(root, 'archives', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const existing = await writer.list('archives')
     const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1
     const archive = {
       id: archiveId,
@@ -617,15 +556,7 @@ export function storeOperations(root: string) {
   }
 
   async function listArchives() {
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'archives'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'archives', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('archives')
     return rows.sort((a, b) => Number(b.id) - Number(a.id))
   }
 
@@ -638,7 +569,7 @@ export function storeOperations(root: string) {
       delete next.rev
       await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
     }
-    await rm(join(root, 'archives', `${archiveId}.json`), { force: true })
+    await writer.remove('archives', `${archiveId}`)
     return archive
   }
 
@@ -652,7 +583,7 @@ export function storeOperations(root: string) {
       delete next.rev
       await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
     }
-    await rm(join(root, 'archives', `${archiveId}.json`), { force: true })
+    await writer.remove('archives', `${archiveId}`)
     return archive
   }
 
@@ -662,15 +593,7 @@ export function storeOperations(root: string) {
     const text = String(input.text ?? '').trim()
     if (!text) throw Object.assign(new Error('目标内容不能为空'), { status: 400 })
     const explorationId = Number(task.exploration_id)
-    const nodes = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        nodes.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const nodes = await writer.list('nodes')
     const nodeId = Math.max(0, ...nodes.map((node) => Number(node.id))) + 1
     const payload: Record<string, unknown> = { text }
     if (String(input.vulnclass ?? '').trim()) payload.vulnclass = String(input.vulnclass).trim()
@@ -701,16 +624,11 @@ export function storeOperations(root: string) {
   async function deleteGoal(taskId: string, goalId: string) {
     const node = await writer.readRecord('nodes', goalId)
     if (!node || node.kind !== 'goal') throw Object.assign(new Error('目标不存在'), { status: 404 })
-    await rm(join(root, 'nodes', `${goalId}.json`), { force: true })
-    try {
-      for (const name of await readdir(join(root, 'edges'))) {
-        if (!name.endsWith('.json')) continue
-        const path = join(root, 'edges', name)
-        const edge = JSON.parse(await readFile(path, 'utf8')).record
-        if (String(edge.src) === String(goalId) || String(edge.dst) === String(goalId)) await rm(path, { force: true })
+    await writer.remove('nodes', `${goalId}`)
+    for (const edge of await writer.list('edges')) {
+      if (String(edge.src) === String(goalId) || String(edge.dst) === String(goalId)) {
+        await writer.remove('edges', `${edge.src}-${edge.rel}-${edge.dst}`)
       }
-    } catch {
-      // no edges
     }
     return { deleted: Number(goalId) }
   }
@@ -748,16 +666,11 @@ export function storeOperations(root: string) {
       await writer.commit([{ table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) }])
       return { id: Number(intentId), state: 'deleted' }
     }
-    await rm(join(root, 'nodes', `${intentId}.json`), { force: true })
-    try {
-      for (const name of await readdir(join(root, 'edges'))) {
-        if (!name.endsWith('.json')) continue
-        const path = join(root, 'edges', name)
-        const edge = JSON.parse(await readFile(path, 'utf8')).record
-        if (String(edge.src) === String(intentId) || String(edge.dst) === String(intentId)) await rm(path, { force: true })
+    await writer.remove('nodes', `${intentId}`)
+    for (const edge of await writer.list('edges')) {
+      if (String(edge.src) === String(intentId) || String(edge.dst) === String(intentId)) {
+        await writer.remove('edges', `${edge.src}-${edge.rel}-${edge.dst}`)
       }
-    } catch {
-      // no edges
     }
     return { id: Number(intentId), state: '', deleted: { intents: 1, facts: 0, findings: 0, activities: 0 } }
   }
@@ -777,15 +690,7 @@ export function storeOperations(root: string) {
   async function rerunBlocked(taskId: string) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
-    let rows = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('nodes')
     const blocked = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'blocked')
     for (const row of blocked) {
       const next = { ...row, state: 'open' }
@@ -811,15 +716,7 @@ export function storeOperations(root: string) {
     if (node.state !== 'paused') throw Object.assign(new Error('仅已暂停的 Worker 可以发送消息，请先暂停'), { status: 409 })
     const next = { ...node, state: 'running' }
     delete next.rev
-    const activity = []
-    try {
-      for (const name of await readdir(join(root, 'activity'))) {
-        if (!name.endsWith('.json')) continue
-        activity.push(JSON.parse(await readFile(join(root, 'activity', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const activity = await writer.list('activity')
     const activityId = Math.max(0, ...activity.map((row) => Number(row.id))) + 1
     const now = new Date()
     await writer.commit([
@@ -842,15 +739,7 @@ export function storeOperations(root: string) {
     if (kind !== 'allow' && kind !== 'deny') throw Object.assign(new Error('kind 需为 allow 或 deny'), { status: 400 })
     const text = String(input.text ?? '').trim()
     if (!text) throw Object.assign(new Error('约束内容不能为空'), { status: 400 })
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'constraints'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'constraints', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('constraints')
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const record = { id, exploration_id: Number(task.exploration_id), kind, text, origin: 'human', created_at: rfc3339(new Date()) }
     await writer.commit([{ table: 'constraints', key: String(id), record }])
@@ -878,7 +767,7 @@ export function storeOperations(root: string) {
   async function deleteConstraint(taskId: string, constraintId: string) {
     const node = await writer.readRecord('constraints', constraintId)
     if (!node) throw Object.assign(new Error('约束不存在'), { status: 404 })
-    await rm(join(root, 'constraints', `${constraintId}.json`), { force: true })
+    await writer.remove('constraints', `${constraintId}`)
     return { deleted: Number(constraintId) }
   }
 
@@ -887,15 +776,7 @@ export function storeOperations(root: string) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
     const kind = String(input.kind ?? '')
     if (!['fact', 'intent', 'goal', 'finding'].includes(kind)) throw Object.assign(new Error('kind 需为 fact/intent/goal/finding'), { status: 400 })
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('nodes')
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const record = {
       id: String(id), exploration_id: Number(task.exploration_id), kind,
@@ -954,15 +835,7 @@ export function storeOperations(root: string) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
     await reclaimExpired(taskId)
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('nodes')
     const next = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'open')
       .sort((a, b) => Number(b.priority) - Number(a.priority) || Number(a.id) - Number(b.id))[0]
     if (!next) return null
@@ -977,15 +850,7 @@ export function storeOperations(root: string) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
     const now = Math.floor(Date.now() / 1000)
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('nodes')
     const expired = rows.filter((row) => {
       if (Number(row.exploration_id) !== Number(task.exploration_id) || row.kind !== 'intent' || row.state !== 'running') return false
       const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload
@@ -1002,15 +867,7 @@ export function storeOperations(root: string) {
   async function appendActivity(taskId: string, input: { kind?: string; node_id?: string; worker?: string; tool?: string; summary?: string; is_error?: boolean; metadata?: any }) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'activity'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'activity', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('activity')
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const now = new Date()
     const record = {
@@ -1027,15 +884,7 @@ export function storeOperations(root: string) {
   async function graphOverview(taskId: string) {
     const task = await writer.readRecord('tasks', taskId)
     if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
-    const nodes = []
-    try {
-      for (const name of await readdir(join(root, 'nodes'))) {
-        if (!name.endsWith('.json')) continue
-        nodes.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const nodes = await writer.list('nodes')
     const scoped = nodes.filter((node) => Number(node.exploration_id) === Number(task.exploration_id))
     const byKind: Record<string, number> = {}
     const byState: Record<string, number> = {}
@@ -1043,26 +892,9 @@ export function storeOperations(root: string) {
       byKind[node.kind] = (byKind[node.kind] ?? 0) + 1
       byState[node.state] = (byState[node.state] ?? 0) + 1
     }
-    let edges = 0
-    try {
-      for (const name of await readdir(join(root, 'edges'))) {
-        if (!name.endsWith('.json')) continue
-        const edge = JSON.parse(await readFile(join(root, 'edges', name), 'utf8')).record
-        if (Number(edge.exploration_id) === Number(task.exploration_id)) edges += 1
-      }
-    } catch {
-      // none
-    }
+    const edges = (await writer.list('edges')).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length
     const anchors = (await (async () => {
-      const rows = []
-      try {
-        for (const name of await readdir(join(root, 'anchors'))) {
-          if (!name.endsWith('.json')) continue
-          rows.push(JSON.parse(await readFile(join(root, 'anchors', name), 'utf8')).record)
-        }
-      } catch {
-        // none
-      }
+      const rows = await writer.list('anchors')
       return rows
     })()).filter((anchor) => scoped.some((node) => String(node.id) === String(anchor.node_id)))
     const openIntents = scoped.filter((node) => node.kind === 'intent' && node.state === 'open').map((node) => ({ id: String(node.id), text: (typeof node.payload === 'string' ? JSON.parse(node.payload) : node.payload)?.text ?? '' }))
@@ -1070,15 +902,7 @@ export function storeOperations(root: string) {
   }
 
   async function importAssets(inputs: any[]) {
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'assets'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'assets', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('assets')
     let nextId = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     let created = 0
     let existing = 0
@@ -1112,15 +936,7 @@ export function storeOperations(root: string) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
     const type = String(input.type ?? '').trim()
     if (!type) throw Object.assign(new Error('type 不能为空'), { status: 400 })
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'assets'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'assets', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('assets')
     const sameAsset = (row: any) => {
       if (row.type !== type) return false
       if (input.url) return row.url === input.url
@@ -1184,15 +1000,7 @@ export function storeOperations(root: string) {
   }
 
   async function createTrigger(agentKey: string, input: any) {
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'agent_triggers'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'agent_triggers', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('agent_triggers')
     const interval = Number(input.interval_sec ?? 0)
     const flags = ['on_finding', 'on_goal_met', 'on_task_timeout', 'on_tool_call', 'on_task_create'].filter((key) => input[key])
     if (interval <= 0 && !flags.length) throw Object.assign(new Error('至少配置一个触发条件'), { status: 400 })
@@ -1226,7 +1034,7 @@ export function storeOperations(root: string) {
   async function deleteTrigger(agentKey: string, id: string) {
     const current = await writer.readRecord('agent_triggers', id)
     if (!current || current.agent_key !== agentKey) throw Object.assign(new Error('触发器不存在'), { status: 404 })
-    await rm(join(root, 'agent_triggers', `${id}.json`), { force: true })
+    await writer.remove('agent_triggers', `${id}`)
     return { deleted: Number(id) }
   }
 
@@ -1247,15 +1055,7 @@ export function storeOperations(root: string) {
     if (!name) throw Object.assign(new Error('name 不能为空'), { status: 400 })
     if (!prompt) throw Object.assign(new Error('prompt 不能为空'), { status: 400 })
     if (!['daily', 'weekly', 'monthly'].includes(frequency)) throw Object.assign(new Error('frequency 需为 daily/weekly/monthly'), { status: 400 })
-    const rows = []
-    try {
-      for (const file of await readdir(join(root, 'schedules'))) {
-        if (!file.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'schedules', file), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('schedules')
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const now = new Date()
     const record = {
@@ -1288,15 +1088,7 @@ export function storeOperations(root: string) {
   }
 
   async function recordDelivery(input: { channel_id?: number; event_kind: string; title: string; status: string; attempts: number; error?: string }) {
-    const rows = []
-    try {
-      for (const name of await readdir(join(root, 'notification_deliveries'))) {
-        if (!name.endsWith('.json')) continue
-        rows.push(JSON.parse(await readFile(join(root, 'notification_deliveries', name), 'utf8')).record)
-      }
-    } catch {
-      // none
-    }
+    const rows = await writer.list('notification_deliveries')
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const record = {
       id, channel_id: input.channel_id ?? null, event_kind: input.event_kind, title: input.title,
@@ -1318,7 +1110,7 @@ export function storeOperations(root: string) {
   async function deleteSchedule(id: string) {
     const current = await writer.readRecord('schedules', id)
     if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
-    await rm(join(root, 'schedules', `${id}.json`), { force: true })
+    await writer.remove('schedules', `${id}`)
     return { deleted: Number(id) }
   }
 

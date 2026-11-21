@@ -1,7 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mkdtemp, readdir, readFile } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
@@ -12,15 +12,7 @@ import { createNotifier } from './src/notify.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-e2e-'))
 const ops = storeOperations(root)
-async function records(table) {
-  const rows = []
-  try {
-    for (const name of await readdir(join(root, table))) {
-      if (name.endsWith('.json')) rows.push(JSON.parse(await readFile(join(root, table, name), 'utf8')).record)
-    }
-  } catch { /* empty */ }
-  return rows
-}
+const records = (table) => ops.writer.list(table)
 const store = {
   tasks: { get: async (id) => ops.writer.readRecord('tasks', id) },
   nodes: { page: async ({ taskId, kinds = [] }) => {

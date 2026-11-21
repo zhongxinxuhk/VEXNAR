@@ -58,8 +58,45 @@ export function storeWriter(root: string) {
     return next
   }
 
+  async function list(table: string): Promise<Record<string, unknown>[]> {
+    const dir = join(root, table)
+    const rows: Record<string, unknown>[] = []
+    try {
+      for (const name of await readdir(dir)) {
+        if (!name.endsWith('.json')) continue
+        const doc = JSON.parse(await readFile(join(dir, name), 'utf8'))
+        rows.push(doc.record ?? doc)
+      }
+    } catch {
+      // empty table
+    }
+    return rows
+  }
+
+  async function maxKey(table: string): Promise<number> {
+    const dir = join(root, table)
+    let max = 0
+    try {
+      for (const name of await readdir(dir)) {
+        if (!name.endsWith('.json')) continue
+        const key = Number(name.slice(0, -5))
+        if (Number.isFinite(key)) max = Math.max(max, key)
+      }
+    } catch {
+      // empty table
+    }
+    return max
+  }
+
+  async function remove(table: string, key: string) {
+    await rm(join(root, table, `${key}.json`), { force: true })
+  }
+
   return {
     readRecord,
+    list,
+    maxKey,
+    remove,
     async put(op: Op) {
       return apply(op)
     },

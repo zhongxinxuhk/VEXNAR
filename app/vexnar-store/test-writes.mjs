@@ -4,12 +4,12 @@
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { storeOperations } from './src/operations.ts'
+import { storeOperations, openStore } from './src/index.ts'
 import { StoreConflict } from './src/writer.ts'
-import { jsonStore } from './src/json-store.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-writes-'))
 const ops = storeOperations(root)
+const freshRead = () => openStore(root)
 const release = await ops.writer.lock()
 const results = []
 const check = (name, ok, detail = '') => results.push({ name, ok, detail })
@@ -86,7 +86,7 @@ const channelDelete = await ops.deleteChannel(String(channel.id))
 check('notify channel lifecycle', channel.id > 0 && channelUpdate.id === channel.id && channelDelete.ok === true, JSON.stringify({ channel, channelUpdate, channelDelete }))
 
 await (async () => {
-  const meta = (await import('./src/meta-store.ts')).metaStore(root)
+  const meta = (await import('./src/index.ts')).openMeta(root)
   const tables = await meta.load()
   tables.agents = [{ key: 'goals', name: 'Goals', description: 'd' }]
   tables.tools = [{ key: 'demo_tool', description: 'd', agents: [], enabled: true }]
@@ -95,7 +95,7 @@ await (async () => {
 const agentUpdate = await ops.updateAgent('goals', { name: 'Goals 2', description: 'd2' })
 const toolUpdate = await ops.updateTool('demo_tool', { enabled: false, agents: ['planner'] })
 const metaAfter = await (async () => {
-  const meta = (await import('./src/meta-store.ts')).metaStore(root)
+  const meta = (await import('./src/index.ts')).openMeta(root)
   const tables = await meta.load()
   return { agent: tables.agents[0], tool: tables.tools[0] }
 })()
@@ -117,9 +117,9 @@ check('mcp lifecycle', mcp.id > 0 && mcpDisabled.ok && mcpDelete.deleted === mcp
 
 const archived = await ops.archiveTask(second.id)
 const archives = await ops.listArchives()
-const hiddenByArchive = !(await jsonStore(root).tasks.list()).some((row) => row.id === second.id)
+const hiddenByArchive = !(await (await freshRead()).tasks.list()).some((row) => row.id === second.id)
 const restored = await ops.restoreArchive(String(archived.id))
-const visibleAgain = (await jsonStore(root).tasks.list()).some((row) => row.id === second.id)
+const visibleAgain = (await (await freshRead()).tasks.list()).some((row) => row.id === second.id)
 const archived2 = await ops.archiveTask(second.id)
 const removedArchive = await ops.deleteArchive(String(archived2.id))
 check('archive lifecycle', archived.state === 'done' && archives.length === 1 && hiddenByArchive && restored.id === archived.id && visibleAgain && removedArchive.id === archived2.id, JSON.stringify({ archived: archived.id, hiddenByArchive, visibleAgain }))
@@ -204,22 +204,28 @@ try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { stal
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
 
 const removed = await ops.deleteTask(task.id)
-const store = jsonStore(root)
+const store = await freshRead()
 const listed = await store.tasks.list()
 check('delete hides task', removed.deleted === true && !listed.some((row) => row.id === task.id), JSON.stringify(removed))
 const survivingFinding = await ops.writer.readRecord('findings', reported.finding_id)
 check('findings survive delete', survivingFinding?.id === reported.finding_id, String(survivingFinding?.id))
 
-// Crash recovery: a prepared journal is replayed.
-await writeFile(join(root, 'journal', 'manual.json'), JSON.stringify({
-  state: 'prepared',
-  ops: [{ table: 'tasks', key: '77', record: { id: '77', exploration_id: 99, name: '', description: 'replayed', goal: 'g', status: 'created', paused: false, queued: false, coverage_enabled: true, created_at_text: 'x', created_unix: 0, completed_at_text: null, completed_unix: 0 } }]
-}))
-const recovery = await ops.writer.recover()
-const replayed = await ops.writer.readRecord('tasks', '77')
-check('journal replay', recovery.replayed === 1 && replayed?.id === '77', JSON.stringify({ recovery, replayed }))
-const journalState = JSON.parse(await readFile(join(root, 'journal', 'manual.json'), 'utf8')).state
-check('journal committed', journalState === 'committed', journalState)
+// Crash recovery: the JSON backend replays a prepared journal; SQLite gets its
+// atomicity from transactions, so recover() is a documented no-op there.
+if (process.env.VEXNAR_STORE === 'json') {
+  await writeFile(join(root, 'journal', 'manual.json'), JSON.stringify({
+    state: 'prepared',
+    ops: [{ table: 'tasks', key: '77', record: { id: '77', exploration_id: 99, name: '', description: 'replayed', goal: 'g', status: 'created', paused: false, queued: false, coverage_enabled: true, created_at_text: 'x', created_unix: 0, completed_at_text: null, completed_unix: 0 } }]
+  }))
+  const recovery = await ops.writer.recover()
+  const replayed = await ops.writer.readRecord('tasks', '77')
+  check('journal replay', recovery.replayed === 1 && replayed?.id === '77', JSON.stringify({ recovery, replayed }))
+  const journalState = JSON.parse(await readFile(join(root, 'journal', 'manual.json'), 'utf8')).state
+  check('journal committed', journalState === 'committed', journalState)
+} else {
+  const recovery = await ops.writer.recover()
+  check('sqlite recover is a no-op', recovery.replayed === 0, JSON.stringify(recovery))
+}
 
 await release()
 let locked = false
