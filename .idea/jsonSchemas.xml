@@ -49,6 +49,9 @@
                   <Item>
                     <option name="path" value="app/dsh/package.json" />
                   </Item>
+                  <Item>
+                    <option name="path" value="app/vexnar-store/package.json" />
+                  </Item>
                 </list>
               </option>
             </SchemaInfo>

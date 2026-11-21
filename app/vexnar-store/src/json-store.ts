@@ -88,6 +88,17 @@ export function jsonStore(root: string): Store {
     companies: {
       list: async () => [...(await load('companies', companyRow))]
     },
+    activity: {
+      history: async ({ taskId, before = 0, limit = 200 }) => {
+        const tasks = await load('tasks', taskRow)
+        const task = tasks.find((row) => String(row.id) === String(taskId))
+        if (!task) return { items: [], snapshot: 0, hasMore: false }
+        const rows = (await load('activity', { parse: (value) => value })).filter((row) => Number(row.exploration_id) === Number(task.exploration_id))
+        const snapshot = rows.reduce((max, row) => Math.max(max, Number(row.id)), 0)
+        const filtered = rows.filter((row) => !before || Number(row.id) < before).sort((a, b) => Number(b.id) - Number(a.id))
+        return { items: filtered.slice(0, Math.min(limit, 500)), snapshot, hasMore: filtered.length > limit }
+      }
+    },
     async taskMetrics() {
       const activity = await load('activity', { parse: (value) => value })
       const nodes = await load('nodes', nodeRow)

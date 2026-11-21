@@ -104,6 +104,9 @@ export interface Store {
     list(): Promise<any[]>
   }
   taskMetrics(): Promise<Map<number, TaskMetrics>>
+  activity: {
+    history(options: { taskId: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
+  }
   invalidate?(tables?: string[]): void
   nodes: {
     page(options: { taskId: string; page: number; size: number; order?: 'asc' | 'desc'; kinds?: string[]; states?: string[]; before?: string }): Promise<{ items: any[]; total: number; edges: any[] }>
