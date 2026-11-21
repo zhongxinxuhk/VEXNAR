@@ -57,7 +57,7 @@ api.get('/api/notify/channels', async (c) => c.json({ channels: await meta.table
 api.get('/api/settings', async (c) => c.json(await meta.table('settings')))
 
 // ── tasks ─────────────────────────────────────────────────────────────────
-const taskDto = (row: any) => ({
+const taskDto = (row: any, metrics?: any) => ({
   id: String(row.id),
   exploration_id: Number(row.exploration_id),
   name: row.name,
@@ -71,14 +71,24 @@ const taskDto = (row: any) => ({
   created_unix: Number(row.created_unix ?? 0),
   completed_at: row.completed_at_text ?? '',
   completed_unix: Number(row.completed_unix ?? 0),
-  last_activity_unix: 0,
+  last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
   paused: row.paused,
   queued: row.queued,
-  tokens: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 },
-  goals_total: 0,
-  goals_met: 0,
-  in_flight: 0,
-  findings: { critical: 0, high: 0, medium: 0, low: 0 },
+  tokens: {
+    input_tokens: Number(metrics?.input_tokens ?? 0),
+    output_tokens: Number(metrics?.output_tokens ?? 0),
+    cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
+    cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
+  },
+  goals_total: Number(metrics?.goals_total ?? 0),
+  goals_met: Number(metrics?.goals_met ?? 0),
+  in_flight: Number(metrics?.in_flight ?? 0),
+  findings: {
+    critical: Number(metrics?.findings?.critical ?? 0),
+    high: Number(metrics?.findings?.high ?? 0),
+    medium: Number(metrics?.findings?.medium ?? 0),
+    low: Number(metrics?.findings?.low ?? 0)
+  },
   ...(row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id }),
   llm_profile_ids: [],
   ...(row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id }),
@@ -90,24 +100,27 @@ const taskDto = (row: any) => ({
 
 api.get('/api/tasks', async (c) => {
   const rows = await store.tasks.list()
-  return c.json({ tasks: rows.map(taskDto) })
+  const metrics = await store.taskMetrics()
+  return c.json({ tasks: rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))) })
 })
 
 api.get('/api/tasks/:id', async (c) => {
   const row = await store.tasks.get(c.req.param('id'))
   if (!row) return c.json({ error: 'not found' }, 404)
-  return c.json(taskDto(row))
+  const metrics = await store.taskMetrics()
+  return c.json(taskDto(row, metrics.get(Number(row.exploration_id))))
 })
 
 api.get('/api/tasks/:id/metrics', async (c) => {
   const task = await store.tasks.get(c.req.param('id'))
   if (!task) return c.json({ error: 'not found' }, 404)
+  const metrics = (await store.taskMetrics()).get(Number(task.exploration_id))
   return c.json({
     task_id: Number(task.id),
     exploration_id: Number(task.exploration_id),
     mttd_seconds: null,
-    findings_total: 0,
-    findings_by_severity: {},
+    findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
+    findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
     findings_by_vulnclass: {},
     findings_by_status: {},
     verify_sessions: 0,

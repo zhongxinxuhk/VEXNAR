@@ -186,7 +186,11 @@ meta 表主键即 key
 M2 首步已完成：graph/assets/companies 全部改为 **per-record 目录**
 （`tasks/<id>.json` 等），单次写只替换一个文档；companies 的 PG 顺序用
 `<ordinal>-<id>` 键保持；core 不再直连 PG。store 对账 **7/7**。
-下一步：activity 域与写路径（journal + rev）。
+activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
+（tokens / goals / in_flight / findings）由 store 计算并与 Go 对账一致；
+`last_activity_unix` 仍是引擎内存心跳，读路径无法等价，比较时排除。
+
+下一步：写路径（journal + rev），然后 M3 接管写。
 
 ## 10. 待决问题
 

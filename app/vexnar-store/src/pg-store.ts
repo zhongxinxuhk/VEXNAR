@@ -110,6 +110,59 @@ export function pgStore(connection: {
         return rows.map((row) => companyRow.parse({ ...row, scope: byCompany.get(Number(row.id)) ?? [] }))
       }
     },
+    async taskMetrics() {
+      const rows = await q(`
+        SELECT task.exploration_id,
+          COALESCE(token_metrics.input_tokens,0)::bigint AS input_tokens,
+          COALESCE(token_metrics.output_tokens,0)::bigint AS output_tokens,
+          COALESCE(token_metrics.cache_read_tokens,0)::bigint AS cache_read_tokens,
+          COALESCE(token_metrics.cache_write_tokens,0)::bigint AS cache_write_tokens,
+          COALESCE(latest_activity.created_at,0)::bigint AS last_activity_unix,
+          COALESCE(goal_metrics.total,0)::int AS goals_total,
+          COALESCE(goal_metrics.met,0)::int AS goals_met,
+          COALESCE(intent_metrics.running,0)::int AS in_flight,
+          COALESCE(finding_metrics.critical,0)::int AS critical,
+          COALESCE(finding_metrics.high,0)::int AS high,
+          COALESCE(finding_metrics.medium,0)::int AS medium,
+          COALESCE(finding_metrics.low,0)::int AS low
+        FROM tasks task
+        LEFT JOIN LATERAL (
+          SELECT SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,
+                 SUM(cache_read_tokens) AS cache_read_tokens, SUM(cache_write_tokens) AS cache_write_tokens
+          FROM activity WHERE exploration_id = task.exploration_id AND kind = 'result'
+        ) token_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT EXTRACT(EPOCH FROM created_at)::bigint AS created_at FROM activity
+          WHERE exploration_id = task.exploration_id ORDER BY created_at DESC LIMIT 1
+        ) latest_activity ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE state = 'met') AS met
+          FROM exploration_nodes WHERE exploration_id = task.exploration_id AND kind = 'goal'
+        ) goal_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS running FROM exploration_nodes
+          WHERE exploration_id = task.exploration_id AND kind = 'intent' AND state = 'running'
+        ) intent_metrics ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) FILTER (WHERE severity = 'critical') AS critical,
+                 COUNT(*) FILTER (WHERE severity = 'high') AS high,
+                 COUNT(*) FILTER (WHERE severity = 'medium') AS medium,
+                 COUNT(*) FILTER (WHERE severity = 'low') AS low
+          FROM findings WHERE task_id = task.id
+        ) finding_metrics ON true
+        WHERE task.deleted_at IS NULL`)
+      const out = new Map<number, any>()
+      for (const row of rows) {
+        out.set(Number(row.exploration_id), {
+          input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens),
+          cache_read_tokens: Number(row.cache_read_tokens), cache_write_tokens: Number(row.cache_write_tokens),
+          last_activity_unix: Number(row.last_activity_unix),
+          goals_total: Number(row.goals_total), goals_met: Number(row.goals_met), in_flight: Number(row.in_flight),
+          findings: { critical: Number(row.critical), high: Number(row.high), medium: Number(row.medium), low: Number(row.low) }
+        })
+      }
+      return out
+    },
     nodes: {
       page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])

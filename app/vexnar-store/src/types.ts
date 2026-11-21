@@ -72,6 +72,18 @@ export const companyRow = z.object({
   asset_count: z.number().default(0)
 }).passthrough()
 
+export interface TaskMetrics {
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  last_activity_unix: number
+  goals_total: number
+  goals_met: number
+  in_flight: number
+  findings: { critical: number; high: number; medium: number; low: number }
+}
+
 export interface Store {
   backend: 'json' | 'postgres'
   init(): Promise<void>
@@ -91,6 +103,7 @@ export interface Store {
   companies: {
     list(): Promise<any[]>
   }
+  taskMetrics(): Promise<Map<number, TaskMetrics>>
   nodes: {
     page(options: { taskId: string; page: number; size: number; order?: 'asc' | 'desc'; kinds?: string[]; states?: string[] }): Promise<{ items: any[]; total: number; edges: any[] }>
   }

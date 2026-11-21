@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { mkdir } from 'node:fs/promises'
-import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
+import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store, type TaskMetrics } from './types.js'
 import { readPerRecord } from './per-record.js'
 
 /**
@@ -80,6 +80,51 @@ export function jsonStore(root: string): Store {
     },
     companies: {
       list: async () => [...(await load('companies', companyRow))]
+    },
+    async taskMetrics() {
+      const activity = await load('activity', { parse: (value) => value })
+      const nodes = await load('nodes', nodeRow)
+      const findings = await load('findings', findingRow)
+      const out = new Map<number, TaskMetrics>()
+      const ensure = (explorationId: number) => {
+        let entry = out.get(explorationId)
+        if (!entry) {
+          entry = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, last_activity_unix: 0, goals_total: 0, goals_met: 0, in_flight: 0, findings: { critical: 0, high: 0, medium: 0, low: 0 } }
+          out.set(explorationId, entry)
+        }
+        return entry
+      }
+      for (const row of activity) {
+        const entry = ensure(Number(row.exploration_id))
+        if (row.kind === 'result') {
+          entry.input_tokens += Number(row.input_tokens ?? 0)
+          entry.output_tokens += Number(row.output_tokens ?? 0)
+          entry.cache_read_tokens += Number(row.cache_read_tokens ?? 0)
+          entry.cache_write_tokens += Number(row.cache_write_tokens ?? 0)
+        }
+        entry.last_activity_unix = Math.max(entry.last_activity_unix, Number(row.created_unix ?? 0))
+      }
+      for (const node of nodes) {
+        const entry = ensure(Number(node.exploration_id))
+        if (node.kind === 'goal') {
+          entry.goals_total += 1
+          if (node.state === 'met') entry.goals_met += 1
+        }
+        if (node.kind === 'intent' && node.state === 'running') entry.in_flight += 1
+      }
+      const taskByExploration = new Map((await load('tasks', taskRow)).map((task) => [Number(task.exploration_id), String(task.id)]))
+      for (const finding of findings) {
+        if (!finding.task_id) continue
+        const task = (await load('tasks', taskRow)).find((row) => String(row.id) === String(finding.task_id))
+        if (!task) continue
+        const entry = ensure(Number(task.exploration_id))
+        if (finding.severity === 'critical') entry.findings.critical += 1
+        if (finding.severity === 'high') entry.findings.high += 1
+        if (finding.severity === 'medium') entry.findings.medium += 1
+        if (finding.severity === 'low') entry.findings.low += 1
+      }
+      void taskByExploration
+      return out
     },
     nodes: {
       page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {
