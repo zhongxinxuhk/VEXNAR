@@ -795,5 +795,45 @@ export function storeOperations(root: string) {
     return { id: String(taskId), reopened: blocked.length }
   }
 
-  return { writer, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function sendIntentMessage(taskId: string, intentId: string, input: { message?: string; request_id?: string }) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task || task.deleted_at_text) throw Object.assign(new Error('task not found'), { status: 404 })
+    const message = String(input.message ?? '').trim()
+    const requestId = String(input.request_id ?? '').trim()
+    if (!message) throw Object.assign(new Error('消息不能为空'), { status: 400 })
+    if ([...message].length > 4000) throw Object.assign(new Error('消息不能超过 4000 个字符'), { status: 400 })
+    if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(requestId)) throw Object.assign(new Error('request_id 必须是 1-128 位字母、数字、-、_、. 或 :'), { status: 400 })
+    if (task.paused) throw Object.assign(new Error('任务已暂停，请先恢复任务再向 Worker 发送消息'), { status: 409 })
+    if (task.queued) throw Object.assign(new Error('排队中的任务无法向 Worker 发送消息'), { status: 409 })
+    if (['done', 'failed', 'stopped', 'deleted'].includes(String(task.status))) throw Object.assign(new Error('终态任务无法向 Worker 发送消息'), { status: 409 })
+    const node = await writer.readRecord('nodes', intentId)
+    if (!node || node.kind !== 'intent') throw Object.assign(new Error('intent not found'), { status: 404 })
+    if (node.state !== 'paused') throw Object.assign(new Error('仅已暂停的 Worker 可以发送消息，请先暂停'), { status: 409 })
+    const next = { ...node, state: 'running' }
+    delete next.rev
+    const activity = []
+    try {
+      for (const name of await readdir(join(root, 'activity'))) {
+        if (!name.endsWith('.json')) continue
+        activity.push(JSON.parse(await readFile(join(root, 'activity', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const activityId = Math.max(0, ...activity.map((row) => Number(row.id))) + 1
+    const now = new Date()
+    await writer.commit([
+      { table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) },
+      {
+        table: 'activity', key: String(activityId), record: {
+          id: String(activityId), exploration_id: Number(task.exploration_id), node_id: Number(intentId),
+          worker: 'user', kind: 'message', is_error: false, summary: message, metadata: {},
+          created_at: rfc3339(now), created_unix: Math.floor(now.getTime() / 1000)
+        }
+      }
+    ])
+    return { id: Number(intentId), state: 'running', accepted: true, request_id: requestId }
+  }
+
+  return { writer, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }

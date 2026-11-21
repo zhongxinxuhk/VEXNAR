@@ -145,6 +145,11 @@ const rerun = await ops.rerunIntent(second.id, '2001')
 const rerunAgain = await ops.rerunIntent(second.id, '2001').catch((error) => error)
 check('intent rerun', rerun.reopened === 2001 && rerunAgain?.status === 409, JSON.stringify({ rerun, again: rerunAgain?.status }))
 
+await ops.writer.put({ table: 'nodes', key: '2002', record: { id: '2002', exploration_id: Number(goalTask.exploration_id), kind: 'intent', state: 'paused', payload: {}, priority: 1, origin: 'w', created_at: 'x' } })
+const sent = await ops.sendIntentMessage(goalTask.id, '2002', { message: 'steer', request_id: 'req-1' })
+const sentAgain = await ops.sendIntentMessage(goalTask.id, '2002', { message: 'steer', request_id: 'req-1' }).catch((error) => error)
+check('intent message', sent.state === 'running' && sent.accepted === true && sentAgain?.status === 409, JSON.stringify({ sent, again: sentAgain?.status }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))
