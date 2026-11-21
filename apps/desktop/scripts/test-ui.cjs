@@ -410,6 +410,19 @@ app.whenReady().then(async () => {
     await wait(`document.querySelector('[data-execution-phase="reasoning"]')?.textContent.includes('正在思考')`)
     if (await run(`document.body.textContent.includes('PRIVATE_REASONING_FIXTURE')`)) throw Error('Private reasoning entered the chat UI')
     fs.writeFileSync(path.join(output, 'chat-reasoning.png'), (await w.webContents.capturePage()).toPNG())
+    // 余额不足：终态 result 只有 model_error 诊断，403 原文由后端补写在下一条 text 行。
+    // 界面应合成一张提示卡，绝不能再把 403 JSON 当回答正文显示。
+    await run(`window.__uiFixture.seedQuotaFailure()`)
+    await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.textContent.trim()==='旧会话 1').click()`)
+    await run(openHistoryFixture)
+    await wait(`document.querySelector('header[aria-label="会话工具栏"]')?.textContent.includes('检查 LLM 网关')`)
+    await wait(`!!document.querySelector('[data-testid="quota-notice"]')`)
+    await wait(`document.querySelector('[data-testid="quota-notice"]').textContent.includes('余额不足')`)
+    if (await run(`document.body.textContent.includes('insufficient_user_quota')`)) throw Error('Raw quota payload rendered as a chat bubble')
+    if (await run(`document.querySelector('[data-testid="quota-notice"]').textContent.includes('model_error')`)) throw Error('Terminal diagnostic shown next to the quota notice')
+    await wait(`document.querySelector('[data-testid="quota-notice"]').textContent.includes('¥-0.1174')`)
+    await new Promise((r) => setTimeout(r, 400))
+    fs.writeFileSync(path.join(output, 'chat-quota.png'), (await w.webContents.capturePage()).toPNG())
     await run(`window.__uiFixture.startDraft()`)
     await run(`Array.from(document.querySelectorAll('[data-testid="chat-sidebar"] button')).find(b=>b.title==='检查 LLM 网关').click()`)
     await wait(`document.body.textContent.includes('你好，正在生成答复')`)
@@ -523,7 +536,7 @@ app.whenReady().then(async () => {
 
     console.log('Screenshots:', output)
     console.log(
-      'UI OK: chat workspace, rename and confirmed deletion, turn navigation, paged chat history, chat actions and phases, individual chronological tool rows and expanded details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, project and loose draft lifecycle, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
+      'UI OK: chat workspace, rename and confirmed deletion, turn navigation, paged chat history, chat actions and phases, individual chronological tool rows and expanded details, virtual audit log, notifications, approvals and execution work view, reopened reply, reasoning display, quota notice, project and loose draft lifecycle, settings, release tooltip, sidebar drag, access mode, workspace, pasted image persistence/send',
       JSON.stringify(layout)
     )
     app.exit(0)

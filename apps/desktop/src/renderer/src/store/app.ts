@@ -72,6 +72,8 @@ export type ChatMessage = Omit<Message, 'toolCalls'> & {
   failed?: boolean
   /** Upstream failure text for a failed turn (kept apart from any streamed text). */
   error?: string
+  /** Terminal `result` row of a failed turn: a diagnostic, not an answer. */
+  diagnostic?: string
   /** Uploaded (non-image-previewable) files attached to a human turn. */
   files?: { name: string; size: number }[]
 }

@@ -190,6 +190,22 @@ contextBridge.exposeInMainWorld('__uiFixture', {
       { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:09:56Z', kind: 'thinking', summary: 'PRIVATE_REASONING_FIXTURE', detail: 'PRIVATE_REASONING_FIXTURE' }
     ]
   },
+  // The shape a failed relay turn has on the wire: a terminal result carrying only
+  // the model_error diagnostic, then the upstream 403 appended as its own text row.
+  seedQuotaFailure: () => {
+    resumeDraft = false
+    conversationActivities[2] = [
+      { seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:11:00Z', kind: 'user', summary: 'hi', detail: 'hi' },
+      {
+        seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:11:01Z', kind: 'result', is_error: true,
+        summary: '（无文字总结，终态 model_error：模型或 API 调用失败（网络、鉴权、限流、供应商 5xx 等）…）'
+      },
+      {
+        seq: ++activitySeq, worker: 'auto', ts: '2026-11-20T10:11:01.200Z', kind: 'text', is_error: true,
+        summary: '（出错：openai-responses: status 403: {"error":{"message":"Insufficient user quota, remaining quota: ¥-0.117364","type":"new_api_error","param":"","code":"insufficient_user_quota"}}）'
+      }
+    ]
+  },
   startDraft: () => {
     resumeDraft = true
     conversationActivities[2] = [

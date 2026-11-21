@@ -7,11 +7,18 @@ import {
   formatQuotaAmount,
   isInsufficientQuota,
   parseQuotaShortfall,
-  stripFailureText
+  quotaFailureBody,
+  stripFailureText,
+  unwrapFailureText
 } from '@/lib/quota-error'
 
 const RELAY_403 =
   'openai-responses: status 403: {"error":{"message":"Not enough quota to pre-consume for this request: ¥0.006750 remaining, ¥0.007596 required (request id: 202611201751338829204078268d9d6daIgPr6F)","type":"new_api_error","param":"","code":"insufficient_user_quota"}}'
+
+// The wording the relay currently sends from this workspace (an account in
+// arrears): only the remaining quota is quoted, and it is negative.
+const RELAY_403_ARREARS =
+  'openai-responses: status 403: {"error":{"message":"Insufficient user quota, remaining quota: ¥-0.117364 (request id: 202611210810093003724528268d9d6DDwg8PhK)","type":"new_api_error","param":"","code":"insufficient_user_quota"}}'
 
 describe('parseQuotaShortfall', () => {
   it('reads the remaining/required tail from a relay 403', () => {
@@ -26,6 +33,14 @@ describe('parseQuotaShortfall', () => {
     expect(parseQuotaShortfall('insufficient_quota: You exceeded your current quota')).toEqual({
       currency: '',
       remaining: null,
+      required: null
+    })
+  })
+
+  it('reads a remaining-only rejection, including a negative balance', () => {
+    expect(parseQuotaShortfall(RELAY_403_ARREARS)).toEqual({
+      currency: '¥',
+      remaining: -0.117364,
       required: null
     })
   })
@@ -73,5 +88,30 @@ describe('stripFailureText', () => {
   it('returns the narration unchanged when the failure text is elsewhere', () => {
     expect(stripFailureText('只写了叙述', RELAY_403)).toBe('只写了叙述')
     expect(stripFailureText(RELAY_403, '')).toBe(RELAY_403)
+  })
+})
+
+describe('unwrapFailureText', () => {
+  it('drops the wrapper the backend puts around an appended failure row', () => {
+    expect(unwrapFailureText(`（出错：${RELAY_403_ARREARS}）`)).toBe(RELAY_403_ARREARS)
+    expect(unwrapFailureText(RELAY_403_ARREARS)).toBe(RELAY_403_ARREARS)
+    expect(unwrapFailureText('')).toBe('')
+  })
+})
+
+describe('quotaFailureBody', () => {
+  const terminal =
+    '（无文字总结，终态 model_error：模型或 API 调用失败（网络、鉴权、限流、供应商 5xx 等）…）\n\n- **底层错误**: `' +
+    RELAY_403_ARREARS +
+    '`'
+
+  it('drops the terminal diagnostic of a turn that never narrated anything', () => {
+    expect(quotaFailureBody(terminal, terminal, terminal)).toBe('')
+  })
+
+  it('keeps narration the model had already streamed', () => {
+    expect(quotaFailureBody(`我先看一下目录。\n\n${RELAY_403_ARREARS}`, terminal, RELAY_403_ARREARS)).toBe(
+      '我先看一下目录。'
+    )
   })
 })

@@ -163,6 +163,8 @@ const messages = {
     'quota.exhausted.title': '余额不足，暂时无法继续',
     'quota.exhausted.body':
       '这次请求需要 {required}，当前余额仅剩 {remaining}。充值余额或升级套餐后即可继续对话。',
+    'quota.exhausted.bodyRemaining':
+      '当前余额 {remaining}，不足以支付这次请求。充值余额或升级套餐后即可继续对话。',
     'quota.exhausted.bodyPlain': '当前账户余额不足，无法完成这次请求。充值余额或升级套餐后即可继续对话。',
     'quota.exhausted.remaining': '余额',
     'quota.exhausted.topup': '充值余额',
@@ -993,6 +995,8 @@ const messages = {
     'quota.exhausted.title': 'Not enough balance to continue',
     'quota.exhausted.body':
       'This request needs {required} but the balance is only {remaining}. Top up or upgrade your plan to keep chatting.',
+    'quota.exhausted.bodyRemaining':
+      'The balance is {remaining}, which is not enough for this request. Top up or upgrade your plan to keep chatting.',
     'quota.exhausted.bodyPlain':
       'Your account balance is too low for this request. Top up or upgrade your plan to keep chatting.',
     'quota.exhausted.remaining': 'Balance',
