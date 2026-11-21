@@ -42,3 +42,30 @@ pnpm run shop:update
 
 `app/vexnar/cordis.patch.yml` 是 VEXNAR bundle 的配置。修改后重新执行
 `pnpm run setup` 并重启 VEXNAR，用户配置继续保存在自己的 profile 内。
+
+## 换数据目录时，已装插件会一起搬过来
+
+VEXNAR 的数据目录换过名（`app/.dsh-home` → `app/.vexnar-home`）。新目录里的
+profile 由出厂模板生成，模板不认识商店装的 bundle，于是商店、Craft Anything
+和从「发现」页装的实验性插件看着像被删了——其实它们还在旧目录里。
+
+`pnpm run setup` 现在会读旧目录的 profile，把**旧配置里列过、但新配置没有**
+的 bundle 装回来（`app/scripts/profile-migration.ts`）：
+
+- 有 npm 依赖的（`dsh-plugin-shop`、`dsh-craft-anything`、`dsh-subagent-codex`
+  之类）重新 `dsh plugin add`，版本按旧配置的写法；
+- 运行时自带的（`@deepseek-ai/dsh-experimental-*`、`@deepseek-ai/dsh-cua-bundle`）
+  只补回插件层条目，不重复安装；
+- `file:` / `link:` / `workspace:` 指向某次 checkout 的一律不搬，避免搬进一个
+  已经不存在的路径。
+
+开关：
+
+```sh
+VEXNAR_LEGACY_HOME=/path/to/old/home pnpm run setup   # 额外的旧目录
+VEXNAR_MIGRATE_PROFILE=off pnpm run setup              # 关掉迁移
+```
+
+反向的规则同样成立：profile 一旦写好就只做补丁，`pnpm run setup` 只重排
+bundle 顺序、不删用户装过的 bundle，所以重复执行不会再把插件抹掉。
+

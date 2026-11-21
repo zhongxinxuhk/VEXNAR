@@ -6,6 +6,7 @@ import { goData } from './go-data.ts'
 import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
 
 export { isGoDataRequest } from './go-data.ts'
+export { setModelCompletion, modelCompletionReady } from './gateway.ts'
 
 /**
  * 拦截规则的一次性迁移只跑一次：成功或失败都记住这次尝试，之后的请求不再重试，

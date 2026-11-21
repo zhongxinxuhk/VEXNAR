@@ -4,6 +4,7 @@
 
 import type { Hono } from 'hono'
 import { meta, operations, parseJson, store, taskQueue } from '../context.ts'
+import { modelCompletionReady } from '../gateway.ts'
 
 /**
  * 任务扩展 + 公司主体路由模块（在 dsh 进程内以 Hono 前缀 /vexnar-api 挂载，
@@ -197,12 +198,14 @@ async function resolveRoleLLM(task: any, agentKey: string, profiles: any[]): Pro
     const resolved = resolutionFromProfile(globalProfile, 'global_profile')
     if (resolved.available) return resolved
   }
-  const token = text(process.env.VEXNAR_GATEWAY_TOKEN)
-  if (token) {
+  // 进程内模型通道：宿主插件登录后注入，没有端口也没有令牌。`environment`
+  // 是 web 控制台类型里的既有取值，含义就是「不是某个任务/Agent/全局档案给
+  // 的，而是进程自己带的那条通道」。
+  if (modelCompletionReady()) {
     return {
-      name: '全局配置',
-      format: text(process.env.VEXNAR_GATEWAY_FORMAT) || 'openai',
-      model: text(process.env.VEXNAR_GATEWAY_MODEL) || 'deepseek-flash',
+      name: '内置模型通道',
+      format: 'openai',
+      model: text(process.env.VEXNAR_MODEL) || 'deepseek-flash',
       source: 'environment',
       available: true
     }

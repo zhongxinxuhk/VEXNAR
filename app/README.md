@@ -219,3 +219,19 @@ WebStorm 的 MCP 端点（`127.0.0.1:64542/stream`，项目路径 `app`）不在
   流量、资产以 Go 的 PostgreSQL 为准。
 - 不在 app 里另建模型目录：模型来自 `GET /api/desktop/openai/v1/models`。
 - 上游 `dsh/` 保持 MIT 原样；本目录 VEXNAR 自写文件带 AGPL 头。
+
+## GitHub Actions 编译
+
+仓库的 **App build** 工作流在 `app/`、品牌 Logo 或工作流文件发生变更时对 PR 和
+`main` 推送运行。它用 npm 锁文件安装依赖、重新编译 UI 与账户插件并检查生成的
+JavaScript。运行详情的 **Artifacts** 可下载 `vexnar-app-bundle`，其中包含编译后的
+插件、profile patch 和上游版本锁。
+
+在 **Actions → App build → Run workflow** 保持 `desktop` 勾选，会额外编译 macOS
+Apple Silicon、macOS Intel 和 Windows x64 的无签名 dsh 安装包。工作流使用
+`scripts/fetch-dsh.sh` 校验上游 commit，安装包和 VEXNAR 覆盖层分别下载。
+安装 dsh 后可在源码工作区执行 `npm run setup`，将 VEXNAR 插件和配置装入隔离 profile。
+
+推送 `app-v<版本>` 标签（例如 `app-v0.1.0`）会在当前 VEXNAR 仓库发布预发行版，
+附带三个平台的无签名安装包、`vexnar-app-bundle.tar.gz` 和 `SHA256SUMS`。
+Go 服务继续使用 `v*` 标签发布，App 预发行版不会成为仓库的 Latest Release。

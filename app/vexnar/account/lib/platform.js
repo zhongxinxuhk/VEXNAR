@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { loginPage, workspaceSessionScript } from "./login-page.js";
-import { startModelGateway } from "./model-gateway.js";
+import { createModelCompletion } from "./model-channel.js";
 import {
   catalog,
   createPlatformAccount,
@@ -133,7 +133,7 @@ function installPlatform(ctx) {
   let syncedProviders = /* @__PURE__ */ new Set();
   let browserState = { state: "idle", message: "" };
   let lastState;
-  let gateway;
+  let channelInstalled = false;
   let browserTask;
   let chrome;
   const life = new AbortController();
@@ -145,16 +145,20 @@ function installPlatform(ctx) {
       activeSockets.clear();
     }
   };
-  const ensureGateway = async () => {
-    if (gateway) return gateway;
-    gateway = await startModelGateway(() => {
+  const ensureModelChannel = async () => {
+    if (channelInstalled) return;
+    const core = await import("./core-embedded.js");
+    core.setModelCompletion(createModelCompletion(() => {
       if (lastState === void 0) throw new Error("\u8D26\u53F7\u72B6\u6001\u5C1A\u672A\u540C\u6B65");
       return catalog(lastState);
-    });
-    process.env.VEXNAR_GATEWAY_URL = gateway.url;
-    process.env.VEXNAR_GATEWAY_TOKEN = gateway.token;
-    console.log(`[vexnar] \u6A21\u578B\u7F51\u5173 ${gateway.url}`);
-    return gateway;
+    }, () => process.env.VEXNAR_MODEL));
+    channelInstalled = true;
+  };
+  const clearModelChannel = async () => {
+    if (!channelInstalled) return;
+    channelInstalled = false;
+    const core = await import("./core-embedded.js");
+    core.setModelCompletion(void 0);
   };
   const syncCatalog = async (state) => {
     lastState = state;
@@ -187,8 +191,8 @@ function installPlatform(ctx) {
     }
     const first = Object.keys(providers)[0];
     const firstModel = first === void 0 ? void 0 : providers[first]?.models[0];
-    if (firstModel !== void 0) process.env.VEXNAR_GATEWAY_MODEL = firstModel.id;
-    if (Object.keys(providers).length > 0) await ensureGateway();
+    if (firstModel !== void 0) process.env.VEXNAR_MODEL = firstModel.id;
+    if (Object.keys(providers).length > 0) await ensureModelChannel();
     const current = ctx.agentDefaultModel.currentSelection();
     const selected = providers[current.provider]?.models.find((model) => model.id === current.model);
     if (!selected) {
@@ -394,9 +398,8 @@ function installPlatform(ctx) {
       life.abort();
       void chrome?.close().catch(() => {
       });
-      void gateway?.close().catch(() => {
+      void clearModelChannel().catch(() => {
       });
-      gateway = void 0;
     };
   });
   return () => ready;

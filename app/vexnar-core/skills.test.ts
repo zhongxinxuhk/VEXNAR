@@ -11,7 +11,6 @@ import { join } from 'node:path'
 const root = await mkdtemp(join(tmpdir(), 'vexnar-skills-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
-delete process.env.VEXNAR_GATEWAY_TOKEN
 
 const { register: registerSkills } = await import('./src/routes/skills.ts')
 const { register: registerMarket } = await import('./src/routes/market.ts')

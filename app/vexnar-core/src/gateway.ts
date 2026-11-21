@@ -3,40 +3,55 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Model transport for the engine. Per project rules the upstream provider is
- * only reachable through the Go loopback gateway, so this client needs the
- * gateway URL plus its per-launch token and never holds an upstream API key.
+ * Model transport for the engine — a function call, not an endpoint.
+ *
+ * The engine runs inside the dsh process next to the account plugin that owns
+ * the provider catalog, so a loopback HTTP gateway in between bought nothing
+ * and cost a listening port on every launch. The host plugin installs the
+ * completion here at startup (`setModelCompletion`), and the engine calls it
+ * directly: no URL, no token, no socket.
+ *
+ * Nothing is registered until the user signs in, which is exactly the "model
+ * channel not ready" state the engine must treat as "do not start planning".
  */
-async function responsesComplete(base: string, token: string, messages: Array<{ role: string; content: string }>) {
-  const response = await fetch(`${base}/responses`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-vexnar-desktop-token': token },
-    body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || 'deepseek-flash', input: messages, stream: false })
-  })
-  if (!response.ok) throw Object.assign(new Error(`gateway responses ${response.status}: ${await response.text()}`), { status: 502 })
-  const data: any = await response.json()
-  const direct = data?.output_text ?? data?.output?.[0]?.content?.[0]?.text ?? data?.choices?.[0]?.message?.content
-  if (typeof direct === 'string') return direct
-  throw Object.assign(new Error('responses 返回缺少文本'), { status: 502 })
+
+/** One chat message the engine hands to the model. */
+export interface ChatMessage {
+  role: string
+  content: string
 }
 
-export async function gatewayComplete(messages: Array<{ role: string; content: string }>) {
-  const base = (process.env.VEXNAR_GATEWAY_URL || 'http://127.0.0.1:8787/api/desktop/openai/v1').replace(/\/$/, '')
-  const token = process.env.VEXNAR_GATEWAY_TOKEN || ''
-  if (!token) throw Object.assign(new Error('VEXNAR_GATEWAY_TOKEN 未配置，模型调用不可用'), { status: 503 })
-  const response = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-vexnar-desktop-token': token },
-    body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || 'deepseek-flash', messages, stream: false })
-  })
-  if (response.status === 409) {
-    const text = await response.text()
-    if (text.includes('openai-responses')) return responsesComplete(base, token, messages)
-    throw Object.assign(new Error(`gateway 409: ${text}`), { status: 502 })
+/**
+ * Complete one chat turn in-process.
+ * @param messages - the conversation so far.
+ * @returns the assistant text.
+ */
+export type ModelCompletion = (messages: readonly ChatMessage[]) => Promise<string>
+
+let completion: ModelCompletion | undefined
+
+/**
+ * Install (or clear) the in-process model channel.
+ * @param next - the completion the host plugin owns, or undefined on sign-out.
+ */
+export function setModelCompletion(next: ModelCompletion | undefined): void {
+  completion = next
+}
+
+/** Whether a model channel is installed; the engine only plans when it is. */
+export function modelCompletionReady(): boolean {
+  return completion !== undefined
+}
+
+/**
+ * Complete one chat turn through the installed channel.
+ * @param messages - the conversation so far.
+ * @returns the assistant text.
+ * @throws a 503-shaped error while no channel is installed.
+ */
+export async function gatewayComplete(messages: readonly ChatMessage[]): Promise<string> {
+  if (completion === undefined) {
+    throw Object.assign(new Error('模型通道未就绪：请先登录 VEXNAR'), { status: 503 })
   }
-  if (!response.ok) throw Object.assign(new Error(`gateway ${response.status}: ${await response.text()}`), { status: 502 })
-  const data: any = await response.json()
-  const content = data?.choices?.[0]?.message?.content
-  if (typeof content !== 'string') throw Object.assign(new Error('gateway 返回缺少 content'), { status: 502 })
-  return content
+  return await completion(messages)
 }

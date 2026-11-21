@@ -11,16 +11,27 @@ command, network, MCP, plugin, or SCNet permissions.
 
 ## Commit and merge completed changes
 
+A finished branch that is left unmerged is a defect, not a work in progress. It blocks the next
+agent (who branches from `main` and therefore cannot see it), and it turns every later merge into a
+conflict. Merge it before you stop.
+
 - Run the required checks for each independently complete increment. Commit the focused changes
   locally as soon as those checks pass and before beginning the next increment.
-- Before reporting a completed feature, review the task branch and integrate its verified commits into
-  local `main` with `git merge --no-ff <type>/<topic>`. Never a fast-forward: history must keep one
-  visible merge commit per problem. Resolve in-scope conflicts and validate the resulting tree.
-  Delete the merged local task branch after verifying that `main` contains its work.
+- Before reporting a completed feature — and before ending the turn in which it was finished —
+  integrate its verified commits into local `main` with `git merge --no-ff <type>/<topic>`. Never a
+  fast-forward: history must keep one visible merge commit per problem. Resolve in-scope conflicts
+  and validate the resulting tree. Delete the merged local task branch after verifying that `main`
+  contains its work.
+- "Finished" means: tests and type checks for the touched packages pass, the diff is reviewed, and
+  the requirement is met. It does not mean "the code is written".
+- If a requirement turns out to be only partly done, say which part is missing and either finish it
+  or record it as an explicit follow-up issue in the commit message of the branch that carries it.
+  Never leave a half-finished branch parked on the remote of the local repo without that note.
 - Preserve unrelated changes and active worktrees. If integration is blocked by ongoing work or
   required checks that failed or were skipped, report the exact blocker.
-- For client-facing changes, state which client build you validated against and how it reached
-  the Go service; do not report a server-only check as client validation.
+- For client-facing changes, state which client build you validated against and how it reached the
+  backend (the dsh process, or the Go service); do not report a server-only check as client
+  validation.
 - Local commit and merge instructions do not authorize remote pushes or history rewrites.
 
 ## Multi-agent branch workflow
@@ -43,27 +54,57 @@ what keep that work mergeable; a copied tree silently forks it.
   `git worktree add .worktrees/<topic> -b <type>/<topic> main` (`.worktrees/` is git-ignored).
   Worktrees outside the repository — `/tmp`, `~`, another project directory — are not permitted; an
   existing one is moved under `.worktrees/` or retired only with its owner's confirmation.
+- The main checkout — the directory WebStorm and the running preview open — stays on `main`. A
+  worktree is what holds a task branch; the main checkout never parks on one. To free `main` for the
+  main checkout, detach the worktree that holds it (`git switch --detach <commit>`), do not move the
+  main checkout onto a feature branch.
 - Do not commit feature work directly on `main`, and do not rewrite or force-push shared branches.
+- Keep branches short-lived. Re-read `main` before merging (`git -C <worktree> merge main` while the
+  branch is still yours) so a merge into `main` stays a fast, conflict-free `--no-ff` merge.
+- Overlap is a merge-time problem, not a reason to work around another agent: if two branches touch
+  the same files, merge in the order the requirements shipped and resolve in the later one.
 - If integration is blocked — conflict with another agent's in-flight work, or required checks that
   failed or were skipped — stop and report the blocker instead of working around it in a copied
   tree.
 
-## Model access belongs to the Go backend
+## Model access lives inside the dsh process — one port, no gateways
 
-VEXNAR's Go service is the single source of truth for model integration. The web console and any
-external agent client are presentation and control surfaces, not independent model runtimes.
+Model integration belongs to the dsh process that serves the UI. The account plugin owns the
+provider catalog, writes it into `llm-pi-ai`, and installs one completion function
+(`setModelCompletion` in `app/vexnar-core/src/gateway.ts`) that the engine calls directly. The Go
+service keeps the domain API and MCP tools; it is not a model relay.
 
-- Model providers, model catalogs, profiles, default/active model selection, credentials,
-  request routing, usage accounting and failover belong in the Go backend.
-- External clients reach models only through the Go gateway: an OpenAI-compatible,
-  loopback-only endpoint guarded by a per-launch token. Upstream base URLs and API keys never
-  leave the Go process.
-- A client must not maintain a second authoritative model catalog, nor call an upstream model
-  or relay endpoint directly for inference.
-- NewAPI login, quota display and account/session bootstrap may remain client-side integration
-  concerns. Once a session is established, inference must go through the Go gateway.
+- Inference never opens a socket. Two components of the same process talk to each other by calling
+  a function or sharing a module — never by starting a server on `127.0.0.1` and calling it back.
+- There is no model gateway, loopback OpenAI endpoint, per-launch bearer token or
+  `VEXNAR_GATEWAY_URL`. A launch that prints a URL other than the dsh web address it was started
+  with is a regression, not a feature.
+- Upstream base URLs and API keys stay in the dsh process (the provider catalog plus the credential
+  store). They are never copied into an environment variable that another listener could read.
+- The model page is the only writer of `llm-pi-ai`: VEXNAR's own 设置 → 模型 section. Do not
+  re-enable a second model page next to it — two panels writing one settings key produce two
+  truths, and the periodic catalog sync overwrites whichever one the user did not open.
+- The model page must stay at feature parity with the upstream one it replaced: provider rows,
+  API key handling, model catalog (order, display name, input types, reasoning levels, context and
+  output limits) and retry policy. A field the upstream editor had and VEXNAR's does not is a
+  missing feature, not a simplification.
 - Backend APIs used by clients must have stable JSON contracts and tests. The client must
   handle backend errors instead of silently falling back to a local model runtime.
+
+## One port per process
+
+VEXNAR is one dsh process plus one Go service. Every extra listener is another thing to firewall,
+another token to leak, and another port a user has to reason about.
+
+- Allowed listeners: the dsh web server the user started (`127.0.0.1:<its port>`) and the Go service
+  on its own configured address. Nothing else.
+- Do not add a helper server, a "bridge", a "relay" or an internal gateway to move data between
+  parts of the same process. If two subsystems need to exchange data, they share a module, a
+  function or the existing storage — not a socket.
+- A tool or integration that genuinely speaks MCP/HTTP because it is a separate program is fine;
+  it is started by the process that needs it and it is not a second control plane.
+- Startup output is the audit: `dsh web` prints exactly one URL. Anything that prints a second one
+  is a defect to fix, not a line to document.
 
 ## Clients are external agents; the Go service is their tool backend
 
@@ -72,13 +113,15 @@ This repository no longer ships a first-party desktop client. The Electron clien
 being rebuilt on an external agent framework in its own repository.
 
 - The Go service is the durable product: task engine, findings, traffic evidence, assets,
-  reports, conversation storage and model access all live here.
-- Clients consume it through two surfaces: an MCP server (tools and domain data) and the
-  OpenAI-compatible model gateway. UI-only state belongs to the client.
+  reports and conversation storage live here.
+- Clients consume it through one surface: the MCP server (tools and domain data). Model access is
+  not part of that surface inside this product — the dsh process owns it (see above). UI-only
+  state belongs to the client.
 - Do not add a feature that only exists in a client while the Go service has no equivalent tool,
   API, persistence or test coverage.
-- The legacy `/api/desktop/*` namespace is retained as the loopback model-gateway surface for
-  external agents; it stays loopback-only, token-guarded, and disabled when its token is unset.
+- The legacy `/api/desktop/*` namespace stays as the compatibility surface for out-of-tree
+  clients: loopback-only, token-guarded, and disabled when its token is unset. Nothing inside dsh
+  may use it for its own inference — that would be the helper gateway this repository forbids.
 - Client code, packaging, signing and auto-update belong to the client repository. This
   repository keeps the Go service, the web console and the deployment assets.
 

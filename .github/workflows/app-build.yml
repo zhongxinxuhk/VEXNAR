@@ -1,0 +1,148 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: App build
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'assets/logo.png'
+      - '.github/workflows/app-build.yml'
+  push:
+    branches: [main]
+    tags: ['app-v*']
+    paths:
+      - 'app/**'
+      - 'assets/logo.png'
+      - '.github/workflows/app-build.yml'
+  workflow_dispatch:
+    inputs:
+      desktop:
+        description: Build unsigned dsh desktop installers
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  app-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            app/vexnar/ui/package-lock.json
+            app/vexnar/account/package-lock.json
+      - name: Build VEXNAR plugins
+        working-directory: app
+        run: |
+          npm ci --prefix vexnar/ui
+          npm ci --prefix vexnar/account
+          npm run ui:build
+          npm --prefix vexnar/account run build
+          for plugin in ui account; do
+            test -s "vexnar/$plugin/lib/client.js"
+            test -s "vexnar/$plugin/lib/index.js"
+            node --check "vexnar/$plugin/lib/client.js"
+            node --check "vexnar/$plugin/lib/index.js"
+          done
+      - name: Archive plugins and profile
+        working-directory: app
+        run: |
+          cp ../assets/logo.png vexnar/account/assets/logo.png
+          tar -czf "$RUNNER_TEMP/vexnar-app-bundle.tar.gz" \
+            upstream.lock.json vexnar/package.json vexnar/cordis.patch.yml vexnar/src \
+            vexnar/ui/package.json vexnar/ui/lib/{index,client}.js \
+            vexnar/account/package.json vexnar/account/lib/{index,client}.js \
+            vexnar/account/assets/logo.png -C .. LICENSE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vexnar-app-bundle
+          path: ${{ runner.temp }}/vexnar-app-bundle.tar.gz
+          if-no-files-found: error
+
+  desktop:
+    if: startsWith(github.ref, 'refs/tags/app-v') || (github.event_name == 'workflow_dispatch' && inputs.desktop)
+    needs: app-bundle
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15, target: mac-arm64, script: 'package:desktop:mac:arm64:unsigned', ext: dmg }
+          - { runner: macos-15-intel, target: mac-x64, script: 'package:desktop:mac:x64:unsigned', ext: dmg }
+          - { runner: windows-2022, target: win-x64, script: 'package:desktop:win:x64:unsigned', ext: exe }
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned dsh source
+        shell: bash
+        run: bash app/scripts/fetch-dsh.sh
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: app/dsh/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: app/dsh/pnpm-lock.yaml
+      - name: Verify dsh checkout matches the App bundle lock
+        working-directory: app/dsh
+        run: >-
+          node -e "const {execFileSync} = require('node:child_process');
+          const head = execFileSync('git', ['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+          if (head !== require('../upstream.lock.json').commit) throw new Error('dsh checkout differs from app/upstream.lock.json');"
+      - name: Install dsh workspace dependencies
+        working-directory: app/dsh
+        run: pnpm install --frozen-lockfile
+      - name: Build unsigned desktop installer
+        working-directory: app/dsh
+        run: pnpm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-${{ matrix.target }}-unsigned
+          path: app/dsh/apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.${{ matrix.ext }}
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/app-v')
+    needs: [app-bundle, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish App release in this repository
+        working-directory: release-assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          installers=(*.dmg *.exe)
+          test "${#installers[@]}" -eq 3
+          test -s vexnar-app-bundle.tar.gz
+          sha256sum vexnar-app-bundle.tar.gz "${installers[@]}" > SHA256SUMS
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" vexnar-app-bundle.tar.gz "${installers[@]}" SHA256SUMS --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" vexnar-app-bundle.tar.gz "${installers[@]}" SHA256SUMS \
+              --verify-tag --title "VEXNAR App ${GITHUB_REF_NAME#app-v}" --prerelease --latest=false \
+              --notes 'Unsigned dsh desktop installers and the separate VEXNAR plugin/profile bundle.'
+          fi

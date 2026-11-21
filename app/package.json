@@ -30,7 +30,8 @@
     "vexnar": "tsx scripts/vexnar.ts",
     "migrate:store": "tsx scripts/migrate-store.ts",
     "catalog:gen": "tsx scripts/gen-catalog-defaults.ts",
-    "test:catalog": "tsx --test vexnar-core/test/catalog-register.test.ts"
+    "test:catalog": "tsx --test vexnar-core/test/catalog-register.test.ts",
+    "test:profile": "tsx --test scripts/profile-migration.test.ts"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",

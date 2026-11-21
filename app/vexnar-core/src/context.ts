@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot, toolSpecs } from '../../vexnar-store/src/index.ts'
-import { gatewayComplete } from './gateway.ts'
+import { gatewayComplete, modelCompletionReady } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 import { registerCatalogDefaults } from './catalog/register.ts'
 
@@ -40,7 +40,7 @@ for (const agent of await meta.table<any[]>('agents')) {
     const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
       const task = await spawnTriggerTask(operations, agent.key, fire)
       store.invalidate?.(['tasks'])
-      if (process.env.VEXNAR_GATEWAY_TOKEN) {
+      if (modelCompletionReady()) {
         const taskId = String(task.id)
         await taskQueue.enqueue(taskId, async () => {
           await engine.plan(taskId, gatewayComplete)
@@ -70,7 +70,7 @@ for (const agent of await meta.table<any[]>('agents')) {
 const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
   const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) })
   store.invalidate?.(['tasks'])
-  if (process.env.VEXNAR_GATEWAY_TOKEN) {
+  if (modelCompletionReady()) {
     const taskId = String(task.id)
     await taskQueue.enqueue(taskId, async () => {
       await engine.plan(taskId, gatewayComplete)

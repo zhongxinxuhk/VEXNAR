@@ -22,7 +22,6 @@ type VariableRow = { name: string; source?: string }
 const root = await mkdtemp(join(tmpdir(), 'vexnar-agents-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
-delete process.env.VEXNAR_GATEWAY_TOKEN
 
 const { Hono } = await import('hono')
 const { meta, operations, storeRoot } = await import('../vexnar-core/src/context.ts')
