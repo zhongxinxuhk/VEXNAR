@@ -6,7 +6,7 @@ import type { storeOperations } from './operations.js'
 
 type Ops = ReturnType<typeof storeOperations>
 
-export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap' | 'nuclei'
+export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap' | 'nuclei' | 'katana' | 'subfinder'
 
 export interface ToolSpec {
   name: ToolName
@@ -87,6 +87,47 @@ const templates: Record<ToolName, ToolSpec> = {
         if (row) results.push({ path: row[1], status: Number(row[2]), size: row[3] ? Number(row[3]) : 0 })
       }
       return { results }
+    }
+  },
+  katana: {
+    name: 'katana',
+    description: '爬虫收集 URL',
+    build(target, extra = {}) {
+      return { command: 'katana', args: ['-u', target, '-jsonl', '-silent', '-d', String(extra.depth ?? 2)] }
+    },
+    parse(output) {
+      const urls = []
+      for (const line of output.split('\n')) {
+        const text = line.trim()
+        if (!text.startsWith('{')) continue
+        try {
+          const row = JSON.parse(text)
+          const url = row.request?.endpoint ?? row.url ?? ''
+          if (url) urls.push({ url, status: Number(row.response?.status_code ?? 0) })
+        } catch {
+          // ignore
+        }
+      }
+      return { urls }
+    }
+  },
+  subfinder: {
+    name: 'subfinder',
+    description: '子域名枚举',
+    build(target, extra = {}) {
+      return { command: 'subfinder', args: ['-d', target, '-silent', '-json', ...(extra.all ? ['-all'] : [])] }
+    },
+    parse(output) {
+      const hosts = []
+      for (const line of output.split('\n')) {
+        const text = line.trim()
+        if (!text) continue
+        if (text.startsWith('{')) {
+          try { const row = JSON.parse(text); if (row.host) hosts.push({ host: row.host, source: row.source ?? '' }); continue } catch { /* fall through */ }
+        }
+        hosts.push({ host: text, source: 'subfinder' })
+      }
+      return { hosts }
     }
   },
   nuclei: {
@@ -186,6 +227,20 @@ export async function persistToolResult(ops: Ops, taskId: string, nodeId: string
         evidence: [row.matched_at, ...(row.extracted ?? [])].filter(Boolean).join('\n'), worker: 'engine'
       })
       created.push({ kind: 'finding', id: finding.finding_id })
+    }
+  }
+  if (name === 'katana') {
+    for (const row of parsed.urls ?? []) {
+      const host = (() => { try { return new URL(row.url).hostname } catch { return '' } })()
+      const asset = await ops.addAsset(taskId, { type: 'endpoint', url: row.url, domain: host, root_domain: host, status_code: row.status })
+      created.push({ kind: 'asset', id: asset.id })
+    }
+  }
+  if (name === 'subfinder') {
+    for (const row of parsed.hosts ?? []) {
+      const root = String(row.host).split('.').slice(-2).join('.')
+      const asset = await ops.addAsset(taskId, { type: 'subdomain', domain: row.host, root_domain: root })
+      created.push({ kind: 'asset', id: asset.id })
     }
   }
   if (name === 'sqlmap' && parsed.vulnerable) {
