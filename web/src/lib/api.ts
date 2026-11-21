@@ -1377,12 +1377,14 @@ export const api = {
     },
   ) => patch<ProxyNodeView>(`/proxy/nodes/${id}`, p),
   deleteProxyNode: (id: number) => del<{ deleted: number }>(`/proxy/nodes/${id}`),
-  proxyParse: (text: string) => post<ProxyParseResult>(`/proxy/nodes/parse`, { text }),
-  proxyImport: (text: string, pool_id?: number, tags?: string[]) =>
+  proxyParse: (text: string, url = "") => post<ProxyParseResult>(`/proxy/nodes/parse`, { text, url }),
+  proxyImport: (text: string, pool_id?: number, tags?: string[], url = "") =>
     post<{ created: number; updated: number; added_to_pool: number; issues: ProxyParseResult["issues"] }>(
       `/proxy/nodes/import`,
-      { text, pool_id: pool_id ?? 0, tags: tags ?? [] },
+      { text, url, pool_id: pool_id ?? 0, tags: tags ?? [] },
     ),
+  proxyBatch: (p: { ids: number[]; action: string; pool_id?: number; tags?: string[] }) =>
+    post<{ updated: number; deleted: number; checked: ProxyHealth[] | null }>(`/proxy/nodes/batch`, p),
   proxyCheckNode: (id: number) => post<ProxyHealth>(`/proxy/nodes/${id}/check`),
   proxyCheckPool: (id: number) => post<ProxyHealth[]>(`/proxy/pools/${id}/check`),
   setProxyDefaultPool: (pool_id: number) => put<{ pool_id: number }>(`/proxy/default-pool`, { pool_id }),

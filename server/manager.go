@@ -674,8 +674,8 @@ func (m *Manager) syncBrowserMCPProxy() {
 		return // user removed/renamed it — leave it alone
 	}
 
-	proxy := m.ProxyAddr()  // "" when capture off
-	cert := m.ProxyCACert() // "" when capture off
+	proxy := m.BrowserProxyURL() // credential-free; Chromium can't do proxy auth
+	cert := m.ProxyCACert()      // "" when capture off
 
 	args := stripProxyArgs(decodeStrSlice(srv.Args))
 	env := decodeStrMap(srv.Env)
@@ -779,6 +779,21 @@ func (m *Manager) ProxyAddr() string {
 	return m.globalProxy
 }
 
+// BrowserProxyURL is what a browser may receive as --proxy-server. Chromium cannot
+// answer proxy authentication (URL userinfo is ignored), so a pool-bound default
+// uses a credential-free fixed-port listener instead of the credential URL.
+func (m *Manager) BrowserProxyURL() string {
+	if m.traffic != nil && m.TrafficEnabled() {
+		return m.traffic.ProxyAddr() // MITM; its upstream already honors the pool
+	}
+	if m.egress != nil && m.EgressPoolID() > 0 {
+		if u, err := m.egress.FixedProxyURL("global:default"); err == nil {
+			return u
+		}
+	}
+	return m.ProxyAddr()
+}
+
 // Egress returns the proxy-pool runtime (nil when disabled by init failure).
 func (m *Manager) Egress() *egress.Manager { return m.egress }
 
@@ -824,6 +839,9 @@ func (m *Manager) applyEgressDefault(poolID int64) error {
 		return nil
 	}
 	if poolID <= 0 {
+		// Drop the global session and its credential-free listener: a removed pool
+		// must not keep routing browser traffic through its last node.
+		m.egress.Revoke("global:default")
 		if m.traffic != nil {
 			return m.traffic.SetUpstreamProxy(m.GlobalProxy())
 		}

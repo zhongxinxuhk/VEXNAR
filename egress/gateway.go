@@ -29,8 +29,15 @@ type Gateway struct {
 	ln  net.Listener
 	srv *http.Server
 
+	socksLn net.Listener
+
 	trMu sync.Mutex
 	trs  map[*NodeDialer]*http.Transport
+}
+
+type fixedEntry struct {
+	url   string
+	close func()
 }
 
 // route is the per-request view of a session: the stored session plus optional
@@ -54,17 +61,65 @@ func NewGateway(m *Manager) (*Gateway, error) {
 		ReadHeaderTimeout: 15 * time.Second,
 		// No overall read/write timeout: CONNECT tunnels carry long scans.
 	}
+	if err := g.startSocks5(); err != nil {
+		// SOCKS5 is an optional convenience inlet; the HTTP proxy is mandatory.
+		m.logf("SOCKS5 入口未启动: %v", err)
+	}
 	return g, nil
 }
 
 // Addr is the loopback host:port tools must use.
 func (g *Gateway) Addr() string { return g.ln.Addr().String() }
 
+// SocksAddr returns the SOCKS5 inlet address ("" when it failed to bind).
+func (m *Manager) SocksAddr() string {
+	if m == nil || m.gateway == nil {
+		return ""
+	}
+	return m.gateway.SocksAddr()
+}
+
+// SocksAddr is the SOCKS5 inbound address (empty when it failed to bind).
+func (g *Gateway) SocksAddr() string {
+	if g.socksLn == nil {
+		return ""
+	}
+	return g.socksLn.Addr().String()
+}
+
+// listenFixed starts a credential-free listener permanently bound to one session.
+func (g *Gateway) listenFixed(sessionKey string) (string, func(), error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", nil, err
+	}
+	srv := &http.Server{
+		ReadHeaderTimeout: 15 * time.Second,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s, ok := g.mgr.sessionByKey(sessionKey)
+			if !ok {
+				writeProxyError(w, http.StatusProxyAuthRequired, "EGRESS_SESSION_REVOKED", "会话已撤销")
+				return
+			}
+			g.serve(w, r, &route{sess: s})
+		}),
+	}
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, net.ErrClosed) {
+			g.mgr.logf("固定端口代理 %s 停止: %v", ln.Addr(), err)
+		}
+	}()
+	return "http://" + ln.Addr().String(), func() { _ = srv.Close() }, nil
+}
+
 // Serve blocks until the listener closes.
 func (g *Gateway) Serve() error { return g.srv.Serve(g.ln) }
 
-// Close stops accepting and drops idle connections.
+// Close stops accepting and drops idle connections (HTTP + SOCKS5).
 func (g *Gateway) Close() error {
+	if g.socksLn != nil {
+		_ = g.socksLn.Close()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	return g.srv.Shutdown(ctx)
@@ -81,6 +136,13 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProxyError(w, http.StatusProxyAuthRequired, "EGRESS_BAD_CREDENTIAL", "代理认证失败")
 		return
 	}
+	g.serve(w, r, rt)
+}
+
+// serve dispatches one already-authenticated request. Fixed-port listeners call
+// it with a pre-resolved route, so Chromium (which cannot answer proxy auth) gets
+// the same code path without a credential.
+func (g *Gateway) serve(w http.ResponseWriter, r *http.Request, rt *route) {
 	if r.Method == http.MethodConnect {
 		g.handleConnect(w, r, rt)
 		return
@@ -98,6 +160,12 @@ func (g *Gateway) auth(r *http.Request) (*route, error) {
 	if !ok {
 		return nil, errBadCredential
 	}
+	return g.mgr.routeFor(user, pass)
+}
+
+// routeFor turns a proxy username/password into a session plus per-connection
+// overrides. Shared by the HTTP proxy, SOCKS5 and the session-listener path.
+func (m *Manager) routeFor(user, pass string) (*route, error) {
 	rt := &route{}
 	base := user
 	if i := strings.LastIndex(user, "."); i >= 0 {
@@ -113,12 +181,67 @@ func (g *Gateway) auth(r *http.Request) (*route, error) {
 			base = user[:i]
 		}
 	}
-	s, err := g.mgr.authenticate(base, pass)
+	s, err := m.authenticate(base, pass)
 	if err != nil {
 		return nil, err
 	}
 	rt.sess = s
 	return rt, nil
+}
+
+// sessionByKey resolves a live session by its sanitized key (fixed listeners).
+func (m *Manager) sessionByKey(key string) (*session, bool) {
+	user := sanitizeKey(key)
+	m.sessMu.RLock()
+	s := m.sessions[user]
+	m.sessMu.RUnlock()
+	return s, s != nil
+}
+
+// FixedProxyURL returns a loopback proxy that is permanently bound to one
+// session and requires no credential. Used for clients that cannot answer proxy
+// authentication (Chromium's --proxy-server ignores URL userinfo).
+func (m *Manager) FixedProxyURL(key string) (string, error) {
+	user := sanitizeKey(key)
+	if _, ok := m.sessionByKey(user); !ok {
+		return "", ErrSessionRevoked
+	}
+	m.fixedMu.Lock()
+	defer m.fixedMu.Unlock()
+	if e := m.fixed[user]; e != nil {
+		return e.url, nil
+	}
+	url, closer, err := m.gateway.listenFixed(user)
+	if err != nil {
+		return "", err
+	}
+	if m.fixed == nil {
+		m.fixed = map[string]*fixedEntry{}
+	}
+	m.fixed[user] = &fixedEntry{url: url, close: closer}
+	return url, nil
+}
+
+// closeFixed drops one session's credential-free listener.
+func (m *Manager) closeFixed(key string) {
+	m.fixedMu.Lock()
+	e := m.fixed[key]
+	delete(m.fixed, key)
+	m.fixedMu.Unlock()
+	if e != nil {
+		e.close()
+	}
+}
+
+// closeFixedListeners shuts session-bound listeners (default-pool change/delete).
+func (m *Manager) closeFixedListeners() {
+	m.fixedMu.Lock()
+	entries := m.fixed
+	m.fixed = map[string]*fixedEntry{}
+	m.fixedMu.Unlock()
+	for _, e := range entries {
+		e.close()
+	}
 }
 
 func (g *Gateway) handleConnect(w http.ResponseWriter, r *http.Request, rt *route) {

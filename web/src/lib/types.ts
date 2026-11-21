@@ -1683,6 +1683,8 @@ export interface ProxyState {
   sessions: ProxySessionSnapshot[] | null;
   /** 捕获开启时为会话创建的录制实例数。 */
   recordings?: number;
+  /** SOCKS5 入站地址（为空表示未启动）。 */
+  socks?: string;
 }
 
 export interface ProxyParseIssue {

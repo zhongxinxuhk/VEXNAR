@@ -131,6 +131,11 @@ type Manager struct {
 	sessions map[string]*session // sanitized key → session
 	byUser   map[string]*session // proxy username → session
 
+	fixedMu sync.Mutex
+	fixed   map[string]*fixedEntry // session-bound no-auth listeners
+
+	events eventBus
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -212,6 +217,7 @@ func NewManager(opts Options) (*Manager, error) {
 		defaultPool: opts.DefaultPool,
 		sessions:    map[string]*session{},
 		byUser:      map[string]*session{},
+		fixed:       map[string]*fixedEntry{},
 		usage:       map[usageKey]*usageDelta{},
 		ctx:         ctx,
 		cancel:      cancel,
@@ -257,6 +263,7 @@ func (m *Manager) Close() error {
 		return nil
 	}
 	m.cancel()
+	m.closeFixedListeners()
 	if m.gateway != nil {
 		_ = m.gateway.Close()
 	}
@@ -365,6 +372,7 @@ func (m *Manager) Reload(ctx context.Context) error {
 		m.order = append(m.order, p.ID)
 	}
 	m.mu.Unlock()
+	m.publish(Event{Type: "pools_reloaded", At: time.Now()})
 	return nil
 }
 
@@ -447,19 +455,27 @@ func (m *Manager) Revoke(key string) {
 		delete(m.byUser, "sess_"+user)
 	}
 	m.sessMu.Unlock()
+	m.closeFixed(user)
+	m.publish(Event{Type: "session_revoked", Message: user})
 }
 
 // RevokeTask drops every session of a task (`task:<id>:*`).
 func (m *Manager) RevokeTask(taskID int64) {
 	prefix := fmt.Sprintf("task-%d-", taskID)
 	m.sessMu.Lock()
+	var revoked []string
 	for user, s := range m.sessions {
 		if s.spec.TaskID == taskID || strings.HasPrefix(user, prefix) {
 			delete(m.sessions, user)
 			delete(m.byUser, "sess_"+user)
+			revoked = append(revoked, user)
 		}
 	}
 	m.sessMu.Unlock()
+	for _, user := range revoked {
+		m.closeFixed(user)
+	}
+	m.publish(Event{Type: "session_revoked", Message: fmt.Sprintf("task:%d", taskID)})
 }
 
 // SessionSnapshot returns the live state for API/prompt display.
@@ -807,6 +823,7 @@ func (m *Manager) report(st *nodeState, ok bool, latency time.Duration, callErr 
 	defer st.mu.Unlock()
 	st.lastUsed = time.Now()
 	now := time.Now()
+	prevState := st.health.State
 	if ok {
 		st.failures = 0
 		st.health.FailStreak = 0
@@ -820,6 +837,9 @@ func (m *Manager) report(st *nodeState, ok bool, latency time.Duration, callErr 
 			st.latencyEW = time.Duration(float64(st.latencyEW)*0.7 + float64(latency)*0.3)
 		}
 		st.health.LatencyMS = st.latencyEW.Milliseconds()
+		if prevState != "up" {
+			m.publish(Event{Type: "node_health", NodeID: st.node.ID, State: "up"})
+		}
 		return
 	}
 	st.failures++
@@ -838,6 +858,9 @@ func (m *Manager) report(st *nodeState, ok bool, latency time.Duration, callErr 
 		st.health.CooldownUntil = now.Add(backoff)
 	} else if st.health.FailStreak > 0 {
 		st.health.State = "degraded"
+	}
+	if prevState != st.health.State {
+		m.publish(Event{Type: "node_health", NodeID: st.node.ID, State: st.health.State, Message: st.health.LastError})
 	}
 }
 
@@ -882,6 +905,7 @@ func (m *Manager) CheckNode(ctx context.Context, id int64) (Health, error) {
 	st.latencyEW = res.Latency
 	st.mu.Unlock()
 	_ = m.store.SaveHealth(ctx, h)
+	m.publish(Event{Type: "node_health", NodeID: id, State: h.State, Message: h.LastError})
 	return h, nil
 }
 

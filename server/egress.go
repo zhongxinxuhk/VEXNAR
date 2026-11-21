@@ -6,7 +6,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,8 +52,9 @@ func (s *Server) egressState(w http.ResponseWriter, r *http.Request) {
 	st.DefaultPool = s.m.EgressPoolID()
 	writeJSON(w, http.StatusOK, struct {
 		egress.State
-		Recordings int `json:"recordings"`
-	}{st, s.m.RecordingCount()})
+		Recordings int    `json:"recordings"`
+		Socks      string `json:"socks"`
+	}{st, s.m.RecordingCount(), mgr.SocksAddr()})
 }
 
 // GET/POST /api/proxy/pools
@@ -438,12 +442,18 @@ func (s *Server) egressParse(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Text string `json:"text"`
+		URL  string `json:"url"`
 	}
 	if err := decodeLimited(r, &req); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	res := egress.ParseInput(req.Text)
+	text, err := resolveSubscription(r.Context(), req.Text, req.URL)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	res := egress.ParseInput(text)
 	writeJSON(w, http.StatusOK, res)
 }
 
@@ -455,6 +465,7 @@ func (s *Server) egressImport(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Text   string   `json:"text"`
+		URL    string   `json:"url"`
 		PoolID int64    `json:"pool_id"`
 		Tags   []string `json:"tags"`
 	}
@@ -462,7 +473,12 @@ func (s *Server) egressImport(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	res := egress.ParseInput(req.Text)
+	text, err := resolveSubscription(r.Context(), req.Text, req.URL)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	res := egress.ParseInput(text)
 	if len(res.Nodes) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "没有解析到可用节点", "issues": res.Issues,
@@ -739,4 +755,246 @@ func taskSessionKey(taskID int64, role string) string {
 func decodeLimited(r *http.Request, v any) error {
 	r.Body = http.MaxBytesReader(nil, r.Body, maxEgressBodyBytes)
 	return decode(r, v)
+}
+
+// resolveSubscription returns the pasted text, or fetches a subscription URL when
+// no text was given. Only http(s) is accepted, the body is capped, and a non-2xx
+// status is an error rather than an empty node list.
+func resolveSubscription(ctx context.Context, text, rawURL string) (string, error) {
+	if strings.TrimSpace(text) != "" {
+		return text, nil
+	}
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", errors.New("需要粘贴节点内容或填写订阅 URL")
+	}
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		return "", errors.New("订阅 URL 只允许 http/https")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("订阅 URL 无效: %w", err)
+	}
+	req.Header.Set("User-Agent", "vexnar/egress")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("拉取订阅失败: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("订阅返回 HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return "", fmt.Errorf("读取订阅失败: %w", err)
+	}
+	if strings.TrimSpace(string(body)) == "" {
+		return "", errors.New("订阅内容为空")
+	}
+	return string(body), nil
+}
+
+// POST /api/proxy/nodes/batch  {ids, action, pool_id?, tags?}
+func (s *Server) egressBatch(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	var req struct {
+		IDs    []int64  `json:"ids"`
+		Action string   `json:"action"`
+		PoolID int64    `json:"pool_id"`
+		Tags   []string `json:"tags"`
+	}
+	if err := decodeLimited(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.IDs) == 0 {
+		writeErr(w, http.StatusBadRequest, "ids 不能为空")
+		return
+	}
+	ctx := r.Context()
+	updated, deleted := 0, 0
+	var checked []egress.Health
+	seen := map[int64]bool{}
+	for _, id := range req.IDs {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		switch req.Action {
+		case "enable", "disable":
+			node, err := mgr.Store().Node(ctx, id)
+			if err != nil || node == nil {
+				continue
+			}
+			node.Enabled = req.Action == "enable"
+			if err := mgr.Store().UpdateNode(ctx, *node); err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			updated++
+		case "delete":
+			if err := mgr.Store().DeleteNode(ctx, id); err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			deleted++
+		case "check":
+			cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			h, err := mgr.CheckNode(cctx, id)
+			cancel()
+			if err != nil {
+				h = egress.Health{NodeID: id, State: "down", CheckedAt: time.Now(), LastError: truncateErr(err)}
+			}
+			checked = append(checked, h)
+		case "add_to_pool", "remove_from_pool":
+			// Applied once after the loop, against the pool's current membership.
+		case "tag":
+			node, err := mgr.Store().Node(ctx, id)
+			if err != nil || node == nil {
+				continue
+			}
+			node.Tags = mergeTags(node.Tags, req.Tags)
+			if err := mgr.Store().UpdateNode(ctx, *node); err != nil {
+				writeErr(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			updated++
+		default:
+			writeErr(w, http.StatusBadRequest, "不支持的批量操作: "+req.Action)
+			return
+		}
+	}
+	if req.Action == "add_to_pool" || req.Action == "remove_from_pool" {
+		if req.PoolID <= 0 {
+			writeErr(w, http.StatusBadRequest, "需要 pool_id")
+			return
+		}
+		current, err := mgr.Store().PoolNodes(ctx, req.PoolID)
+		if err != nil {
+			writeErr(w, http.StatusNotFound, "池不存在")
+			return
+		}
+		set := map[int64]bool{}
+		for _, id := range current {
+			set[id] = true
+		}
+		for id := range seen {
+			if req.Action == "add_to_pool" {
+				set[id] = true
+			} else {
+				delete(set, id)
+			}
+		}
+		merged := make([]int64, 0, len(set))
+		for _, id := range current {
+			if set[id] {
+				merged = append(merged, id)
+				delete(set, id)
+			}
+		}
+		for id := range set {
+			merged = append(merged, id)
+		}
+		if err := mgr.Store().SetPoolNodes(ctx, req.PoolID, merged); err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		updated = len(merged)
+	}
+	if err := mgr.Reload(ctx); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"updated": updated, "deleted": deleted, "checked": checked,
+	})
+}
+
+func mergeTags(existing, add []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(existing)+len(add))
+	for _, t := range append(append([]string{}, existing...), add...) {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	return out
+}
+
+func truncateErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if len(msg) > 200 {
+		msg = msg[:200]
+	}
+	return msg
+}
+
+// GET /api/proxy/events — SSE stream of health/session/pool changes.
+func (s *Server) egressEvents(w http.ResponseWriter, r *http.Request) {
+	mgr := s.egressOrErr(w)
+	if mgr == nil {
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	send := func(v any) bool {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return false
+		}
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+	// Initial snapshot so a fresh subscriber renders immediately.
+	if st, err := mgr.State(r.Context()); err == nil {
+		st.DefaultPool = s.m.EgressPoolID()
+		payload, _ := json.Marshal(st)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", payload)
+		flusher.Flush()
+	}
+	ch, unsub := mgr.Subscribe()
+	defer unsub()
+	ping := time.NewTicker(20 * time.Second)
+	defer ping.Stop()
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ping.C:
+			if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		case ev, ok := <-ch:
+			if !ok {
+				return
+			}
+			if !send(ev) {
+				return
+			}
+		}
+	}
 }
