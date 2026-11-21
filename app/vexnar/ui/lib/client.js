@@ -1010,87 +1010,56 @@ function InterceptPage() {
   );
 }
 function ApprovalsPage() {
-  return (0, import_react.createElement)(
-    "div",
-    { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
-    "\u5BA1\u6279\u8BB0\u5F55\uFF1AGo \u4FA7\u6682\u65E0\u72EC\u7ACB REST \u63A5\u53E3\uFF08web \u63A7\u5236\u53F0\u4E5F\u6CA1\u6709\u8BE5\u9875\uFF09\uFF0C\u8FC1\u79FB\u65F6\u968F\u62E6\u622A\u89C4\u5219\u4E00\u8D77\u843D\u5730\u3002"
-  );
-}
-function PanelShell({ title, desc, children }) {
-  const connect = () => {
-    const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
-    if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
-    const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
-    if (token) localStorage.setItem("vexnar.coreToken", token);
-    window.location.reload();
+  const { data, error, loading } = useApi("/api/intercept/pending");
+  const [version, setVersion] = (0, import_react.useState)(0);
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981 VEXNAR_GO_FALLBACK \u4EE3\u7406 Go \u62E6\u622A\u63A5\u53E3\uFF09`);
+  const rows = data?.pending ?? [];
+  const decide = async (row, decision) => {
+    try {
+      await callApi(`/api/intercept/pending/${row.id}/decide`, "POST", { decision });
+      setVersion(version + 1);
+    } catch (e) {
+      window.alert(String(e?.message ?? e));
+    }
   };
   return (0, import_react.createElement)(
     "div",
-    { style: { height: "100%", overflowY: "auto", padding: 24 } },
-    (0, import_react.createElement)(
-      "div",
-      { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
-      (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, title),
-      (0, import_react.createElement)("button", { type: "button", onClick: connect, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 } }, "\u8FDE\u63A5 core")
-    ),
-    desc ? (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 18px" } }, desc) : (0, import_react.createElement)("div", { style: { height: 12 } }),
-    children
-  );
-}
-function TasksPanel() {
-  const [taskId, setTaskId] = (0, import_react.useState)("");
-  return (0, import_react.createElement)(
-    PanelShell,
-    { title: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u5217\u8868\u3001\u76EE\u6807\u3001\u610F\u56FE\u4E0E\u8986\u76D6\u5EA6" },
-    taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)("div", null, (0, import_react.createElement)(Dashboard), (0, import_react.createElement)(TaskList, { onSelect: setTaskId }))
-  );
-}
-function FindingsPanel() {
-  const [findingId, setFindingId] = (0, import_react.useState)("");
-  return (0, import_react.createElement)(
-    PanelShell,
-    { title: "\u53D1\u73B0", desc: "\u6F0F\u6D1E\u5217\u8868\u3001\u8BC1\u636E\u4E0E\u6D41\u91CF\u7ED1\u5B9A" },
-    findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId })
-  );
-}
-function AssetsPanel() {
-  const { data, error, loading } = useApi("/api/assets?limit=50");
-  return (0, import_react.createElement)(
-    PanelShell,
-    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
-    loading ? (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : error ? (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error) : (0, import_react.createElement)(
+    { key: version, fontSize: 13 },
+    (0, import_react.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5F85\u5904\u7406 ${rows.length} \u6761`),
+    rows.length === 0 ? (0, import_react.createElement)("div", { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, color: "var(--vx-muted, #6b7280)" } }, "\u5F53\u524D\u6CA1\u6709\u5F85\u5BA1\u6279\u7684\u5DE5\u5177\u8C03\u7528\u3002") : (0, import_react.createElement)(
       "table",
-      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u7C7B\u578B", "\u57DF\u540D/IP", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react.createElement)("tbody", null, (data?.assets ?? []).map((row) => (0, import_react.createElement)(
+      { style: { width: "100%", borderCollapse: "collapse" } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u4EFB\u52A1", "Agent", "\u5DE5\u5177", "\u72B6\u6001", "\u539F\u56E0", ""].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
         "tr",
         { key: row.id },
         (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.type),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.domain || row.ip || row.url || ""),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.port ?? ""),
-        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.last_seen ?? "")
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.task_id ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.agent_name ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.tool_name ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.reason ?? ""),
+        (0, import_react.createElement)(
+          "td",
+          { style: { padding: "6px 8px", display: "flex", gap: 8 } },
+          row.status === "pending" ? (0, import_react.createElement)("button", { type: "button", onClick: () => decide(row, "allowed"), style: { cursor: "pointer" } }, "\u5141\u8BB8") : null,
+          row.status === "pending" ? (0, import_react.createElement)("button", { type: "button", onClick: () => decide(row, "denied"), style: { cursor: "pointer" } }, "\u62D2\u7EDD") : null
+        )
       )))
     )
   );
 }
-function TrafficPanel() {
-  return (0, import_react.createElement)(PanelShell, { title: "\u6D41\u91CF", desc: "\u6293\u5305\u5217\u8868\uFF08\u7ECF core \u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09" }, (0, import_react.createElement)(TrafficPage));
-}
-function ToolRunPanel() {
-  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" }, (0, import_react.createElement)(ToolRunPage));
-}
-function AgentSettings() {
-  return (0, import_react.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react.createElement)(AgentsPage));
-}
-function McpSettings() {
-  return (0, import_react.createElement)(PanelShell, { title: "MCP", desc: "MCP server \u542F\u505C\u4E0E\u5220\u9664" }, (0, import_react.createElement)(McpPage));
-}
-function ToolSettings() {
-  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177", desc: "\u5185\u7F6E\u4E0E\u81EA\u5B9A\u4E49\u5DE5\u5177" }, (0, import_react.createElement)(ToolsPage));
-}
-function NotifySettings() {
-  return (0, import_react.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react.createElement)(NotifyPage));
+function AssetSyncSettings() {
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
+    (0, import_react.createElement)(
+      "div",
+      { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
+      "\u8D44\u4EA7\u540C\u6B65\u540E\u7AEF\u5C1A\u672A\u8FC1\u79FB\uFF08Go \u4FA7\u65E0\u72EC\u7ACB REST \u5951\u7EA6\uFF09\u3002\u63A5\u5165\u65F6\u590D\u7528\u8D44\u4EA7\u7684 journal \u5199\u8DEF\u5F84\uFF0C\u5E76\u5728\u6B64\u63D0\u4F9B\u540C\u6B65\u6E90\u914D\u7F6E\u4E0E\u6700\u8FD1\u4E00\u6B21\u7ED3\u679C\u3002"
+    )
+  );
 }
 function LogsPanel() {
   const tasks = useApi("/api/tasks");
@@ -1156,22 +1125,160 @@ function LogsPanel() {
     )
   );
 }
+function PanelShell({ title, desc, children }) {
+  const connect = () => {
+    const url = window.prompt("vexnar-core \u5730\u5740", localStorage.getItem("vexnar.coreUrl") || "http://127.0.0.1:8790");
+    if (url) localStorage.setItem("vexnar.coreUrl", url.replace(/\/$/, ""));
+    const token = window.prompt("core \u8BBF\u95EE token\uFF08VEXNAR_API_TOKEN\uFF09", localStorage.getItem("vexnar.coreToken") || "");
+    if (token) localStorage.setItem("vexnar.coreToken", token);
+    window.location.reload();
+  };
+  return (0, import_react.createElement)(
+    "div",
+    { style: { height: "100%", overflowY: "auto", padding: 24 } },
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
+      (0, import_react.createElement)("h1", { style: { fontSize: 22, margin: 0 } }, title),
+      (0, import_react.createElement)("button", { type: "button", onClick: connect, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 12 } }, "\u8FDE\u63A5 core")
+    ),
+    desc ? (0, import_react.createElement)("p", { style: { color: "var(--vx-muted, #6b7280)", margin: "0 0 18px" } }, desc) : (0, import_react.createElement)("div", { style: { height: 12 } }),
+    children
+  );
+}
+function FindingList({ onSelect }) {
+  const { data, error, loading } = useApi("/api/exploration/findings?page=1&limit=30");
+  if (loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error);
+  const rows = data?.items ?? [];
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.total ?? 0} \u6761`),
+    (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u6F0F\u6D1E\u7C7B", "\u4E25\u91CD\u5EA6", "\u72B6\u6001", "\u6458\u8981"].map((title) => (0, import_react.createElement)("th", { key: title, style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" } }, title)))),
+      (0, import_react.createElement)("tbody", null, rows.map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.finding_id, onClick: () => onSelect?.(String(row.finding_id)), style: { cursor: onSelect ? "pointer" : "default" } },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.finding_id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.vulnclass),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.severity),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.status),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.summary)
+      )))
+    )
+  );
+}
+function FindingDetail({ id, onBack }) {
+  const finding = useApi(`/api/exploration/findings/${id}`);
+  const traffic2 = useApi(`/api/exploration/findings/${id}/traffic`);
+  const [body2, setBody] = (0, import_react.useState)({ title: "", text: "", error: "" });
+  const loadBody2 = async (bindingId, side) => {
+    try {
+      const data = await callApi(`/api/exploration/findings/${id}/traffic/${bindingId}/body?side=${side}&length=8192`);
+      setBody({ title: `${bindingId} \xB7 ${side} \xB7 ${data.offset}-${data.next_offset}/${data.total}`, text: data.content, error: "" });
+    } catch (error) {
+      setBody({ title: `${bindingId} \xB7 ${side}`, text: "", error: String(error?.message ?? error) });
+    }
+  };
+  if (finding.loading) return (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
+  if (finding.error) return (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, finding.error);
+  const row = finding.data ?? {};
+  const bindings = traffic2.data?.bindings ?? [];
+  return (0, import_react.createElement)(
+    "div",
+    null,
+    (0, import_react.createElement)(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 } },
+      (0, import_react.createElement)("button", { type: "button", onClick: onBack, style: { border: "1px solid var(--vx-border, #e5e7eb)", background: "transparent", borderRadius: 8, padding: "3px 10px", cursor: "pointer" } }, "\u2190 \u8FD4\u56DE"),
+      (0, import_react.createElement)("span", { style: { fontSize: 18, fontWeight: 600 } }, `${row.finding_id} \xB7 ${row.vulnclass ?? ""}`),
+      (0, import_react.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, `${row.severity} / ${row.status}`)
+    ),
+    (0, import_react.createElement)("div", { style: { fontSize: 13, marginBottom: 10 } }, row.summary),
+    (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 220, overflow: "auto" } }, row.evidence || ""),
+    (0, import_react.createElement)("div", { style: { fontSize: 13, fontWeight: 600, margin: "14px 0 6px" } }, `\u6D41\u91CF\u7ED1\u5B9A\uFF08${bindings.length}\uFF09`),
+    ...bindings.map((binding) => (0, import_react.createElement)(
+      "div",
+      { key: binding.id, style: { border: "1px solid var(--vx-border, #e5e7eb)", borderRadius: 8, padding: 8, marginBottom: 8, fontSize: 12 } },
+      (0, import_react.createElement)("div", null, `#${binding.id} \xB7 ${binding.snapshot?.method ?? ""} ${binding.snapshot?.url ?? ""} \xB7 ${binding.role}`),
+      (0, import_react.createElement)(
+        "div",
+        { style: { marginTop: 6, display: "flex", gap: 8 } },
+        (0, import_react.createElement)("button", { type: "button", onClick: () => loadBody2(String(binding.id), "response"), style: { cursor: "pointer" } }, "\u54CD\u5E94\u6B63\u6587"),
+        (0, import_react.createElement)("button", { type: "button", onClick: () => loadBody2(String(binding.id), "request"), style: { cursor: "pointer" } }, "\u8BF7\u6C42\u6B63\u6587")
+      )
+    )),
+    body2.title ? (0, import_react.createElement)(
+      "div",
+      null,
+      (0, import_react.createElement)("div", { style: { fontSize: 12, margin: "8px 0 4px", color: "var(--vx-muted, #6b7280)" } }, body2.title),
+      body2.error ? (0, import_react.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, body2.error) : (0, import_react.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 280, overflow: "auto" } }, body2.text)
+    ) : null
+  );
+}
+function TasksPanel() {
+  const [taskId, setTaskId] = (0, import_react.useState)("");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u4EFB\u52A1", desc: "\u4EFB\u52A1\u5217\u8868\u3001\u76EE\u6807\u3001\u610F\u56FE\u4E0E\u8986\u76D6\u5EA6" },
+    taskId ? (0, import_react.createElement)(TaskDetail, { id: taskId, onBack: () => setTaskId("") }) : (0, import_react.createElement)("div", null, (0, import_react.createElement)(Dashboard), (0, import_react.createElement)(TaskList, { onSelect: setTaskId }))
+  );
+}
+function FindingsPanel() {
+  const [findingId, setFindingId] = (0, import_react.useState)("");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u53D1\u73B0", desc: "\u6F0F\u6D1E\u5217\u8868\u3001\u8BC1\u636E\u4E0E\u6D41\u91CF\u7ED1\u5B9A" },
+    findingId ? (0, import_react.createElement)(FindingDetail, { id: findingId, onBack: () => setFindingId("") }) : (0, import_react.createElement)(FindingList, { onSelect: setFindingId })
+  );
+}
+function AssetsPanel() {
+  const { data, error, loading } = useApi("/api/assets?limit=50");
+  return (0, import_react.createElement)(
+    PanelShell,
+    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
+    loading ? (0, import_react.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : error ? (0, import_react.createElement)("div", { style: { color: "#dc2626" } }, error) : (0, import_react.createElement)(
+      "table",
+      { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
+      (0, import_react.createElement)("thead", null, (0, import_react.createElement)("tr", null, ["ID", "\u7C7B\u578B", "\u57DF\u540D/IP", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react.createElement)("tbody", null, (data?.assets ?? []).map((row) => (0, import_react.createElement)(
+        "tr",
+        { key: row.id },
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.type),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.domain || row.ip || row.url || ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.port ?? ""),
+        (0, import_react.createElement)("td", { style: { padding: "6px 8px" } }, row.last_seen ?? "")
+      )))
+    )
+  );
+}
+function TrafficPanel() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u6D41\u91CF", desc: "\u6293\u5305\u5217\u8868\uFF08\u7ECF core \u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09" }, (0, import_react.createElement)(TrafficPage));
+}
+function ToolRunPanel() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" }, (0, import_react.createElement)(ToolRunPage));
+}
+function AgentSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react.createElement)(AgentsPage));
+}
+function McpSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "MCP", desc: "MCP server \u542F\u505C\u4E0E\u5220\u9664" }, (0, import_react.createElement)(McpPage));
+}
+function ToolSettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u5DE5\u5177", desc: "\u5185\u7F6E\u4E0E\u81EA\u5B9A\u4E49\u5DE5\u5177" }, (0, import_react.createElement)(ToolsPage));
+}
+function NotifySettings() {
+  return (0, import_react.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react.createElement)(NotifyPage));
+}
 function InterceptSettings() {
   return (0, import_react.createElement)(PanelShell, { title: "\u62E6\u622A\u89C4\u5219", desc: "\u5DE5\u5177\u8F93\u5165/\u8F93\u51FA\u62E6\u622A\uFF08\u7ECF core \u4EE3\u7406 Go\uFF09" }, (0, import_react.createElement)(InterceptPage));
 }
 function ApprovalsSettings() {
   return (0, import_react.createElement)(PanelShell, { title: "\u5BA1\u6279\u8BB0\u5F55", desc: "\u4EBA\u5DE5\u5BA1\u6279\u4E0E\u64CD\u4F5C\u7559\u75D5" }, (0, import_react.createElement)(ApprovalsPage));
-}
-function AssetSyncSettings() {
-  return (0, import_react.createElement)(
-    PanelShell,
-    { title: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
-    (0, import_react.createElement)(
-      "div",
-      { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
-      "\u8D44\u4EA7\u540C\u6B65\u540E\u7AEF\u5C1A\u672A\u8FC1\u79FB\uFF08Go \u4FA7\u65E0\u72EC\u7ACB REST \u5951\u7EA6\uFF09\u3002\u63A5\u5165\u65F6\u590D\u7528\u8D44\u4EA7\u7684 journal \u5199\u8DEF\u5F84\uFF0C\u5E76\u5728\u6B64\u63D0\u4F9B\u540C\u6B65\u6E90\u914D\u7F6E\u4E0E\u6700\u8FD1\u4E00\u6B21\u7ED3\u679C\u3002"
-    )
-  );
 }
 var PANELS = [
   { id: "vexnar-tasks", label: "\u4EFB\u52A1", order: 100, component: TasksPanel },
