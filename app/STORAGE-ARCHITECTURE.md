@@ -193,8 +193,11 @@ activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
 写路径已落地：`store.writer` 提供 per-record 原子写、journal 提交/重放、
 `rev` 乐观锁、单写者锁；core 新增 `POST /api/tasks` 与
 `PATCH /api/exploration/findings/:id`，写后读缓存失效。写入测试 7/7。
-下一步：`report_finding`（finding+node+edge 跨实体事务）、任务更新/删除，
-然后 M3 全量接管写。
+`report_finding` 已落地：finding + finding 节点 + `yields` 边在**一个 journal 提交**
+里写入，校验 task/intent 归属；写入测试 9/9，HTTP 冒烟通过。
+下一步：任务更新/删除（pause/resume/delete）与并发冲突，然后 M3 全量接管写。
+
+锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。
 
 ## 10. 待决问题
 
