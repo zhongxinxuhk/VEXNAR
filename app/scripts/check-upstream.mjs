@@ -10,12 +10,13 @@
  *   2. the upstream tree has local modifications (someone edited vendored code);
  *   3. the upstream API surface VEXNAR depends on disappeared or was renamed;
  *   4. VEXNAR's own artifacts (bundle patch, client plugin) stopped matching
- *      the contract they rely on.
+ *      the contract they rely on;
+ *   5. a second package manager appeared under app/ (pnpm only).
  *
- * Run after every upstream upgrade, and before shipping: `npm run upstream:check`.
+ * Run after every upstream upgrade, and before shipping: `pnpm run upstream:check`.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -37,7 +38,7 @@ function git(args) {
 }
 
 // ── 1. pinned upstream identity ────────────────────────────────────────────
-ok('app/dsh exists', existsSync(join(dsh, '.git')), 'run `npm run upstream:check` after scripts/fetch-dsh.sh')
+ok('app/dsh exists', existsSync(join(dsh, '.git')), 'run `pnpm run upstream:check` after scripts/fetch-dsh.sh')
 if (existsSync(join(dsh, '.git'))) {
   const head = git(['rev-parse', 'HEAD'])
   ok('upstream commit matches lock', head === lock.commit, `HEAD ${head} != ${lock.commit} (${lock.tag})`)
@@ -92,18 +93,48 @@ ok('account host configures pi-ai directly', accountHost.includes("ctx.settings.
 ok('account host does not call the Go gateway', !accountHost.includes('/api/desktop/llm'))
 
 const accountBundle = join(app, 'vexnar/account/lib/client.js')
-ok('account bundle built', existsSync(accountBundle), 'run npm run build in app/vexnar/account')
+ok('account bundle built', existsSync(accountBundle), 'run `pnpm run account:build`')
 if (existsSync(accountBundle)) {
   ok('account bundle uses loader factory', readFileSync(accountBundle, 'utf8').includes('window.__ModuleLoader__.load({ id: "@vexnar/dsh-account"'))
 }
 
 const bundle = join(app, 'vexnar/ui/lib/client.js')
-ok('ui bundle built', existsSync(bundle), 'run `npm run ui:build`')
+ok('ui bundle built', existsSync(bundle), 'run `pnpm run ui:build`')
 if (existsSync(bundle)) {
   const code = readFileSync(bundle, 'utf8')
   ok('ui bundle uses loader factory', code.includes('window.__ModuleLoader__.load({ id: "@vexnar/dsh-ui"'))
   ok('ui bundle keeps react external', code.includes('require("react")'))
 }
+
+// ── 4. 单一包管理器（pnpm）──────────────────────────────────────────────────
+// app/ 只认 pnpm：一个根 workspace、一个根 lockfile，子包不许自带包管理器状态。
+const SKIP_DIRS = new Set(['node_modules', 'dsh', '.dsh-home', '.git', '.idea', 'lib'])
+
+function walk(rel = '') {
+  const found = []
+  for (const entry of readdirSync(join(app, rel), { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name)) found.push(...walk(rel === '' ? entry.name : `${rel}/${entry.name}`))
+    } else {
+      found.push(rel === '' ? entry.name : `${rel}/${entry.name}`)
+    }
+  }
+  return found
+}
+
+const files = walk()
+const foreignLocks = files.filter((f) => f.endsWith('package-lock.json') || f.endsWith('yarn.lock'))
+ok('no npm/yarn lockfiles under app/', foreignLocks.length === 0, `found ${foreignLocks.join(', ')}`)
+
+const pnpmLocks = files.filter((f) => f.endsWith('pnpm-lock.yaml'))
+ok('exactly one pnpm lockfile (app/pnpm-lock.yaml)', pnpmLocks.length === 1 && pnpmLocks[0] === 'pnpm-lock.yaml', `found ${pnpmLocks.join(', ') || 'none'}`)
+
+const nestedWorkspaces = files.filter((f) => f.endsWith('pnpm-workspace.yaml') && f !== 'pnpm-workspace.yaml')
+ok('workspace defined only at app/pnpm-workspace.yaml', nestedWorkspaces.length === 0, `found ${nestedWorkspaces.join(', ')}`)
+
+const rootPkg = JSON.parse(readFileSync(join(app, 'package.json'), 'utf8'))
+ok('root package.json pins packageManager pnpm', String(rootPkg.packageManager ?? '').startsWith('pnpm@'), `packageManager=${rootPkg.packageManager ?? 'unset'}`)
+ok('root ui:build uses pnpm', String(rootPkg.scripts?.['ui:build'] ?? '').startsWith('pnpm '), `ui:build=${rootPkg.scripts?.['ui:build'] ?? 'unset'}`)
 
 // ── report ────────────────────────────────────────────────────────────────
 for (const line of passes) console.log(`  ✓ ${line}`)

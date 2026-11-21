@@ -19,8 +19,8 @@ bundle 层。Go 服务仍是产品本体，app 只通过两个接口消费它：
 
 ```text
 app/                          # WebStorm 工程根（项目名 app）
-├─ package.json               # npm scripts：setup / web / desktop / ui:build
-├─ .idea/runConfigurations/   # 四个 npm 运行配置（无 shell）
+├─ package.json               # pnpm scripts：setup / web / desktop / build / ui:build / account:build
+├─ .idea/runConfigurations/   # npm 类型运行配置，package manager=pnpm（无 shell）
 ├─ dsh/                       # 上游源码（gitignored，fetch-dsh.sh 拉取）
 ├─ scripts/
 │  ├─ fetch-dsh.sh            # 固定 tag 拉取/校验上游
@@ -34,6 +34,35 @@ app/                          # WebStorm 工程根（项目名 app）
    ├─ ui/                     # @vexnar/dsh-ui：卡片 + 品牌槽位
    └─ account/                # @vexnar/dsh-account：账户登录与状态
 ```
+
+## 包管理器：只用 pnpm
+
+`app/` 是**一个** pnpm workspace（`pnpm-workspace.yaml`），`app/package.json` 是唯一入口：
+
+```sh
+cd app
+pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、core、store、spike
+pnpm run build               # @vexnar/dsh-ui + @vexnar/dsh-account 出 bundle
+pnpm run setup               # 安装插件并写隔离 profile
+pnpm run upstream:check      # 上游边界 + 包管理器边界
+pnpm --filter @vexnar/core start
+```
+
+硬规则（`pnpm run upstream:check` 逐条断言，违反即失败）：
+
+| 规则 | 原因 |
+|---|---|
+| 只有 `app/pnpm-lock.yaml` 一个 lockfile | 一份锁定 = 一次 install 在所有机器上结果一致 |
+| 不许出现 `package-lock.json` / `yarn.lock` | 第二个包管理器一进来，依赖树就分叉 |
+| 子包不放 `pnpm-lock.yaml` / `pnpm-workspace.yaml` | workspace 只在本目录定义，子包只声明依赖 |
+| `node_modules/` 不入库 | 可由 lockfile 复现，`pnpm install` 重建 |
+| 根 `package.json` 固定 `packageManager` | 团队装出同一个 pnpm 版本 |
+
+**install 只在 `app/` 里跑**：在子目录（如 `app/vexnar/ui`）里 `pnpm install` 会读不到
+workspace 的 `allowBuilds`，esbuild 的 postinstall 会被拦下。要装子包依赖，回 `app/` 跑一次
+`pnpm install`；要跑子包脚本，用 `pnpm --filter <name> run <script>`。
+
+例外：`app/dsh/` 是上游 MIT 工作树，自带 workspace 与 lockfile，不参与本 workspace。
 
 ## 上游版本
 
@@ -52,7 +81,7 @@ Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [
 ## 上游保护
 
 上游/下游的边界、升级流程与冲突处理见 [UPSTREAM.md](./UPSTREAM.md)。核心约束：
-`app/dsh` 只读、tag 锁定、`npm run upstream:check` 27 项断言、升级失败自动回滚。
+`app/dsh` 只读、tag 锁定、`pnpm run upstream:check` 36 项断言、升级失败自动回滚。
 
 ## 隔离：不碰正在使用的 dsh
 
@@ -65,15 +94,18 @@ Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [
 
 ## 运行与调试（WebStorm，全部用运行配置选项）
 
-WebStorm 工程根是 `app/`，配置在 `app/.idea/runConfigurations/`，全部是 **npm**
-类型（`package.json` + script），没有 shell 脚本配置：
+WebStorm 工程根是 `app/`，配置在 `app/.idea/runConfigurations/`，用 WebStorm 的
+npm 运行配置类型 + **package manager = pnpm**（`package.json` + script），没有 shell 脚本配置：
 
-| 配置 | package.json | script | 说明 |
+| 配置 | 位置 | script | 说明 |
 |---|---|---|---|
+| `pnpm install` | `app/` | — | 全 workspace 一次装完，先跑这个 |
 | `dsh web (isolated)` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_DSH_HOME=app/.dsh-home` |
 | `dsh desktop (isolated)` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
-| `UI cards build` | `app/vexnar/ui/package.json` | `build` | 产出 `lib/client.js` |
+| `Plugin bundles build` | `app/package.json` | `build` | 产出 ui + account 两个 `lib/client.js` |
+| `UI cards build` | `app/package.json` | `ui:build` | 只重建卡片 bundle |
 | `Setup app profile` | `app/package.json` | `setup` | 安装 UI/账户插件并写 profile patch |
+| `Upstream check` | `app/package.json` | `upstream:check` | 上游边界 + 包管理器边界断言 |
 
 启动器自动注入：`data/mcp.token` → `VEXNAR_MCP_TOKEN`，`data/desktop.token`（缺省
 `devtoken`）→ `VEXNAR_DESKTOP_TOKEN`。

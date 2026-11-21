@@ -52,14 +52,15 @@
 | 4 | 依赖的上游 API 面存在：`tool.call.toolview`、`sidebar.brand.mark/name`、`llm-pi-ai`、`mcp-manager`、`streamable-http`、`__ModuleLoader__` | 文件级断言 |
 | 5 | VEXNAR bundle 仍指向存在的行 id（`llm-pi-ai`、`mcp-manager`、`ui-brand-official`、`deepseek-account`、`llm-deepseek-account`） | patch 断言 |
 | 6 | 客户端插件仍产出 loader 工厂、React 仍 external | bundle 断言 |
+| 7 | 包管理器只有 pnpm：无 `package-lock.json`/`yarn.lock`，只有 `app/pnpm-lock.yaml` 与 `app/pnpm-workspace.yaml` | 文件级断言 |
 
 一条命令：
 
 ```sh
-npm run upstream:check
+pnpm run upstream:check
 ```
 
-27 项断言，失败即非零退出。这个脚本就是"更新没覆盖我"的机器证明。
+36 项断言，失败即非零退出。这个脚本就是"更新没覆盖我"的机器证明。
 
 ---
 
@@ -99,13 +100,13 @@ npm run upstream:check
 ## 5. 升级流程（runbook）
 
 ```text
-1. npm run upstream:upgrade -- --tag dsh-vX.Y.Z
-   └─ 检查上游树干净 → fetch tag → checkout → 跑 27 项断言
+1. pnpm run upstream:upgrade -- --tag dsh-vX.Y.Z
+   └─ 检查上游树干净 → fetch tag → checkout → 跑 36 项断言
       ├─ 失败：自动 checkout 回旧 commit，lock 不变，退出 1
       └─ 成功：更新 upstream.lock.json
-2. npm run setup                       # 重新生成隔离 profile
-3. npm run ui:build                    # 重建卡片/品牌 bundle
-4. npm run upstream:check              # 再校验一次
+2. pnpm run setup                       # 重新生成隔离 profile
+3. pnpm run build                      # 重建 ui/账户两个 bundle
+4. pnpm run upstream:check              # 再校验一次
 5. 手工冒烟：dsh web 能启动、品牌是 VEXNAR、MCP 20 工具、模型能出字
 6. 提交：lock + 必要的 patch/插件适配
 ```
@@ -115,7 +116,7 @@ npm run upstream:check
 回滚：
 
 ```sh
-npm run upstream:upgrade -- --rollback
+pnpm run upstream:upgrade -- --rollback
 ```
 
 ---
@@ -147,7 +148,7 @@ npm run upstream:upgrade -- --rollback
 ## 8. 验收清单
 
 - [x] `app/dsh` 干净、tag/commit 锁定
-- [x] `npm run upstream:check` 27/27
+- [x] `pnpm run upstream:check` 36/36
 - [x] 品牌：官方行 disabled，VEXNAR 占据 `sidebar.brand.*`
 - [x] 账户：四行 disabled，模型只走 Go 网关
 - [x] 升级脚本失败自动回滚

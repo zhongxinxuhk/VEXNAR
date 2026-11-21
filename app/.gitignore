@@ -1,3 +1,7 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # The dsh source tree is a vendored upstream checkout, not project code: it is
 # fetched and pinned by scripts/fetch-dsh.sh and never committed (245 MB, MIT).
 dsh/
@@ -5,18 +9,10 @@ dsh/
 # Local dsh home used by the GoLand run configurations (profile + sessions).
 .dsh-home/
 
+# pnpm workspace install state: every node_modules under app/ is reproducible
+# from app/pnpm-lock.yaml and never committed. `pnpm install` in app/ rebuilds it.
+node_modules/
+
 # UI package build inputs/outputs that are reproducible.
-vexnar/ui/node_modules/
 vexnar/ui/lib/client.cjs
-vexnar/account/node_modules/
 vexnar/account/lib/client.cjs
-
-# Spike dependencies
-spike/**/node_modules/
-
-# Spike node_modules links
-app/spike/*/node_modules
-spike/*/node_modules
-
-# Workspace dependencies
-*/node_modules

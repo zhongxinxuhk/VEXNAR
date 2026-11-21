@@ -6,11 +6,18 @@
   "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "setup": "node scripts/setup-app-profile.mjs",
     "web": "node scripts/dsh-web.mjs --no-open --port 3099",
     "desktop": "node scripts/dsh-desktop.mjs",
-    "ui:build": "npm --prefix vexnar/ui run build",
+    "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run build",
+    "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account run typecheck",
+    "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
+    "account:build": "pnpm --filter @vexnar/dsh-account run build",
     "upstream:check": "node scripts/check-upstream.mjs",
     "upstream:upgrade": "node scripts/upgrade-dsh.mjs"
   }
