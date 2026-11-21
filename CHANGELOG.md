@@ -25,9 +25,17 @@
 
 #### 接口
 
-- **任务面板用到的每条接口在 Go 与 core 两侧一致**，并在 `app/vexnar-core/compare-domain.mjs` 里加了
-  对账项：`/api/exploration/findings?task_id=&severity=&status=&q=&page=&limit=` 在两边返回同一个 `total`
-  与同一批 `finding_id`，行字段（`finding_id`/`task_id`/`vulnclass`/`severity`/`status`/`summary`）逐字段相等。
+- **`GET /api/tasks` 支持筛选与窗口**（Go `listTasks` + core `/api/tasks` 同一套语义）：`status=` 按状态收窄，
+  `q=` 在 id/名称/描述/目标上做不区分大小写的子串匹配，`page=`+`size=`（默认 50，上限 200）取窗口并返回
+  `{tasks,total,page,size}`。两个键都不带时仍是原来的全量 `{tasks,...}`，web 控制台、概览卡与 MCP 调用方
+  不受影响。任务面板因此不再一次拉全表，`total` 描述的是筛选后的全集。
+- **`GET /api/engine/tools` 透出工具目录**：名字与说明由 runner 自己（`vexnar-store` 的 templates）提供，
+  客户端不再硬编码 nmap/httpx/ffuf/sqlmap 四个；新增工具只需改 runner，面板自动出现（当前 10 个）。
+- **任务详情里的执行记录支持向前翻页**：沿用 `activity/history` 的 `before=` 反向游标与 `has_more`，
+  「加载更早」不会让长任务只剩最后 100 行。
+- **对账**：`compare-domain.mjs` 新增 `tasks` 窗口/筛选项与工具目录项，并允许用 `P0_GO_API` 指向临时实例；
+  `findings?task_id=` 的对账项保持。实跑（本地 Go 8899 + core 8790，同库）：任务分页 5 项、筛选 2 项、
+  旧形状 1 项、工具目录 10 个工具全部 PASS。
 
 #### 移除的功能
 

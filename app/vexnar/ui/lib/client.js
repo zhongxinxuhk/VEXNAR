@@ -3284,6 +3284,10 @@ var FINDING_STATUS_LABELS = [
   ["duplicate", "\u91CD\u590D"],
   ["risk_accepted", "\u98CE\u9669\u63A5\u53D7"]
 ];
+function errText(error) {
+  if (error instanceof Error) return error.message;
+  return String(error ?? "\u672A\u77E5\u9519\u8BEF");
+}
 function labelOf(table, value) {
   const key = String(value ?? "");
   return table.find(([id]) => id === key)?.[1] ?? (key || "\u2014");
@@ -3307,19 +3311,57 @@ function Pager({ page, pageCount, total, unit, onPage }) {
     (0, import_react3.createElement)("button", { type: "button", disabled: page + 1 >= pageCount, onClick: () => onPage(page + 1) }, "\u4E0B\u4E00\u9875")
   );
 }
+function TaskScopePicker({ scope, onScope, options }) {
+  const current = options.find((task) => String(task.id) === scope);
+  const label = current ? current.name || current.description || "\u672A\u547D\u540D" : "";
+  return (0, import_react3.createElement)(
+    "span",
+    { style: { display: "inline-flex", alignItems: "center", gap: 6 } },
+    (0, import_react3.createElement)("input", {
+      list: "vx-task-scope-options",
+      "aria-label": "\u4EFB\u52A1\u8303\u56F4",
+      placeholder: "\u4EFB\u52A1\u8303\u56F4\uFF1A\u7559\u7A7A=\u5168\u90E8\uFF0C\u53EF\u8F93\u5165 ID \u6216\u641C\u7D22\u540D\u79F0",
+      value: scope,
+      onChange: (event) => onScope(event.target.value.replace(/[^\w-]/g, "")),
+      style: { minWidth: 220 }
+    }),
+    (0, import_react3.createElement)(
+      "datalist",
+      { id: "vx-task-scope-options" },
+      options.map((task) => (0, import_react3.createElement)(
+        "option",
+        { key: task.id, value: String(task.id) },
+        `${task.id} \xB7 ${task.name || task.description || "\u672A\u547D\u540D"}`
+      ))
+    ),
+    scope ? (0, import_react3.createElement)("button", {
+      type: "button",
+      onClick: () => onScope(""),
+      title: "\u6E05\u9664\u4EFB\u52A1\u8303\u56F4"
+    }, "\xD7") : null,
+    scope && label ? (0, import_react3.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, label) : null
+  );
+}
 function TaskList({ onOpen }) {
-  const { data, error, loading } = useApi("/api/tasks");
   const [query, setQuery] = (0, import_react3.useState)("");
+  const [needle, setNeedle] = (0, import_react3.useState)("");
   const [status, setStatus] = (0, import_react3.useState)("all");
-  const [page, setPage] = (0, import_react3.useState)(0);
-  if (loading) return (0, import_react3.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react3.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error);
-  const needle = query.trim().toLowerCase();
-  const all = data?.tasks ?? [];
-  const rows = all.filter((task) => status === "all" || String(task.status) === status).filter((task) => !needle || [task.id, task.name, task.description, task.goal].some((value) => String(value ?? "").toLowerCase().includes(needle))).sort((a, b) => Number(b.id) - Number(a.id));
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const current = Math.min(page, pageCount - 1);
-  const visible = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  const [page, setPage] = (0, import_react3.useState)(1);
+  (0, import_react3.useEffect)(() => {
+    const timer = window.setTimeout(() => {
+      setNeedle(query.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  const params = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) });
+  if (status !== "all") params.set("status", status);
+  if (needle) params.set("q", needle);
+  const url = `/api/tasks?${params.toString()}`;
+  const { data, error, loading } = useApi(url, [url]);
+  const rows = data?.tasks ?? [];
+  const total = Number(data?.total ?? rows.length);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   return (0, import_react3.createElement)(
     "div",
     null,
@@ -3329,10 +3371,7 @@ function TaskList({ onOpen }) {
       (0, import_react3.createElement)("input", {
         placeholder: "\u641C\u7D22 ID / \u540D\u79F0 / \u63CF\u8FF0 / \u76EE\u6807",
         value: query,
-        onChange: (event) => {
-          setQuery(event.target.value);
-          setPage(0);
-        },
+        onChange: (event) => setQuery(event.target.value),
         style: { minWidth: 260 }
       }),
       (0, import_react3.createElement)(
@@ -3342,19 +3381,23 @@ function TaskList({ onOpen }) {
           value: status,
           onChange: (event) => {
             setStatus(event.target.value);
-            setPage(0);
+            setPage(1);
           }
         },
         (0, import_react3.createElement)("option", { key: "all", value: "all" }, "\u5168\u90E8\u72B6\u6001"),
         TASK_STATUS_LABELS.map(([value, label]) => (0, import_react3.createElement)("option", { key: value, value }, label))
       ),
-      (0, import_react3.createElement)(
+      error ? (0, import_react3.createElement)("span", { role: "alert", style: { fontSize: 12, color: "#dc2626" } }, error) : (0, import_react3.createElement)(
         "span",
         { style: { fontSize: 12, color: "var(--vx-text-dim)", marginLeft: "auto" } },
-        `${rows.length} / ${all.length} \u4E2A\u4EFB\u52A1`
+        loading ? "\u52A0\u8F7D\u4E2D\u2026" : `\u5171 ${total} \u4E2A\u4EFB\u52A1`
       )
     ),
-    rows.length === 0 ? (0, import_react3.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u4EFB\u52A1\u3002") : (0, import_react3.createElement)(
+    rows.length === 0 ? (0, import_react3.createElement)(
+      "p",
+      { style: { fontSize: 12, color: "var(--vx-text-dim)" } },
+      loading ? "\u52A0\u8F7D\u4E2D\u2026" : "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u4EFB\u52A1\u3002"
+    ) : (0, import_react3.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
       (0, import_react3.createElement)("thead", null, (0, import_react3.createElement)(
@@ -3365,7 +3408,7 @@ function TaskList({ onOpen }) {
           style: { textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--vx-border, #e5e7eb)" }
         }, title))
       )),
-      (0, import_react3.createElement)("tbody", null, visible.map((task) => (0, import_react3.createElement)(
+      (0, import_react3.createElement)("tbody", null, rows.map((task) => (0, import_react3.createElement)(
         "tr",
         {
           key: task.id,
@@ -3400,7 +3443,7 @@ function TaskList({ onOpen }) {
         )
       )))
     ),
-    (0, import_react3.createElement)(Pager, { page: current, pageCount, total: rows.length, unit: "\u4E2A\u4EFB\u52A1", onPage: setPage })
+    (0, import_react3.createElement)(Pager, { page: Math.min(page, pageCount) - 1, pageCount, total, unit: "\u4E2A\u4EFB\u52A1", onPage: (next) => setPage(next + 1) })
   );
 }
 function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }) {
@@ -3442,6 +3485,7 @@ function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }) {
   const pills = [
     ["\u76EE\u6807", `${row.goals_met ?? 0}/${row.goals_total ?? 0}`],
     ["\u5728\u9014\u610F\u56FE", String(row.in_flight ?? 0)],
+    ["\u53D1\u73B0\u5408\u8BA1", String(findingCount(row))],
     ["\u8F93\u5165 Token", fmtCount(tokens.input_tokens)],
     ["\u8F93\u51FA Token", fmtCount(tokens.output_tokens)],
     ["\u7F13\u5B58\u8BFB", fmtCount(tokens.cache_read_tokens)],
@@ -3474,7 +3518,7 @@ function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }) {
     meta("\u76EE\u6807", (0, import_react3.createElement)("div", { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? "\u2014"))),
     meta(
       `\u53D1\u73B0\uFF08${findingRows.length}${findingTotal > findingRows.length ? ` / \u5171 ${findingTotal}` : ""}\uFF09`,
-      findingRows.length === 0 ? (0, import_react3.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u8BE5\u4EFB\u52A1\u8FD8\u6CA1\u6709\u767B\u8BB0\u53D1\u73B0\u3002") : (0, import_react3.createElement)(
+      findings.error ? (0, import_react3.createElement)("div", { role: "alert", style: { fontSize: 12, color: "#dc2626" } }, `\u53D1\u73B0\u8BFB\u53D6\u5931\u8D25\uFF1A${findings.error}`) : findings.loading && findingRows.length === 0 ? (0, import_react3.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u52A0\u8F7D\u4E2D\u2026") : findingRows.length === 0 ? (0, import_react3.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u8BE5\u4EFB\u52A1\u8FD8\u6CA1\u6709\u767B\u8BB0\u53D1\u73B0\u3002") : (0, import_react3.createElement)(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 } },
         findingRows.map((finding) => (0, import_react3.createElement)(
@@ -3715,16 +3759,45 @@ function NotifyPage() {
   );
 }
 function ToolRunPage({ taskID = "" }) {
-  const [name, setName] = (0, import_react3.useState)("nmap");
+  const catalog = useApi("/api/engine/tools");
+  const tools = catalog.data?.tools ?? [];
+  const [name, setName] = (0, import_react3.useState)("");
   const [target, setTarget] = (0, import_react3.useState)("");
+  const [extra, setExtra] = (0, import_react3.useState)("");
+  const [busy, setBusy] = (0, import_react3.useState)(false);
   const [output, setOutput] = (0, import_react3.useState)("");
+  const [error, setError] = (0, import_react3.useState)("");
+  const selected = name || tools[0]?.name || "nmap";
+  const spec = tools.find((tool) => tool.name === selected);
   const run = async () => {
+    setError("");
+    let args = {};
+    if (extra.trim()) {
+      try {
+        const parsed = JSON.parse(extra);
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("\u53C2\u6570\u9700\u4E3A JSON \u5BF9\u8C61");
+        args = parsed;
+      } catch (e) {
+        setError(`\u53C2\u6570\u4E0D\u662F\u5408\u6CD5 JSON \u5BF9\u8C61\uFF1A${String(e?.message ?? e)}`);
+        return;
+      }
+    }
+    setBusy(true);
     setOutput("\u6267\u884C\u4E2D\u2026");
     try {
-      const data = await callApi("/api/engine/tools/run", "POST", { name, target, task_id: taskID || void 0 });
-      setOutput([`code=${data.code} truncated=${data.truncated}`, data.parsed ? JSON.stringify(data.parsed, null, 2) : "", data.stdout, data.stderr].filter(Boolean).join("\n"));
-    } catch (error) {
-      setOutput(String(error?.message ?? error));
+      const data = await callApi("/api/engine/tools/run", "POST", { name: selected, target, args, task_id: taskID || void 0 });
+      const created = Array.isArray(data.created) ? data.created : [];
+      setOutput([
+        `code=${data.code} truncated=${data.truncated}${data.timed_out ? " timed_out" : ""}`,
+        created.length > 0 ? `\u843D\u5E93 ${created.length} \u9879\uFF1A${created.slice(0, 12).map((row) => `${row.kind}#${row.id}`).join("\u3001")}${created.length > 12 ? " \u2026" : ""}` : "",
+        data.parsed ? JSON.stringify(data.parsed, null, 2) : "",
+        data.stdout,
+        data.stderr
+      ].filter(Boolean).join("\n"));
+    } catch (e) {
+      setOutput(String(e?.message ?? e));
+    } finally {
+      setBusy(false);
     }
   };
   return (0, import_react3.createElement)(
@@ -3732,17 +3805,43 @@ function ToolRunPage({ taskID = "" }) {
     { style: { fontSize: 13 } },
     (0, import_react3.createElement)(
       "div",
-      { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 } },
-      (0, import_react3.createElement)("select", { value: name, onChange: (event) => setName(event.target.value) }, ["nmap", "httpx", "ffuf", "sqlmap"].map((item) => (0, import_react3.createElement)("option", { key: item, value: item }, item))),
-      (0, import_react3.createElement)("input", { placeholder: "target\uFF08\u57DF\u540D / URL / IP\uFF09", value: target, onChange: (event) => setTarget(event.target.value), style: { minWidth: 260 } }),
-      (0, import_react3.createElement)("button", { type: "button", onClick: run, style: { cursor: "pointer" } }, "\u6267\u884C"),
+      { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 6 } },
+      (0, import_react3.createElement)(
+        "select",
+        {
+          "aria-label": "\u5DE5\u5177",
+          value: selected,
+          onChange: (event) => setName(event.target.value)
+        },
+        (tools.length === 0 ? [selected] : tools.map((tool) => tool.name)).map((item) => (0, import_react3.createElement)("option", { key: item, value: item }, item))
+      ),
+      (0, import_react3.createElement)("input", {
+        placeholder: "target\uFF08\u57DF\u540D / URL / IP\uFF09",
+        value: target,
+        onChange: (event) => setTarget(event.target.value),
+        style: { minWidth: 260 }
+      }),
+      (0, import_react3.createElement)("input", {
+        placeholder: "\u989D\u5916\u53C2\u6570\uFF08JSON\uFF0C\u53EF\u9009\uFF09",
+        value: extra,
+        onChange: (event) => setExtra(event.target.value),
+        style: { minWidth: 200, fontFamily: "var(--vx-mono)" }
+      }),
+      (0, import_react3.createElement)(
+        "button",
+        { type: "button", onClick: run, disabled: busy || !target.trim(), style: { cursor: "pointer" } },
+        busy ? "\u6267\u884C\u4E2D\u2026" : "\u6267\u884C"
+      ),
       (0, import_react3.createElement)(
         "span",
         { style: { fontSize: 12, color: "var(--vx-text-dim)" } },
         taskID ? `\u7ED3\u679C\u8BB0\u5165\u4EFB\u52A1 #${taskID}` : "\u672A\u9009\u4EFB\u52A1\uFF1A\u7ED3\u679C\u4E0D\u843D\u5E93"
       )
     ),
-    (0, import_react3.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
+    spec ? (0, import_react3.createElement)("div", { style: { fontSize: 12, color: "var(--vx-text-dim)", marginBottom: 8 } }, spec.description) : null,
+    catalog.error ? (0, import_react3.createElement)("div", { role: "alert", style: { fontSize: 12, color: "#dc2626", marginBottom: 6 } }, `\u5DE5\u5177\u76EE\u5F55\u8BFB\u53D6\u5931\u8D25\uFF1A${catalog.error}`) : null,
+    error ? (0, import_react3.createElement)("div", { role: "alert", style: { fontSize: 12, color: "#dc2626", marginBottom: 6 } }, error) : null,
+    output ? (0, import_react3.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output) : null
   );
 }
 function InterceptPage() {
@@ -3813,47 +3912,81 @@ function InterceptPage() {
 function ExecStream({ taskID }) {
   const [session, setSession] = (0, import_react3.useState)("plan");
   const [rows, setRows] = (0, import_react3.useState)([]);
+  const [hasMore, setHasMore] = (0, import_react3.useState)(false);
   const [error, setError] = (0, import_react3.useState)("");
+  const [loading, setLoading] = (0, import_react3.useState)(false);
   const [tick, setTick] = (0, import_react3.useState)(0);
+  const load = (0, import_react3.useCallback)(async (before) => {
+    const query = new URLSearchParams({ task: taskID, session, limit: "100" });
+    if (before > 0) query.set("before", String(before));
+    const response = await fetch(CORE_BASE + `/api/exploration/activity/history?${query.toString()}`);
+    if (!response.ok) throw await responseError(response);
+    return await response.json();
+  }, [taskID, session]);
   (0, import_react3.useEffect)(() => {
     if (!taskID) {
       setRows([]);
+      setHasMore(false);
       setError("");
       return;
     }
     let alive = true;
     setError("");
-    fetch(CORE_BASE + `/api/exploration/activity/history?task=${encodeURIComponent(taskID)}&session=${session}&limit=100`).then(async (response) => {
-      if (!response.ok) throw await responseError(response);
-      return response.json();
-    }).then((data) => {
-      if (alive) setRows(data.items ?? []);
+    setLoading(true);
+    load(0).then((data) => {
+      if (!alive) return;
+      setRows(data.items ?? []);
+      setHasMore(Boolean(data.has_more));
     }).catch((e) => {
       if (alive) {
-        setError(String(e?.message ?? e));
+        setError(errText(e));
         setRows([]);
+        setHasMore(false);
       }
+    }).finally(() => {
+      if (alive) setLoading(false);
     });
     return () => {
       alive = false;
     };
-  }, [taskID, session, tick]);
+  }, [taskID, session, tick, load]);
+  const loadEarlier = async () => {
+    const earliest = rows.length > 0 ? Number(rows[0].seq) : 0;
+    if (!earliest) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await load(earliest);
+      setRows((current) => [...data.items ?? [], ...current]);
+      setHasMore(Boolean(data.has_more));
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setLoading(false);
+    }
+  };
   return (0, import_react3.createElement)(
     "div",
     null,
     (0, import_react3.createElement)(
       "div",
-      { style: { display: "flex", gap: 8, alignItems: "center", marginBottom: 10 } },
+      { style: { display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" } },
       (0, import_react3.createElement)("span", { style: { fontSize: 12, fontWeight: 600, color: "var(--vx-text-dim)" } }, `\u6267\u884C\u8BB0\u5F55 \xB7 \u4EFB\u52A1 #${taskID}`),
       (0, import_react3.createElement)(
         "select",
         { "aria-label": "\u4F1A\u8BDD", value: session, onChange: (event) => setSession(event.target.value) },
         [["plan", "planner"], ["main", "main"]].map(([value, label]) => (0, import_react3.createElement)("option", { key: value, value }, label))
       ),
-      (0, import_react3.createElement)("button", { type: "button", onClick: () => setTick((value) => value + 1), style: { cursor: "pointer" } }, "\u5237\u65B0")
+      (0, import_react3.createElement)(
+        "button",
+        { type: "button", onClick: () => setTick((value) => value + 1), disabled: loading, style: { cursor: "pointer" } },
+        loading ? "\u52A0\u8F7D\u4E2D\u2026" : "\u5237\u65B0"
+      ),
+      hasMore ? (0, import_react3.createElement)("button", { type: "button", onClick: loadEarlier, disabled: loading, style: { cursor: "pointer" } }, "\u52A0\u8F7D\u66F4\u65E9") : rows.length > 0 ? (0, import_react3.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u5DF2\u5230\u6700\u65E9") : null,
+      (0, import_react3.createElement)("span", { style: { fontSize: 12, color: "var(--vx-text-dim)", marginLeft: "auto" } }, `${rows.length} \u884C`)
     ),
     error ? (0, import_react3.createElement)("div", { role: "alert", style: { color: "#dc2626", fontSize: 12 } }, error) : null,
-    rows.length === 0 && !error ? (0, import_react3.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u8BE5\u4F1A\u8BDD\u8FD8\u6CA1\u6709\u6267\u884C\u8BB0\u5F55\u3002") : null,
+    rows.length === 0 && !error && !loading ? (0, import_react3.createElement)("p", { style: { fontSize: 12, color: "var(--vx-text-dim)" } }, "\u8BE5\u4F1A\u8BDD\u8FD8\u6CA1\u6709\u6267\u884C\u8BB0\u5F55\u3002") : null,
     rows.length > 0 ? (0, import_react3.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse", fontSize: 12 } },
@@ -3894,7 +4027,7 @@ function PanelShell({ title, desc, children }) {
   );
 }
 function FindingsTab({ scope, onScope, onOpen }) {
-  const tasks = useApi("/api/tasks");
+  const tasks = useApi("/api/tasks?page=1&size=200");
   const [severity, setSeverity] = (0, import_react3.useState)("all");
   const [status, setStatus] = (0, import_react3.useState)("all");
   const [search, setSearch] = (0, import_react3.useState)("");
@@ -3956,23 +4089,10 @@ function FindingsTab({ scope, onScope, onOpen }) {
         (0, import_react3.createElement)("option", { key: "all", value: "all" }, "\u5168\u90E8\u72B6\u6001"),
         FINDING_STATUS_LABELS.map(([value, label]) => (0, import_react3.createElement)("option", { key: value, value }, label))
       ),
-      (0, import_react3.createElement)(
-        "select",
-        {
-          "aria-label": "\u4EFB\u52A1\u8303\u56F4",
-          value: scope,
-          onChange: (event) => {
-            onScope(event.target.value);
-            setPage(1);
-          }
-        },
-        (0, import_react3.createElement)("option", { key: "all", value: "" }, "\u5168\u90E8\u4EFB\u52A1"),
-        options.slice(0, 200).map((task) => (0, import_react3.createElement)(
-          "option",
-          { key: task.id, value: String(task.id) },
-          `${task.id} \xB7 ${task.name || task.description || "\u672A\u547D\u540D"}`
-        ))
-      )
+      (0, import_react3.createElement)(TaskScopePicker, { scope, onScope: (taskID) => {
+        onScope(taskID);
+        setPage(1);
+      }, options })
     ),
     loading && rows.length === 0 ? (0, import_react3.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : null,
     error ? (0, import_react3.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error) : null,
