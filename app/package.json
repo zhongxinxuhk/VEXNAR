@@ -29,7 +29,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",
-    "electron": "44.7.0"
+    "electron": "44.7.0",
+    "zod": "4.6.7"
   },
   "bin": {
     "vexnar": "./scripts/vexnar.mjs"

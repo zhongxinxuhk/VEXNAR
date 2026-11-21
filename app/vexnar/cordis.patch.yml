@@ -19,11 +19,15 @@
   config:
     documentsDirectory: !!js "process.env.VEXNAR_HOME"
 
-# The Go service owns platform identity, model providers and credentials.
+# 账号、平台令牌与模型提供方归 @vexnar/dsh-account（TypeScript 侧，见
+# account/lib/platform-account.js）。它把提供方写进 llm-pi-ai，密钥写进 dsh 凭据库，
+# 所以默认模型只是初始值：登录后由插件按真实目录改写。
 - id: agent-default-model
   config:
     provider: vexnar
     model: ''
+# dsh 原生的模型页保持关闭：提供方只由 VEXNAR 的「设置 → 模型」写入，
+# 两个面板写同一个 llm-pi-ai 会变成两份互相覆盖的真相。
 - id: ui-settings-models
   disabled: true
 

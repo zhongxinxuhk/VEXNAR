@@ -2,63 +2,36 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+/**
+ * VEXNAR 账号插件：登录壳、模型提供方注册、启动门禁。
+ *
+ * 账号状态与平台交互都在 ./platform-account.js 里完成（TS 直连 HXSEC AI
+ * Platform），这里只做三件事：
+ *   1. 未登录时用登录页替换工作区，并用 connection.admit 把其他请求挡在 401；
+ *   2. 登录后把平台模型与用户自带提供方写进 llm-pi-ai，密钥进 dsh 凭据库；
+ *   3. 把 /vexnar-api/platform/* 暴露给登录页与设置页。
+ *
+ * 这里不再拼 Go 的地址、不再注入 X-VEXNAR-Desktop-Token：模型请求由 dsh 直接
+ * 发往上游，密钥按请求从凭据库解析。
+ */
+
 import { readFile } from 'node:fs/promises'
 import { loginPage, workspaceSessionScript } from './login-page.js'
+import {
+  catalog,
+  createPlatformAccount,
+  gateOpen,
+  PlatformError,
+  platformOrigin,
+  publicView
+} from './platform-account.js'
 
-const namespace = '/api/desktop/vexnar'
 const clientPrefix = '/vexnar-api/platform'
-const adapterRef = 'VEXNAR_LOOPBACK_ADAPTER'
-const loopback = new Set(['127.0.0.1', '[::1]'])
-const platform = () => new URL(process.env.VEXNAR_NEWAPI_PLATFORM || 'https://platform.sec.hn.cn').origin
-const token = () => process.env.VEXNAR_DESKTOP_TOKEN?.trim()
+const maxBody = 16 * 1024
 
-function goOrigin() {
-  const base = new URL(process.env.VEXNAR_GO_URL || 'http://127.0.0.1:8787')
-  if (!['http:', 'https:'].includes(base.protocol) || !loopback.has(base.hostname) || base.username || base.password) {
-    throw new Error('VEXNAR_GO_URL 必须指向本机 Go 服务')
-  }
-  return base.origin
-}
-
-async function go(path, method = 'GET', input) {
-  if (!token()) throw new Error('缺少 VEXNAR Go 服务的启动令牌')
-  let response
-  try {
-    response = await fetch(goOrigin() + namespace + path, {
-      method,
-      headers: { 'X-VEXNAR-Desktop-Token': token(), 'Content-Type': 'application/json' },
-      body: input === undefined ? undefined : JSON.stringify(input),
-      redirect: 'error',
-      signal: AbortSignal.timeout(90_000)
-    })
-  } catch {
-    throw new Error('无法连接本机 VEXNAR Go 服务')
-  }
-  const body = await response.json()
-  if (!response.ok) {
-    const error = body.error?.includes('桌面端令牌无效') ? 'VEXNAR 启动令牌与 Go 服务不匹配' : body.error
-    throw Object.assign(new Error(error || `Go HTTP ${response.status}`), { status: response.status })
-  }
-  return body
-}
-
-async function methods() {
-  const response = await fetch(platform() + '/api/status', {
-    redirect: 'error', signal: AbortSignal.timeout(10_000)
-  })
-  const body = await response.json()
-  if (!response.ok || body.success !== true || !body.data) throw new Error('无法读取 HXSEC AI Platform 登录方式')
-  const d = body.data
-  const names = [
-    [d.password_login_enabled, '密码'], [d.passkey_login, 'Passkey'],
-    [d.github_oauth, 'GitHub'], [d.linuxdo_oauth, 'LinuxDO'],
-    [d.oidc_enabled, d.oidc_display_name || 'OIDC'],
-    [d.wechat_login, '微信'], [d.telegram_oauth, 'Telegram'], [d.discord_oauth, 'Discord']
-  ].filter(([enabled]) => enabled === true).map(([, name]) => name)
-  for (const provider of d.custom_oauth_providers ?? []) {
-    if (provider.name || provider.slug) names.push(provider.name || provider.slug)
-  }
-  return { methods: [...new Set(names)], password: d.password_login_enabled === true && !d.password_login_encryption_enabled && !d.turnstile_check }
+/** 凭据名必须是 POSIX shell 标识符，提供方 id 里的 `-` 换成 `_`。 */
+function credentialName(providerID) {
+  return `VEXNAR_${providerID.replace(/[^a-z0-9]+/gi, '_').toUpperCase()}_API_KEY`
 }
 
 async function readJson(req) {
@@ -66,13 +39,15 @@ async function readJson(req) {
   let length = 0
   for await (const chunk of req) {
     length += chunk.length
-    if (length > 16_384) throw Object.assign(new Error('请求正文过大'), { status: 413 })
+    if (length > maxBody) throw new PlatformError(413, '请求正文过大')
     chunks.push(chunk)
   }
+  const raw = Buffer.concat(chunks).toString('utf8')
+  if (raw.trim() === '') return {}
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    return JSON.parse(raw)
   } catch {
-    throw Object.assign(new Error('无效的 JSON 请求'), { status: 400 })
+    throw new PlatformError(400, '无效的 JSON 请求')
   }
 }
 
@@ -135,61 +110,66 @@ async function capturePlatformLogin(context, page, origin, signal) {
 }
 
 export function installPlatform(ctx) {
-  let catalog = new Map()
+  const account = createPlatformAccount()
   let ready = false
+  let lastCatalog = ''
+  let syncedProviders = new Set()
+  let browserState = { state: 'idle', message: '' }
+  let browserTask
+  let chrome
+  const life = new AbortController()
   const activeSockets = new Set()
-  const setReady = value => {
+  const setReady = (value) => {
     ready = value
     if (!ready) {
       for (const socket of activeSockets) socket.destroy()
       activeSockets.clear()
     }
   }
-  let browserState = { state: 'idle', message: '' }
-  let browserTask
-  let chrome
-  let operations = Promise.resolve()
-  const life = new AbortController()
-  const serial = (operation) => {
-    const next = operations.then(operation)
-    operations = next.catch(() => {})
-    return next
-  }
 
-  const syncCatalog = async (status) => {
-    const available = status.ready === true ? status.providers : []
-    if (!status.ready) setReady(false)
-    const providers = Object.fromEntries(available.map(provider => [provider.id, {
-      displayName: provider.name,
-      api: provider.format === 'openai-responses' ? 'openai-responses' : 'openai-completions',
-      baseURL: `${goOrigin()}${namespace}/openai/${provider.id}/v1`,
-      apiKeyEnv: adapterRef,
-      models: provider.models.map(({ id, name }) => ({ id, name: name || id }))
-    }]))
+  /**
+   * 把账号里的提供方写进 llm-pi-ai：baseURL 指向真实上游，apiKeyEnv 指向本插件
+   * 刚写进凭据库的键。dsh 每次请求自己解析密钥，不经过任何中转进程。
+   */
+  const syncCatalog = async (state) => {
+    const providers = {}
+    const present = new Set()
+    for (const provider of catalog(state)) {
+      const ref = credentialName(provider.id)
+      await ctx.credentials.set(ref, provider.key)
+      present.add(provider.id)
+      providers[provider.id] = {
+        displayName: provider.name,
+        api: provider.id === 'vexnar' ? 'openai-responses' : 'openai-completions',
+        baseURL: provider.base,
+        apiKeyEnv: ref,
+        models: provider.models
+      }
+    }
+    for (const id of syncedProviders) {
+      if (!present.has(id)) await ctx.credentials.unset(credentialName(id)).catch(() => {})
+    }
+    syncedProviders = present
+
     const fingerprint = JSON.stringify(providers)
     if (fingerprint !== lastCatalog) {
       await ctx.settings.replace('llm-pi-ai', { providers })
-      catalog = new Map(Object.entries(providers))
       lastCatalog = fingerprint
     }
+
     const current = ctx.agentDefaultModel.currentSelection()
-    if (available.length && !catalog.get(current.provider)?.models.some(model => model.id === current.model)) {
-      const first = available[0]
-      await ctx.agentDefaultModel.saveSelection({ provider: first.id, model: first.models[0].id })
+    const selected = providers[current.provider]?.models.find((model) => model.id === current.model)
+    if (!selected) {
+      const [firstID] = Object.keys(providers)
+      if (firstID) await ctx.agentDefaultModel.saveSelection({ provider: firstID, model: providers[firstID].models[0].id })
     }
-    setReady(status.ready === true)
-    return status
+    setReady(gateOpen(state))
+    return publicView(state)
   }
-  let lastCatalog
-  const refresh = async () => {
-    try {
-      return await syncCatalog(await go('/account'))
-    } catch (error) {
-      setReady(false)
-      await syncCatalog({ providers: [] })
-      throw error
-    }
-  }
+
+  /** 一次刷新：读状态 → 同步目录 → 返回给浏览器的视图。 */
+  const refresh = async () => syncCatalog(await account.read())
+
   // The pinned carrier routes Workspace RPC and stream upgrades through the
   // same Host admission. Keep the carrier's origin/cookie checks for every route.
   const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login', 'login/password', 'login/verify']
@@ -219,9 +199,12 @@ export function installPlatform(ctx) {
       }
     }
   })
+
+  // 未登录时整个工作区换成登录页：没有半登录状态，也没有"能动但全是空数据"的控制台。
   ctx.effect(() => ctx.webServer.tapIndex(html => ready
     ? html.replace('</head>', workspaceSessionScript + '</head>')
     : loginPage))
+
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact', path: clientPrefix + '/entry.js',
     handler: async (req, res) => {
@@ -235,8 +218,8 @@ export function installPlatform(ctx) {
     }
   }))
 
-  // Keep ordinary settings available, but route all provider writes and discovery
-  // through VEXNAR's Go service. Exact owner-only HTTP routes precede Typert RPC.
+  // Keep ordinary settings available, but route provider writes and discovery
+  // through VEXNAR's own model section. Exact owner-only HTTP routes precede Typert RPC.
   for (const method of ['update', 'replace', 'mutate', 'discoverModels']) {
     const rpcNamespace = method === 'discoverModels' ? 'llm' : 'settings'
     ctx.connection.fetch.register({
@@ -250,7 +233,7 @@ export function installPlatform(ctx) {
         const respond = result => Response.json({ type: 'server-response', rpcId: message.rpcId, result })
         if (rpcNamespace === 'llm' || message.payload.args.ns === 'llm-pi-ai') {
           return respond({ ok: false, error: {
-            code: 'settings/rejected', message: '请在 VEXNAR 的模型设置中管理提供方', details: {}
+            code: 'settings/rejected', message: '请在 VEXNAR 的 设置 → 模型 中管理提供方', details: {}
           } })
         }
         const peer = ctx.connection.createPeer({ principal: { kind: 'owner' } })
@@ -270,24 +253,13 @@ export function installPlatform(ctx) {
     })
   }
 
-  // The adapter receives a non-secret placeholder. The actual loopback token is
-  // added to requests for the exact Go URL at dispatch time.
-  ctx.on('llm-pi-ai/request-headers', (request, headers, next) => {
-    const provider = catalog.get(request.provider)
-    if (!ready || !provider || provider.baseURL !== request.baseURL || !token()) {
-      throw new Error('请通过 VEXNAR 设置选择已验证的模型')
-    }
-    headers.set('X-VEXNAR-Desktop-Token', token())
-    return next()
-  })
-
   function startLogin() {
     if (browserTask) return browserState
     browserState = { state: 'waiting', message: '请在浏览器中完成 HXSEC AI Platform 登录' }
     browserTask = (async () => {
       try {
-        const status = await serial(refresh)
-        if (status.ready) throw new Error('请先退出当前 VEXNAR 账号')
+        const status = await refresh()
+        if (status.signed_in) throw new Error('请先退出当前 VEXNAR 账号')
         const { chromium } = await import('playwright-core')
         chrome = await chromium.launch({
           channel: process.env.VEXNAR_LOGIN_BROWSER || 'chrome',
@@ -296,10 +268,11 @@ export function installPlatform(ctx) {
         life.signal.throwIfAborted()
         const context = await chrome.newContext()
         const page = await context.newPage()
-        const proof = await capturePlatformLogin(context, page, platform(), life.signal)
-        const account = await serial(async () => syncCatalog(await go('/account', 'POST', proof)))
+        const proof = await capturePlatformLogin(context, page, platformOrigin(), life.signal)
+        const result = await account.login(proof)
+        await syncCatalog(await account.read())
         browserState = { state: 'done', message: '已验证 HXSEC AI Platform 身份' }
-        if (account.ready) console.log('vexnar: account-handoff')
+        if (result.signed_in) console.log('vexnar: account-handoff')
       } catch (error) {
         browserState = {
           state: 'error',
@@ -329,54 +302,63 @@ export function installPlatform(ctx) {
         if (rejection) return send(rejection, { error: '请从本机 VEXNAR 客户端访问' })
         const handler = handlers[req.method]
         if (!handler) return send(405, { error: '请求方法不受支持' })
-        if (req.method !== 'GET' && req.headers['content-type']?.split(';')[0] !== 'application/json') {
+        // 只有带正文的请求才要求 JSON；DELETE /account 这类无正文调用不该被 415 拦住。
+        const hasBody = Number(req.headers['content-length'] ?? 0) > 0 ||
+          req.headers['transfer-encoding'] !== undefined
+        if (hasBody && req.headers['content-type']?.split(';')[0] !== 'application/json') {
           return send(415, { error: '需要 application/json 请求' })
         }
         try {
           send(200, await handler(req))
         } catch (error) {
-          send(error?.status || 502, { error: error?.message || 'VEXNAR 请求失败' })
+          // 账号层只会抛 PlatformError；其他异常也翻成人话，绝不把解析器原文丢给页面。
+          const status = error instanceof PlatformError ? error.status : 502
+          send(status, { error: error instanceof PlatformError ? error.message : 'VEXNAR 请求失败，请重试' })
         }
       }
     }))
   }
 
   route('/ready', { GET: () => ({ ready }) })
-  route('/methods', { GET: methods })
+  route('/methods', { GET: () => account.methods() })
   route('/account', {
-    GET: () => serial(refresh),
-    DELETE: () => serial(async () => {
-      if (browserTask) throw Object.assign(new Error('请关闭平台登录窗口后再试'), { status: 409 })
-      return syncCatalog(await go('/account', 'DELETE'))
-    })
+    GET: () => refresh(),
+    DELETE: async () => {
+      if (browserTask) throw new PlatformError(409, '请关闭平台登录窗口后再试')
+      await account.logout()
+      return syncCatalog(await account.read())
+    }
   })
   route('/login', { POST: startLogin, GET: () => browserState })
-  for (const method of ['password', 'verify']) {
-    route('/login/' + method, {
-      POST: async req => {
-        const input = await readJson(req)
-        return serial(async () => {
-          const result = await go('/login/' + method, 'POST', input)
-          return result.challenge ? result : syncCatalog(result)
-        })
-      }
-    })
-  }
-  route('/providers', {
-    POST: async req => {
+  route('/login/password', {
+    POST: async (req) => {
       const input = await readJson(req)
-      return serial(async () => syncCatalog(await go('/providers', 'POST', input)))
+      const result = await account.password(input.username, input.password)
+      if (result?.challenge) return result
+      return syncCatalog(await account.read())
+    }
+  })
+  route('/login/verify', {
+    POST: async (req) => {
+      const input = await readJson(req)
+      await account.verify(input.challenge, input.code)
+      return syncCatalog(await account.read())
+    }
+  })
+  route('/providers', {
+    POST: async (req) => {
+      const input = await readJson(req)
+      await account.addProvider(input)
+      return syncCatalog(await account.read())
     },
-    DELETE: async req => {
+    DELETE: async (req) => {
       const { id } = await readJson(req)
-      if (typeof id !== 'string' || !/^[a-z0-9-]+$/.test(id)) {
-        throw Object.assign(new Error('无效的模型提供方'), { status: 400 })
-      }
-      return serial(async () => syncCatalog(await go(`/providers/${id}`, 'DELETE')))
+      await account.removeProvider(id)
+      return syncCatalog(await account.read())
     }
   })
 
-  const refreshInBackground = () => void serial(refresh).catch(() => {})
+  const refreshInBackground = () => void refresh().catch(() => {})
   ctx.effect(() => {
     const timer = setInterval(refreshInBackground, 15_000)
     timer.unref()
