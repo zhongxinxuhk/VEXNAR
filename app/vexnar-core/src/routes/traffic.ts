@@ -170,7 +170,7 @@ async function getExchangeRaw(id: string) {
   }
 }
 
-async function readBlobBuffer(hash: string): Promise<Buffer> {
+async function readBlobBuffer(hash: string) {
   const h = hash.toLowerCase().trim()
   if (!BLOB_HASH_RE.test(h)) throw Object.assign(new Error('非法的 blob hash'), { status: 400 })
   try {
@@ -364,7 +364,7 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
 }
 
 // ── ZIP 导出（对齐 server/finding_traffic_export.go） ─────────────────────
-function buildZip(entries: Array<{ name: string; data: Buffer }>): Buffer {
+function buildZip(entries: Array<{ name: string; data: Buffer }>) {
   const chunks: Buffer[] = []
   const central: Array<{ name: string; crc: number; size: number; compressed: Buffer; offset: number }> = []
   let offset = 0
