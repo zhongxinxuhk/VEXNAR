@@ -222,7 +222,7 @@ flowchart TB
 | 层级 | dsh 组装顺序：各 bundle patch → profile `cordis.patch.yml` → `$DSH_HOME` 补丁。我们的补丁仍最后生效，品牌槽/MCP/模型路由不被覆盖 |
 | 令牌 | 皮肤重绑 `--dsw-alias-*`（`label-primary` 出现 188 次、`bg-layer-2` 21 次），VEXNAR 的 `--vx-*` 只绑定 alias，因此卡片自动跟随皮肤配色与亮暗 |
 | 冲突面 | 皮肤在 `tool.call.toolview` 上注册自己的视图（文件类），与我们的两个 keyed 工具卡不撞键；品牌槽它不占 |
-| 品牌保留 | 侧栏 logo、wordmark、hero 标语仍归 `@vexnar/dsh-ui`；皮肤改的是"皮肤"，不是"品牌归属" |
+| 品牌保留 | 侧栏 logo、wordmark、hero 标语仍归 `@vexnar/dsh-ui`；皮肤改的是"皮肤"，不是"品牌归属"。**皮肤自带品牌行，不自带槽位**，所以由品牌守卫就地改写（见下） |
 | 关闭 | `VEXNAR_THEME=off pnpm run setup` 可不装；已写入的 bundles 行需手工移除（脚本不自动删） |
 | 许可 | 主题 MIT；`packages/client/src/features/sodium/` 与 `packages/engine/src/sheet-rewrite.ts` 为 Sodium 引擎，PolyForm Shield 1.0.0。**只作为依赖使用，不复制进仓库** |
 
@@ -231,6 +231,17 @@ flowchart TB
 - §4.2 的"品牌色选 A（中性 + 语义色）"仍然成立，但**色值由皮肤给**：我们不再维护自己的中性色阶。
 - §4.5 的"三档 elevation、发丝描边、超椭圆"继续沿用 dsh 令牌，皮肤若调整这些令牌，我们自动跟随。
 - §8 的 P4（主题预设 + 密度）改为"皮肤预设 + 我们只补密度与语义色校验"，工作量下降。
+
+#### 品牌守卫：为什么是"改写"而不是"关掉皮肤的开关"
+
+皮肤在侧栏画自己的品牌行（`data-dsh-claude-part="brand-button"` → `brand-identity` → `brand-mark` + `brand-name`），**不渲染宿主的 `sidebar.brand.*` 槽位**，所以皮肤一开，VEXNAR 的 logo 就消失了。两条可选路：
+
+| 方案 | 做法 | 结果 |
+|---|---|---|
+| A 关皮肤品牌 | 给 `ui-skin-claude-style` 行写 `config: { sidebarBrand: false }` | 会**整对象替换**该行 config（dsh 补丁不深合并），把用户自己的配色/布局设置一起打掉；不采用 |
+| B 就地改写（采用） | `@vexnar/dsh-ui` 检测 `body[data-dsh-claude-style]`，把 `brand-identity` / `rail-mark` 的内容换成 VEXNAR 的 mark + wordmark | 元素、布局、点击目标都保留，只换美术；皮肤设置完全不动 |
+
+实现要点：只在皮肤激活时动手；用 `data-vexnar-brand="1"` 幂等；`MutationObserver` 覆盖皮肤重渲染；折叠态只塞 mark，展开态 mark + wordmark。没有皮肤时走槽位注册，两条路互不干扰。
 
 验证口径（皮肤加入后新增）：
 

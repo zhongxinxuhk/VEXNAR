@@ -252,6 +252,47 @@ function HeroLogo({ size }: { size?: number }): ReactNode {
 }
 
 /**
+ * The Claude-style skin draws its own sidebar brand (a `brand-identity` node
+ * holding `brand-mark` + `brand-name`) and does not render the host's
+ * `sidebar.brand.*` occupants, so the VEXNAR mark disappeared the moment the
+ * skin was enabled. This guard rewrites the skin's own brand nodes into the
+ * VEXNAR mark and wordmark: the element and its layout/click target stay, the
+ * artwork does not. It only touches nodes the skin owns, so the plain dsh shell
+ * keeps using the slot occupants registered below.
+ */
+const SKIN_BRAND_PARTS =
+  '[data-dsh-claude-part~="brand-identity"], [data-dsh-claude-part~="rail-mark"]'
+
+function installSkinBrandGuard(): () => void {
+  const paint = (): void => {
+    if (!document.body.hasAttribute('data-dsh-claude-style')) return
+    document.querySelectorAll(SKIN_BRAND_PARTS).forEach((node) => {
+      if (!(node instanceof HTMLElement)) return
+      if (node.dataset.vexnarBrand === '1') return
+      node.dataset.vexnarBrand = '1'
+      const rail = node.dataset.dshClaudePart === 'rail-mark'
+      const mark = document.createElement('img')
+      mark.src = VEXNAR_LOGO
+      mark.alt = 'VEXNAR'
+      mark.className = 'vx-brand-logo'
+      mark.setAttribute('aria-hidden', 'true')
+      if (rail) {
+        node.replaceChildren(mark)
+      } else {
+        const word = document.createElement('span')
+        word.className = 'vx-brand-word'
+        word.textContent = 'VEXNAR'
+        node.replaceChildren(mark, word)
+      }
+    })
+  }
+  paint()
+  const observer = new MutationObserver(paint)
+  observer.observe(document.body, { childList: true, subtree: true })
+  return () => observer.disconnect()
+}
+
+/**
  * The hero headline has no slot, so it is replaced in place: the title group is
  * located by its class fragment and rewritten when the blank-home hero mounts.
  * The marker attribute also opts the node into the gradient treatment.
@@ -345,6 +386,7 @@ export function apply(ctx: {
   // place because the headline has no slot of its own.
   slots.inject('conversation.hero.brand.mark', () =>
     slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
+  ctx.effect?.(() => installSkinBrandGuard())
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())
 }

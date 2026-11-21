@@ -267,6 +267,24 @@ body[data-ds-dark-theme] .vx-sev-info { --vx-sev: var(--dsw-static-blue-400, #60
 /* \u2500\u2500 brand slots \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 .vx-mark { display: block; }
 
+/* The skin's brand nodes are rewritten in place; these keep the injected mark
+   and wordmark aligned with the skin's own metrics. */
+.vx-brand-logo {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: none;
+}
+
+.vx-brand-word {
+  font-family: var(--dsw-font-family-brand, var(--dsw-font-family, inherit));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: inherit;
+}
+
 .vx-brand-name {
   font-family: var(--dsw-font-family-brand, var(--dsw-font-family, inherit));
   font-size: 13px;
@@ -493,6 +511,35 @@ function HeroLogo({ size }) {
     style: { borderRadius: 6 }
   });
 }
+var SKIN_BRAND_PARTS = '[data-dsh-claude-part~="brand-identity"], [data-dsh-claude-part~="rail-mark"]';
+function installSkinBrandGuard() {
+  const paint = () => {
+    if (!document.body.hasAttribute("data-dsh-claude-style")) return;
+    document.querySelectorAll(SKIN_BRAND_PARTS).forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      if (node.dataset.vexnarBrand === "1") return;
+      node.dataset.vexnarBrand = "1";
+      const rail = node.dataset.dshClaudePart === "rail-mark";
+      const mark = document.createElement("img");
+      mark.src = VEXNAR_LOGO;
+      mark.alt = "VEXNAR";
+      mark.className = "vx-brand-logo";
+      mark.setAttribute("aria-hidden", "true");
+      if (rail) {
+        node.replaceChildren(mark);
+      } else {
+        const word = document.createElement("span");
+        word.className = "vx-brand-word";
+        word.textContent = "VEXNAR";
+        node.replaceChildren(mark, word);
+      }
+    });
+  };
+  paint();
+  const observer = new MutationObserver(paint);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
 function installHeroSlogan() {
   const slogan = () => (navigator.language || "zh").toLowerCase().startsWith("zh") ? "\u63A2\u7D22\u672A\u77E5\uFF0C\u7A81\u7834\u8FB9\u754C" : "Explore the unknown. Break the boundaries.";
   const rewrite = () => {
@@ -552,6 +599,7 @@ function apply(ctx) {
   slots.inject("sidebar.brand.mark", () => slots.register({ name: "sidebar.brand.mark" }, BrandMark));
   slots.inject("sidebar.brand.name", () => slots.register({ name: "sidebar.brand.name" }, BrandName));
   slots.inject("conversation.hero.brand.mark", () => slots.register({ name: "conversation.hero.brand.mark" }, HeroLogo));
+  ctx.effect?.(() => installSkinBrandGuard());
   ctx.effect?.(() => installHeroSlogan());
   ctx.effect?.(() => installPermissionWarning());
 }

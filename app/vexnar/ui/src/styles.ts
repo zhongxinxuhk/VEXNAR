@@ -258,6 +258,24 @@ body[data-ds-dark-theme] .vx-sev-info { --vx-sev: var(--dsw-static-blue-400, #60
 /* ── brand slots ────────────────────────────────────────────────────────── */
 .vx-mark { display: block; }
 
+/* The skin's brand nodes are rewritten in place; these keep the injected mark
+   and wordmark aligned with the skin's own metrics. */
+.vx-brand-logo {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: none;
+}
+
+.vx-brand-word {
+  font-family: var(--dsw-font-family-brand, var(--dsw-font-family, inherit));
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: inherit;
+}
+
 .vx-brand-name {
   font-family: var(--dsw-font-family-brand, var(--dsw-font-family, inherit));
   font-size: 13px;

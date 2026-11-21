@@ -25,7 +25,9 @@ const bundle = readFileSync(join(here, '..', 'lib', 'client.js'), 'utf8')
 const element = () => ({ id: '', textContent: '', remove() {}, append() {}, setAttribute() {} })
 globalThis.document = {
   head: { append() {} },
-  body: {},
+  // A plain dsh shell: no Claude-style skin marker, so the skin brand guard
+  // must stay inert.
+  body: { hasAttribute: () => false, querySelectorAll: () => [] },
   createElement: element,
   getElementById: () => null,
   querySelector: () => null,
@@ -94,6 +96,14 @@ test('a missing slots service degrades instead of throwing', () => {
   const plugin = loadPlugin()
   assert.doesNotThrow(() => plugin.apply({}),
     'a failed service must not take the whole client plugin down')
+})
+
+test('the skin brand guard targets the skin-owned brand nodes', () => {
+  // The guard exists because the Claude-style skin draws its own sidebar brand
+  // and never renders the host `sidebar.brand.*` occupants.
+  assert.ok(bundle.includes('brand-identity'), 'brand-identity part must be rewritten')
+  assert.ok(bundle.includes('rail-mark'), 'collapsed rail mark must be rewritten too')
+  assert.ok(bundle.includes('vx-brand-word'), 'the injected wordmark needs its class')
 })
 
 test('the stylesheet only references tokens dsh actually defines', () => {

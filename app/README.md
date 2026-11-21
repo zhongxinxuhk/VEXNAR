@@ -104,6 +104,10 @@ Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-cla
   所以 `app/vexnar/cordis.patch.yml` 仍然最后生效：品牌槽、MCP、模型路由不受皮肤影响。
 - **令牌关系**：皮肤改的是 dsh 的 alias 令牌（`--dsw-alias-*`），而 `@vexnar/dsh-ui` 的 `--vx-*`
   只绑定这些 alias，所以卡片会自动跟随皮肤的配色，不需要为皮肤写第二套样式。
+- **品牌不被皮肤顶掉**：皮肤画自己的侧栏品牌行、不渲染宿主 `sidebar.brand.*` 槽位，因此
+  `@vexnar/dsh-ui` 在皮肤激活（`body[data-dsh-claude-style]`）时就地改写它的
+  `brand-identity` / `rail-mark` 内容为 VEXNAR 标志与字标。不通过关皮肤开关实现——那会整对象
+  替换该行 config，连带清掉用户在设置里存的配色与布局。
 - **关闭方式**：`VEXNAR_THEME=off pnpm run setup`，然后从 profile 的 `dsh.profile.bundles` 里去掉该包
   （脚本不会自动删已存在的行，避免误删他人配置）。
 - **许可**：主题本体 MIT；`packages/client/src/features/sodium/` 与 `packages/engine/src/sheet-rewrite.ts`
