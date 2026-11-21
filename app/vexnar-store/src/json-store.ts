@@ -1,43 +1,22 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { mkdir } from 'node:fs/promises'
 import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
+import { readPerRecord } from './per-record.js'
 
 /**
- * dsh-style JSON store: one inspectable file per table under the store root,
- * atomic replace on write, schema validation on read. This is the default
- * backend; PostgreSQL is the optional adapter.
+ * dsh-style JSON store. Graph and asset data use the per-record layout
+ * (`<root>/<table>/<key>.json`), so a single update replaces one document;
+ * metadata lives in the separate `meta.json` single-file domain.
  */
 export function jsonStore(root: string): Store {
-  const files = {
-    tasks: join(root, 'tasks.json'),
-    findings: join(root, 'findings.json'),
-    assets: join(root, 'assets.json'),
-    nodes: join(root, 'nodes.json'),
-    edges: join(root, 'edges.json'),
-    companies: join(root, 'companies.json')
-  }
   const cache: Record<string, any[] | undefined> = {}
 
-  async function load(key: keyof typeof files, schema: { parse: (value: unknown) => any }) {
+  async function load(key: string, schema: { parse: (value: unknown) => any }): Promise<any[]> {
     if (cache[key]) return cache[key]!
-    try {
-      const rows = JSON.parse(await readFile(files[key], 'utf8'))
-      cache[key] = rows.map((row: unknown) => schema.parse(row))
-    } catch {
-      cache[key] = []
-    }
+    cache[key] = await readPerRecord(root, key, schema as any)
     return cache[key]!
-  }
-
-  async function write(key: keyof typeof files, rows: unknown[]) {
-    await mkdir(dirname(files[key]), { recursive: true, mode: 0o700 })
-    const temp = `${files[key]}.tmp`
-    await writeFile(temp, `${JSON.stringify(rows, null, 2)}\n`, { mode: 0o600 })
-    await rename(temp, files[key])
-    cache[key] = rows
   }
 
   return {
@@ -62,7 +41,7 @@ export function jsonStore(root: string): Store {
         const taskInfo = new Map(taskRows.map((task) => [String(task.id), task]))
         const count = (predicate: (row: any) => boolean) => rows.filter(predicate).length
         const vulnclasses = [...new Set(rows.map((row) => row.vulnclass).filter(Boolean))].sort()
-        const byTask = new Map<string, { id: string; name: string; description: string; count: number; last: string }>()
+        const byTask = new Map<string, { id: number; name: string; description: string; count: number; last: string }>()
         for (const row of rows) {
           if (!row.task_id) continue
           const key = String(row.task_id)
@@ -113,7 +92,9 @@ export function jsonStore(root: string): Store {
         rows.sort((a, b) => (order === 'asc' ? Number(a.id) - Number(b.id) : Number(b.id) - Number(a.id)))
         const items = rows.slice((page - 1) * size, (page - 1) * size + size)
         const ids = new Set(items.map((row) => String(row.id)))
-        const edges = (await load('edges', { parse: (value) => value })).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id) && (ids.has(String(edge.src)) || ids.has(String(edge.dst))))
+        const edges = (await load('edges', { parse: (value) => value })).filter(
+          (edge) => Number(edge.exploration_id) === Number(task.exploration_id) && (ids.has(String(edge.src)) || ids.has(String(edge.dst)))
+        )
         return { items, total: rows.length, edges }
       }
     }
