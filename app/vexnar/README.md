@@ -30,6 +30,11 @@ dsh (app)  ──OpenAI-compatible──▶  Go  /api/desktop/openai/v1   （模
 | 漏洞证据 | `report_finding`、`get_finding_traffic`、`bind_finding_traffic`、`update_finding_report` |
 | 资产/流量 | `list_assets`、`traffic_search`、`traffic_get`、`traffic_blob` |
 
+代理池能力由 `@vexnar/dsh-egress`（`app/vexnar-egress/`）以 dsh 工具提供：
+`egress_exec`、`egress_status`、`fanout_fetch`、`egress_proxy`、`pivot_add`、`browser_proxy`。
+它经同进程 `vexnarCore` 服务调用 core，不需要 token/端口；设计见
+[`../docs/EGRESS-AGENT-TS.md`](../docs/EGRESS-AGENT-TS.md)。
+
 工具名在 dsh 里带命名空间：`mcp__vexnar__report_finding`。
 
 范围限制：设置 `VEXNAR_MCP_TASK_IDS=t1,t2` 后，带 `task_id` 的调用只允许这几个任务。

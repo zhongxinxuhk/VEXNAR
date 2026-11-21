@@ -32,6 +32,7 @@ interface ToolRegistration {
 
 /** 本插件用到的 dsh 上下文切片：宿主侧不依赖 dsh 的包，故此处结构化声明。 */
 type AccountContext = PlatformContext & {
+  provide: (name: string, value: unknown) => void
   sessions: {
     get: (id: string) => { header: { cwd?: string } } | undefined
   }
@@ -122,6 +123,31 @@ export function apply(ctx: AccountContext): void {
   registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
     const app = import('./core-embedded.js')
+    // 同一进程内的领域调用面：工具插件（如 @vexnar/dsh-egress）直接走这里，
+    // 不经过 /vexnar-api 的登录闸门，也不需要复制一份端口/token。
+    ctx.provide('vexnarCore', {
+      request: async (path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) => {
+        const { handle } = await app
+        const requestInit: RequestInit = {
+          method: init.method ?? 'GET',
+          headers: { 'content-type': 'application/json', ...(init.headers ?? {}) }
+        }
+        if (init.body !== undefined) requestInit.body = JSON.stringify(init.body)
+        const response = await handle(new Request(new URL(path, 'http://127.0.0.1'), requestInit), true)
+        const text = await response.text()
+        let data: unknown = null
+        try {
+          data = text ? JSON.parse(text) : null
+        } catch {
+          data = { raw: text }
+        }
+        if (!response.ok) {
+          const message = (data as { error?: string })?.error ?? text ?? `HTTP ${response.status}`
+          throw new Error(message)
+        }
+        return data
+      }
+    })
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/vexnar-api',

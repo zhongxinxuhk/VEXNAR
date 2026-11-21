@@ -1,0 +1,30 @@
+{
+  "name": "@vexnar/dsh-egress",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VEXNAR egress tools for dsh: session proxy, fanout, pivots, chained proxy, browser fixed port and proxy-aware shell execution",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "tsx index.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

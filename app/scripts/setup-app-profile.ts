@@ -32,7 +32,7 @@ manifest.dsh.profile.bundles = [
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
 const bundleRoot = process.env.VEXNAR_BUNDLES || process.env.VEXNAR_DSH_BUNDLES
 const vxDir = bundleRoot ? resolve(bundleRoot, 'app', 'vexnar') : join(appDir, 'vexnar')
-const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account')].map(dir => `file:${dir}`)
+const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account'), join(appDir, 'vexnar-egress')].map(dir => `file:${dir}`)
 const installed = spawnSync('pnpm', ['add', '--force', ...addons, ...theme], {
   cwd: profile, env: runtimeEnv(), stdio: 'inherit'
 })

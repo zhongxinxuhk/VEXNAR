@@ -195,8 +195,4 @@ for (const result of results) {
   if (result.ok) passed++
 }
 console.log(`\n${passed}/${results.length} passed`)
-await stopEgressRuntime()
-first.server.close()
-second.server.close()
-target.close()
-if (passed !== results.length) process.exitCode = 1
+process.exit(passed === results.length ? 0 : 1)
