@@ -72,24 +72,44 @@ test('apply registers every surface it owns', () => {
   plugin.apply({
     slots: {
       inject: (name, cb) => { injected.push(name); cb() },
-      register: (options) => { registered.push(options.name + (options.key ? `:${options.key}` : '')) }
+      register: (options) => { registered.push([options.name, options.key ?? options.id].filter(Boolean).join(':')) }
     },
     effect: (fn) => fn()
   })
-  assert.deepEqual(injected, [
-    'tool.call.toolview',
-    'tool.call.toolview',
-    'sidebar.brand.mark',
-    'sidebar.brand.name',
-    'conversation.hero.brand.mark'
-  ])
-  assert.deepEqual(registered, [
+  // 侧边栏：概览 + 执行台（任务/发现/工具执行 合并）+ 流量 + 资产；日志已并入执行台。
+  const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
+    ...['overview', 'workbench', 'traffic', 'assets']
+      .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
+    // 设置：MCP 与工具合并成「工具与 MCP」，资产同步并进资产面板。
+    ...['agents', 'tools-mcp', 'notify', 'intercept', 'approvals']
+      .map((section) => `settings.section:vexnar-${section}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
     'conversation.hero.brand.mark'
-  ])
+  ]
+  assert.deepEqual(injected, expected.map((entry) => entry.split(':')[0]))
+  assert.deepEqual(registered, expected)
+})
+
+test('the fused surfaces replace their独立 entries', () => {
+  const plugin = loadPlugin()
+  const ids = []
+  plugin.apply({
+    slots: {
+      inject: (name, cb) => cb(),
+      register: (options) => { ids.push(`${options.name}:${options.key ?? options.id}`) }
+    },
+    effect: (fn) => fn()
+  })
+  for (const gone of ['vexnar-tasks', 'vexnar-findings', 'vexnar-tool-run', 'vexnar-logs',
+    'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync']) {
+    assert.equal(ids.some((id) => id.endsWith(`:${gone}`)), false,
+      `${gone} must be gone: its content lives in the workbench / 工具与 MCP / 资产 panel now`)
+  }
+  assert.ok(ids.includes('sidebar.panellist:vexnar-workbench'), 'the workbench must own the sidebar entry')
+  assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')
 })
 
 test('a missing slots service degrades instead of throwing', () => {

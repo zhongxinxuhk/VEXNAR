@@ -21,42 +21,30 @@ dsh 新会话首屏
 
 dsh 侧边栏
 ├─ 概览        → main: vexnar-overview （Web /dashboard 复刻，整页）
-├─ 任务        → main: vexnar-tasks    （仪表盘计数 + 列表 + 详情）
-├─ 发现        → main: vexnar-findings
+├─ 执行台      → main: vexnar-workbench
+│                 ├─ 任务      （仪表盘计数 + 列表 + 详情）
+│                 ├─ 发现      （按任务范围过滤的漏洞列表 + 详情）
+│                 └─ 工具执行  （运行器 + 该任务的执行记录流）
 ├─ 流量        → main: vexnar-traffic（host/method/关键字过滤 + exchange 详情）
-├─ 资产        → main: vexnar-assets
-├─ 工具执行    → main: vexnar-tool-run
-└─ 日志        → main: vexnar-logs
+└─ 资产        → main: vexnar-assets  （资产列表 / JSON 导入）
 
 dsh 设置页
-├─ Agent       → dsh 原生 Agent presets（见下方「Agent 归属」）
-├─ MCP         → settings.section: vexnar-mcp
-├─ 工具        → settings.section: vexnar-tools
+├─ Agent 管理  → settings.section: vexnar-agents
+├─ 工具与 MCP  → settings.section: vexnar-tools-mcp（工具 / MCP server 两个页签）
 ├─ 通知推送    → settings.section: vexnar-notify
 ├─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
-├─ 资产同步    → settings.section: vexnar-asset-sync（JSON 导入，按标识去重）
 └─ 审批记录    → settings.section: vexnar-approvals
 ```
 
-## Agent 归属：全部在 dsh 里管理
+### 为什么合并
 
-引擎自带的六个角色（goals / planner / mainagent / worker / auto / pentest）
-以 `@deepseek-ai/dsh-agent-preset` 行的形式注册在 `app/vexnar/cordis.patch.yml`
-里，成为 **dsh 内置 Agent**：
-
-| preset id | 名称 | 组成 |
-|---|---|---|
-| `vexnar-goals` | 目标拆解 | 只读文件 + 搜索 + 网页 + 待办 + 压缩 |
-| `vexnar-planner` | 规划 | 只读文件 + 搜索 + 网页 + 待办 + 交付 + 压缩 |
-| `vexnar-main` | 主 | 全量工具（shell / 文件 / 网页 / 待办） |
-| `vexnar-worker` | 执行 | 全量工具 |
-| `vexnar-auto` | 平台操作 | 全量工具 |
-| `vexnar-pentest` | 渗透测试 | 全量工具 + 交付 |
-
-角色约束写在 preset 的 `persona.prefix` 里；工具来自 preset 自己的插件行，领域
-工具（任务/发现/流量）来自全局挂载的 vexnar MCP。**管理只有一处**：dsh 的
-设置 → Agent（选择默认、查看 composition、Creator 改写）；VEXNAR 不再提供并行的
-Agent 管理面板，`/api/agents` 只用于概览里的计数。
+- **任务 / 发现 / 工具执行** 描述的是同一个任务的三面：任务列表告诉你做了什么，发现是
+  它的产出，工具执行是它的过程。三者过去各有入口、各筛各的任务，现在共用面板顶部的
+  任务范围，切页签不用重新选。
+- **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
+  工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
+- **MCP / 工具** 是同一件事的两半（工具从哪来），拆成两个设置节只会让人来回切。
+- **资产同步** 只做一件事——往资产库里灌数据——所以并进资产面板，导入完直接看列表。
 
 ## 哪些入口复用 dsh，哪些新建
 
@@ -66,18 +54,16 @@ Agent 管理面板，`/api/agents` 只用于概览里的计数。
 | 工作空间 | **dsh 原生 workspace/文件面板** | 本地文件 | 复用 |
 | 系统配置 / LLM | dsh settings + `vexnar-account` 插件 | 网关/凭据 | 复用 |
 | 仪表盘 | `vexnar-overview` 整页 + 新会话首屏卡片 | `/api/tasks`、`/api/exploration/findings/stats`、`/api/assets/counts`、`/api/tokens/daily` | 骨架 |
-| 任务 | 面板内列表 | `/api/tasks` | 骨架 |
-| 发现 | 面板内列表/详情 | `/api/exploration/findings` | 骨架 |
+| 任务 / 发现 / 工具执行 | 执行台（三页签共享任务范围） | `/api/tasks`、`/api/exploration/findings?task_id=`、`/api/exploration/activity/history` | 已接 |
+| 资产同步 | 资产面板的「导入」页签 | `/api/assets` | 已接 |
 | 流量 | 面板内证据查看 | `/api/exploration/findings/:id/traffic` | 骨架 |
-| 工具执行 | 面板内运行器 | `/api/engine/tools`（规划） | 骨架 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
 | 资产 / 资产同步 | 面板内列表 | `/api/assets`、DSL | 骨架 |
 | Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
-| MCP / 工具 / Skill | 面板内配置 | `/api/mcp`、`/api/tools` | 骨架 |
+| MCP / 工具 / Skill | 「工具与 MCP」设置节 | `/api/mcp`、`/api/tools` | 骨架 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
 | 审批记录 | 面板内列表 | 待迁 | 规划 |
-| 日志 | 面板内日志 | `/api/exploration/activity/history` | 骨架 |
 
 ## 已实现的数据视图
 
@@ -91,9 +77,10 @@ Agent 管理面板，`/api/agents` 只用于概览里的计数。
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
 - 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
-- 工具执行：选择 nmap/httpx/ffuf/sqlmap，填 target 与可选 task_id，结果解析并落库；
+- 执行台：任务 / 发现 / 工具执行 共用顶部任务范围；工具执行页签在选择工具与 target 后按
+  该任务落库，下方直接列出该任务的执行记录（planner / main 逐步，含工具与结果）；
 - 任务详情：暂停/恢复/归档按钮；
-- 流量页：抓包列表（经 core 回退代理 Go `/api/traffic`）；
+- 流量页：通过内嵌 core 读取 Go 流量，支持导入 Yakit HAR 和登记资产。详见 [Yakit 对接设计](docs/YAKIT-TRAFFIC-ASSETS.md)；
 - 拦截规则：规则列表与删除（同样代理 Go）；
 - 审批记录：Go 无独立接口，占位说明。
 - core 的共享 token 调用会在代理时自动换取服务 JWT，避免 Go 401。

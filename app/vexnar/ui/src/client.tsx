@@ -369,16 +369,20 @@ function OverviewIcon({ size }: { size?: number }): ReactNode {
 }
 
 /**
- * 领域接口只走同源 /vexnar-api：core 由账户插件嵌在 dsh webserver 上，代理时
- * 自己换服务 JWT，所以面板不需要地址、token 或“连接”这一步。
+ * 领域接口走同源 /vexnar-api。账户插件将流量和资产请求转给本机 Go 服务。
  */
 const CORE_BASE = '/vexnar-api'
+
+async function responseError(response: Response) {
+  const data = await response.json().catch(() => null)
+  return new Error(data?.error || `HTTP ${response.status}`)
+}
 
 async function callApi(path: string, method = 'GET', body?: unknown) {
   const init: RequestInit = { method, headers: { 'content-type': 'application/json' } }
   if (body !== undefined) init.body = JSON.stringify(body)
   const response = await fetch(CORE_BASE + path, init)
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`)
+  if (!response.ok) throw await responseError(response)
   return response.json()
 }
 
@@ -387,7 +391,10 @@ function useApi(path: string, deps: unknown[] = []): { data: any; error: string;
   useEffect(() => {
     let alive = true
     fetch(CORE_BASE + path)
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then(async (response) => {
+        if (!response.ok) throw await responseError(response)
+        return response.json()
+      })
       .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
       .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
     return () => { alive = false }
@@ -414,11 +421,12 @@ function Dashboard() {
     h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自本地核心'))
 }
 
-function TaskList({ onSelect }: { onSelect?: (id: string) => void }) {
+function TaskList({ onSelect, scope = '' }: { onSelect?: (id: string) => void; scope?: string }) {
   const { data, error, loading } = useApi('/api/tasks')
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = (data?.tasks ?? []).slice(0, 30)
+  const all = data?.tasks ?? []
+  const rows = (scope ? all.filter((task: any) => String(task.id) === scope) : all).slice(0, 30)
   return h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
     h('thead', null, h('tr', null, ['ID', '名称', '状态', '目标'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
     h('tbody', null, rows.map((task: any) => h('tr', { key: task.id, onClick: () => onSelect?.(String(task.id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
@@ -517,6 +525,29 @@ function fmtAgo(unix: unknown): string {
   return `${Math.floor(seconds / 86400)}d 前`
 }
 
+function AgentsPage() {
+  const { data, error, loading } = useApi('/api/agents')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+  const rows = data?.agents ?? []
+  const edit = async (agent: any) => {
+    const name = window.prompt('Agent 名称', agent.name)
+    if (name == null) return
+    const description = window.prompt('描述', agent.description ?? '')
+    if (description == null) return
+    try { await callApi(`/api/agents/${agent.key}`, 'PATCH', { name, description }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) }
+  }
+  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+    h('thead', null, h('tr', null, ['Key', '名称', '角色', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+    h('tbody', null, rows.map((agent: any) => h('tr', { key: agent.key },
+      h('td', { style: { padding: '6px 8px' } }, agent.key),
+      h('td', { style: { padding: '6px 8px' } }, agent.name),
+      h('td', { style: { padding: '6px 8px' } }, agent.role),
+      h('td', { style: { padding: '6px 8px' } }, agent.enabled ? '是' : '否'),
+      h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => edit(agent), style: { cursor: 'pointer' } }, '编辑')))))))
+}
+
 function McpPage() {
   const { data, error, loading } = useApi('/api/mcp')
   const [version, setVersion] = useState(0)
@@ -580,65 +611,166 @@ function NotifyPage() {
         h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
 }
 
-function ToolRunPage() {
+/**
+ * 直接执行内置侦察工具。taskID 来自执行台的任务范围：执行结果按任务落库，
+ * 所以这里不再单独填 task_id，避免"跑在执行台、记在别的任务"。
+ */
+function ToolRunPage({ taskID = '' }: { taskID?: string }) {
   const [name, setName] = useState<'nmap' | 'httpx' | 'ffuf' | 'sqlmap'>('nmap')
   const [target, setTarget] = useState('')
-  const [taskId, setTaskId] = useState('')
   const [output, setOutput] = useState('')
   const run = async () => {
     setOutput('执行中…')
     try {
-      const data = await callApi('/api/engine/tools/run', 'POST', { name, target, task_id: taskId || undefined })
+      const data = await callApi('/api/engine/tools/run', 'POST', { name, target, task_id: taskID || undefined })
       setOutput([`code=${data.code} truncated=${data.truncated}`, data.parsed ? JSON.stringify(data.parsed, null, 2) : '', data.stdout, data.stderr].filter(Boolean).join('\n'))
     } catch (error: any) { setOutput(String(error?.message ?? error)) }
   }
   return h('div', { style: { fontSize: 13 } },
-    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 } },
       h('select', { value: name, onChange: (event: any) => setName(event.target.value) }, ['nmap', 'httpx', 'ffuf', 'sqlmap'].map((item) => h('option', { key: item, value: item }, item))),
       h('input', { placeholder: 'target（域名 / URL / IP）', value: target, onChange: (event: any) => setTarget(event.target.value), style: { minWidth: 260 } }),
-      h('input', { placeholder: 'task_id（可选，用于落库）', value: taskId, onChange: (event: any) => setTaskId(event.target.value) }),
-      h('button', { type: 'button', onClick: run, style: { cursor: 'pointer' } }, '执行')),
+      h('button', { type: 'button', onClick: run, style: { cursor: 'pointer' } }, '执行'),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } },
+        taskID ? `结果记入任务 #${taskID}` : '未选任务：结果不落库')),
     h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
-function TrafficExchange({ id, onBack }: { id: string; onBack: () => void }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(id)}`)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+function YakitImport({ onImported }: { onImported: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ imported: number; duplicates: number; errors: { entry: number; error: string }[] } | null>(null)
+
+  async function upload(file: File) {
+    setError('')
+    setResult(null)
+    if (file.size > 16 * 1024 * 1024) {
+      setError('HAR 不可超过 16 MiB，请分批导出')
+      return
+    }
+    setBusy(true)
+    try {
+      const response = await fetch(CORE_BASE + '/api/traffic/import/yakit', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: file
+      })
+      if (!response.ok) throw await responseError(response)
+      const data = await response.json()
+      setResult(data)
+      if (data.imported || data.duplicates) onImported()
+    } catch (error) {
+      setError(String((error as Error).message))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return h('div', { style: { marginBottom: 12 } },
+    h('label', null, '导入 Yakit HAR ',
+      h('input', {
+        type: 'file', accept: '.har,application/json', disabled: busy,
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void upload(file)
+        }
+      })),
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginTop: 4 } }, '在 Yakit History 选中记录并导出 HAR。每份最多 16 MiB、2000 条。'),
+    busy && h('div', { role: 'status' }, '正在导入…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    result && h('div', { role: 'status' },
+      `已导入 ${result.imported} 条，重复 ${result.duplicates} 条，失败 ${result.errors.length} 条`,
+      result.errors.length > 0 && h('details', null,
+        h('summary', null, '查看失败记录'),
+        h('ul', null, result.errors.map(({ entry, error }) => h('li', { key: entry }, `第 ${entry} 条 · ${error}`))))))
+}
+
+function TrafficExchange({ row, onBack }: { row: any; onBack: () => void }) {
+  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id])
+  const [result, setResult] = useState('')
+  const [promoting, setPromoting] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  async function promote() {
+    setPromoting(true)
+    setResult('')
+    try {
+      const assets = await callApi('/api/traffic/promote', 'POST', { id: row.id })
+      setSaved(true)
+      setResult(`已登记服务 #${assets.service_id}、端点 #${assets.endpoint_id}，可在资产页查看。`)
+    } catch (error) {
+      setResult(String((error as Error).message))
+    } finally {
+      setPromoting(false)
+    }
+  }
+
+  const packetStyle = { fontSize: 12, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const, background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 360, overflow: 'auto' }
   return h('div', null,
-    h('button', { type: 'button', onClick: onBack, style: { marginBottom: 10, cursor: 'pointer' } }, '← 返回流量列表'),
-    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 640, overflow: 'auto' } }, JSON.stringify(data, null, 2)))
+    h('div', { style: { display: 'flex', gap: 8 } },
+      h('button', { type: 'button', onClick: onBack }, '← 返回流量列表'),
+      h('button', { type: 'button', onClick: promote, disabled: promoting || saved || !data }, promoting ? '登记中…' : '登记为资产')),
+    result && h('p', { role: 'status' }, result),
+    h('p', { style: { overflowWrap: 'anywhere' } }, `${row.method} ${row.url}`),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data && h('div', null,
+      h('strong', null, '请求'), h('pre', { style: packetStyle }, data.req?.trim() ? data.req : '暂无请求内容'),
+      h('strong', null, '响应'), h('pre', { style: packetStyle }, data.resp?.trim() ? data.resp : '暂无响应内容')))
 }
 
 function TrafficPage() {
   const [host, setHost] = useState('')
   const [method, setMethod] = useState('')
   const [q, setQ] = useState('')
-  const params = new URLSearchParams({ page: '1', size: '50' })
-  if (host) params.set('host', host)
+  const [source, setSource] = useState('')
+  const [page, setPage] = useState(0)
+  const [revision, setRevision] = useState(0)
+  const [exchange, setExchange] = useState<any>(null)
+  const params = new URLSearchParams({ page: String(page), size: '50' })
+  if (host) params.set('host', host.trim())
   if (method) params.set('method', method)
-  if (q) params.set('q', q)
-  const { data, error, loading } = useApi(`/api/traffic?${params.toString()}`, [host, method, q])
-  const [exchangeId, setExchangeId] = useState('')
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要以 VEXNAR_GO_FALLBACK 启动 core 才能代理 Go 流量接口）`)
-  const rows = data?.items ?? data?.exchanges ?? []
-  if (exchangeId) return h(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId('') })
+  if (q) params.set('q', q.trim())
+  if (source) params.set('source', source)
+  const url = `/api/traffic?${params.toString()}`
+  const { data, error, loading } = useApi(url, [url, revision])
+  const rows = data?.exchanges ?? []
+  const total = data?.total ?? rows.length
+  if (exchange) return h(TrafficExchange, { row: exchange, onBack: () => setExchange(null) })
   return h('div', { style: { fontSize: 13 } },
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('input', { placeholder: 'host', value: host, onChange: (event: any) => setHost(event.target.value.trim()) }),
-      h('select', { value: method, onChange: (event: any) => setMethod(event.target.value) },
-        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
-      h('input', { placeholder: 'URL 关键字', value: q, onChange: (event: any) => setQ(event.target.value.trim()) })),
-    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? data?.total ?? rows.length} 条抓包`),
-    h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-      h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.slice(0, 50).map((row: any, index: number) => h('tr', { key: row.id ?? index, onClick: () => row.id && setExchangeId(String(row.id)), style: { cursor: row.id ? 'pointer' : 'default' } },
-        h('td', { style: { padding: '6px 8px' } }, String(row.ts ?? row.time ?? '')),
-        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
-        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.url ?? row.host ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, String(row.status ?? row.status_code ?? '')),
-        h('td', { style: { padding: '6px 8px' } }, row.source ?? row.client ?? ''))))))
+    data?.storage_available !== false && h(YakitImport, { onImported: () => {
+      setHost('')
+      setMethod('')
+      setQ('')
+      setSource('yakit')
+      setPage(0)
+      setRevision((value) => value + 1)
+    } }),
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+      h('input', { placeholder: '主机', 'aria-label': '主机', value: host, onChange: (event: any) => { setHost(event.target.value); setPage(0) } }),
+      h('select', { 'aria-label': 'HTTP 方法', value: method, onChange: (event: any) => { setMethod(event.target.value); setPage(0) } },
+        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
+      h('input', { placeholder: 'URL 或报文关键字', 'aria-label': 'URL 或报文关键字', value: q, onChange: (event: any) => { setQ(event.target.value); setPage(0) } }),
+      h('select', { 'aria-label': '流量来源', value: source, onChange: (event: any) => { setSource(event.target.value); setPage(0) } },
+        h('option', { value: '' }, '全部来源'), h('option', { value: 'yakit' }, 'Yakit'), h('option', { value: 'vexnar' }, 'VEXNAR')),
+      h('button', { type: 'button', onClick: () => setRevision((value) => value + 1) }, '刷新')),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data?.storage_available === false && h('div', { role: 'status' }, 'Go 流量存储未启用'),
+    data && data.storage_available !== false && h('div', null,
+      h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `匹配 ${total} 条流量`),
+      rows.length === 0 ? h('p', null, '暂无匹配流量') : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
+        h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+          h('td', { style: { padding: '6px 8px' } }, row.ts),
+          h('td', { style: { padding: '6px 8px' } }, row.method),
+          h('td', { style: { padding: '6px 8px', maxWidth: 420, overflowWrap: 'anywhere' } },
+            h('button', { type: 'button', onClick: () => setExchange(row), style: { whiteSpace: 'normal', textAlign: 'left' } }, row.url || row.host)),
+          h('td', { style: { padding: '6px 8px' } }, row.status || '—'),
+          h('td', { style: { padding: '6px 8px' } }, row.source === 'yakit' ? 'Yakit' : 'VEXNAR'))))),
+      (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
+        h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
+        h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+        h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页'))))
 }
 
 function InterceptPage() {
@@ -710,7 +842,11 @@ function ApprovalsPage() {
               row.status === 'pending' ? h('button', { type: 'button', onClick: () => decide(row, 'denied'), style: { cursor: 'pointer' } }, '拒绝') : null))))))
 }
 
-function AssetSyncSettings() {
+/**
+ * 资产 JSON 导入。它原本是设置里独立的「资产同步」一节，但它只做一件事——往资产
+ * 库里灌数据——所以并进资产面板，导入完直接在下个页签看到结果。
+ */
+function AssetImport({ onImported }: { onImported: () => void }) {
   const [text, setText] = useState('{"assets":[{"type":"root_domain","domain":"example.com"}]}')
   const [result, setResult] = useState('')
   const submit = async () => {
@@ -718,49 +854,69 @@ function AssetSyncSettings() {
     try {
       const parsed = JSON.parse(text)
       const assets = Array.isArray(parsed) ? parsed : parsed.assets
-      const data = await callApi('/api/assets/import', 'POST', { assets })
-      setResult(`requested=${data.requested} created=${data.created} existing=${data.existing}`)
+      if (!Array.isArray(assets) || assets.length === 0) throw new Error('请填写资产列表')
+      const data = await callApi('/api/assets', 'POST', { assets })
+      const failures = (data.errors ?? []).map((item: any) => `第 ${item.index + 1} 条 · ${item.error}`)
+      setResult([`已登记 ${data.results?.length ?? 0} 条，失败 ${failures.length} 条`, ...failures].join('；'))
+      if ((data.results?.length ?? 0) > 0) onImported()
     } catch (error: any) { setResult(String(error?.message ?? error)) }
   }
-  return h(PanelShell, { title: '资产同步', desc: '从 JSON 导入资产（域名/IP/URL），按类型与标识去重' },
+  return h('div', null,
+    h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginTop: 0 } },
+      '从 JSON 导入资产（域名 / IP / URL），按类型与标识去重。'),
     h('textarea', { value: text, onChange: (event: any) => setText(event.target.value), rows: 10, style: { width: '100%', fontFamily: 'monospace', fontSize: 12 } }),
     h('div', { style: { display: 'flex', gap: 8, marginTop: 8 } },
       h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, '导入'),
       h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, result)))
 }
 
-function LogsPanel() {
-  const tasks = useApi('/api/tasks')
-  const [taskId, setTaskId] = useState('')
+/**
+ * 该任务的执行流。
+ *
+ * 这正是原先「日志」面板展示的那批 activity 行：planner / main / intent 的每一步，
+ * 其中 kind=tool_use / tool_result 的行就是一次工具执行。它过去有独立入口，但看的
+ * 是同一批数据，所以并进工具执行页签——任务范围由执行台给，不用再选一次任务。
+ */
+function ExecStream({ taskID }: { taskID: string }) {
   const [session, setSession] = useState('plan')
   const [rows, setRows] = useState<any[]>([])
   const [error, setError] = useState('')
-  const load = async (id: string, sess: string) => {
-    setError('')
-    try {
-      const data = await callApi(`/api/exploration/activity/history?task=${id}&session=${sess}&limit=100`)
-      setRows(data.items ?? [])
-    } catch (e: any) { setError(String(e?.message ?? e)); setRows([]) }
-  }
+  const [tick, setTick] = useState(0)
   useEffect(() => {
-    if (!taskId && tasks.data?.tasks?.[0]) { const id = String(tasks.data.tasks[0].id); setTaskId(id); void load(id, session) }
-  }, [tasks.data])
-  return h(PanelShell, { title: '日志', desc: '任务活动流（planner / main / intent）' },
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('select', { value: taskId, onChange: (event: any) => { setTaskId(event.target.value); void load(event.target.value, session) } },
-        (tasks.data?.tasks ?? []).slice(0, 50).map((task: any) => h('option', { key: task.id, value: task.id }, `${task.id} · ${task.name || '未命名'}`))),
-      h('select', { value: session, onChange: (event: any) => { setSession(event.target.value); if (taskId) void load(taskId, event.target.value) } },
-        ['plan', 'main'].map((item) => h('option', { key: item, value: item }, item))),
-      h('button', { type: 'button', onClick: () => taskId && load(taskId, session), style: { cursor: 'pointer' } }, '刷新')),
-    error ? h('div', { style: { color: '#dc2626', fontSize: 12 } }, error) : null,
-    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
-      h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
+    if (!taskID) { setRows([]); setError(''); return }
+    let alive = true
+    setError('')
+    fetch(CORE_BASE + `/api/exploration/activity/history?task=${encodeURIComponent(taskID)}&session=${session}&limit=100`)
+      .then(async (response) => {
+        if (!response.ok) throw await responseError(response)
+        return response.json()
+      })
+      .then((data) => { if (alive) setRows(data.items ?? []) })
+      .catch((e) => { if (alive) { setError(String(e?.message ?? e)); setRows([]) } })
+    return () => { alive = false }
+  }, [taskID, session, tick])
+  return h('div', null,
+    h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 } },
+      h('span', { style: { fontSize: 12, fontWeight: 600, color: 'var(--vx-text-dim)' } }, `执行记录 · 任务 #${taskID}`),
+      h('select', { 'aria-label': '会话', value: session, onChange: (event: any) => setSession(event.target.value) },
+        [['plan', 'planner'], ['main', 'main']].map(([value, label]) => h('option', { key: value, value }, label))),
+      h('button', { type: 'button', onClick: () => setTick((value) => value + 1), style: { cursor: 'pointer' } }, '刷新')),
+    error ? h('div', { role: 'alert', style: { color: '#dc2626', fontSize: 12 } }, error) : null,
+    rows.length === 0 && !error ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '该会话还没有执行记录。') : null,
+    rows.length > 0 ? h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 12 } },
+      h('thead', null, h('tr', null, ['seq', 'ts', 'worker', 'kind', 'tool', 'summary'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '4px 6px' } }, t)))),
       h('tbody', null, rows.slice().reverse().map((row: any) => h('tr', { key: row.seq },
         h('td', { style: { padding: '4px 6px' } }, row.seq),
         h('td', { style: { padding: '4px 6px' } }, row.ts),
         h('td', { style: { padding: '4px 6px' } }, row.worker ?? ''),
         h('td', { style: { padding: '4px 6px' } }, row.kind ?? ''),
-        h('td', { style: { padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary ?? ''))))))
+        h('td', { style: { padding: '4px 6px', fontFamily: 'var(--vx-mono)' } }, row.tool ?? ''),
+        h('td', {
+          style: {
+            padding: '4px 6px', maxWidth: 460, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            color: row.is_error ? 'var(--vx-negative)' : undefined
+          }
+        }, row.summary ?? ''))))) : null)
 }
 
 function PanelShell({ title, desc, children }: { title: string; desc?: string; children?: ReactNode }) {
@@ -771,17 +927,21 @@ function PanelShell({ title, desc, children }: { title: string; desc?: string; c
     children ?? null)
 }
 
-function FindingList({ onSelect }: { onSelect?: (id: string) => void }) {
-  const { data, error, loading } = useApi('/api/exploration/findings?page=1&limit=30')
+function FindingList({ taskID = '', onSelect }: { taskID?: string; onSelect?: (id: string) => void }) {
+  // task_id 是任务身份（Go 与 core 都按它过滤），执行台把同一个范围带给三个页签。
+  const url = `/api/exploration/findings?page=1&limit=50${taskID ? `&task_id=${encodeURIComponent(taskID)}` : ''}`
+  const { data, error, loading } = useApi(url, [url])
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626' } }, error)
   const rows = data?.items ?? []
   return h('div', null,
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.total ?? 0} 条`),
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } },
+      taskID ? `任务 #${taskID} · 共 ${data?.total ?? 0} 条` : `全部任务 · 共 ${data?.total ?? 0} 条`),
     h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-      h('thead', null, h('tr', null, ['ID', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
+      h('thead', null, h('tr', null, ['ID', '任务', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
       h('tbody', null, rows.map((row: any) => h('tr', { key: row.finding_id, onClick: () => onSelect?.(String(row.finding_id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
         h('td', { style: { padding: '6px 8px' } }, row.finding_id),
+        h('td', { style: { padding: '6px 8px' } }, row.task_id ?? '—'),
         h('td', { style: { padding: '6px 8px' } }, row.vulnclass),
         h('td', { style: { padding: '6px 8px' } }, row.severity),
         h('td', { style: { padding: '6px 8px' } }, row.status),
@@ -822,47 +982,136 @@ function FindingDetail({ id, onBack }: { id: string; onBack: () => void }) {
         : h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 280, overflow: 'auto' } }, body.text)) : null)
 }
 
-function TasksPanel() {
-  const [taskId, setTaskId] = useState('')
-  return h(PanelShell, { title: '任务', desc: '任务列表、目标、意图与覆盖度' },
-    taskId ? h(TaskDetail, { id: taskId, onBack: () => setTaskId('') }) : h('div', null, h(Dashboard), h(TaskList, { onSelect: setTaskId })))
+type WorkbenchTab = 'tasks' | 'findings' | 'runs'
+
+const WORKBENCH_TABS: ReadonlyArray<readonly [WorkbenchTab, string]> = [
+  ['tasks', '任务'],
+  ['findings', '发现'],
+  ['runs', '工具执行']
+]
+
+/**
+ * 执行台：任务 / 发现 / 工具执行 三面合一。
+ *
+ * 三个视图共用顶部那个任务范围，所以"看到某个任务 → 看它的发现 → 看它调过哪些工具"
+ * 不用三次重新筛选。原先独立的「任务」「发现」「工具执行」入口和「日志」面板都并进
+ * 这里：日志展示的就是工具执行页签里那份 activity 流，只是另一种视图。
+ */
+function WorkbenchPanel() {
+  const tasks = useApi('/api/tasks')
+  const [tab, setTab] = useState<WorkbenchTab>('tasks')
+  const [taskID, setTaskID] = useState('')
+  const [detailID, setDetailID] = useState('')
+  const [findingID, setFindingID] = useState('')
+  const options: any[] = tasks.data?.tasks ?? []
+  const scoped = taskID !== ''
+  const pick = (id: string): void => { setTaskID(id); setDetailID(''); setFindingID('') }
+
+  const tabButton = (id: WorkbenchTab, label: string): ReactNode =>
+    h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
+
+  let body: ReactNode
+  if (tab === 'tasks') {
+    body = detailID
+      ? h(TaskDetail, { id: detailID, onBack: () => setDetailID('') })
+      : h('div', null,
+          h(Dashboard),
+          h(TaskList, { scope: taskID, onSelect: (id: string) => { setDetailID(id); setTaskID(id) } }))
+  } else if (tab === 'findings') {
+    body = findingID
+      ? h(FindingDetail, { id: findingID, onBack: () => setFindingID('') })
+      : h(FindingList, { taskID, onSelect: setFindingID })
+  } else {
+    body = h('div', null,
+      h(ToolRunPage, { taskID }),
+      h('div', { style: { marginTop: 18 } },
+        scoped
+          ? h(ExecStream, { taskID })
+          : h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)', margin: 0 } },
+              '选一个任务即可看它的执行记录：planner / main 每一步，含工具调用与结果。')))
+  }
+
+  return h(PanelShell, { title: '执行台', desc: '任务 / 发现 / 工具执行共用同一个任务范围' },
+    h('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 } },
+      h('div', { className: 'vx-seg', role: 'group', 'aria-label': '执行台视图' },
+        WORKBENCH_TABS.map(([id, label]) => tabButton(id, label))),
+      h('select', {
+        key: 'scope',
+        'aria-label': '任务范围',
+        value: taskID,
+        onChange: (event: any) => pick(event.target.value),
+        style: { minWidth: 240 }
+      },
+        h('option', { key: 'all', value: '' }, '全部任务'),
+        options.slice(0, 100).map((task: any) => h('option', { key: task.id, value: String(task.id) },
+          `${task.id} · ${task.name || task.description || '未命名'}`))),
+      scoped ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '三个视图共用这个任务范围') : null),
+    body)
 }
 
-function FindingsPanel() {
-  const [findingId, setFindingId] = useState('')
-  return h(PanelShell, { title: '发现', desc: '漏洞列表、证据与流量绑定' },
-    findingId ? h(FindingDetail, { id: findingId, onBack: () => setFindingId('') }) : h(FindingList, { onSelect: setFindingId }))
+function AssetsTable({ revision, onRefresh }: { revision: number; onRefresh: () => void }) {
+  const [type, setType] = useState('root_domain')
+  const [page, setPage] = useState(0)
+  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`
+  const { data, error, loading } = useApi(url, [url, revision])
+  const rows = data?.assets ?? []
+  const total = data?.total ?? rows.length
+  return h('div', null,
+    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
+      h('select', { 'aria-label': '资产类型', value: type, onChange: (event: any) => { setType(event.target.value); setPage(0) } },
+        [['root_domain', '主域名'], ['subdomain', '子域名'], ['ip', 'IP'], ['service', '服务'], ['endpoint', '端点'], ['app', '应用']].map(([value, label]) => h('option', { key: value, value }, label))),
+      h('button', { type: 'button', onClick: onRefresh }, '刷新')),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data && (rows.length === 0 ? h('p', null, '暂无此类资产') : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+      h('thead', null, h('tr', null, ['ID', '资产', '方法', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+        h('td', { style: { padding: '6px 8px' } }, row.id),
+        h('td', { style: { padding: '6px 8px', overflowWrap: 'anywhere' } }, row.url || row.domain || row.ip || row.app_name || ''),
+        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? '')))))),
+    data && (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
+      h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
+      h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+      h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页')))
 }
 
+/** 资产面板：列表与导入共用一处，导入完成后列表自动刷新。 */
 function AssetsPanel() {
-  const { data, error, loading } = useApi('/api/assets?limit=50')
-  return h(PanelShell, { title: '资产', desc: '域名 / IP / 服务 / 端点' },
-    loading ? h('div', null, '加载中…')
-      : error ? h('div', { style: { color: '#dc2626' } }, error)
-        : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-            h('thead', null, h('tr', null, ['ID', '类型', '域名/IP', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-            h('tbody', null, (data?.assets ?? []).map((row: any) => h('tr', { key: row.id },
-              h('td', { style: { padding: '6px 8px' } }, row.id),
-              h('td', { style: { padding: '6px 8px' } }, row.type),
-              h('td', { style: { padding: '6px 8px' } }, row.domain || row.ip || row.url || ''),
-              h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
-              h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? ''))))))
+  const [tab, setTab] = useState<'list' | 'import'>('list')
+  const [revision, setRevision] = useState(0)
+  const refresh = (): void => setRevision((value) => value + 1)
+  return h(PanelShell, { title: '资产', desc: '域名、IP、服务与端点；支持 JSON 导入' },
+    h('div', { className: 'vx-seg', role: 'group', 'aria-label': '资产视图', style: { marginBottom: 12 } },
+      h('button', { type: 'button', 'aria-pressed': tab === 'list', onClick: () => setTab('list') }, '资产列表'),
+      h('button', { type: 'button', 'aria-pressed': tab === 'import', onClick: () => setTab('import') }, '导入')),
+    tab === 'list'
+      ? h(AssetsTable, { revision, onRefresh: refresh })
+      : h(AssetImport, { onImported: () => { refresh(); setTab('list') } }))
 }
 
 function TrafficPanel() {
-  return h(PanelShell, { title: '流量', desc: '抓包列表（经 core 代理 Go 流量接口）' }, h(TrafficPage))
+  return h(PanelShell, { title: '流量' }, h(TrafficPage))
 }
 
-function ToolRunPanel() {
-  return h(PanelShell, { title: '工具执行', desc: 'nmap / httpx / ffuf / sqlmap' }, h(ToolRunPage))
+function AgentSettings() {
+  return h(PanelShell, { title: 'Agent 管理', desc: '名称、描述与触发配置' }, h(AgentsPage))
 }
 
-function McpSettings() {
-  return h(PanelShell, { title: 'MCP', desc: 'MCP server 启停与删除' }, h(McpPage))
-}
-
-function ToolSettings() {
-  return h(PanelShell, { title: '工具', desc: '内置与自定义工具' }, h(ToolsPage))
+/**
+ * 工具与 MCP：两者是同一件事的两半——内置/自定义工具，加上提供外部工具的 MCP
+ * server。分成两个设置节时，用户要为"这个工具到底从哪来"来回切。
+ */
+function ToolsMcpSettings() {
+  const [tab, setTab] = useState<'tools' | 'mcp'>('tools')
+  const tabButton = (id: 'tools' | 'mcp', label: string): ReactNode =>
+    h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
+  return h(PanelShell, { title: '工具与 MCP', desc: '内置/自定义工具，以及提供工具的 MCP server' },
+    h('div', { className: 'vx-seg', role: 'group', 'aria-label': '工具与 MCP 视图', style: { marginBottom: 12 } },
+      tabButton('tools', '工具'),
+      tabButton('mcp', 'MCP server')),
+    tab === 'tools' ? h(ToolsPage) : h(McpPage))
 }
 
 function NotifySettings() {
@@ -877,22 +1126,20 @@ function ApprovalsSettings() {
   return h(PanelShell, { title: '审批记录', desc: '人工审批与操作留痕' }, h(ApprovalsPage))
 }
 
+// 侧边栏入口：执行台把任务/发现/工具执行收在一起，日志不再是独立页面。
 const PANELS = [
   { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
-  { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
-  { id: 'vexnar-findings', label: '发现', order: 101, component: FindingsPanel },
+  { id: 'vexnar-workbench', label: '执行台', order: 100, component: WorkbenchPanel },
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
-  { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel },
-  { id: 'vexnar-tool-run', label: '工具执行', order: 104, component: ToolRunPanel },
-  { id: 'vexnar-logs', label: '日志', order: 105, component: LogsPanel },
+  { id: 'vexnar-assets', label: '资产', order: 103, component: AssetsPanel }
 ]
 
+// 设置：MCP 与 工具 合并成「工具与 MCP」；资产同步并入资产面板。
 const SETTINGS = [
-  { id: 'vexnar-mcp', label: 'MCP', order: 41, component: McpSettings },
-  { id: 'vexnar-tools', label: '工具', order: 42, component: ToolSettings },
+  { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
+  { id: 'vexnar-tools-mcp', label: '工具与 MCP', order: 41, component: ToolsMcpSettings },
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
   { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings },
-  { id: 'vexnar-asset-sync', label: '资产同步', order: 45, component: AssetSyncSettings },
   { id: 'vexnar-approvals', label: '审批记录', order: 46, component: ApprovalsSettings }
 ]
 
