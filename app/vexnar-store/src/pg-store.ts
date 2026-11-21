@@ -75,16 +75,23 @@ export function pgStore(connection: {
       }
     },
     assets: {
-      list: async ({ type, limit = 20, offset = 0 }) => {
-        const where = type ? 'WHERE type = $3' : ''
-        const values: unknown[] = type ? [limit, offset, type] : [limit, offset]
+      list: async ({ type, taskId, limit = 20, offset = 0 }) => {
+        const filters: string[] = []
+        const values: unknown[] = [limit, offset]
+        if (type) { values.push(type); filters.push(`type = $${values.length}`) }
+        if (taskId) { values.push(taskId); filters.push(`$${values.length}::bigint = ANY(task_ids)`) }
+        const where = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
         const rows = await q(`SELECT id, type, company_id, task_ids, domain, root_domain, ip, port, url, last_seen::text AS last_seen
           FROM assets ${where} ORDER BY last_seen DESC, id DESC LIMIT $1 OFFSET $2`, values)
-        const [count] = await q(`SELECT count(*)::int AS n FROM assets ${type ? 'WHERE type = $1' : ''}`, type ? [type] : [])
+        const countValues: unknown[] = []
+        const countFilters: string[] = []
+        if (type) { countValues.push(type); countFilters.push(`type = $${countValues.length}`) }
+        if (taskId) { countValues.push(taskId); countFilters.push(`$${countValues.length}::bigint = ANY(task_ids)`) }
+        const [count] = await q(`SELECT count(*)::int AS n FROM assets ${countFilters.length ? `WHERE ${countFilters.join(' AND ')}` : ''}`, countValues)
         return { rows: rows.map((row) => assetRow.parse({ ...row, task_ids: (row.task_ids ?? []).map(Number), company_id: row.company_id == null ? null : Number(row.company_id) })), total: Number(count.n) }
       },
-      counts: async () => {
-        const rows = await q(`SELECT type, count(*)::int AS n FROM assets GROUP BY type`)
+      counts: async (taskId?: string) => {
+        const rows = await q(`SELECT type, count(*)::int AS n FROM assets ${taskId ? 'WHERE $1::bigint = ANY(task_ids)' : ''} GROUP BY type`, taskId ? [taskId] : [])
         return Object.fromEntries(rows.map((row) => [row.type, Number(row.n)]))
       }
     },

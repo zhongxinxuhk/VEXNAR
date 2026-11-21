@@ -208,8 +208,8 @@ M3：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理与 `VEXNAR_FALLBACK_METHODS`
 归档已迁（27/27 写测试）。M4 读路径：intents、activity/history、tokens 的 workers/total 已由 store 提供；
 activity 的 session 过滤、seq/ts DTO、升序页与 snapshot 游标与 Go 一致（domain 9/9）。
 tokens 的 workers/sessions/total 已对齐。目标与意图控制读写出齐：目标 CRUD；意图 pause/resume/cancel；意图重跑
-（单条与批量 blocked）。意图消息下发也已完成（校验任务状态、4000 字上限、request_id 格式），
-写入测试 31/31。
+（单条与批量 blocked）。意图消息下发完成（31/31 写测试）。资产列表支持 `task_id` 过滤与计数，
+与 Go 的核心字段一致；`task_source*` 来源字段待补。领域回归 12/12。
 引擎类接口继续走 fallback。
 
 锁的边界补充：空的 `store.lock`（旧版本释放后留下）被识别为陈旧锁并接管。
