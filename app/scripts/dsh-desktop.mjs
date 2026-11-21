@@ -12,11 +12,16 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { dshHome, resolveRuntime } from './dsh-runtime.mjs'
+import { dshHome, readToken, resolveRuntime } from './dsh-runtime.mjs'
 
 const runtime = resolveRuntime()
 const desktopEntry = join(runtime, 'apps', 'desktop', 'out', 'main', 'index.js')
-const env = { ...process.env, DSH_HOME: dshHome() }
+const env = {
+  ...process.env,
+  DSH_HOME: dshHome(),
+  VEXNAR_MCP_TOKEN: process.env.VEXNAR_MCP_TOKEN || readToken('mcp.token'),
+  VEXNAR_DESKTOP_TOKEN: process.env.VEXNAR_DESKTOP_TOKEN || readToken('desktop.token', 'devtoken')
+}
 
 let child
 if (existsSync(desktopEntry)) {
