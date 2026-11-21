@@ -440,15 +440,28 @@ const findingDto = (row: any) => ({
 api.get('/api/exploration/findings', async (c) => {
   const page = c.req.query('page')
   const limit = c.req.query('limit')
-  const stats = await store.findings.stats()
   if (page == null && limit == null) {
     const rows = await store.findings.list(500)
     return c.json(rows.map(findingDto))
   }
   const size = Math.min(Number(limit ?? 20) || 20, 200)
   const current = Math.max(Number(page ?? 1) || 1, 1)
-  const rows = (await store.findings.list(current * size)).slice((current - 1) * size, current * size)
-  return c.json({ items: rows.map(findingDto), total: stats.total, page: current, page_size: size })
+  const severity = (c.req.query('severity') ?? '').trim().toLowerCase()
+  const status = (c.req.query('status') ?? '').trim().toLowerCase()
+  const vulnclass = (c.req.query('vulnclass') ?? '').trim()
+  const taskId = (c.req.query('task_id') ?? '').trim()
+  const query = (c.req.query('q') ?? '').trim().toLowerCase()
+  let rows = await store.findings.list(100000)
+  if (severity) rows = rows.filter((row: any) => String(row.severity).toLowerCase() === severity)
+  if (status) rows = rows.filter((row: any) => String(row.status).toLowerCase() === status)
+  if (vulnclass) rows = rows.filter((row: any) => String(row.vulnclass) === vulnclass)
+  if (taskId) rows = rows.filter((row: any) => String(row.task_id ?? '') === taskId)
+  if (query) {
+    rows = rows.filter((row: any) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? '').toLowerCase().includes(query)))
+  }
+  const total = rows.length
+  const pageRows = rows.slice((current - 1) * size, current * size)
+  return c.json({ items: pageRows.map(findingDto), total, page: current, page_size: size })
 })
 
 api.get('/api/exploration/findings/stats', async (c) => c.json(await store.findings.stats()))
