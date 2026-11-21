@@ -456,6 +456,14 @@ function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const intents = useApi(`/api/exploration/intents?task=${id}&limit=20`)
   const coverage = useApi(`/api/tasks/${id}/coverage`)
   const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`)
+  const [tick, setTick] = useState(0)
+  const act = async (action: 'pause' | 'resume' | 'archive') => {
+    try {
+      if (action === 'archive') await callApi(`/api/tasks/${id}/archive`, 'POST')
+      else await callApi(`/api/tasks/${id}/control`, 'POST', { action })
+      setTick(tick + 1)
+    } catch (error: any) { window.alert(String(error?.message ?? error)) }
+  }
   const row = task.data ?? {}
   const section = (title: string, children: ReactNode) => h('div', { style: { marginBottom: 18 } },
     h('div', { style: { fontSize: 13, fontWeight: 600, marginBottom: 6 } }, title), children)
@@ -593,6 +601,46 @@ function ToolRunPage() {
     h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
+function TrafficPage() {
+  const { data, error, loading } = useApi('/api/traffic?page=1&size=50')
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要以 VEXNAR_GO_FALLBACK 启动 core 才能代理 Go 流量接口）`)
+  const rows = data?.items ?? data?.exchanges ?? []
+  return h('div', { style: { fontSize: 13 } },
+    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? data?.total ?? rows.length} 条抓包`),
+    h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
+      h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('tbody', null, rows.slice(0, 50).map((row: any, index: number) => h('tr', { key: row.id ?? index },
+        h('td', { style: { padding: '6px 8px' } }, String(row.ts ?? row.time ?? '')),
+        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
+        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.url ?? row.host ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, String(row.status ?? row.status_code ?? '')),
+        h('td', { style: { padding: '6px 8px' } }, row.source ?? row.client ?? ''))))))
+}
+
+function InterceptPage() {
+  const { data, error, loading } = useApi('/api/intercept/rules')
+  const [version, setVersion] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要 VEXNAR_GO_FALLBACK 代理 Go 拦截规则）`)
+  const rows = data?.rules ?? []
+  const remove = async (row: any) => { if (!window.confirm(`删除规则 #${row.id}?`)) return; try { await callApi(`/api/intercept/rules/${row.id}`, 'DELETE'); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) } }
+  return h('div', { key: version, fontSize: 13 },
+    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? rows.length} 条规则`),
+    h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
+      h('thead', null, h('tr', null, ['ID', '匹配', '动作', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+        h('td', { style: { padding: '6px 8px' } }, row.id),
+        h('td', { style: { padding: '6px 8px' } }, row.name ?? row.match ?? row.match_target ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, row.action ?? row.enabled === false ? '停用' : '启用'),
+        h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => remove(row), style: { cursor: 'pointer' } }, '删除')))))))
+}
+
+function ApprovalsPage() {
+  return h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
+    '审批记录：Go 侧暂无独立 REST 接口（web 控制台也没有该页），迁移时随拦截规则一起落地。')
+}
+
 function VexnarConsole(): ReactNode {
   const [active, setActive] = useState('dashboard')
   const [taskId, setTaskId] = useState('')
@@ -639,6 +687,9 @@ function VexnarConsole(): ReactNode {
         : current.id === 'tools' ? h(ToolsPage)
         : current.id === 'notify' ? h(NotifyPage)
         : current.id === 'tools-run' ? h(ToolRunPage)
+        : current.id === 'traffic' ? h(TrafficPage)
+        : current.id === 'intercept' ? h(InterceptPage)
+        : current.id === 'approvals' ? h(ApprovalsPage)
         : h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
             '该面板由 vexnar-core 的 /api 提供数据；当前为接入骨架，列表与详情按域逐步开放。')))
 }
