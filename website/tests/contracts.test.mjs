@@ -184,3 +184,29 @@ test('credits put DSH first and enumerate its built-in plugins and themes', asyn
   for (const marker of ['@deepseek-ai/dsh-plugin-manager', 'Montserrat', 'Shiki', '条件启用', '置顶']) assert.ok(rendered.includes(marker), marker);
   await fs.access(new URL(`../dist/${dsh.logo}`, import.meta.url));
 });
+
+test('header pairs the project logo with the unit logo on every site page', async () => {
+  await fs.access(new URL('../dist/assets/sec-logo.png', import.meta.url));
+  for (const page of pages.filter(page => page.id !== 'console')) {
+    const html = await read(`../dist/${page.id}.html`);
+    assert.ok(html.includes('assets/sec-logo.png'), page.id);
+    assert.ok(html.includes('https://sec.hn.cn'), page.id);
+    assert.ok(html.includes('class="brand-cluster"'), page.id);
+    assert.ok(html.indexOf('assets/logo.png') < html.indexOf('assets/sec-logo.png'), `${page.id}: project logo precedes the unit logo`);
+  }
+  const client = await read('../dist/console.html');
+  assert.ok(!client.includes('assets/sec-logo.png'), 'the client page keeps no site chrome');
+});
+
+test('footer carries both filing numbers and official query links', async () => {
+  for (const page of pages.filter(page => page.id !== 'console')) {
+    const html = await read(`../dist/${page.id}.html`);
+    assert.ok(html.includes('琼ICP备2025060601号-1'), page.id);
+    assert.ok(html.includes('https://beian.miit.gov.cn/'), page.id);
+    assert.ok(html.includes('琼公网安备46010002001548号'), page.id);
+    assert.ok(html.includes('https://beian.mps.gov.cn/#/query/webSearch?code=46010002001548'), page.id);
+    assert.ok(!html.includes('http://beian.miit.gov.cn'), `${page.id}: filing links must stay on https`);
+  }
+  const client = await read('../dist/console.html');
+  assert.ok(!client.includes('琼ICP备'), 'the client page stays a bare application shell');
+});

@@ -78,13 +78,19 @@ export default function App({ initialPage = 'index' }) {
     <a className="skip" href="#main">跳转到正文</a>
     <header className={`header ${scrolled ? 'scrolled' : ''}`}>
       <div className="nav-shell">
-        <Brand />
+        <div className="brand-cluster">
+          <Brand />
+          <span className="brand-divider" aria-hidden="true" />
+          <a className="unit-brand" href="https://sec.hn.cn" target="_blank" rel="noopener noreferrer" title="希灵安全 · sec.hn.cn">
+            <img className="unit-logo" src="assets/sec-logo.png" width="84" height="24" alt="希灵 SEC · sec.hn.cn" />
+          </a>
+        </div>
         <nav id="navigation" className={menu ? 'open' : ''} aria-label="主导航">
           {pages.map(item => <a key={item.id} href={`${item.id}.html`} aria-current={route === item.id ? 'page' : undefined}>{item.label}</a>)}
         </nav>
         <div className="nav-actions">
-          <button className="search-toggle icon-button" aria-label="搜索网站" onClick={() => setSearch(true)}><Icon name="search" size={18} /><kbd>⌘ K</kbd></button>
-          <External href={REPO} className="github-link">GitHub</External>
+          <button className="search-toggle" aria-label="搜索网站" onClick={() => setSearch(true)}><Icon name="search" size={15} /><span>搜索</span><kbd>⌘K</kbd></button>
+          <External href={REPO} className="github-link"><Icon name="github" size={15} /><span>GitHub</span></External>
           <button ref={menuButton} className="menu-toggle icon-button" aria-label={menu ? '关闭导航菜单' : '打开导航菜单'} aria-expanded={menu} aria-controls="navigation" onClick={() => setMenu(!menu)}><Icon name={menu ? 'close' : 'menu'} /></button>
         </div>
       </div>
@@ -102,17 +108,42 @@ export default function App({ initialPage = 'index' }) {
     </main>
     <footer>
       <div className="footer-top">
-        <div><Brand /><p>AI 自主渗透测试系统</p></div>
-        <div className="footer-links">
+        <div className="footer-brand">
+          <Brand />
+          <p>AI 自主渗透测试系统。任务编排、工具审查、双图证据与独立复验，都留在同一个工作区。</p>
+          <a className="footer-unit" href="https://sec.hn.cn" target="_blank" rel="noopener noreferrer">
+            <img src="assets/sec-logo.png" width="70" height="20" alt="" />
+            <span>sec.hn.cn</span>
+          </a>
+        </div>
+        <nav className="footer-col" aria-label="站点导航">
+          <span>站点</span>
+          <a href="index.html">总览</a>
           <a href="console.html">客户端</a>
           <a href="architecture.html">架构剖析</a>
           <a href="downloads.html">下载与安装</a>
           <a href="credits.html">开源致谢</a>
-          <External href={REPO}>GitHub</External>
+        </nav>
+        <nav className="footer-col" aria-label="项目资源">
+          <span>项目</span>
+          <a href="releases.html">版本更新</a>
+          <a href="branches.html">分支</a>
+          <a href="commits.html">提交记录</a>
           <External href={`${REPO}/blob/main/LICENSE`}>许可证</External>
+          <External href={REPO}>GitHub</External>
+        </nav>
+      </div>
+      <div className="footer-bottom">
+        <p className="footer-copy">© 2026 xuzhongxin <i aria-hidden="true" /> VEXNAR <i aria-hidden="true" /> AGPL-3.0-or-later</p>
+        <div className="footer-legal">
+          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">琼ICP备2025060601号-1</a>
+          <span className="legal-sep" aria-hidden="true" />
+          <a href="https://beian.mps.gov.cn/#/query/webSearch?code=46010002001548" target="_blank" rel="noopener noreferrer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 2.6 8 3.1v6c0 5.2-8 9.7-8 9.7S4 16.9 4 11.7v-6l8-3.1Z" /><path d="m12 8.2 1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6L8.2 11l2.6-.4L12 8.2Z" /></svg>
+            琼公网安备46010002001548号
+          </a>
         </div>
       </div>
-      <div className="footer-bottom"><span>© 2026 xuzhongxin</span><span>VEXNAR · AGPL-3.0-or-later</span></div>
     </footer>
   </>;
 }

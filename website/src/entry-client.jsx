@@ -11,5 +11,6 @@ import './styles/home.css';
 import './styles/console.css';
 import './styles/architecture.css';
 import './styles/credits.css';
+import './styles/polish.css';
 
 hydrateRoot(document.getElementById('root'), <App initialPage={pageFromPath(window.location.pathname)} />);
