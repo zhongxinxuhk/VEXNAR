@@ -1767,6 +1767,8 @@ export interface ProxyState {
   recordings?: number;
   /** SOCKS5 入站地址（为空表示未启动）。 */
   socks?: string;
+  /** 协议引擎（mihomo）状态；TS 实现会返回，Go 引擎恒为可用。 */
+  engine?: { available: boolean; error?: string | null };
 }
 
 export interface ProxyParseIssue {
@@ -1855,4 +1857,12 @@ export interface ProxyRefreshResult {
   changed: number;
   issues?: ProxyParseIssue[] | null;
   diff?: ProxySubscriptionDiff;
+}
+
+/** 代理池专属设置（GET/PUT /api/proxy/settings），与 /api/settings 解耦。 */
+export interface ProxySettings {
+  default_pool: number;
+  egress_listener_auth: boolean;
+  engine?: { available: boolean; error?: string | null };
+  fanout_budget_per_hour?: number;
 }

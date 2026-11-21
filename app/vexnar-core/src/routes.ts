@@ -6,8 +6,13 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { blobStore, buildReport, buildReportHtml, createNotifier, createRunner, engine, gatewayComplete, listReports, meta, operations, parseJson, persistToolResult, queryDSL, runTool, saveReport, store, storeRoot, taskQueue, toolSpecs } from './context.ts'
 import { register as registerExploration } from './routes/exploration.ts'
+import { registerEgress } from './egress/routes.ts'
 
 export const api = new Hono()
+
+// 代理池在 TS 内完整实现（节点/池/订阅/网关/对抗），先于任务域注册，
+// 让 /api/tasks/:id/proxy 命中自己的处理器。
+registerEgress(api)
 
 // Exploration static routes (/findings/groups|export|asset-tree) must register
 // before the inline /api/exploration/findings/:id below, or Hono's first-match

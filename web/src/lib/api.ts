@@ -81,6 +81,7 @@ import type {
   ProxyPool,
   ProxyRefreshResult,
   ProxySessionSnapshot,
+  ProxySettings,
   ProxyState,
   ProxySubscription,
   SessionTokenUsage,
@@ -1449,6 +1450,8 @@ export const api = {
   proxyCheckNode: (id: number) => post<ProxyHealth>(`/proxy/nodes/${id}/check`),
   proxyCheckPool: (id: number) => post<ProxyHealth[]>(`/proxy/pools/${id}/check`),
   setProxyDefaultPool: (pool_id: number) => put<{ pool_id: number }>(`/proxy/default-pool`, { pool_id }),
+  proxySettings: () => get<ProxySettings>(`/proxy/settings`),
+  saveProxySettings: (p: Partial<ProxySettings>) => put<ProxySettings>(`/proxy/settings`, p),
   proxyTaskBinding: (taskId: number) =>
     get<{ task_id: number; binding: TaskProxyBinding | null; worker_session?: ProxySessionSnapshot }>(
       `/tasks/${taskId}/proxy`,

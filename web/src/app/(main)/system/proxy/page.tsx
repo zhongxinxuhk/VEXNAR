@@ -585,6 +585,16 @@ export default function ProxyPoolPage() {
             <CardDescription>会话网关（HTTP）</CardDescription>
             <CardTitle className="font-mono text-sm">{state?.gateway || "—"}</CardTitle>
             <p className="font-mono text-muted-foreground text-xs">SOCKS5 {state?.socks || "未启动"}</p>
+            <p className="text-xs">
+              协议引擎{" "}
+              {state?.engine?.available ? (
+                <Badge variant="secondary">mihomo 就绪</Badge>
+              ) : (
+                <Badge variant="destructive" title={state?.engine?.error ?? undefined}>
+                  未安装（仅 socks5/http）
+                </Badge>
+              )}
+            </p>
           </CardHeader>
         </Card>
         <Card>

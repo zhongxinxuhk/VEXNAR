@@ -12,6 +12,10 @@
 
 ---
 
+> **2026-11-22 更新：** 代理池控制面已迁移为 TS 原生实现（见
+> [`EGRESS-TS.md`](./EGRESS-TS.md)）。本文描述的 Go 桥保留为回滚路径：
+> `VEXNAR_EGRESS=go` 时 `/api/proxy/*` 仍可受控转发给 Go 引擎。
+
 ## 0. 结论
 
 **不能整体迁到 TypeScript。** 代理池的数据面是 Go 独占能力：mihomo 协议核是 Go 库，
