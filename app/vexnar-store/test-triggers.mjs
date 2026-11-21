@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { storeOperations } from './src/operations.ts'
 import { createScheduler } from './src/scheduler.ts'
-import { startTriggers } from './src/triggers.ts'
+import { spawnTriggerTask, startTriggers } from './src/triggers.ts'
 
 const root = await mkdtemp(join(tmpdir(), 'vexnar-triggers-'))
 const ops = storeOperations(root)
@@ -35,6 +35,10 @@ check('interval trigger fires', fired.filter((item) => item === 'interval:tick')
 const rows = await store.triggers.list('goals')
 check('last_fire persisted', rows.every((row) => row.last_fire), JSON.stringify(rows.map((row) => row.last_fire)))
 scheduler.stop()
+
+const spawned = await spawnTriggerTask(ops, 'goals', { trigger: { id: 1 }, event: 'finding_created', message: 'check finding' })
+const spawnedRecord = await ops.writer.readRecord('tasks', String(spawned.id))
+check('trigger spawns task', spawnedRecord?.goal === 'check finding' && spawnedRecord?.name === 'trigger:finding_created', JSON.stringify({ id: spawned.id, goal: spawnedRecord?.goal }))
 
 let failed = false
 for (const item of results) { if (!item.ok) failed = true; console.log(`[${item.ok ? 'PASS' : 'FAIL'}] ${item.name}${item.detail ? `  ${item.detail}` : ''}`) }

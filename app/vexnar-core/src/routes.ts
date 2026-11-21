@@ -11,7 +11,7 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { blobStore, createEngine, createNotifier, createScheduler, metaStore, openStore, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
@@ -24,6 +24,12 @@ const triggerStops: Array<() => void> = []
 for (const agent of await meta.table<any[]>('agents')) {
   try {
     const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
+      const task = await spawnTriggerTask(operations, agent.key, fire)
+      store.invalidate?.(['tasks'])
+      if (process.env.VEXNAR_GATEWAY_TOKEN) {
+        await engine.plan(task.id, gatewayComplete)
+        await engine.workMany(task.id, gatewayComplete, 1)
+      }
       const channels = await meta.table<any[]>('notify')
       if (!channels.length) return
       await createNotifier(channels, undefined, async (channel, event, result) => {
