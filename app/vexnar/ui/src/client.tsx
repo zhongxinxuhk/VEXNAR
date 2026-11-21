@@ -369,16 +369,20 @@ function OverviewIcon({ size }: { size?: number }): ReactNode {
 }
 
 /**
- * 领域接口只走同源 /vexnar-api：core 由账户插件嵌在 dsh webserver 上，代理时
- * 自己换服务 JWT，所以面板不需要地址、token 或“连接”这一步。
+ * 领域接口走同源 /vexnar-api。账户插件将流量和资产请求转给本机 Go 服务。
  */
 const CORE_BASE = '/vexnar-api'
+
+async function responseError(response: Response) {
+  const data = await response.json().catch(() => null)
+  return new Error(data?.error || `HTTP ${response.status}`)
+}
 
 async function callApi(path: string, method = 'GET', body?: unknown) {
   const init: RequestInit = { method, headers: { 'content-type': 'application/json' } }
   if (body !== undefined) init.body = JSON.stringify(body)
   const response = await fetch(CORE_BASE + path, init)
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`)
+  if (!response.ok) throw await responseError(response)
   return response.json()
 }
 
@@ -387,7 +391,10 @@ function useApi(path: string, deps: unknown[] = []): { data: any; error: string;
   useEffect(() => {
     let alive = true
     fetch(CORE_BASE + path)
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+      .then(async (response) => {
+        if (!response.ok) throw await responseError(response)
+        return response.json()
+      })
       .then((data) => { if (alive) setState({ data, error: '', loading: false }) })
       .catch((error) => { if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false }) })
     return () => { alive = false }
@@ -624,44 +631,141 @@ function ToolRunPage() {
     h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: 'auto' } }, output))
 }
 
-function TrafficExchange({ id, onBack }: { id: string; onBack: () => void }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(id)}`)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
+function YakitImport({ onImported }: { onImported: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ imported: number; duplicates: number; errors: { entry: number; error: string }[] } | null>(null)
+
+  async function upload(file: File) {
+    setError('')
+    setResult(null)
+    if (file.size > 16 * 1024 * 1024) {
+      setError('HAR 不可超过 16 MiB，请分批导出')
+      return
+    }
+    setBusy(true)
+    try {
+      const response = await fetch(CORE_BASE + '/api/traffic/import/yakit', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: file
+      })
+      if (!response.ok) throw await responseError(response)
+      const data = await response.json()
+      setResult(data)
+      if (data.imported || data.duplicates) onImported()
+    } catch (error) {
+      setError(String((error as Error).message))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return h('div', { style: { marginBottom: 12 } },
+    h('label', null, '导入 Yakit HAR ',
+      h('input', {
+        type: 'file', accept: '.har,application/json', disabled: busy,
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void upload(file)
+        }
+      })),
+    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginTop: 4 } }, '在 Yakit History 选中记录并导出 HAR。每份最多 16 MiB、2000 条。'),
+    busy && h('div', { role: 'status' }, '正在导入…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    result && h('div', { role: 'status' },
+      `已导入 ${result.imported} 条，重复 ${result.duplicates} 条，失败 ${result.errors.length} 条`,
+      result.errors.length > 0 && h('details', null,
+        h('summary', null, '查看失败记录'),
+        h('ul', null, result.errors.map(({ entry, error }) => h('li', { key: entry }, `第 ${entry} 条 · ${error}`))))))
+}
+
+function TrafficExchange({ row, onBack }: { row: any; onBack: () => void }) {
+  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id])
+  const [result, setResult] = useState('')
+  const [promoting, setPromoting] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  async function promote() {
+    setPromoting(true)
+    setResult('')
+    try {
+      const assets = await callApi('/api/traffic/promote', 'POST', { id: row.id })
+      setSaved(true)
+      setResult(`已登记服务 #${assets.service_id}、端点 #${assets.endpoint_id}，可在资产页查看。`)
+    } catch (error) {
+      setResult(String((error as Error).message))
+    } finally {
+      setPromoting(false)
+    }
+  }
+
+  const packetStyle = { fontSize: 12, whiteSpace: 'pre-wrap' as const, overflowWrap: 'anywhere' as const, background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 360, overflow: 'auto' }
   return h('div', null,
-    h('button', { type: 'button', onClick: onBack, style: { marginBottom: 10, cursor: 'pointer' } }, '← 返回流量列表'),
-    h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 640, overflow: 'auto' } }, JSON.stringify(data, null, 2)))
+    h('div', { style: { display: 'flex', gap: 8 } },
+      h('button', { type: 'button', onClick: onBack }, '← 返回流量列表'),
+      h('button', { type: 'button', onClick: promote, disabled: promoting || saved || !data }, promoting ? '登记中…' : '登记为资产')),
+    result && h('p', { role: 'status' }, result),
+    h('p', { style: { overflowWrap: 'anywhere' } }, `${row.method} ${row.url}`),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data && h('div', null,
+      h('strong', null, '请求'), h('pre', { style: packetStyle }, data.req?.trim() ? data.req : '暂无请求内容'),
+      h('strong', null, '响应'), h('pre', { style: packetStyle }, data.resp?.trim() ? data.resp : '暂无响应内容')))
 }
 
 function TrafficPage() {
   const [host, setHost] = useState('')
   const [method, setMethod] = useState('')
   const [q, setQ] = useState('')
-  const params = new URLSearchParams({ page: '1', size: '50' })
-  if (host) params.set('host', host)
+  const [source, setSource] = useState('')
+  const [page, setPage] = useState(0)
+  const [revision, setRevision] = useState(0)
+  const [exchange, setExchange] = useState<any>(null)
+  const params = new URLSearchParams({ page: String(page), size: '50' })
+  if (host) params.set('host', host.trim())
   if (method) params.set('method', method)
-  if (q) params.set('q', q)
-  const { data, error, loading } = useApi(`/api/traffic?${params.toString()}`, [host, method, q])
-  const [exchangeId, setExchangeId] = useState('')
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626', fontSize: 12 } }, `${error}（需要以 VEXNAR_GO_FALLBACK 启动 core 才能代理 Go 流量接口）`)
-  const rows = data?.items ?? data?.exchanges ?? []
-  if (exchangeId) return h(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId('') })
+  if (q) params.set('q', q.trim())
+  if (source) params.set('source', source)
+  const url = `/api/traffic?${params.toString()}`
+  const { data, error, loading } = useApi(url, [url, revision])
+  const rows = data?.exchanges ?? []
+  const total = data?.total ?? rows.length
+  if (exchange) return h(TrafficExchange, { row: exchange, onBack: () => setExchange(null) })
   return h('div', { style: { fontSize: 13 } },
-    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
-      h('input', { placeholder: 'host', value: host, onChange: (event: any) => setHost(event.target.value.trim()) }),
-      h('select', { value: method, onChange: (event: any) => setMethod(event.target.value) },
-        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
-      h('input', { placeholder: 'URL 关键字', value: q, onChange: (event: any) => setQ(event.target.value.trim()) })),
-    h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `共 ${data?.count ?? data?.total ?? rows.length} 条抓包`),
-    h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
-      h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-      h('tbody', null, rows.slice(0, 50).map((row: any, index: number) => h('tr', { key: row.id ?? index, onClick: () => row.id && setExchangeId(String(row.id)), style: { cursor: row.id ? 'pointer' : 'default' } },
-        h('td', { style: { padding: '6px 8px' } }, String(row.ts ?? row.time ?? '')),
-        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
-        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.url ?? row.host ?? ''),
-        h('td', { style: { padding: '6px 8px' } }, String(row.status ?? row.status_code ?? '')),
-        h('td', { style: { padding: '6px 8px' } }, row.source ?? row.client ?? ''))))))
+    data?.storage_available !== false && h(YakitImport, { onImported: () => {
+      setHost('')
+      setMethod('')
+      setQ('')
+      setSource('yakit')
+      setPage(0)
+      setRevision((value) => value + 1)
+    } }),
+    h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 } },
+      h('input', { placeholder: '主机', 'aria-label': '主机', value: host, onChange: (event: any) => { setHost(event.target.value); setPage(0) } }),
+      h('select', { 'aria-label': 'HTTP 方法', value: method, onChange: (event: any) => { setMethod(event.target.value); setPage(0) } },
+        ['', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((item) => h('option', { key: item || 'all', value: item }, item || '全部方法'))),
+      h('input', { placeholder: 'URL 或报文关键字', 'aria-label': 'URL 或报文关键字', value: q, onChange: (event: any) => { setQ(event.target.value); setPage(0) } }),
+      h('select', { 'aria-label': '流量来源', value: source, onChange: (event: any) => { setSource(event.target.value); setPage(0) } },
+        h('option', { value: '' }, '全部来源'), h('option', { value: 'yakit' }, 'Yakit'), h('option', { value: 'vexnar' }, 'VEXNAR')),
+      h('button', { type: 'button', onClick: () => setRevision((value) => value + 1) }, '刷新')),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data?.storage_available === false && h('div', { role: 'status' }, 'Go 流量存储未启用'),
+    data && data.storage_available !== false && h('div', null,
+      h('div', { style: { color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } }, `匹配 ${total} 条流量`),
+      rows.length === 0 ? h('p', null, '暂无匹配流量') : h('table', { style: { width: '100%', borderCollapse: 'collapse' } },
+        h('thead', null, h('tr', null, ['时间', '方法', 'URL', '状态', '来源'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+        h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+          h('td', { style: { padding: '6px 8px' } }, row.ts),
+          h('td', { style: { padding: '6px 8px' } }, row.method),
+          h('td', { style: { padding: '6px 8px', maxWidth: 420, overflowWrap: 'anywhere' } },
+            h('button', { type: 'button', onClick: () => setExchange(row), style: { whiteSpace: 'normal', textAlign: 'left' } }, row.url || row.host)),
+          h('td', { style: { padding: '6px 8px' } }, row.status || '—'),
+          h('td', { style: { padding: '6px 8px' } }, row.source === 'yakit' ? 'Yakit' : 'VEXNAR'))))),
+      (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
+        h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
+        h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+        h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页'))))
 }
 
 function InterceptPage() {
@@ -741,8 +845,10 @@ function AssetSyncSettings() {
     try {
       const parsed = JSON.parse(text)
       const assets = Array.isArray(parsed) ? parsed : parsed.assets
-      const data = await callApi('/api/assets/import', 'POST', { assets })
-      setResult(`requested=${data.requested} created=${data.created} existing=${data.existing}`)
+      if (!Array.isArray(assets) || assets.length === 0) throw new Error('请填写资产列表')
+      const data = await callApi('/api/assets', 'POST', { assets })
+      const failures = (data.errors ?? []).map((item: any) => `第 ${item.index + 1} 条 · ${item.error}`)
+      setResult([`已登记 ${data.results?.length ?? 0} 条，失败 ${failures.length} 条`, ...failures].join('；'))
     } catch (error: any) { setResult(String(error?.message ?? error)) }
   }
   return h(PanelShell, { title: '资产同步', desc: '从 JSON 导入资产（域名/IP/URL），按类型与标识去重' },
@@ -858,22 +964,36 @@ function FindingsPanel() {
 }
 
 function AssetsPanel() {
-  const { data, error, loading } = useApi('/api/assets?limit=50')
-  return h(PanelShell, { title: '资产', desc: '域名 / IP / 服务 / 端点' },
-    loading ? h('div', null, '加载中…')
-      : error ? h('div', { style: { color: '#dc2626' } }, error)
-        : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-            h('thead', null, h('tr', null, ['ID', '类型', '域名/IP', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-            h('tbody', null, (data?.assets ?? []).map((row: any) => h('tr', { key: row.id },
-              h('td', { style: { padding: '6px 8px' } }, row.id),
-              h('td', { style: { padding: '6px 8px' } }, row.type),
-              h('td', { style: { padding: '6px 8px' } }, row.domain || row.ip || row.url || ''),
-              h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
-              h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? ''))))))
+  const [type, setType] = useState('root_domain')
+  const [revision, setRevision] = useState(0)
+  const [page, setPage] = useState(0)
+  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`
+  const { data, error, loading } = useApi(url, [url, revision])
+  const rows = data?.assets ?? []
+  const total = data?.total ?? rows.length
+  return h(PanelShell, { title: '资产', desc: '域名、IP、服务与端点' },
+    h('div', { style: { display: 'flex', gap: 8, marginBottom: 10 } },
+      h('select', { 'aria-label': '资产类型', value: type, onChange: (event: any) => { setType(event.target.value); setPage(0) } },
+        [['root_domain', '主域名'], ['subdomain', '子域名'], ['ip', 'IP'], ['service', '服务'], ['endpoint', '端点'], ['app', '应用']].map(([value, label]) => h('option', { key: value, value }, label))),
+      h('button', { type: 'button', onClick: () => setRevision((value) => value + 1) }, '刷新')),
+    loading && h('div', null, '加载中…'),
+    error && h('div', { role: 'alert', style: { color: '#dc2626' } }, error),
+    data && (rows.length === 0 ? h('p', null, '暂无此类资产') : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+      h('thead', null, h('tr', null, ['ID', '资产', '方法', '端口', '最后发现'].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
+      h('tbody', null, rows.map((row: any) => h('tr', { key: row.id },
+        h('td', { style: { padding: '6px 8px' } }, row.id),
+        h('td', { style: { padding: '6px 8px', overflowWrap: 'anywhere' } }, row.url || row.domain || row.ip || row.app_name || ''),
+        h('td', { style: { padding: '6px 8px' } }, row.method ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, row.port ?? ''),
+        h('td', { style: { padding: '6px 8px' } }, row.last_seen ?? '')))))),
+    data && (page > 0 || total > 50) && h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 } },
+      h('button', { type: 'button', disabled: page === 0, onClick: () => setPage(page - 1) }, '上一页'),
+      h('span', null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+      h('button', { type: 'button', disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, '下一页')))
 }
 
 function TrafficPanel() {
-  return h(PanelShell, { title: '流量', desc: '抓包列表（经 core 代理 Go 流量接口）' }, h(TrafficPage))
+  return h(PanelShell, { title: '流量' }, h(TrafficPage))
 }
 
 function ToolRunPanel() {

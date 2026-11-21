@@ -19,7 +19,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// app/vexnar/ui/src/client.tsx
+// src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
@@ -30,7 +30,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react2 = require("react");
 
-// app/vexnar/ui/src/styles.ts
+// src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1277,7 +1277,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// app/vexnar/ui/src/overview.tsx
+// src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -2522,7 +2522,7 @@ function OverviewPanel() {
   ] });
 }
 
-// app/vexnar/ui/src/client.tsx
+// src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
@@ -2789,18 +2789,25 @@ function OverviewIcon({ size }) {
   );
 }
 var CORE_BASE = "/vexnar-api";
+async function responseError(response) {
+  const data = await response.json().catch(() => null);
+  return new Error(data?.error || `HTTP ${response.status}`);
+}
 async function callApi(path, method = "GET", body) {
   const init = { method, headers: { "content-type": "application/json" } };
   if (body !== void 0) init.body = JSON.stringify(body);
   const response = await fetch(CORE_BASE + path, init);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`);
+  if (!response.ok) throw await responseError(response);
   return response.json();
 }
 function useApi(path, deps = []) {
   const [state, setState] = (0, import_react2.useState)({ data: null, error: "", loading: true });
   (0, import_react2.useEffect)(() => {
     let alive = true;
-    fetch(CORE_BASE + path).then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))).then((data) => {
+    fetch(CORE_BASE + path).then(async (response) => {
+      if (!response.ok) throw await responseError(response);
+      return response.json();
+    }).then((data) => {
       if (alive) setState({ data, error: "", loading: false });
     }).catch((error) => {
       if (alive) setState({ data: null, error: String(error?.message ?? error), loading: false });
@@ -3158,59 +3165,202 @@ function ToolRunPage() {
     (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, minHeight: 120, maxHeight: 420, overflow: "auto" } }, output)
   );
 }
-function TrafficExchange({ id, onBack }) {
-  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(id)}`);
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, error);
+function YakitImport({ onImported }) {
+  const [busy, setBusy] = (0, import_react2.useState)(false);
+  const [error, setError] = (0, import_react2.useState)("");
+  const [result, setResult] = (0, import_react2.useState)(null);
+  async function upload(file) {
+    setError("");
+    setResult(null);
+    if (file.size > 16 * 1024 * 1024) {
+      setError("HAR \u4E0D\u53EF\u8D85\u8FC7 16 MiB\uFF0C\u8BF7\u5206\u6279\u5BFC\u51FA");
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch(CORE_BASE + "/api/traffic/import/yakit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: file
+      });
+      if (!response.ok) throw await responseError(response);
+      const data = await response.json();
+      setResult(data);
+      if (data.imported || data.duplicates) onImported();
+    } catch (error2) {
+      setError(String(error2.message));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (0, import_react2.createElement)(
+    "div",
+    { style: { marginBottom: 12 } },
+    (0, import_react2.createElement)(
+      "label",
+      null,
+      "\u5BFC\u5165 Yakit HAR ",
+      (0, import_react2.createElement)("input", {
+        type: "file",
+        accept: ".har,application/json",
+        disabled: busy,
+        onChange: (event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          if (file) void upload(file);
+        }
+      })
+    ),
+    (0, import_react2.createElement)("div", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)", marginTop: 4 } }, "\u5728 Yakit History \u9009\u4E2D\u8BB0\u5F55\u5E76\u5BFC\u51FA HAR\u3002\u6BCF\u4EFD\u6700\u591A 16 MiB\u30012000 \u6761\u3002"),
+    busy && (0, import_react2.createElement)("div", { role: "status" }, "\u6B63\u5728\u5BFC\u5165\u2026"),
+    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
+    result && (0, import_react2.createElement)(
+      "div",
+      { role: "status" },
+      `\u5DF2\u5BFC\u5165 ${result.imported} \u6761\uFF0C\u91CD\u590D ${result.duplicates} \u6761\uFF0C\u5931\u8D25 ${result.errors.length} \u6761`,
+      result.errors.length > 0 && (0, import_react2.createElement)(
+        "details",
+        null,
+        (0, import_react2.createElement)("summary", null, "\u67E5\u770B\u5931\u8D25\u8BB0\u5F55"),
+        (0, import_react2.createElement)("ul", null, result.errors.map(({ entry, error: error2 }) => (0, import_react2.createElement)("li", { key: entry }, `\u7B2C ${entry} \u6761 \xB7 ${error2}`)))
+      )
+    )
+  );
+}
+function TrafficExchange({ row, onBack }) {
+  const { data, error, loading } = useApi(`/api/traffic/exchange?id=${encodeURIComponent(row.id)}`, [row.id]);
+  const [result, setResult] = (0, import_react2.useState)("");
+  const [promoting, setPromoting] = (0, import_react2.useState)(false);
+  const [saved, setSaved] = (0, import_react2.useState)(false);
+  async function promote() {
+    setPromoting(true);
+    setResult("");
+    try {
+      const assets = await callApi("/api/traffic/promote", "POST", { id: row.id });
+      setSaved(true);
+      setResult(`\u5DF2\u767B\u8BB0\u670D\u52A1 #${assets.service_id}\u3001\u7AEF\u70B9 #${assets.endpoint_id}\uFF0C\u53EF\u5728\u8D44\u4EA7\u9875\u67E5\u770B\u3002`);
+    } catch (error2) {
+      setResult(String(error2.message));
+    } finally {
+      setPromoting(false);
+    }
+  }
+  const packetStyle = { fontSize: 12, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 360, overflow: "auto" };
   return (0, import_react2.createElement)(
     "div",
     null,
-    (0, import_react2.createElement)("button", { type: "button", onClick: onBack, style: { marginBottom: 10, cursor: "pointer" } }, "\u2190 \u8FD4\u56DE\u6D41\u91CF\u5217\u8868"),
-    (0, import_react2.createElement)("pre", { style: { fontSize: 12, whiteSpace: "pre-wrap", background: "var(--vx-code, #f8fafc)", padding: 10, borderRadius: 8, maxHeight: 640, overflow: "auto" } }, JSON.stringify(data, null, 2))
+    (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8 } },
+      (0, import_react2.createElement)("button", { type: "button", onClick: onBack }, "\u2190 \u8FD4\u56DE\u6D41\u91CF\u5217\u8868"),
+      (0, import_react2.createElement)("button", { type: "button", onClick: promote, disabled: promoting || saved || !data }, promoting ? "\u767B\u8BB0\u4E2D\u2026" : "\u767B\u8BB0\u4E3A\u8D44\u4EA7")
+    ),
+    result && (0, import_react2.createElement)("p", { role: "status" }, result),
+    (0, import_react2.createElement)("p", { style: { overflowWrap: "anywhere" } }, `${row.method} ${row.url}`),
+    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
+    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
+    data && (0, import_react2.createElement)(
+      "div",
+      null,
+      (0, import_react2.createElement)("strong", null, "\u8BF7\u6C42"),
+      (0, import_react2.createElement)("pre", { style: packetStyle }, data.req?.trim() ? data.req : "\u6682\u65E0\u8BF7\u6C42\u5185\u5BB9"),
+      (0, import_react2.createElement)("strong", null, "\u54CD\u5E94"),
+      (0, import_react2.createElement)("pre", { style: packetStyle }, data.resp?.trim() ? data.resp : "\u6682\u65E0\u54CD\u5E94\u5185\u5BB9")
+    )
   );
 }
 function TrafficPage() {
   const [host, setHost] = (0, import_react2.useState)("");
   const [method, setMethod] = (0, import_react2.useState)("");
   const [q, setQ] = (0, import_react2.useState)("");
-  const params = new URLSearchParams({ page: "1", size: "50" });
-  if (host) params.set("host", host);
+  const [source, setSource] = (0, import_react2.useState)("");
+  const [page, setPage] = (0, import_react2.useState)(0);
+  const [revision, setRevision] = (0, import_react2.useState)(0);
+  const [exchange, setExchange] = (0, import_react2.useState)(null);
+  const params = new URLSearchParams({ page: String(page), size: "50" });
+  if (host) params.set("host", host.trim());
   if (method) params.set("method", method);
-  if (q) params.set("q", q);
-  const { data, error, loading } = useApi(`/api/traffic?${params.toString()}`, [host, method, q]);
-  const [exchangeId, setExchangeId] = (0, import_react2.useState)("");
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626", fontSize: 12 } }, `${error}\uFF08\u9700\u8981\u4EE5 VEXNAR_GO_FALLBACK \u542F\u52A8 core \u624D\u80FD\u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09`);
-  const rows = data?.items ?? data?.exchanges ?? [];
-  if (exchangeId) return (0, import_react2.createElement)(TrafficExchange, { id: exchangeId, onBack: () => setExchangeId("") });
+  if (q) params.set("q", q.trim());
+  if (source) params.set("source", source);
+  const url = `/api/traffic?${params.toString()}`;
+  const { data, error, loading } = useApi(url, [url, revision]);
+  const rows = data?.exchanges ?? [];
+  const total = data?.total ?? rows.length;
+  if (exchange) return (0, import_react2.createElement)(TrafficExchange, { row: exchange, onBack: () => setExchange(null) });
   return (0, import_react2.createElement)(
     "div",
     { style: { fontSize: 13 } },
+    data?.storage_available !== false && (0, import_react2.createElement)(YakitImport, { onImported: () => {
+      setHost("");
+      setMethod("");
+      setQ("");
+      setSource("yakit");
+      setPage(0);
+      setRevision((value) => value + 1);
+    } }),
     (0, import_react2.createElement)(
       "div",
-      { style: { display: "flex", gap: 8, marginBottom: 10 } },
-      (0, import_react2.createElement)("input", { placeholder: "host", value: host, onChange: (event) => setHost(event.target.value.trim()) }),
+      { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 } },
+      (0, import_react2.createElement)("input", { placeholder: "\u4E3B\u673A", "aria-label": "\u4E3B\u673A", value: host, onChange: (event) => {
+        setHost(event.target.value);
+        setPage(0);
+      } }),
       (0, import_react2.createElement)(
         "select",
-        { value: method, onChange: (event) => setMethod(event.target.value) },
-        ["", "GET", "POST", "PUT", "DELETE", "PATCH"].map((item) => (0, import_react2.createElement)("option", { key: item || "all", value: item }, item || "\u5168\u90E8\u65B9\u6CD5"))
+        { "aria-label": "HTTP \u65B9\u6CD5", value: method, onChange: (event) => {
+          setMethod(event.target.value);
+          setPage(0);
+        } },
+        ["", "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"].map((item) => (0, import_react2.createElement)("option", { key: item || "all", value: item }, item || "\u5168\u90E8\u65B9\u6CD5"))
       ),
-      (0, import_react2.createElement)("input", { placeholder: "URL \u5173\u952E\u5B57", value: q, onChange: (event) => setQ(event.target.value.trim()) })
+      (0, import_react2.createElement)("input", { placeholder: "URL \u6216\u62A5\u6587\u5173\u952E\u5B57", "aria-label": "URL \u6216\u62A5\u6587\u5173\u952E\u5B57", value: q, onChange: (event) => {
+        setQ(event.target.value);
+        setPage(0);
+      } }),
+      (0, import_react2.createElement)(
+        "select",
+        { "aria-label": "\u6D41\u91CF\u6765\u6E90", value: source, onChange: (event) => {
+          setSource(event.target.value);
+          setPage(0);
+        } },
+        (0, import_react2.createElement)("option", { value: "" }, "\u5168\u90E8\u6765\u6E90"),
+        (0, import_react2.createElement)("option", { value: "yakit" }, "Yakit"),
+        (0, import_react2.createElement)("option", { value: "vexnar" }, "VEXNAR")
+      ),
+      (0, import_react2.createElement)("button", { type: "button", onClick: () => setRevision((value) => value + 1) }, "\u5237\u65B0")
     ),
-    (0, import_react2.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5171 ${data?.count ?? data?.total ?? rows.length} \u6761\u6293\u5305`),
-    (0, import_react2.createElement)(
-      "table",
-      { style: { width: "100%", borderCollapse: "collapse" } },
-      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["\u65F6\u95F4", "\u65B9\u6CD5", "URL", "\u72B6\u6001", "\u6765\u6E90"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react2.createElement)("tbody", null, rows.slice(0, 50).map((row, index) => (0, import_react2.createElement)(
-        "tr",
-        { key: row.id ?? index, onClick: () => row.id && setExchangeId(String(row.id)), style: { cursor: row.id ? "pointer" : "default" } },
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, String(row.ts ?? row.time ?? "")),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.method ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.url ?? row.host ?? ""),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, String(row.status ?? row.status_code ?? "")),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.source ?? row.client ?? "")
-      )))
+    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
+    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
+    data?.storage_available === false && (0, import_react2.createElement)("div", { role: "status" }, "Go \u6D41\u91CF\u5B58\u50A8\u672A\u542F\u7528"),
+    data && data.storage_available !== false && (0, import_react2.createElement)(
+      "div",
+      null,
+      (0, import_react2.createElement)("div", { style: { color: "var(--vx-muted, #6b7280)", marginBottom: 8 } }, `\u5339\u914D ${total} \u6761\u6D41\u91CF`),
+      rows.length === 0 ? (0, import_react2.createElement)("p", null, "\u6682\u65E0\u5339\u914D\u6D41\u91CF") : (0, import_react2.createElement)(
+        "table",
+        { style: { width: "100%", borderCollapse: "collapse" } },
+        (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["\u65F6\u95F4", "\u65B9\u6CD5", "URL", "\u72B6\u6001", "\u6765\u6E90"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+        (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
+          "tr",
+          { key: row.id },
+          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.ts),
+          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.method),
+          (0, import_react2.createElement)(
+            "td",
+            { style: { padding: "6px 8px", maxWidth: 420, overflowWrap: "anywhere" } },
+            (0, import_react2.createElement)("button", { type: "button", onClick: () => setExchange(row), style: { whiteSpace: "normal", textAlign: "left" } }, row.url || row.host)
+          ),
+          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.status || "\u2014"),
+          (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.source === "yakit" ? "Yakit" : "VEXNAR")
+        )))
+      ),
+      (page > 0 || total > 50) && (0, import_react2.createElement)(
+        "div",
+        { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 8 } },
+        (0, import_react2.createElement)("button", { type: "button", disabled: page === 0, onClick: () => setPage(page - 1) }, "\u4E0A\u4E00\u9875"),
+        (0, import_react2.createElement)("span", null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+        (0, import_react2.createElement)("button", { type: "button", disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, "\u4E0B\u4E00\u9875")
+      )
     )
   );
 }
@@ -3328,8 +3478,10 @@ function AssetSyncSettings() {
     try {
       const parsed = JSON.parse(text);
       const assets = Array.isArray(parsed) ? parsed : parsed.assets;
-      const data = await callApi("/api/assets/import", "POST", { assets });
-      setResult(`requested=${data.requested} created=${data.created} existing=${data.existing}`);
+      if (!Array.isArray(assets) || assets.length === 0) throw new Error("\u8BF7\u586B\u5199\u8D44\u4EA7\u5217\u8868");
+      const data = await callApi("/api/assets", "POST", { assets });
+      const failures = (data.errors ?? []).map((item) => `\u7B2C ${item.index + 1} \u6761 \xB7 ${item.error}`);
+      setResult([`\u5DF2\u767B\u8BB0 ${data.results?.length ?? 0} \u6761\uFF0C\u5931\u8D25 ${failures.length} \u6761`, ...failures].join("\uFF1B"));
     } catch (error) {
       setResult(String(error?.message ?? error));
     }
@@ -3513,28 +3665,56 @@ function FindingsPanel() {
   );
 }
 function AssetsPanel() {
-  const { data, error, loading } = useApi("/api/assets?limit=50");
+  const [type, setType] = (0, import_react2.useState)("root_domain");
+  const [revision, setRevision] = (0, import_react2.useState)(0);
+  const [page, setPage] = (0, import_react2.useState)(0);
+  const url = `/api/assets?type=${type}&limit=50&offset=${page * 50}`;
+  const { data, error, loading } = useApi(url, [url, revision]);
+  const rows = data?.assets ?? [];
+  const total = data?.total ?? rows.length;
   return (0, import_react2.createElement)(
     PanelShell,
-    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D / IP / \u670D\u52A1 / \u7AEF\u70B9" },
-    loading ? (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026") : error ? (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, error) : (0, import_react2.createElement)(
+    { title: "\u8D44\u4EA7", desc: "\u57DF\u540D\u3001IP\u3001\u670D\u52A1\u4E0E\u7AEF\u70B9" },
+    (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, marginBottom: 10 } },
+      (0, import_react2.createElement)(
+        "select",
+        { "aria-label": "\u8D44\u4EA7\u7C7B\u578B", value: type, onChange: (event) => {
+          setType(event.target.value);
+          setPage(0);
+        } },
+        [["root_domain", "\u4E3B\u57DF\u540D"], ["subdomain", "\u5B50\u57DF\u540D"], ["ip", "IP"], ["service", "\u670D\u52A1"], ["endpoint", "\u7AEF\u70B9"], ["app", "\u5E94\u7528"]].map(([value, label]) => (0, import_react2.createElement)("option", { key: value, value }, label))
+      ),
+      (0, import_react2.createElement)("button", { type: "button", onClick: () => setRevision((value) => value + 1) }, "\u5237\u65B0")
+    ),
+    loading && (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026"),
+    error && (0, import_react2.createElement)("div", { role: "alert", style: { color: "#dc2626" } }, error),
+    data && (rows.length === 0 ? (0, import_react2.createElement)("p", null, "\u6682\u65E0\u6B64\u7C7B\u8D44\u4EA7") : (0, import_react2.createElement)(
       "table",
       { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u7C7B\u578B", "\u57DF\u540D/IP", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-      (0, import_react2.createElement)("tbody", null, (data?.assets ?? []).map((row) => (0, import_react2.createElement)(
+      (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["ID", "\u8D44\u4EA7", "\u65B9\u6CD5", "\u7AEF\u53E3", "\u6700\u540E\u53D1\u73B0"].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
+      (0, import_react2.createElement)("tbody", null, rows.map((row) => (0, import_react2.createElement)(
         "tr",
         { key: row.id },
         (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.id),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.type),
-        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.domain || row.ip || row.url || ""),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px", overflowWrap: "anywhere" } }, row.url || row.domain || row.ip || row.app_name || ""),
+        (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.method ?? ""),
         (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.port ?? ""),
         (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, row.last_seen ?? "")
       )))
+    )),
+    data && (page > 0 || total > 50) && (0, import_react2.createElement)(
+      "div",
+      { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 8 } },
+      (0, import_react2.createElement)("button", { type: "button", disabled: page === 0, onClick: () => setPage(page - 1) }, "\u4E0A\u4E00\u9875"),
+      (0, import_react2.createElement)("span", null, `${page + 1} / ${Math.max(1, Math.ceil(total / 50))}`),
+      (0, import_react2.createElement)("button", { type: "button", disabled: (page + 1) * 50 >= total, onClick: () => setPage(page + 1) }, "\u4E0B\u4E00\u9875")
     )
   );
 }
 function TrafficPanel() {
-  return (0, import_react2.createElement)(PanelShell, { title: "\u6D41\u91CF", desc: "\u6293\u5305\u5217\u8868\uFF08\u7ECF core \u4EE3\u7406 Go \u6D41\u91CF\u63A5\u53E3\uFF09" }, (0, import_react2.createElement)(TrafficPage));
+  return (0, import_react2.createElement)(PanelShell, { title: "\u6D41\u91CF" }, (0, import_react2.createElement)(TrafficPage));
 }
 function ToolRunPanel() {
   return (0, import_react2.createElement)(PanelShell, { title: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" }, (0, import_react2.createElement)(ToolRunPage));

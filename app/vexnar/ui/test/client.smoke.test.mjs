@@ -72,24 +72,23 @@ test('apply registers every surface it owns', () => {
   plugin.apply({
     slots: {
       inject: (name, cb) => { injected.push(name); cb() },
-      register: (options) => { registered.push(options.name + (options.key ? `:${options.key}` : '')) }
+      register: (options) => { registered.push([options.name, options.key ?? options.id].filter(Boolean).join(':')) }
     },
     effect: (fn) => fn()
   })
-  assert.deepEqual(injected, [
-    'tool.call.toolview',
-    'tool.call.toolview',
-    'sidebar.brand.mark',
-    'sidebar.brand.name',
-    'conversation.hero.brand.mark'
-  ])
-  assert.deepEqual(registered, [
+  const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
+    ...['overview', 'tasks', 'findings', 'traffic', 'assets', 'tool-run', 'logs']
+      .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
+    ...['agents', 'mcp', 'tools', 'notify', 'intercept', 'asset-sync', 'approvals']
+      .map((section) => `settings.section:vexnar-${section}`),
     'sidebar.brand.mark',
     'sidebar.brand.name',
     'conversation.hero.brand.mark'
-  ])
+  ]
+  assert.deepEqual(injected, expected.map((entry) => entry.split(':')[0]))
+  assert.deepEqual(registered, expected)
 })
 
 test('a missing slots service degrades instead of throwing', () => {

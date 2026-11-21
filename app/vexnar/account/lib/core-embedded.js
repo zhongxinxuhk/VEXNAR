@@ -7023,14 +7023,14 @@ var SmartRouter = class {
   match(method, path) {
     if (!this.#routes) throw new Error("Fatal error");
     const routers = this.#routers;
-    const routes = this.#routes;
+    const routes2 = this.#routes;
     const len = routers.length;
     let i = 0;
     let res;
     for (; i < len; i++) {
       const router = routers[i];
       try {
-        for (let i2 = 0, len2 = routes.length; i2 < len2; i2++) router.add(...routes[i2]);
+        for (let i2 = 0, len2 = routes2.length; i2 < len2; i2++) router.add(...routes2[i2]);
         res = router.match(method, path);
       } catch (e) {
         if (e instanceof UnsupportedPathError) continue;
@@ -32642,10 +32642,67 @@ for (const { file: file2, scope } of routeModules) {
   }
 }
 
+// src/go-data.ts
+var routes = /* @__PURE__ */ new Set([
+  "GET /api/traffic",
+  "GET /api/traffic/exchange",
+  "POST /api/traffic/import/yakit",
+  "POST /api/traffic/promote",
+  "GET /api/assets",
+  "GET /api/assets/counts",
+  "POST /api/assets"
+]);
+function isGoDataRequest(method, path) {
+  return routes.has(`${method} ${path}`);
+}
+var loopback = /* @__PURE__ */ new Set(["127.0.0.1", "[::1]", "localhost"]);
+async function goData(request, localPeer) {
+  const url2 = new URL(request.url);
+  if (!isGoDataRequest(request.method, url2.pathname)) return void 0;
+  const host = request.headers.get("host") ?? "";
+  const origin = request.headers.get("origin");
+  const site = request.headers.get("sec-fetch-site");
+  try {
+    if (!localPeer || !loopback.has(new URL(`http://${host}`).hostname) || origin && new URL(origin).host !== host || site && site !== "same-origin" && site !== "none") {
+      return Response.json({ error: "\u6B64\u63A5\u53E3\u4EC5\u4F9B\u672C\u673A VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }, { status: 403 });
+    }
+  } catch {
+    return Response.json({ error: "\u5BA2\u6237\u7AEF\u6765\u6E90\u65E0\u6548" }, { status: 403 });
+  }
+  const token = process.env.VEXNAR_DESKTOP_TOKEN?.trim();
+  if (!token) return Response.json({ error: "\u5BA2\u6237\u7AEF\u542F\u52A8\u5668\u7F3A\u5C11 Go \u670D\u52A1\u4EE4\u724C" }, { status: 503 });
+  try {
+    const backend2 = new URL(process.env.VEXNAR_GO_URL || "http://127.0.0.1:8787");
+    if (!["http:", "https:"].includes(backend2.protocol) || !loopback.has(backend2.hostname) || backend2.hostname === "localhost" || backend2.username || backend2.password) {
+      return Response.json({ error: "VEXNAR_GO_URL \u5FC5\u987B\u6307\u5411 loopback IP \u4E0A\u7684 Go \u670D\u52A1" }, { status: 503 });
+    }
+    const headers = new Headers({ "x-vexnar-desktop-token": token });
+    const contentType = request.headers.get("content-type");
+    if (contentType) headers.set("content-type", contentType);
+    const upstream = await fetch(new URL(url2.pathname + url2.search, backend2.origin), {
+      method: request.method,
+      body: request.method === "POST" ? await request.arrayBuffer() : void 0,
+      headers,
+      redirect: "error",
+      signal: AbortSignal.timeout(6e4)
+    });
+    if (upstream.status === 401) {
+      return Response.json({ error: "Go \u670D\u52A1\u9274\u6743\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u5BA2\u6237\u7AEF\u4E0E Go \u670D\u52A1\u7684\u542F\u52A8\u4EE4\u724C" }, { status: 502 });
+    }
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: { "content-type": upstream.headers.get("content-type") ?? "application/json", "cache-control": "no-store" }
+    });
+  } catch {
+    return Response.json({ error: "\u65E0\u6CD5\u8FDE\u63A5 Go \u670D\u52A1\uFF0C\u8BF7\u68C0\u67E5\u670D\u52A1\u8FDB\u7A0B\u548C VEXNAR_GO_URL" }, { status: 503 });
+  }
+}
+
 // src/embedded.ts
-async function handle(request) {
-  return api.fetch(request);
+async function handle(request, localPeer) {
+  return await goData(request, localPeer) ?? api.fetch(request);
 }
 export {
-  handle
+  handle,
+  isGoDataRequest
 };

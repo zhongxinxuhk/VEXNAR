@@ -1063,6 +1063,23 @@ RETURNING id`,
 	return id, nil
 }
 
+// UpsertObservedHTTPAssets adds the service and endpoint from one selected
+// traffic observation in the same company-scope transaction.
+func (s *AssetStore) UpsertObservedHTTPAssets(service, endpoint, method string) (serviceID, endpointID int64, err error) {
+	serviceID, err = s.withCompanyScopeMutation(func(scoped *AssetStore) (int64, error) {
+		serviceID, err := scoped.UpsertHTTPService(UpsertHTTPServiceReq{URL: service})
+		if err != nil {
+			return 0, err
+		}
+		endpointID, err = scoped.UpsertEndpoint(UpsertEndpointReq{URL: endpoint, Method: method})
+		return serviceID, err
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	return serviceID, endpointID, nil
+}
+
 // =====================================================================
 // Query helpers
 // =====================================================================
