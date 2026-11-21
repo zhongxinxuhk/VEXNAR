@@ -36,6 +36,7 @@ import (
 
 	"github.com/Autumn-27/norma/permission"
 	actool "github.com/Autumn-27/norma/tool"
+	"github.com/lqqyt2423/go-mitmproxy/cert"
 	mproxy "github.com/lqqyt2423/go-mitmproxy/proxy"
 	"github.com/zhongxinxuhk/vexnar/db"
 	_ "modernc.org/sqlite"
@@ -53,13 +54,17 @@ CREATE TABLE IF NOT EXISTS exchanges (
   content_type TEXT,
   req_len      INTEGER,
   resp_len     INTEGER,
-  path         TEXT
+  path         TEXT,
+  scope        TEXT NOT NULL DEFAULT '',
+  session      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_ex_host ON exchanges(host);
 CREATE INDEX IF NOT EXISTS idx_ex_tmpl ON exchanges(host, url_template);
 CREATE INDEX IF NOT EXISTS idx_ex_ts   ON exchanges(ts);
 CREATE INDEX IF NOT EXISTS idx_ex_status ON exchanges(status);
 CREATE INDEX IF NOT EXISTS idx_ex_resp   ON exchanges(resp_len);
+CREATE INDEX IF NOT EXISTS idx_ex_scope  ON exchanges(scope, ts);
+CREATE INDEX IF NOT EXISTS idx_ex_session ON exchanges(session, ts);
 
 CREATE TABLE IF NOT EXISTS exchange_bodies (
   id        TEXT PRIMARY KEY,
@@ -145,6 +150,7 @@ type Traffic struct {
 	wmu   sync.Mutex // serializes record() vs DeleteHost (incl. blob GC)
 	seq   atomic.Int64
 	proxy *mproxy.Proxy
+	ca    cert.CA
 	// fts reports whether the full-text index is available. False on a driver
 	// build without FTS5: recording and metadata search still work, body search
 	// degrades to unsupported rather than erroring.
@@ -205,13 +211,36 @@ func Open(dir, addr string) (*Traffic, error) {
 		return nil, err
 	}
 
+	// One root CA for the whole process: every recording instance (the main one and
+	// each per-session listener) must present the same issuer, otherwise tools would
+	// need a different trust file per session. SelfSignCA loads the existing files
+	// when present, so a restart keeps the same CA the agents already trust.
+	ca, err := cert.NewSelfSignCA(filepath.Join(dir, "_ca"))
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("初始化 MITM CA: %w", err)
+	}
+	t.ca = ca
+
+	p, err := t.newProxy(addr, "", "")
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	t.proxy = p
+	return t, nil
+}
+
+// newProxy builds one recording instance over the shared store/CA. scope/session
+// tag its rows; empty means the process-wide listener.
+func (t *Traffic) newProxy(addr, scope, session string) (*mproxy.Proxy, error) {
 	p, err := mproxy.NewProxy(&mproxy.Options{
 		Addr:        addr,
 		SslInsecure: true,
-		CaRootPath:  filepath.Join(dir, "_ca"),
+		CaRootPath:  filepath.Join(t.dir, "_ca"),
+		NewCaFunc:   func() (cert.CA, error) { return t.ca, nil },
 	})
 	if err != nil {
-		db.Close()
 		return nil, err
 	}
 	// Upstream selection. By default (no global egress proxy set) targets are
@@ -230,9 +259,8 @@ func Open(dir, addr string) (*Traffic, error) {
 		_, tunnel := t.pass.Load(hostOnly(req.Host))
 		return !tunnel
 	})
-	p.AddAddon(&sink{t: t})
-	t.proxy = p
-	return t, nil
+	p.AddAddon(&sink{t: t, scope: scope, session: session})
+	return p, nil
 }
 
 // initIndex applies the schema on a single pinned connection. Pinning is what
@@ -287,11 +315,52 @@ func (t *Traffic) initIndex() error {
 	if _, err := conn.ExecContext(ctx, indexSchema); err != nil {
 		return err
 	}
+	if err := ensureExchangeColumns(ctx, conn); err != nil {
+		return err
+	}
 	if _, err := conn.ExecContext(ctx, ftsSchema); err != nil {
 		log.Printf("[traffic] 全文索引不可用，正文搜索将被禁用（元数据搜索不受影响）：%v", err)
 		return nil
 	}
 	t.fts = true
+	return nil
+}
+
+// ensureExchangeColumns adds the per-session attribution columns to indexes created
+// before they existed. SQLite has no ADD COLUMN IF NOT EXISTS, so the current shape
+// is read first; the guards also keep the step idempotent across restarts.
+func ensureExchangeColumns(ctx context.Context, conn *sql.Conn) error {
+	present := map[string]bool{}
+	rows, err := conn.QueryContext(ctx, `PRAGMA table_info(exchanges)`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var (
+			cid       int
+			name, typ string
+			notnull   int
+			dflt      any
+			pk        int
+		)
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		present[name] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, col := range []string{"scope", "session"} {
+		if present[col] {
+			continue
+		}
+		if _, err := conn.ExecContext(ctx, `ALTER TABLE exchanges ADD COLUMN `+col+` TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("为 exchanges 增加 %s 列: %w", col, err)
+		}
+	}
 	return nil
 }
 
@@ -387,17 +456,21 @@ func (t *Traffic) stopping() bool {
 }
 func (t *Traffic) DB() *sql.DB { return t.db }
 
-// sink is the go-mitmproxy addon that records completed exchanges.
+// sink is the go-mitmproxy addon that records completed exchanges. scope/session
+// are set by per-session recording listeners so a row can be attributed to the
+// task and agent role that produced it; the process-wide listener leaves them empty.
 type sink struct {
 	mproxy.BaseAddon
-	t *Traffic
+	t       *Traffic
+	scope   string
+	session string
 }
 
 func (s *sink) Response(f *mproxy.Flow) {
 	if f.Request == nil || f.Response == nil {
 		return
 	}
-	s.t.record(f)
+	s.t.recordScoped(f, s.scope, s.session)
 }
 
 // RequestError fires when a request through an established MITM tunnel fails. If
@@ -441,7 +514,11 @@ type exchangeRecord struct {
 	requestContentType        string
 }
 
-func (t *Traffic) record(f *mproxy.Flow) {
+// record keeps the unscoped entry point used by tests and legacy callers.
+func (t *Traffic) record(f *mproxy.Flow) { t.recordScoped(f, "", "") }
+
+// recordScoped stores one exchange together with its task/session attribution.
+func (t *Traffic) recordScoped(f *mproxy.Flow, scope, session string) {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
 	u := f.Request.URL
@@ -451,6 +528,7 @@ func (t *Traffic) record(f *mproxy.Flow) {
 			ID: fmt.Sprintf("%d-%04d", now, t.seq.Add(1)%10000), TS: now,
 			Host: u.Hostname(), Method: f.Request.Method, URLTemplate: db.TemplatePath(u.EscapedPath()),
 			URL: u.String(), Status: f.Response.StatusCode, ContentType: f.Response.Header.Get("Content-Type"),
+			Scope: scope, Session: session,
 		},
 		requestHead:  fmt.Sprintf("%s %s %s\n%s", f.Request.Method, u.RequestURI(), f.Request.Proto, requestHeaderLines(f.Request)),
 		responseHead: fmt.Sprintf("HTTP %d\n%s", f.Response.StatusCode, headerLines(f.Response.Header)),
@@ -476,10 +554,10 @@ func (t *Traffic) persistExchange(e exchangeRecord) error {
 
 	// path stays empty for db-resident exchanges; a non-empty path marks a legacy
 	// row whose bodies still live in the old on-disk tree (see Get).
-	res, err := tx.Exec(`INSERT OR REPLACE INTO exchanges(id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path)
-VALUES(?,?,?,?,?,?,?,?,?,?,'')`,
+	res, err := tx.Exec(`INSERT OR REPLACE INTO exchanges(id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path,scope,session)
+VALUES(?,?,?,?,?,?,?,?,?,?,'',?,?)`,
 		e.ID, e.TS, e.Host, e.Method, e.URLTemplate, e.URL, e.Status, e.ContentType,
-		len(e.requestBody), len(e.responseBody))
+		len(e.requestBody), len(e.responseBody), e.Scope, e.Session)
 	if err != nil {
 		return fmt.Errorf("写索引: %w", err)
 	}
@@ -766,6 +844,10 @@ type ExchangeMeta struct {
 	ContentType string `json:"content_type"`
 	RespLen     int    `json:"resp_len"`
 	Path        string `json:"path"`
+	// Scope/Session attribute the exchange to a task and an agent role when the
+	// recording instance is a per-session listener; both stay empty otherwise.
+	Scope   string `json:"scope,omitempty"`
+	Session string `json:"session,omitempty"`
 }
 
 // Search returns paged exchange metadata (never bodies).
@@ -773,7 +855,7 @@ func (t *Traffic) Search(host string, page, size int) ([]ExchangeMeta, error) {
 	if size <= 0 || size > 500 {
 		size = 100
 	}
-	q := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path FROM exchanges`
+	q := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path,scope,session FROM exchanges`
 	args := []any{}
 	if host != "" {
 		q += ` WHERE host=?`
@@ -789,7 +871,7 @@ func (t *Traffic) Search(host string, page, size int) ([]ExchangeMeta, error) {
 	var out []ExchangeMeta
 	for rows.Next() {
 		var m ExchangeMeta
-		if err := rows.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path); err != nil {
+		if err := rows.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path, &m.Scope, &m.Session); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -938,7 +1020,7 @@ func (t *Traffic) Page(f PageQuery, page, size int) (rows []ExchangeMeta, total 
 	}
 	// id embeds capture timestamp + sequence, so a trailing id DESC makes the order
 	// total and pagination stable even when the sort column has many ties.
-	sel := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path FROM exchanges` +
+	sel := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path,scope,session FROM exchanges` +
 		where + ` ORDER BY ` + col + ` ` + dir + `, id DESC LIMIT ? OFFSET ?`
 	qargs := append(append([]any{}, args...), size, page*size)
 	rs, err := t.db.Query(sel, qargs...)
@@ -948,7 +1030,7 @@ func (t *Traffic) Page(f PageQuery, page, size int) (rows []ExchangeMeta, total 
 	defer rs.Close()
 	for rs.Next() {
 		var m ExchangeMeta
-		if err := rs.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path); err != nil {
+		if err := rs.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path, &m.Scope, &m.Session); err != nil {
 			return nil, 0, err
 		}
 		rows = append(rows, m)
@@ -1917,7 +1999,7 @@ func (t *Traffic) query(host, contains, bodyContains string, page, limit int) ([
 	if page < 0 {
 		page = 0
 	}
-	q := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path FROM exchanges WHERE 1=1`
+	q := `SELECT id,ts,host,method,url_template,url,status,content_type,resp_len,path,scope,session FROM exchanges WHERE 1=1`
 	args := []any{}
 	if host != "" {
 		hostName, port, err := normalizeSearchHost(host)
@@ -1964,7 +2046,7 @@ func (t *Traffic) query(host, contains, bodyContains string, page, limit int) ([
 	var out []ExchangeMeta
 	for rows.Next() {
 		var m ExchangeMeta
-		if err := rows.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path); err != nil {
+		if err := rows.Scan(&m.ID, &m.TS, &m.Host, &m.Method, &m.URLTemplate, &m.URL, &m.Status, &m.ContentType, &m.RespLen, &m.Path, &m.Scope, &m.Session); err != nil {
 			return nil, err
 		}
 		out = append(out, m)

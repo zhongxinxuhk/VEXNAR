@@ -71,6 +71,12 @@ import type {
   NotificationMeta,
   PromptVar,
   PromptVersion,
+  ProxyHealth,
+  ProxyNodeView,
+  ProxyParseResult,
+  ProxyPool,
+  ProxySessionSnapshot,
+  ProxyState,
   SessionTokenUsage,
   Settings,
   Severity,
@@ -89,6 +95,7 @@ import type {
   TaskGoal,
   TaskLLMResolutions,
   TaskNode,
+  TaskProxyBinding,
   TaskScopeRow,
   TaskTemplate,
   TokenTotal,
@@ -825,8 +832,7 @@ export const api = {
   // 渠道是多实例资源（同一类型可配多个机器人、各有过滤规则），因此独立成组，
   // 不塞进扁平的 settings 键值里。
   notifyMeta: () => get<NotificationMeta>(`/notify/meta`),
-  notifyChannels: () =>
-    get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
+  notifyChannels: () => get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
   notifyCreateChannel: (payload: {
     name: string;
     kind: string;
@@ -1329,4 +1335,63 @@ export const api = {
   // 202 即返回，实际下载在后台跑，进度走 /api/update/stream。
   applyUpdate: () => post<{ ok: boolean; target: string }>(`/update/apply`),
   rollbackUpdate: () => post<{ ok: boolean }>(`/update/rollback`),
+
+  // ---- 代理池（egress）----
+  // 节点密钥只存在于 Go 端 SQLite（AES-GCM 加密），这里拿到的 DTO 永远没有口令。
+  proxyState: () => get<ProxyState>(`/proxy/state`),
+  proxyPools: () => get<ProxyPool[]>(`/proxy/pools`),
+  createProxyPool: (p: Partial<ProxyPool>) => post<ProxyPool>(`/proxy/pools`, p),
+  updateProxyPool: (id: number, p: Partial<ProxyPool>) => patch<ProxyPool>(`/proxy/pools/${id}`, p),
+  deleteProxyPool: (id: number) => del<{ deleted: number }>(`/proxy/pools/${id}`),
+  proxyPoolNodes: (id: number) => get<ProxyNodeView[]>(`/proxy/pools/${id}/nodes`),
+  addProxyPoolNodes: (id: number, nodeIDs: number[]) =>
+    post<{ pool_id: number; node_ids: number[] }>(`/proxy/pools/${id}/nodes`, { node_ids: nodeIDs }),
+  removeProxyPoolNode: (id: number, nodeID: number) =>
+    del<{ pool_id: number; node_ids: number[] }>(`/proxy/pools/${id}/nodes/${nodeID}`),
+  proxyNodes: () => get<ProxyNodeView[]>(`/proxy/nodes`),
+  createProxyNode: (n: {
+    name?: string;
+    protocol?: string;
+    server?: string;
+    port?: number;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string>;
+    uri?: string;
+    tags?: string[];
+    weight?: number;
+    max_conns?: number;
+    enabled?: boolean;
+    note?: string;
+  }) => post<{ created: number; updated: number }>(`/proxy/nodes`, n),
+  updateProxyNode: (
+    id: number,
+    p: {
+      name?: string;
+      tags?: string[];
+      weight?: number;
+      max_conns?: number;
+      enabled?: boolean;
+      note?: string;
+      config?: Record<string, unknown>;
+      secrets?: Record<string, string>;
+    },
+  ) => patch<ProxyNodeView>(`/proxy/nodes/${id}`, p),
+  deleteProxyNode: (id: number) => del<{ deleted: number }>(`/proxy/nodes/${id}`),
+  proxyParse: (text: string) => post<ProxyParseResult>(`/proxy/nodes/parse`, { text }),
+  proxyImport: (text: string, pool_id?: number, tags?: string[]) =>
+    post<{ created: number; updated: number; added_to_pool: number; issues: ProxyParseResult["issues"] }>(
+      `/proxy/nodes/import`,
+      { text, pool_id: pool_id ?? 0, tags: tags ?? [] },
+    ),
+  proxyCheckNode: (id: number) => post<ProxyHealth>(`/proxy/nodes/${id}/check`),
+  proxyCheckPool: (id: number) => post<ProxyHealth[]>(`/proxy/pools/${id}/check`),
+  setProxyDefaultPool: (pool_id: number) => put<{ pool_id: number }>(`/proxy/default-pool`, { pool_id }),
+  proxyTaskBinding: (taskId: number) =>
+    get<{ task_id: number; binding: TaskProxyBinding | null; worker_session?: ProxySessionSnapshot }>(
+      `/tasks/${taskId}/proxy`,
+    ),
+  setProxyTaskBinding: (taskId: number, b: Omit<TaskProxyBinding, "task_id">) =>
+    put<TaskProxyBinding>(`/tasks/${taskId}/proxy`, b),
+  deleteProxyTaskBinding: (taskId: number) => del<{ task_id: number; binding: null }>(`/tasks/${taskId}/proxy`),
+  proxyResetLeases: (task_id = 0) => post<{ reset: boolean; task_id: number }>(`/proxy/leases/reset`, { task_id }),
 };

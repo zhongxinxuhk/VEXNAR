@@ -47,7 +47,10 @@ func (s *Server) egressState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st.DefaultPool = s.m.EgressPoolID()
-	writeJSON(w, http.StatusOK, st)
+	writeJSON(w, http.StatusOK, struct {
+		egress.State
+		Recordings int `json:"recordings"`
+	}{st, s.m.RecordingCount()})
 }
 
 // GET/POST /api/proxy/pools
@@ -670,7 +673,7 @@ func (s *Server) agentEgressProxy(taskID string, role string) (addr, ca string) 
 		return s.m.ProxyAddr(), s.m.ProxyCACert()
 	}
 	mgr := s.m.Egress()
-	if mgr == nil || s.m.TrafficEnabled() {
+	if mgr == nil {
 		return s.m.ProxyAddr(), s.m.ProxyCACert()
 	}
 	poolID := int64(0)
@@ -688,8 +691,26 @@ func (s *Server) agentEgressProxy(taskID string, role string) (addr, ca string) 
 	if poolID == 0 {
 		return s.m.ProxyAddr(), s.m.ProxyCACert()
 	}
+	key := taskSessionKey(tid, role)
+	// Register the session first: the recording listener's upstream resolver looks
+	// it up by key, so an unregistered session would fail closed on every request.
+	if _, err := mgr.Endpoint(egress.SessionSpec{
+		Key: key, TaskID: tid, Role: role,
+		PoolID: poolID, Mode: mode, Fallback: fallback, MaxConns: maxConns,
+	}); err != nil {
+		return s.m.ProxyAddr(), s.m.ProxyCACert()
+	}
+	if s.m.TrafficEnabled() {
+		// Capture on: per-session recording listener. Tools talk plain HTTP proxy to
+		// it (no credential needed — the listener IS the session), while the node is
+		// resolved at its upstream. Traffic rows carry scope/session.
+		if addr, err := s.m.recordingAddr(tid, key); err == nil {
+			return addr, s.m.ProxyCACert()
+		}
+		return s.m.ProxyAddr(), s.m.ProxyCACert()
+	}
 	ep, err := mgr.Endpoint(egress.SessionSpec{
-		Key: taskSessionKey(tid, role), TaskID: tid, Role: role,
+		Key: key, TaskID: tid, Role: role,
 		PoolID: poolID, Mode: mode, Fallback: fallback, MaxConns: maxConns,
 	})
 	if err != nil {
@@ -705,6 +726,7 @@ func (s *Server) revokeTaskEgress(taskID int64) {
 		return
 	}
 	mgr.RevokeTask(taskID)
+	s.m.closeTaskRecordings(taskID)
 	_ = mgr.Store().DeleteBinding(context.Background(), taskID)
 }
 

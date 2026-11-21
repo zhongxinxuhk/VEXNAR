@@ -506,6 +506,32 @@ func (m *Manager) SessionSnapshot(key string) (Snapshot, bool) {
 	return snap, true
 }
 
+// UpstreamURLFor returns a node-pinned gateway URL for one session. Per-session
+// recording listeners use it as their upstream: go-mitmproxy resolves it per
+// CONNECT, so a sticky session keeps its node and a rotating one spreads.
+func (m *Manager) UpstreamURLFor(key string) (string, error) {
+	user := sanitizeKey(key)
+	m.sessMu.RLock()
+	s := m.sessions[user]
+	m.sessMu.RUnlock()
+	if s == nil {
+		return "", ErrSessionRevoked
+	}
+	ps, err := m.resolvePool(s)
+	if err != nil {
+		return "", err
+	}
+	s.mu.Lock()
+	mode := s.spec.Mode
+	lease := s.lease
+	s.mu.Unlock()
+	st, err := m.choose(context.Background(), ps, s, mode, lease, nil)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("http://sess_%s.node_%d:%s@%s", user, st.node.ID, s.secret, m.gateway.Addr()), nil
+}
+
 // Sessions lists live sessions.
 func (m *Manager) Sessions() []Snapshot {
 	m.sessMu.RLock()

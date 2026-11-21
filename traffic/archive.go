@@ -37,6 +37,8 @@ type ArchiveExchange struct {
 	ContentType string `json:"content_type"`
 	ReqLen      int    `json:"req_len"`
 	RespLen     int    `json:"resp_len"`
+	Scope       string `json:"scope,omitempty"`
+	Session     string `json:"session,omitempty"`
 	ReqHead     string `json:"req_head"`
 	ReqBody     []byte `json:"req_body,omitempty"`
 	ReqBlob     string `json:"req_blob,omitempty"`
@@ -64,7 +66,7 @@ func (t *Traffic) ExportHosts(hosts []string, dir string) (int64, error) {
 		placeholders[i] = "?"
 		args[i] = host
 	}
-	rows, err := t.db.Query(`SELECT id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path
+	rows, err := t.db.Query(`SELECT id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path,scope,session
 FROM exchanges WHERE host IN (`+strings.Join(placeholders, ",")+`) ORDER BY ts,id`, args...)
 	if err != nil {
 		return 0, err
@@ -76,7 +78,8 @@ FROM exchanges WHERE host IN (`+strings.Join(placeholders, ",")+`) ORDER BY ts,i
 		var item ArchiveExchange
 		var legacyPath string
 		if err := rows.Scan(&item.ID, &item.TS, &item.Host, &item.Method, &item.URLTemplate,
-			&item.URL, &item.Status, &item.ContentType, &item.ReqLen, &item.RespLen, &legacyPath); err != nil {
+			&item.URL, &item.Status, &item.ContentType, &item.ReqLen, &item.RespLen, &legacyPath,
+			&item.Scope, &item.Session); err != nil {
 			return 0, err
 		}
 		var reqBlob, respBlob sql.NullString
@@ -182,9 +185,9 @@ func (t *Traffic) ImportArchive(dir string) (int64, error) {
 	defer tx.Rollback() //nolint:errcheck
 	var imported int64
 	for _, item := range snapshot.Exchanges {
-		res, err := tx.Exec(`INSERT OR IGNORE INTO exchanges(id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path)
-VALUES(?,?,?,?,?,?,?,?,?,?,'')`, item.ID, item.TS, item.Host, item.Method, item.URLTemplate,
-			item.URL, item.Status, item.ContentType, item.ReqLen, item.RespLen)
+		res, err := tx.Exec(`INSERT OR IGNORE INTO exchanges(id,ts,host,method,url_template,url,status,content_type,req_len,resp_len,path,scope,session)
+VALUES(?,?,?,?,?,?,?,?,?,?,'',?,?)`, item.ID, item.TS, item.Host, item.Method, item.URLTemplate,
+			item.URL, item.Status, item.ContentType, item.ReqLen, item.RespLen, item.Scope, item.Session)
 		if err != nil {
 			return imported, err
 		}
