@@ -13,18 +13,18 @@ const accountEvent = 'vexnar:platform-account'
 interface Provider {
   id: string
   name: string
+  format: string
   models: { id: string; name?: string }[]
 }
 
 interface Account {
   signed_in: boolean
+  ready: boolean
   username: string
+  display_name?: string
+  request_count?: number | null
+  access_token_ready: boolean
   providers: Provider[]
-}
-
-interface Login {
-  state: 'idle' | 'waiting' | 'done' | 'error'
-  message: string
 }
 
 const panel: CSSProperties = {
@@ -69,66 +69,85 @@ function useAccount() {
   return { account, error, onError, update }
 }
 
+const profileHeader: CSSProperties = {
+  display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 16,
+  padding: '22px 20px', borderRadius: 14,
+  background: 'linear-gradient(110deg, #102e37, #164951)', color: '#f2fffb'
+}
+const avatar: CSSProperties = {
+  display: 'grid', placeItems: 'center', width: 54, height: 54, borderRadius: 15,
+  background: '#c4ebdf', color: '#163d42', fontSize: 20, fontWeight: 700
+}
+const stats: CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(115px, 1fr))', gap: 8,
+  margin: 0, padding: 0
+}
+const stat: CSSProperties = {
+  ...panel, gap: 4, padding: '11px 12px', background: 'var(--dsw-alias-surface-secondary, transparent)'
+}
+
 export function AccountSection() {
-  const { account, error, onError, update } = useAccount()
-  const [available, setAvailable] = useState<string[]>([])
-  const [login, setLogin] = useState<Login>({ state: 'idle', message: '' })
+  const { account, error, onError } = useAccount()
   const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (account?.signed_in !== false) return
-    void request<{ methods: string[] }>('/methods').then(result => setAvailable(result.methods), onError)
-    void request<Login>('/login').then(setLogin, onError)
-  }, [account?.signed_in])
-
-  useEffect(() => {
-    if (login.state !== 'waiting') return
-    const timer = window.setInterval(() => {
-      void request<Login>('/login').then(next => {
-        setLogin(next)
-        if (next.state === 'done') void request<Account>('/account').then(update, onError)
-      }, onError)
-    }, 1200)
-    return () => window.clearInterval(timer)
-  }, [login.state])
-
   const logout = async () => {
     setBusy(true)
     try {
-      update(await request<Account>('/account', 'DELETE'))
-      setLogin({ state: 'idle', message: '' })
+      await request<Account>('/account', 'DELETE')
+      window.location.replace('/')
     } catch (error) {
       onError(error)
     } finally {
       setBusy(false)
     }
   }
+  if (!account?.ready) return <div style={panel} role="status">{error || '正在读取 VEXNAR 个人资料…'}</div>
 
-  return <div style={panel}>
-    <strong>HXSEC AI Platform</strong>
-    {account?.signed_in
-      ? <>
-          <span>已登录 {account.username}</span>
-          <button type="button" style={button} disabled={busy} onClick={() => void logout()}>退出登录</button>
-        </>
-      : <>
-          <span>在平台页面完成登录和二次验证。</span>
-          {available.length > 0 && <span>{available.join(' · ')}</span>}
-          <button type="button" style={button} disabled={!account || busy || login.state === 'waiting'} onClick={() => {
-            setBusy(true)
-            void request<Login>('/login', 'POST').then(setLogin, onError).finally(() => setBusy(false))
-          }}>登录 VEXNAR</button>
-          {login.state !== 'done' && login.message && <span role="status">{login.message}</span>}
-        </>}
-    {error && <span role="alert" style={{ color: 'var(--dsw-alias-label-danger, #b91c1c)' }}>{error}</span>}
-    <div style={{ display: 'flex', gap: 16 }}>
-      <a href={platform} target="_blank" rel="noreferrer">平台主页</a>
-      <a href={docs} target="_blank" rel="noreferrer">API 文档</a>
+  const provider = account.providers.find(item => item.id === 'vexnar')
+  const modelCount = provider?.models.length ?? 0
+  const displayName = account.display_name || account.username
+  const values = [
+    { name: '平台模型', value: modelCount.toLocaleString('zh-CN') },
+    { name: '模型协议', value: 'Responses' },
+    { name: '平台访问令牌', value: account.access_token_ready ? '已配置' : '未配置' },
+    ...(typeof account.request_count === 'number'
+      ? [{ name: '平台累计请求', value: account.request_count.toLocaleString('zh-CN') }]
+      : [])
+  ]
+
+  return <div style={{ display: 'grid', gap: 14 }}>
+    <div style={profileHeader}>
+      <span style={avatar} aria-hidden="true">{Array.from(displayName).slice(0, 2).join('').toUpperCase()}</span>
+      <div style={{ flex: '1 1 170px', minWidth: 0, overflowWrap: 'anywhere' }}>
+        <h2 style={{ margin: 0, fontSize: 23 }}>{displayName}</h2>
+        <span style={{ color: '#c6ded9' }}>@{account.username}</span>
+      </div>
+      <a href={platform + '/profile'} target="_blank" rel="noreferrer" style={{ ...button, color: 'inherit' }}>管理平台账户</a>
     </div>
+    <dl style={stats}>
+      {values.map(({ name, value }) => <div key={name} style={stat}>
+        <dt style={{ fontSize: 12 }}>{name}</dt>
+        <dd style={{ margin: 0, fontSize: 17, fontWeight: 650 }}>{value}</dd>
+      </div>)}
+    </dl>
+    <div style={panel}>
+      <strong>HXSEC AI Platform</strong>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <code>https://api.sec.hn.cn/v1</code>
+        <a href={docs} target="_blank" rel="noreferrer">API 文档</a>
+      </div>
+      <details>
+        <summary>查看可用模型（{modelCount}）</summary>
+        <ul style={{ maxHeight: 190, overflow: 'auto', margin: '8px 0 0', paddingInlineStart: 20 }}>
+          {provider?.models.map(model => <li key={model.id}>{model.name || model.id}</li>)}
+        </ul>
+      </details>
+    </div>
+    <button type="button" style={button} disabled={busy} onClick={() => void logout()}>退出登录</button>
+    {error && <span role="alert" style={{ color: 'var(--dsw-alias-label-danger, #b91c1c)' }}>{error}</span>}
   </div>
 }
 
-type Kind = 'deepseek' | 'custom' | 'platform'
+type Kind = 'deepseek' | 'custom'
 
 export function ModelsSection() {
   const { account, error, onError, update } = useAccount()
@@ -157,12 +176,11 @@ export function ModelsSection() {
   }
 
   if (!account?.signed_in) return <div style={panel}>
-    <span>{account ? '请先在「账户」中登录 VEXNAR，再添加模型 API。' : '正在读取账号状态…'}</span>
+    <span>{account ? '请先登录 VEXNAR，再添加模型 API。' : '正在读取账号状态…'}</span>
     {error && <span role="alert">{error}</span>}
   </div>
 
   const deepseek = account.providers.some(provider => provider.id === 'deepseek')
-  const hxsec = account.providers.some(provider => provider.id === 'vexnar')
   return <div style={panel}>
     {account.providers.map(provider => <div key={provider.id} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
       <strong>{provider.name}</strong>
@@ -172,9 +190,7 @@ export function ModelsSection() {
         void request<Account>('/providers', 'DELETE', { id: provider.id }).then(update, onError).finally(() => setBusy(false))
       }}>移除</button>}
     </div>)}
-    {!hxsec && <span>平台尚未关联可用的模型密钥。可以从平台创建 API Key 后在这里关联。</span>}
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {!hxsec && <button type="button" style={button} disabled={busy} onClick={() => select('platform')}>关联平台 API Key</button>}
       <button type="button" style={button} disabled={busy} onClick={() => select('deepseek')}>
         {deepseek ? '更新 DeepSeek API Key' : '添加 DeepSeek API Key'}
       </button>
@@ -205,7 +221,7 @@ export function apply(ctx: {
   }
 }): void {
   ctx.slots.inject('settings.section', () => {
-    ctx.slots.register({ name: 'settings.section', id: 'vexnar-account', label: '账户', order: -100 }, AccountSection)
+    ctx.slots.register({ name: 'settings.section', id: 'vexnar-account', label: '个人资料', order: -100 }, AccountSection)
     return ctx.slots.register({ name: 'settings.section', id: 'models', label: '模型', order: 10 }, ModelsSection)
   })
 }

@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
 import { ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.mjs'
 
-export function startWeb(port, onReady) {
+export function startWeb(port, onReady, onAccountHandoff) {
   ensureProfile()
   const env = runtimeEnv()
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
@@ -18,7 +18,8 @@ export function startWeb(port, onReady) {
   const lines = createInterface({ input: child.stdout })
   lines.on('line', line => {
     const ready = /^dsh web: (http:\/\/127\.0\.0\.1:\d+\/\S*)$/.exec(line)
-    if (ready) onReady(ready[1])
+    if (line === 'vexnar: account-handoff') onAccountHandoff?.()
+    else if (ready) onReady(ready[1])
     else console.log(line.replace(/^dsh(?=[:\s])/, 'vexnar'))
   })
   return child

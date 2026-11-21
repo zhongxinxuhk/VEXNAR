@@ -103,6 +103,11 @@ export function apply(ctx) {
       path: '/vexnar-api',
       handler: async (req, res) => {
         try {
+          if (!platformReady()) {
+            res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify({ error: '请先登录 VEXNAR' }))
+            return
+          }
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
           const { handle, isGoDataRequest } = await app
@@ -175,7 +180,7 @@ export function apply(ctx) {
     .replace(/<link\b[^>]*\brel=["'](?:shortcut icon|icon|apple-touch-icon|manifest)["'][^>]*>/gi, '')
     .replace('</head>', () => BRAND_HEAD + `<script>${BRAND_SCRIPT}</script></head>`)))
 
-  installPlatform(ctx)
+  const platformReady = installPlatform(ctx)
 
   ctx.effect(() =>
     ctx.webServer.register({
