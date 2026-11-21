@@ -19,7 +19,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// vexnar/ui/src/client.tsx
+// app/vexnar/ui/src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
@@ -30,7 +30,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react2 = require("react");
 
-// vexnar/ui/src/styles.ts
+// app/vexnar/ui/src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1277,7 +1277,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// vexnar/ui/src/overview.tsx
+// app/vexnar/ui/src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -2522,7 +2522,7 @@ function OverviewPanel() {
   ] });
 }
 
-// vexnar/ui/src/client.tsx
+// app/vexnar/ui/src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
