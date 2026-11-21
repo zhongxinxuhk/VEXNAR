@@ -10,7 +10,7 @@ const routes = new Set([
   'GET /api/assets',
   'GET /api/assets/counts',
   'POST /api/assets',
-  'POST /api/yakit/open'
+  'POST /api/yak/history'
 ])
 
 export function isGoDataRequest(method: string, path: string) {
