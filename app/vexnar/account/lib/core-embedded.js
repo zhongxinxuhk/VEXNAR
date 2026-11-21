@@ -28898,8 +28898,10 @@ function storeOperations(_root) {
     const byKind = {};
     const byState = {};
     for (const node2 of scoped) {
-      byKind[node2.kind] = (byKind[node2.kind] ?? 0) + 1;
-      byState[node2.state] = (byState[node2.state] ?? 0) + 1;
+      const kind = String(node2.kind);
+      const state = String(node2.state);
+      byKind[kind] = (byKind[kind] ?? 0) + 1;
+      byState[state] = (byState[state] ?? 0) + 1;
     }
     const edges = (await writer.list("edges")).filter((edge) => Number(edge.exploration_id) === Number(task.exploration_id)).length;
     const anchors = (await (async () => {
@@ -28954,13 +28956,16 @@ function storeOperations(_root) {
     };
     const existing = rows.find(sameAsset);
     if (existing) {
-      if (!Array.isArray(existing.task_ids) || !existing.task_ids.map(Number).includes(Number(task.id))) {
-        const next = { ...existing, task_ids: [...(existing.task_ids ?? []).map(Number), Number(task.id)] };
+      const id2 = existing.id;
+      if (typeof id2 !== "string" && typeof id2 !== "number") throw new Error("stored asset is missing a valid ID");
+      const taskIds = Array.isArray(existing.task_ids) ? existing.task_ids.map(Number) : [];
+      if (!taskIds.includes(Number(task.id))) {
+        const next = { ...existing, id: id2, task_ids: [...taskIds, Number(task.id)] };
         delete next.rev;
         await writer.commit([{ table: "assets", key: String(existing.id), record: next, expectedRev: Number(existing.rev ?? 0) }]);
         return next;
       }
-      return existing;
+      return { ...existing, id: id2 };
     }
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
     const record2 = {
@@ -31443,6 +31448,17 @@ api.get("/api/exploration/nodes", async (c) => {
     refs: {}
   });
 });
+var routeModules = [
+  { file: "./routes/conversations.ts", scope: "conversations/chat" }
+];
+for (const { file: file2, scope } of routeModules) {
+  try {
+    const mod = await import(file2);
+    mod.register?.(api);
+  } catch (error62) {
+    console.error(`[vexnar] failed to load route module ${scope} (${file2}):`, error62);
+  }
+}
 
 // src/embedded.ts
 async function handle(request) {
