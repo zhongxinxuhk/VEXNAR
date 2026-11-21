@@ -14,7 +14,8 @@
     "compare:domain": "node compare-domain.mjs",
     "verify": "node verify.mjs",
     "build:embedded": "node build-embedded.mjs",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:traffic-index": "tsx traffic-index.test.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",

@@ -2684,6 +2684,7 @@ var EMPTY_DATA = {
   daily: [],
   traffic: [],
   trafficTotal: 0,
+  trafficHosts: [],
   activity: [],
   sys: { agents: 0, agentsOn: 0, mcp: 0, mcpOn: 0, tools: 0, toolsOn: 0 },
   capture: false,
@@ -2705,7 +2706,8 @@ async function loadOverview(signal) {
     getJson("/api/exploration/activity?limit=14", signal),
     getJson("/api/agents", signal),
     getJson("/api/mcp", signal),
-    getJson("/api/tools", signal)
+    getJson("/api/tools", signal),
+    getJson("/api/traffic/hosts", signal)
   ]);
   const rejected = settled.slice(0, 5).filter((item) => item.status === "rejected")[0];
   const failure = rejected === void 0 ? void 0 : rejected.reason;
@@ -2720,6 +2722,7 @@ async function loadOverview(signal) {
   const agents = pick(settled[7], {});
   const mcp = pick(settled[8], {});
   const tools = pick(settled[9], {});
+  const hostRows = pick(settled[10], {});
   const countOn = (rows) => (rows ?? []).filter((row) => row.enabled !== false).length;
   const sessions = Array.isArray(capture.sessions) ? capture.sessions : [];
   const recent = Array.isArray(capture.recent) ? capture.recent : [];
@@ -2740,6 +2743,7 @@ async function loadOverview(signal) {
       daily: Array.isArray(daily) ? daily : [],
       traffic: recent,
       trafficTotal: Number(capture.total ?? 0),
+      trafficHosts: (Array.isArray(hostRows.hosts) ? hostRows.hosts : []).map((row) => ({ host: String(row?.host ?? ""), count: Number(row?.count ?? 0) })).filter((row) => row.host !== "" && Number.isFinite(row.count)),
       activity: Array.isArray(activity.items) ? activity.items : [],
       sys: {
         agents: agents.agents?.length ?? 0,
@@ -3470,6 +3474,14 @@ function derive(data, days) {
   const codeCounts = /* @__PURE__ */ new Map();
   const methodCounts = /* @__PURE__ */ new Map();
   const hostCounts = /* @__PURE__ */ new Map();
+  for (const row of data.trafficHosts) hostCounts.set(row.host, row.count);
+  if (hostCounts.size === 0) {
+    for (const exchange of data.traffic) {
+      const host = String(exchange.host ?? "");
+      if (host === "") continue;
+      hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1);
+    }
+  }
   for (const exchange of data.traffic) {
     const status = Number(exchange.status ?? 0);
     if (status > 0) {
@@ -3478,8 +3490,6 @@ function derive(data, days) {
     }
     const method = String(exchange.method ?? "GET");
     methodCounts.set(method, (methodCounts.get(method) ?? 0) + 1);
-    const host = String(exchange.host ?? "\u2014");
-    hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1);
   }
   const codes = CODE_TONES.map((item) => ({ label: item.label, value: codeCounts.get(item.bucket) ?? 0, tone: item.tone }));
   const trafficTotal = data.traffic.length;

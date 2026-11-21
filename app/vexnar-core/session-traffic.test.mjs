@@ -12,6 +12,9 @@ process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_SQLITE_PATH = join(root, 'vexnar.sqlite')
 process.env.VEXNAR_INGEST_KEY = 'test-ingest-key'
+// 归档流量索引（采集面写的 data/traffic/_index）在真实部署里有历史数据；测试
+// 必须指向空目录，否则站点级 list/capture 会把那些行算进来。
+process.env.VEXNAR_TRAFFIC_DIR = join(root, 'traffic')
 
 const { register } = await import('./src/routes/session-traffic.ts')
 const { register: registerTraffic } = await import('./src/routes/traffic.ts')
