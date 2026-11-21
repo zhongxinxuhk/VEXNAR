@@ -26,7 +26,9 @@ console.log(`[dsh] home=${dshHome()}`)
 
 /** Profile plugins are pnpm deps: restore them when node_modules was pruned. */
 function ensureProfileDeps(profile) {
-  const required = ['@vexnar/dsh-ui', '@vexnar/dsh-account']
+  // dsh-claude-style is a registry dependency: it is absent after a fresh clone
+  // and the boot would fail on an unresolved bundle, so check it here too.
+  const required = ['@vexnar/dsh-ui', '@vexnar/dsh-account', 'dsh-claude-style']
   const missing = required.some((name) => !existsSync(join(profile, 'node_modules', name, 'package.json')))
   const stale = !missing && [['vexnar/ui', '@vexnar/dsh-ui'], ['vexnar/account', '@vexnar/dsh-account']]
     .some(([dir, name]) => {

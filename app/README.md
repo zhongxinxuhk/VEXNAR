@@ -27,7 +27,7 @@ app/                          # WebStorm 工程根（项目名 app）
 │  ├─ dsh-runtime.mjs         # 解析 dsh runtime + 读取 token
 │  ├─ dsh-web.mjs             # web 启动器（隔离 home / 端口 3099）
 │  ├─ dsh-desktop.mjs         # 桌面启动器
-│  ├─ setup-app-profile.mjs   # 安装 UI 插件并写 profile patch
+│  ├─ setup-app-profile.mjs   # 安装 UI/账户插件 + Claude 皮肤，写 profile patch
 │  └─ ide-mcp.mjs             # JetBrains IDE MCP 直连客户端
 └─ vexnar/
    ├─ cordis.patch.yml        # provider + MCP + 品牌/账户的 profile 覆盖层
@@ -91,6 +91,23 @@ Go → TypeScript 全栈的基线、目标架构、单元工作量与风险见 [
 - web 固定 `127.0.0.1:3099`，与安装版的 3080/62698 不冲突；
 - 插件只装进 `app/.dsh-home/profiles/web`，不写安装包目录；
 - 唯一的共享是 dsh runtime 二进制（只读使用）。
+
+## 皮肤：内嵌 dsh-claude-style
+
+Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-claude-style)
+（Claude Code Desktop 风格主题，registry 包 `dsh-claude-style`）：
+
+- **接入方式**：`setup-app-profile.mjs` 把它装进 profile 依赖，并写进 profile 的
+  `dsh.profile.bundles`。它自带 `dsh.bundle.patch`，因此 `ui-skin-claude-style` 行由**它自己**插入，
+  我们不再手写这一行，也不复制它的源码。
+- **层级位置**：dsh 的组装顺序是「各 bundle 的 patch → profile 的 `cordis.patch.yml` → `$DSH_HOME` 补丁」，
+  所以 `app/vexnar/cordis.patch.yml` 仍然最后生效：品牌槽、MCP、模型路由不受皮肤影响。
+- **令牌关系**：皮肤改的是 dsh 的 alias 令牌（`--dsw-alias-*`），而 `@vexnar/dsh-ui` 的 `--vx-*`
+  只绑定这些 alias，所以卡片会自动跟随皮肤的配色，不需要为皮肤写第二套样式。
+- **关闭方式**：`VEXNAR_THEME=off pnpm run setup`，然后从 profile 的 `dsh.profile.bundles` 里去掉该包
+  （脚本不会自动删已存在的行，避免误删他人配置）。
+- **许可**：主题本体 MIT；`packages/client/src/features/sodium/` 与 `packages/engine/src/sheet-rewrite.ts`
+  是 Sodium 引擎，采用 PolyForm Shield 1.0.0。本项目只把它作为依赖使用，不复制进仓库、不改许可头。
 
 ## 运行与调试（WebStorm，全部用运行配置选项）
 

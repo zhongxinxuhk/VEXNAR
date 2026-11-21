@@ -7,8 +7,9 @@
  *
  * Steps:
  *   1. resolve the dsh runtime (packaged app by default);
- *   2. install app/vexnar/ui into $DSH_HOME/profiles/web via `dsh plugin`;
- *   3. write the profile patch: VEXNAR provider + MCP endpoint + UI row.
+ *   2. install app/vexnar/ui and app/vexnar/account into $DSH_HOME/profiles/web;
+ *   3. embed the Claude-style skin (dsh-claude-style) as a profile bundle;
+ *   4. write the profile patch: VEXNAR provider + MCP endpoint + UI row.
  *
  * Re-runnable: the plugin install is idempotent (pnpm), and the patch file is
  * regenerated from app/vexnar/cordis.patch.yml.
@@ -39,6 +40,33 @@ for (const pkg of ['ui', 'account']) {
     { env: { ...process.env, DSH_HOME: home }, stdio: 'inherit' }
   )
   if (install.status !== 0) process.exit(install.status ?? 1)
+}
+
+// ── Theme bundle ───────────────────────────────────────────────────────────
+// dsh-claude-style ships its own `dsh.bundle.patch`, so listing it in
+// `dsh.profile.bundles` is what inserts the `ui-skin-claude-style` row — no row
+// of ours is needed, and the skin stays an upstream dependency (MIT, with the
+// Sodium engine under PolyForm Shield) instead of vendored code.
+// Set VEXNAR_THEME=off to install the profile without the skin.
+const themeSpec = 'dsh-claude-style@^0.21.6'
+if (process.env.VEXNAR_THEME !== 'off') {
+  const install = spawnSync(
+    process.execPath,
+    [bin, 'plugin', '--profile', 'web', 'add', themeSpec],
+    { env: { ...process.env, DSH_HOME: home }, stdio: 'inherit' }
+  )
+  if (install.status !== 0) process.exit(install.status ?? 1)
+
+  const manifestPath = join(profile, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const bundles = manifest.dsh?.profile?.bundles ?? []
+  if (!bundles.includes('dsh-claude-style')) {
+    manifest.dsh ??= {}
+    manifest.dsh.profile ??= {}
+    manifest.dsh.profile.bundles = [...bundles, 'dsh-claude-style']
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    console.log('[app] theme bundle registered: dsh-claude-style')
+  }
 }
 
 const bundlePatch = await readFile(join(repo, 'app', 'vexnar', 'cordis.patch.yml'), 'utf8')

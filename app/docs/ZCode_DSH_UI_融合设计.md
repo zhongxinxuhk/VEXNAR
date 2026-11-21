@@ -20,6 +20,7 @@
 3. **dsh 已经有一套成熟到可以直接继承的视觉平台**：三层令牌（static → alias → 组件）、`data-ds-dark-theme` 双主题、字号阶梯与用户字号增量、三档 elevation（发丝描边 + 双层柔光）、统一动效曲线、超椭圆圆角。VEXNAR 要做的是"接上去"，不是"再造一套"。
 4. **`web/` 的 shadcn + Tailwind v4（oklch）令牌不能直接搬进 dsh**：两套变量命名、两套暗色机制、两种字体栈。正确做法是**在 web/ 与 dsh 之间建一层语义映射**，让同一个"危险/高危/成功"在两端指向各自令牌，而不是复制色值。
 5. ZCode 不在本仓库参考树里，本文只借鉴其**交互结构与工作台气质**（Electron 壳、Chat/Project/Workspace 三段式、命令面板），不复制其代码与资产。
+6. **皮肤层已选定 `dsh-claude-style`**（MIT，registry 包）：它接管 dsh 的 alias 令牌与界面细节，我们不再自建整套配色；VEXNAR 只做语义映射与领域组件（见 §4.7）。
 
 ---
 
@@ -211,7 +212,33 @@ flowchart TB
 | 折叠/展开 | 200ms | 同上 | 高度动画走 CSS transition |
 | reduced-motion | 0ms | — | 入场动画与旋转全关 |
 
-### 4.7 密度
+### 4.7 皮肤：内嵌 dsh-claude-style
+
+决定：**用成熟皮肤接管"整体观感"，VEXNAR 只做"语义 + 领域组件"**。理由与做法如下。
+
+| 维度 | 结论 |
+|---|---|
+| 接入方式 | `dsh-claude-style` 作为 profile 依赖，并写进 `dsh.profile.bundles`；它自带 `dsh.bundle.patch`，`ui-skin-claude-style` 行由它自己插入 |
+| 层级 | dsh 组装顺序：各 bundle patch → profile `cordis.patch.yml` → `$DSH_HOME` 补丁。我们的补丁仍最后生效，品牌槽/MCP/模型路由不被覆盖 |
+| 令牌 | 皮肤重绑 `--dsw-alias-*`（`label-primary` 出现 188 次、`bg-layer-2` 21 次），VEXNAR 的 `--vx-*` 只绑定 alias，因此卡片自动跟随皮肤配色与亮暗 |
+| 冲突面 | 皮肤在 `tool.call.toolview` 上注册自己的视图（文件类），与我们的两个 keyed 工具卡不撞键；品牌槽它不占 |
+| 品牌保留 | 侧栏 logo、wordmark、hero 标语仍归 `@vexnar/dsh-ui`；皮肤改的是"皮肤"，不是"品牌归属" |
+| 关闭 | `VEXNAR_THEME=off pnpm run setup` 可不装；已写入的 bundles 行需手工移除（脚本不自动删） |
+| 许可 | 主题 MIT；`packages/client/src/features/sodium/` 与 `packages/engine/src/sheet-rewrite.ts` 为 Sodium 引擎，PolyForm Shield 1.0.0。**只作为依赖使用，不复制进仓库** |
+
+对本文既有结论的影响：
+
+- §4.2 的"品牌色选 A（中性 + 语义色）"仍然成立，但**色值由皮肤给**：我们不再维护自己的中性色阶。
+- §4.5 的"三档 elevation、发丝描边、超椭圆"继续沿用 dsh 令牌，皮肤若调整这些令牌，我们自动跟随。
+- §8 的 P4（主题预设 + 密度）改为"皮肤预设 + 我们只补密度与语义色校验"，工作量下降。
+
+验证口径（皮肤加入后新增）：
+
+1. 亮/暗两套 + 皮肤的六套预设各看一眼卡片：severity 颜色必须仍然可辨；
+2. 皮肤切换后 `--vx-*` 解析出的仍是 alias 值（不得出现硬编码回退）；
+3. 皮肤与我们的工具卡同屏时，不出现双重边框/双重阴影（皮肤自带卡片样式，必要时我们把 `--vx-elevation` 置 `none` 让位）。
+
+### 4.8 密度
 
 当前按 dsh 默认（行高 22px、卡片内边距 12/14）。规划三档：
 
