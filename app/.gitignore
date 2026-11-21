@@ -10,6 +10,9 @@ dsh/
 .vexnar-home/
 .dsh-home/
 
+# Go 后端由 scripts/vexnar-go.mjs 按源码指纹编译到这里，可随时重建。
+.vexnar-bin/
+
 # pnpm workspace install state: every node_modules under app/ is reproducible
 # from app/pnpm-lock.yaml and never committed. `pnpm install` in app/ rebuilds it.
 # 不带斜杠：`node_modules/` 匹配不到指向别处的同名软链，那种软链会被误提交。
