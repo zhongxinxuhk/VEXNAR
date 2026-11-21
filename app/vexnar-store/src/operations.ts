@@ -762,5 +762,38 @@ export function storeOperations(root: string) {
     return { id: Number(intentId), state: '', deleted: { intents: 1, facts: 0, findings: 0, activities: 0 } }
   }
 
-  return { writer, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  async function rerunIntent(taskId: string, intentId: string) {
+    const node = await writer.readRecord('nodes', intentId)
+    if (!node || node.kind !== 'intent') throw Object.assign(new Error('intent not found'), { status: 404 })
+    if (!['blocked', 'exhausted', 'stopped'].includes(node.state)) {
+      throw Object.assign(new Error('仅 blocked/exhausted/stopped 的意图可以重跑'), { status: 409 })
+    }
+    const next = { ...node, state: 'open' }
+    delete next.rev
+    await writer.commit([{ table: 'nodes', key: intentId, record: next, expectedRev: Number(node.rev ?? 0) }])
+    return { id: String(taskId), reopened: Number(intentId) }
+  }
+
+  async function rerunBlocked(taskId: string) {
+    const task = await writer.readRecord('tasks', taskId)
+    if (!task) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    let rows = []
+    try {
+      for (const name of await readdir(join(root, 'nodes'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'nodes', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const blocked = rows.filter((row) => Number(row.exploration_id) === Number(task.exploration_id) && row.kind === 'intent' && row.state === 'blocked')
+    for (const row of blocked) {
+      const next = { ...row, state: 'open' }
+      delete next.rev
+      await writer.commit([{ table: 'nodes', key: String(row.id), record: next, expectedRev: Number(row.rev ?? 0) }])
+    }
+    return { id: String(taskId), reopened: blocked.length }
+  }
+
+  return { writer, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
