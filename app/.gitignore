@@ -1,3 +1,10 @@
 # The dsh source tree is a vendored upstream checkout, not project code: it is
 # fetched and pinned by scripts/fetch-dsh.sh and never committed (245 MB, MIT).
 dsh/
+
+# Local dsh home used by the GoLand run configurations (profile + sessions).
+.dsh-home/
+
+# UI package build inputs/outputs that are reproducible.
+vexnar/ui/node_modules/
+vexnar/ui/lib/client.cjs

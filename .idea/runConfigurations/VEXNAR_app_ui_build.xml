@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="VEXNAR app · build UI cards" type="js.build_tools.npm" factoryName="npm">
+    <package-json value="$PROJECT_DIR$/app/vexnar/ui/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="build" />
+    </scripts>
+    <node-interpreter value="project" />
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>
