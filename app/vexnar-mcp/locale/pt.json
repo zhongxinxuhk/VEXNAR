@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Ferramentas MCP do VEXNAR",
+    "description": "Registra o endpoint MCP do serviço Go do VEXNAR no dsh, para que as ferramentas de tarefas, achados, ativos e tráfego apareçam como mcp__vexnar__* na frota MCP compartilhada. Desativar o plugin remove o servidor e suas ferramentas.",
+    "detail": "docs/DETAIL.md"
+  }
+}

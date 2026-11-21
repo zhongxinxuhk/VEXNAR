@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Herramientas MCP de VEXNAR",
+    "description": "Registra el punto de conexión MCP del servicio Go de VEXNAR en dsh, de modo que las herramientas de tareas, hallazgos, activos y tráfico aparecen como mcp__vexnar__* en la flota MCP compartida. Al desactivar el plugin se retiran el servidor y sus herramientas.",
+    "detail": "docs/DETAIL.md"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Outils MCP VEXNAR",
+    "description": "Enregistre le point de terminaison MCP du service Go VEXNAR dans dsh : les outils de tâches, constats, actifs et trafic apparaissent en mcp__vexnar__* dans la flotte MCP partagée. Désactiver le plugin retire le serveur et ses outils.",
+    "detail": "docs/DETAIL.md"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "VEXNAR MCP tools",
+    "description": "Registers the VEXNAR Go service's MCP endpoint with dsh, so the agent's task, finding, asset and traffic tools come from VEXNAR as mcp__vexnar__* tools in the shared MCP fleet. Turn the plugin off to withdraw the server and its tools.",
+    "detail": "docs/DETAIL.md"
+  }
+}

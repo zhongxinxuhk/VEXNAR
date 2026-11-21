@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "VEXNAR-MCP-Werkzeuge",
+    "description": "Registriert den MCP-Endpunkt des VEXNAR-Go-Dienstes bei dsh, sodass die Werkzeuge für Aufgaben, Funde, Assets und Traffic als mcp__vexnar__* in der gemeinsamen MCP-Serverliste erscheinen. Ausschalten des Plugins entfernt Server und Werkzeuge.",
+    "detail": "docs/DETAIL.md"
+  }
+}

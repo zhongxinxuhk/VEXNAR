@@ -1,0 +1,21 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Registers the VEXNAR Go service's MCP endpoint with dsh's own MCP plane.
+#
+# No `mcp-manager` row is overridden here on purpose: a patch that matches the
+# manager replaces its complete `servers` map, which would drop the servers the
+# user added through Settings. This row instead contributes one server through
+# `ctx.mcpManager.register()`, so the fleet stays the manager's single source of
+# truth and the registration lives exactly as long as this plugin does.
+- insert:
+    - id: vexnar-mcp
+      name: '@vexnar/dsh-vexnar-mcp'
+      config:
+        serverName: vexnar
+        url: http://127.0.0.1:8787/mcp
+        tokenFile: /Users/xuzhongxin/GolandProjects/HKXsec VEXNAR/data/mcp.token
+        tokenEnv: VEXNAR_MCP_TOKEN
+        startupTimeoutMs: 20000
+        toolCallTimeoutMs: 60000

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "VEXNAR MCP ツール",
+    "description": "VEXNAR Go サービスの MCP エンドポイントを dsh に登録し、タスク・検出・資産・通信のツールを共有 MCP フリートに mcp__vexnar__* として並べます。プラグインを無効にするとサーバーとツールは取り外されます。",
+    "detail": "docs/DETAIL.md"
+  }
+}
