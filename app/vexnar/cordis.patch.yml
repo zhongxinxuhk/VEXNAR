@@ -22,10 +22,10 @@
         baseURL: http://127.0.0.1:8787/api/desktop/openai/v1
         headers:
           X-VEXNAR-Desktop-Token: !!js "process.env.VEXNAR_DESKTOP_TOKEN || ''"
-        # Replace the id (and limits) with what GET /api/desktop/openai/v1/models
-        # reports for the active Go LLM profile.
+        # Replace the id with what GET /api/desktop/openai/v1/models reports for
+        # the active Go LLM profile (deepsec-flash is the local default).
         models:
-          - id: vexnar-default
+          - id: deepsec-flash
             name: VEXNAR Default
             contextWindow: 200000
             maxTokens: 32000
