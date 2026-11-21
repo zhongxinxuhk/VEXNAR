@@ -48790,7 +48790,12 @@ var prefixes = [
   "/api/intercept",
   "/api/yak/history"
 ];
+var coreTraffic = ["/api/traffic/capture", "/api/traffic/ingest"];
+function isCoreTraffic(path) {
+  return coreTraffic.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
 function isGoDataRequest(method, path) {
+  if (isCoreTraffic(path)) return false;
   if (routes.has(`${method} ${path}`)) return true;
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }

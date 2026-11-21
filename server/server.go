@@ -2841,7 +2841,23 @@ func csvValues(s string) []string {
 func (s *Server) activity(w http.ResponseWriter, r *http.Request) {
 	t := s.m.ResolveTask(r.URL.Query().Get("task"))
 	if t == nil {
-		writeJSON(w, 200, map[string]any{"items": []any{}, "cursor": 0})
+		// No task → the station-wide feed (console overview's activity card).
+		// The per-task reader cannot answer this shape, and an empty list made the
+		// card permanent blank while the activity table was full.
+		before := int64(atoiDefault(r.URL.Query().Get("before"), 0))
+		limit := atoiDefault(r.URL.Query().Get("limit"), 100)
+		items, snapshot, hasMore, err := s.m.pg.ActivityFeed(before, limit)
+		if err != nil {
+			log.Printf("[activity] feed before=%d limit=%d: %v", before, limit, err)
+			writeErr(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, 200, map[string]any{
+			"items":    activityDTOs(items),
+			"cursor":   snapshot,
+			"snapshot": snapshot,
+			"has_more": hasMore,
+		})
 		return
 	}
 	since := int64(atoiDefault(r.URL.Query().Get("since"), 0))

@@ -1215,7 +1215,7 @@ export function OverviewPanel(): ReactNode {
         <Stat
           tone="green"
           icon="activity"
-          label="流量交互"
+          label="抓包流量"
           value={fmtInt(view.trafficTotal)}
           band={<CodeBar codes={view.codes} total={data.traffic.length} />}
           footer={(
