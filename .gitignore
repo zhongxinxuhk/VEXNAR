@@ -24,6 +24,9 @@ web/next-env.d.ts
 .playwright-mcp/
 .playwright-cli/
 
+# agent worktrees live inside the repository (see AGENTS.md, multi-agent branch workflow)
+.worktrees/
+
 # JetBrains / GoLand / RustRover：共享 runConfigurations 与项目设置，只忽略本机文件
 **/.idea/workspace.xml
 **/.idea/tasks.xml

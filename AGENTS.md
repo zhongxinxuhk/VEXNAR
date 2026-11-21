@@ -14,8 +14,9 @@ command, network, MCP, plugin, or SCNet permissions.
 - Run the required checks for each independently complete increment. Commit the focused changes
   locally as soon as those checks pass and before beginning the next increment.
 - Before reporting a completed feature, review the task branch and integrate its verified commits into
-  local `main`. Prefer a fast-forward when possible. Resolve in-scope conflicts and validate the
-  resulting tree. Delete the merged local task branch after verifying that `main` contains its work.
+  local `main` with `git merge --no-ff <type>/<topic>`. Never a fast-forward: history must keep one
+  visible merge commit per problem. Resolve in-scope conflicts and validate the resulting tree.
+  Delete the merged local task branch after verifying that `main` contains its work.
 - Preserve unrelated changes and active worktrees. If integration is blocked by ongoing work or
   required checks that failed or were skipped, report the exact blocker.
 - For desktop changes, distinguish the integrated source from the running app. When validating a
@@ -31,13 +32,18 @@ what keep that work mergeable; a copied tree silently forks it.
 - Every feature, fix or chore starts on its own branch off the current `main`
   (`git switch -c <type>/<topic>`, `type` ∈ feat/fix/chore/docs/refactor/test) before the first
   edit. One branch carries one problem, so it can be reverted on its own.
-- A finished branch is committed, integrated into local `main` as described in "Commit and merge
-  completed changes", verified there, and then deleted (`git branch -d`). Do not leave finished
+- A finished branch is committed, then integrated into local `main` exactly as
+  `git switch main && git merge --no-ff <type>/<topic>`, validated on `main`, and deleted
+  (`git branch -d`). `--no-ff` is mandatory, not a preference: the merge commit is what records which
+  problem the change belongs to, even when a fast-forward would be possible. Do not leave finished
   branches behind for someone else to clean up.
 - Never copy, clone or export the project, or a subtree of it, into another directory and develop
   there. Work done outside this repository has no branch, no shared history and no merge path, so
-  it silently drops or reverts other agents' changes. If a separate checkout is genuinely needed,
-  use `git worktree add` against this same repository so branch and history stay shared.
+  it silently drops or reverts other agents' changes. A separate checkout is allowed only as a git
+  worktree of this same repository, created inside the repository at `.worktrees/<topic>`:
+  `git worktree add .worktrees/<topic> -b <type>/<topic> main` (`.worktrees/` is git-ignored).
+  Worktrees outside the repository — `/tmp`, `~`, another project directory — are not permitted; an
+  existing one is moved under `.worktrees/` or retired only with its owner's confirmation.
 - Do not commit feature work directly on `main`, and do not rewrite or force-push shared branches.
 - If integration is blocked — conflict with another agent's in-flight work, or required checks that
   failed or were skipped — stop and report the blocker instead of working around it in a copied
