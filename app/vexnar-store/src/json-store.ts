@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { assetRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
+import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store } from './types.js'
 
 /**
  * dsh-style JSON store: one inspectable file per table under the store root,
@@ -16,7 +16,8 @@ export function jsonStore(root: string): Store {
     findings: join(root, 'findings.json'),
     assets: join(root, 'assets.json'),
     nodes: join(root, 'nodes.json'),
-    edges: join(root, 'edges.json')
+    edges: join(root, 'edges.json'),
+    companies: join(root, 'companies.json')
   }
   const cache: Record<string, any[] | undefined> = {}
 
@@ -97,6 +98,9 @@ export function jsonStore(root: string): Store {
         for (const row of rows) out[row.type] = (out[row.type] ?? 0) + 1
         return out
       }
+    },
+    companies: {
+      list: async () => [...(await load('companies', companyRow))]
     },
     nodes: {
       page: async ({ taskId, page, size, order = 'desc', kinds = [], states = [] }) => {

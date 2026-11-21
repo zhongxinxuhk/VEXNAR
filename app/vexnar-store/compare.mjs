@@ -54,8 +54,14 @@ const [busiest] = (await pg.pool.query(`SELECT t.id::text AS id FROM tasks t JOI
 if (busiest) {
   const a = await pg.nodes.page({ taskId: busiest.id, page: 1, size: 100, order: 'asc' })
   const b = await json.nodes.page({ taskId: busiest.id, page: 1, size: 100, order: 'asc' })
-  check('nodes page equal', same(a, b), `${busiest.id} ${JSON.stringify(diff(canon(a), canon(b)).slice(0,2))}`)
+  const sortEdges = (rows) => [...rows].sort((x, y) => `${x.src}>${x.dst}:${x.rel}`.localeCompare(`${y.src}>${y.dst}:${y.rel}`))
+  const norm = (page) => ({ ...page, edges: sortEdges(page.edges) })
+  check('nodes page equal', same(norm(a), norm(b)), `${busiest.id} ${JSON.stringify(diff(canon(norm(a)), canon(norm(b))).slice(0,2))}`)
 }
+
+const pgCompanies = await pg.companies.list()
+const jsonCompanies = await json.companies.list()
+check('companies equal', same(pgCompanies, jsonCompanies))
 
 const pgStats = await pg.findings.stats()
 const jsonStats = await json.findings.stats()

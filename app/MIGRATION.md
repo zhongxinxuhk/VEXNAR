@@ -278,7 +278,7 @@ tools.calls、stats.tasks 等契约细节。
 （可读、原子写、zod 校验），PostgreSQL 降级为可选适配器。`app/vexnar-store` 已实现
 两种后端，并从现有 PG 导入后逐项对比：tasks/findings/assets/nodes/stats **6/6 一致**。
 存储的域划分、写链/事务/索引边界与性能预算见 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。
-M1（meta 域）已完成：元数据 10 个端点走 `meta.json`，对账 12/12。
+M1（meta 域）已完成；companies 也已进 store，core 的 20 个读端点不再直连 PG，对账 12/12 + 6/6。
 
 `vexnar-core` 已切到该 store：领域读端点（tasks/assets/findings/nodes/stats/counts）
 默认走 JSON，PG 仅作为可选适配器；与 Go 的领域对账 **6/6 PASS**，元数据端点仍保持

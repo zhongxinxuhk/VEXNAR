@@ -2,7 +2,15 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from 'hono'
-import { db, parseJson, rfc3339, sql, unix } from './db.js'
+/** JSONB columns arrive as objects from the store and as strings from legacy rows. */
+function parseJson(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return value
+  }
+}
 import { metaStore, openStore, storeRoot } from '../../vexnar-store/src/index.ts'
 
 const store = await openStore()
@@ -37,45 +45,7 @@ api.get('/api/task-categories', async (c) => c.json({ categories: await meta.tab
 
 api.get('/api/task-templates', async (c) => c.json({ templates: await meta.table('taskTemplates') }))
 
-api.get('/api/companies', async (c) => {
-  const rows = await db
-    .selectFrom('companies as co')
-    .select(['co.id', 'co.name', 'co.nkey'])
-    .select([sql<string>`co.created_at::text`.as('created_text'), sql<string>`co.updated_at::text`.as('updated_text')])
-    .select((eb) => eb.selectFrom('assets').select(sql<number>`count(*)::int`).whereRef('assets.company_id', '=', 'co.id').as('asset_count'))
-    .orderBy('co.name')
-    .execute()
-  const scopes = await db
-    .selectFrom('company_scope')
-    .select(['id', 'company_id', 'kind', 'domain', 'net', 'value', 'raw', 'reason'])
-    .execute()
-  const byCompany = new Map<number, unknown[]>()
-  for (const scope of scopes) {
-    const list = byCompany.get(Number(scope.company_id)) ?? []
-    list.push({
-      id: Number(scope.id),
-      company_id: Number(scope.company_id),
-      kind: scope.kind,
-      ...(scope.domain ? { domain: scope.domain } : {}),
-      ...(scope.net ? { net: scope.net } : {}),
-      ...(scope.value ? { value: scope.value } : {}),
-      raw: scope.raw,
-      ...(scope.reason ? { reason: scope.reason } : {})
-    })
-    byCompany.set(Number(scope.company_id), list)
-  }
-  return c.json(
-    rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      nkey: row.nkey,
-      created_at: row.created_text,
-      updated_at: row.updated_text,
-      scope: byCompany.get(Number(row.id)) ?? [],
-      asset_count: Number(row.asset_count ?? 0)
-    }))
-  )
-})
+api.get('/api/companies', async (c) => c.json(await store.companies.list()))
 
 // ── tools / mcp / notify / settings (vexnar-meta) ────────────────────────
 api.get('/api/tools', async (c) => {
