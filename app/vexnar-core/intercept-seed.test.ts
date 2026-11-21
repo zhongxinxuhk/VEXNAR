@@ -18,11 +18,41 @@ const { register } = await import('./src/routes/intercept.ts')
 const api = new Hono()
 register(api)
 
-const results = []
-const check = (name, ok, detail = '') => results.push({ name, ok, detail })
-const getJson = async (path) => (await api.request(path)).json()
+/** 拦截规则一行；接口与迁移源共用同一形状。 */
+type RuleRow = {
+  id: number
+  name: string
+  enabled: boolean
+  priority: number
+  match_target: string
+  match_type: string
+  pattern: string
+  action: string
+  message?: string
+  timeout_enabled: boolean
+  timeout_seconds: number
+  timeout_action: string
+  created_at?: string
+  updated_at?: string
+}
+type RulesBody = { rules: RuleRow[] }
+/** 增删改的响应：只声明断言真正读的字段。 */
+type MutationBody = {
+  id?: number
+  name?: string
+  enabled?: boolean
+  action?: string
+  timeout_seconds?: number
+  deleted?: number
+  error?: unknown
+}
 
-const pgRow = (over) => ({
+type CheckResult = { name: string; ok: boolean; detail: string }
+const results: CheckResult[] = []
+const check = (name: string, ok: boolean, detail = ''): number => results.push({ name, ok, detail })
+const getJson = async <T = RulesBody>(path: string): Promise<T> => (await api.request(path)).json() as T
+
+const pgRow = (over: Partial<RuleRow>) => ({
   id: 1,
   name: '[内置] 递归强制删除 rm -rf',
   enabled: false,
@@ -60,7 +90,7 @@ const pgRows = [
 let outcome = await ensureInterceptRulesSeeded(async () => pgRows)
 check('迁移来源 = postgres，条数 3', outcome.seeded === 3 && outcome.source === 'postgres', JSON.stringify(outcome))
 
-let list = await getJson('/api/intercept/rules')
+let list = await getJson<RulesBody>('/api/intercept/rules')
 check('接口按优先级读出迁移结果', list.rules.length === 3 && list.rules[0].id === 7, JSON.stringify(list.rules.map((r) => r.id)))
 check(
   '启用/禁用位原样保留（含默认关闭的那条）',
@@ -81,14 +111,14 @@ check(
 outcome = await ensureInterceptRulesSeeded(async () => {
   throw new Error('不该再读 PostgreSQL')
 })
-list = await getJson('/api/intercept/rules')
+list = await getJson<RulesBody>('/api/intercept/rules')
 check('二次调用直接跳过', outcome.source === 'done' && outcome.seeded === 0, JSON.stringify(outcome))
 check('二次调用没有重复行', list.rules.length === 3, String(list.rules.length))
 
 // ── 迁移后删光规则：不再被重新种回来 ───────────────────────────────────────
 for (const rule of list.rules) await api.request(`/api/intercept/rules/${rule.id}`, { method: 'DELETE' })
 outcome = await ensureInterceptRulesSeeded(async () => pgRows)
-list = await getJson('/api/intercept/rules')
+list = await getJson<RulesBody>('/api/intercept/rules')
 check('删光后不会被复活', outcome.source === 'done' && list.rules.length === 0, JSON.stringify({ outcome, rules: list.rules.length }))
 
 // ── 迁移源不可用时退回内置种子 ─────────────────────────────────────────────
@@ -96,7 +126,7 @@ await meta.save({ ...(await meta.load()), intercept_rules: [], intercept_seed: [
 outcome = await ensureInterceptRulesSeeded(async () => {
   throw new Error('connect ECONNREFUSED 127.0.0.1:7432')
 })
-list = await getJson('/api/intercept/rules')
+list = await getJson<RulesBody>('/api/intercept/rules')
 check('PG 连不上时用内置种子', outcome.source === 'builtin' && outcome.seeded === 20, JSON.stringify(outcome))
 check('内置种子写入后有 19 条启用', list.rules.filter((rule) => rule.enabled).length === 19, String(list.rules.filter((rule) => rule.enabled).length))
 check('内置规则可按优先级排序读出', list.rules[0].priority === 100 && list.rules[list.rules.length - 1].priority === 80, JSON.stringify(list.rules.map((r) => r.priority)))
@@ -109,7 +139,7 @@ const created = await (await api.request('/api/intercept/rules', {
     name: '迁移后新增', enabled: true, priority: 70, match_target: 'tool_tool', match_type: 'string',
     pattern: 'x', action: 'deny', message: '', timeout_enabled: false, timeout_seconds: 60, timeout_action: 'deny'
   })
-})).json()
+})).json() as MutationBody
 check('迁移后新增被校验拦住（match_target 非法）', created.error != null, JSON.stringify(created))
 
 const ok = await (await api.request('/api/intercept/rules', {
@@ -119,12 +149,12 @@ const ok = await (await api.request('/api/intercept/rules', {
     name: '迁移后新增', enabled: true, priority: 70, match_target: 'tool_input', match_type: 'string',
     pattern: 'example.com', action: 'deny', message: '', timeout_enabled: false, timeout_seconds: 60, timeout_action: 'deny'
   })
-})).json()
+})).json() as MutationBody
 check('迁移后新增 id 接在最大值之后', ok.id === 21, JSON.stringify({ id: ok.id }))
 
 const toggled = await (await api.request(`/api/intercept/rules/${ok.id}/toggle`, {
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ enabled: false })
-})).json()
+})).json() as MutationBody
 check('迁移后启停可用', toggled.enabled === false, JSON.stringify(toggled))
 
 const updated = await (await api.request(`/api/intercept/rules/${ok.id}`, {
@@ -134,10 +164,10 @@ const updated = await (await api.request(`/api/intercept/rules/${ok.id}`, {
     name: '迁移后改名', enabled: true, priority: 65, match_target: 'tool_name', match_type: 'regex',
     pattern: '^Bash$', action: 'ask', message: '确认', timeout_enabled: true, timeout_seconds: 30, timeout_action: 'allow'
   })
-})).json()
+})).json() as MutationBody
 check('迁移后编辑可用', updated.name === '迁移后改名' && updated.action === 'ask' && updated.timeout_seconds === 30, JSON.stringify(updated))
 
-const removed = await (await api.request(`/api/intercept/rules/${ok.id}`, { method: 'DELETE' })).json()
+const removed = await (await api.request(`/api/intercept/rules/${ok.id}`, { method: 'DELETE' })).json() as MutationBody
 check('迁移后删除可用', removed.deleted === ok.id, JSON.stringify(removed))
 
 // ── 汇总 ───────────────────────────────────────────────────────────────────

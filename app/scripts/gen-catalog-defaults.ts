@@ -11,7 +11,7 @@
  * This script turns a dump of the Go-side catalog into that module; rerun it
  * whenever the Go seed catalog changes, so the two never drift silently.
  *
- *   node app/scripts/gen-catalog-defaults.mjs --from <dump.json> [--out <file>]
+ *   tsx app/scripts/gen-catalog-defaults.ts --from <dump.json> [--out <file>]
  *
  * `<dump.json>` is `{ "tools": [...], "mcp": [...] }` — the `tools` / `mcp`
  * tables of a store that still carries the Go catalog (a `meta.json` works:
@@ -27,8 +27,12 @@ const out = join(repo, 'app', 'vexnar-core', 'src', 'catalog', 'defaults.ts')
 /** Only these tables become defaults; everything else in a store is user data. */
 const TOOL_FIELDS = ['key', 'description', 'schema', 'agents', 'enabled', 'kind', 'exec', 'deferred']
 
-function parseArgs(argv) {
-  const args = { from: '', out, meta: false }
+/** 一行目录数据：来自 store 的 JSON，字段按需读取，不假设形状。 */
+type CatalogRow = Record<string, unknown>
+type Args = { from: string; out: string; meta: boolean }
+
+function parseArgs(argv: string[]): Args {
+  const args: Args = { from: '', out, meta: false }
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i]
     if (flag === '--from') args.from = argv[++i]
@@ -40,20 +44,20 @@ function parseArgs(argv) {
   return args
 }
 
-function loadTables(file, metaFile) {
-  const raw = JSON.parse(readFileSync(file, 'utf8'))
+function loadTables(file: string, metaFile: boolean): { tools: CatalogRow[]; mcp: CatalogRow[] } {
+  const raw = JSON.parse(readFileSync(file, 'utf8')) as { tables?: Record<string, unknown> } & Record<string, unknown>
   const tables = metaFile ? raw.tables ?? {} : raw
-  const tools = Array.isArray(tables.tools) ? tables.tools : []
-  const mcp = Array.isArray(tables.mcp) ? tables.mcp : []
+  const tools: CatalogRow[] = Array.isArray(tables.tools) ? (tables.tools as CatalogRow[]) : []
+  const mcp: CatalogRow[] = Array.isArray(tables.mcp) ? (tables.mcp as CatalogRow[]) : []
   return { tools, mcp }
 }
 
 /** 系统工具才是「默认」；用户建的自定义工具留在库里，不进默认。 */
-function defaultTools(rows) {
+function defaultTools(rows: readonly CatalogRow[]): Record<string, unknown>[] {
   return rows
     .filter((row) => row && row.system === true && typeof row.key === 'string' && row.key)
-    .map((row) => {
-      const out = {}
+    .map((row): Record<string, unknown> => {
+      const out: Record<string, unknown> = {}
       for (const field of TOOL_FIELDS) {
         if (row[field] !== undefined) out[field] = row[field]
       }
@@ -67,7 +71,7 @@ function defaultTools(rows) {
 }
 
 /** 测试残留（key/name 带随机后缀的临时 server）不是默认的一部分。 */
-function defaultServers(rows) {
+function defaultServers(rows: readonly CatalogRow[]): Record<string, unknown>[] {
   return rows
     .filter((row) => row && typeof row.name === 'string' && row.name && !/^vexnar-test-/.test(row.name))
     .map((row) => ({
@@ -83,7 +87,7 @@ function defaultServers(rows) {
     .sort((a, b) => String(a.name).localeCompare(String(b.name)))
 }
 
-function json(value, indent) {
+function json(value: unknown, indent: string): string {
   return JSON.stringify(value, null, 2).split('\n').join(`\n${indent}`)
 }
 
@@ -103,7 +107,7 @@ const body = `// Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
  * 工具与 MCP 的注册表已经从 Go 服务迁到 TypeScript core：路由、存储、发现都在
  * 这边，缺的只是「出厂默认」——一份写在代码里、可以在空库上重新注册回来的清单。
  * 内容来自 Go 侧目录（${toolDefaults.length} 个系统工具、${serverDefaults.length} 个 MCP server），
- * 由 \`app/scripts/gen-catalog-defaults.mjs\` 生成；Go 侧的种子变了就重跑一次，
+ * 由 \`app/scripts/gen-catalog-defaults.ts\` 生成；Go 侧的种子变了就重跑一次，
  * 不要在这个文件里手改。
  */
 
