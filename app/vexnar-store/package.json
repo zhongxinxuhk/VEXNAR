@@ -16,7 +16,8 @@
     "test:tools": "tsx test-tools.mjs",
     "test:blobs": "tsx test-blobs.mjs",
     "test:orchestration": "tsx test-orchestration.mjs",
-    "test:triggers": "tsx test-triggers.mjs"
+    "test:triggers": "tsx test-triggers.mjs",
+    "test:schedules": "tsx test-schedules.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",

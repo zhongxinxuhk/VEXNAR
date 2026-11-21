@@ -1237,6 +1237,15 @@ export function storeOperations(root: string) {
     return written
   }
 
+  async function markScheduleFired(id: string, nextIso: string) {
+    const current = await writer.readRecord('schedules', id)
+    if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
+    const next = { ...current, last_fired_at: rfc3339(new Date()), next_fire_at: nextIso }
+    delete next.rev
+    const [written] = await writer.commit([{ table: 'schedules', key: id, record: next, expectedRev: Number(current.rev ?? 0) }])
+    return written
+  }
+
   async function deleteSchedule(id: string) {
     const current = await writer.readRecord('schedules', id)
     if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
@@ -1244,5 +1253,5 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, createSchedule, updateSchedule, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  return { writer, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }
