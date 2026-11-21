@@ -83,7 +83,7 @@ test('apply registers every surface it owns', () => {
     'tool.call.toolview:mcp__vexnar__traffic_get',
     'conversation.session.header.actions:vexnar-yak-history',
     'conversation.hero.options:vexnar-yak-history',
-    ...['overview', 'workbench', 'traffic']
+    ...['overview', 'tasks', 'traffic']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
     ...['agents', 'tools-mcp', 'notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
@@ -105,12 +105,12 @@ test('obsolete sidebar and settings entries are absent', () => {
     },
     effect: (fn) => fn()
   })
-  for (const gone of ['vexnar-tasks', 'vexnar-findings', 'vexnar-tool-run', 'vexnar-logs',
+  for (const gone of ['vexnar-findings', 'vexnar-tool-run', 'vexnar-logs', 'vexnar-workbench',
     'vexnar-mcp', 'vexnar-tools', 'vexnar-asset-sync', 'vexnar-assets', 'vexnar-approvals']) {
     assert.equal(ids.some((id) => id.endsWith(`:${gone}`)), false,
-      `${gone} must no longer register a panel or settings section`)
+      `${gone} must no longer register a panel or settings section: 发现 is a tab of 任务, 工具执行 lives in the task detail`)
   }
-  assert.ok(ids.includes('sidebar.panellist:vexnar-workbench'), 'the workbench must own the sidebar entry')
+  assert.ok(ids.includes('sidebar.panellist:vexnar-tasks'), 'the task panel owns the sidebar entry')
   assert.ok(ids.includes('settings.section:vexnar-tools-mcp'), 'tools and MCP share one settings section')
 })
 

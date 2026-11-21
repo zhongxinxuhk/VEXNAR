@@ -422,28 +422,152 @@ function Dashboard() {
     h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, tasks.error || findings.error || assets.error || tokens.error || '数据来自本地核心'))
 }
 
-function TaskList({ onSelect, scope = '' }: { onSelect?: (id: string) => void; scope?: string }) {
-  const { data, error, loading } = useApi('/api/tasks')
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const all = data?.tasks ?? []
-  const rows = (scope ? all.filter((task: any) => String(task.id) === scope) : all).slice(0, 30)
-  return h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-    h('thead', null, h('tr', null, ['ID', '名称', '状态', '目标'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
-    h('tbody', null, rows.map((task: any) => h('tr', { key: task.id, onClick: () => onSelect?.(String(task.id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
-      h('td', { style: { padding: '6px 8px' } }, task.id),
-      h('td', { style: { padding: '6px 8px' } }, task.name || '—'),
-      h('td', { style: { padding: '6px 8px' } }, task.status),
-      h('td', { style: { padding: '6px 8px', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, task.goal)))))
+const PAGE_SIZE = 20
+
+const TASK_STATUS_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ['created', '待启动'],
+  ['queued', '排队'],
+  ['running', '运行中'],
+  ['paused', '暂停'],
+  ['done', '完成'],
+  ['failed', '失败'],
+  ['timeout', '超时']
+]
+
+const SEVERITY_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ['critical', '严重'],
+  ['high', '高危'],
+  ['medium', '中危'],
+  ['low', '低危']
+]
+
+const FINDING_STATUS_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ['pending', '待处理'],
+  ['in_progress', '处理中'],
+  ['confirmed', '已确认'],
+  ['resolved', '已处理'],
+  ['fixed', '已修复'],
+  ['false_positive', '误报'],
+  ['ignored', '忽略'],
+  ['duplicate', '重复'],
+  ['risk_accepted', '风险接受']
+]
+
+function labelOf(table: ReadonlyArray<readonly [string, string]>, value: unknown): string {
+  const key = String(value ?? '')
+  return table.find(([id]) => id === key)?.[1] ?? (key || '—')
 }
 
-function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
+/** 一个任务行的发现总数（按严重度分布合计）。 */
+function findingCount(task: any): number {
+  const f = task?.findings ?? {}
+  return Number(f.critical ?? 0) + Number(f.high ?? 0) + Number(f.medium ?? 0) + Number(f.low ?? 0)
+}
+
+function Toolbar({ children }: { children?: ReactNode }) {
+  return h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 } }, children)
+}
+
+function Pager({ page, pageCount, total, unit, onPage }: {
+  page: number
+  pageCount: number
+  total: number
+  unit: string
+  onPage: (next: number) => void
+}) {
+  if (pageCount <= 1) {
+    return h('div', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginTop: 8 } }, `共 ${total} ${unit}`)
+  }
+  return h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 12 } },
+    h('button', { type: 'button', disabled: page <= 0, onClick: () => onPage(page - 1) }, '上一页'),
+    h('span', null, `${page + 1} / ${pageCount} · 共 ${total} ${unit}`),
+    h('button', { type: 'button', disabled: page + 1 >= pageCount, onClick: () => onPage(page + 1) }, '下一页'))
+}
+
+/**
+ * 任务清单：core 的 /api/tasks 一次返回全部任务（与 Go 的 listTasks 一致），
+ * 所以筛选与分页在客户端做，不额外造后端参数。
+ */
+function TaskList({ onOpen }: { onOpen: (id: string) => void }) {
+  const { data, error, loading } = useApi('/api/tasks')
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState('all')
+  const [page, setPage] = useState(0)
+  if (loading) return h('div', null, '加载中…')
+  if (error) return h('div', { role: 'alert', style: { color: '#dc2626' } }, error)
+
+  const needle = query.trim().toLowerCase()
+  const all: any[] = data?.tasks ?? []
+  const rows = all
+    .filter((task: any) => status === 'all' || String(task.status) === status)
+    .filter((task: any) => !needle || [task.id, task.name, task.description, task.goal]
+      .some((value) => String(value ?? '').toLowerCase().includes(needle)))
+    .sort((a: any, b: any) => Number(b.id) - Number(a.id))
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
+  const current = Math.min(page, pageCount - 1)
+  const visible = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE)
+
+  return h('div', null,
+    h(Toolbar, null,
+      h('input', {
+        placeholder: '搜索 ID / 名称 / 描述 / 目标',
+        value: query,
+        onChange: (event: any) => { setQuery(event.target.value); setPage(0) },
+        style: { minWidth: 260 }
+      }),
+      h('select', {
+        'aria-label': '任务状态',
+        value: status,
+        onChange: (event: any) => { setStatus(event.target.value); setPage(0) }
+      },
+        h('option', { key: 'all', value: 'all' }, '全部状态'),
+        TASK_STATUS_LABELS.map(([value, label]) => h('option', { key: value, value }, label))),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)', marginLeft: 'auto' } },
+        `${rows.length} / ${all.length} 个任务`)),
+    rows.length === 0
+      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '没有符合条件的任务。')
+      : h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+          h('thead', null, h('tr', null,
+            ['ID', '名称', '状态', '目标', '发现', '在途', '最近活动'].map((title) => h('th', {
+              key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' }
+            }, title)))),
+          h('tbody', null, visible.map((task: any) => h('tr', {
+            key: task.id, onClick: () => onOpen(String(task.id)), style: { cursor: 'pointer' }
+          },
+            h('td', { style: { padding: '6px 8px', fontFamily: 'var(--vx-mono)' } }, task.id),
+            h('td', { style: { padding: '6px 8px', maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+              task.name || task.description || '未命名'),
+            h('td', { style: { padding: '6px 8px' } }, labelOf(TASK_STATUS_LABELS, task.status)),
+            h('td', { style: { padding: '6px 8px', fontSize: 12, color: 'var(--vx-text-dim)' } },
+              `${task.goals_met ?? 0}/${task.goals_total ?? 0}`),
+            h('td', { style: { padding: '6px 8px' } },
+              `${findingCount(task)}`,
+              findingCount(task) > 0 ? h('span', {
+                style: { marginLeft: 6, fontSize: 11, color: 'var(--vx-negative)' }
+              }, `严重 ${task.findings?.critical ?? 0} · 高 ${task.findings?.high ?? 0}`) : null),
+            h('td', { style: { padding: '6px 8px', fontSize: 12 } }, task.in_flight ? `${task.in_flight}` : '—'),
+            h('td', { style: { padding: '6px 8px', fontSize: 12, color: 'var(--vx-text-dim)' } },
+              task.last_activity_unix ? fmtAgo(task.last_activity_unix) : '—'))))),
+    h(Pager, { page: current, pageCount, total: rows.length, unit: '个任务', onPage: setPage }))
+}
+
+/**
+ * 任务详情：一个任务的全部上下文——目标、意图、节点、覆盖度，它的发现，以及它调过的
+ * 工具与执行记录。执行记录本来就属于任务的从属数据，所以它在这里，不占顶层页签。
+ */
+function TaskDetail({ id, onBack, onOpenFindings, onOpenFinding }: {
+  id: string
+  onBack: () => void
+  onOpenFindings?: (taskID: string) => void
+  onOpenFinding?: (findingID: string) => void
+}) {
   const [tick, setTick] = useState(0)
   const task = useApi(`/api/tasks/${id}`, [tick])
   const goals = useApi(`/api/tasks/${id}/goals`, [tick])
   const intents = useApi(`/api/exploration/intents?task=${id}&limit=40`, [tick])
   const coverage = useApi(`/api/tasks/${id}/coverage`, [tick])
   const nodes = useApi(`/api/exploration/nodes?task=${id}&size=20`, [tick])
+  const findings = useApi(`/api/exploration/findings?task_id=${encodeURIComponent(id)}&page=1&limit=20`, [tick, id])
 
   const act = async (action: 'pause' | 'resume' | 'archive') => {
     if (action === 'archive' && !window.confirm('归档后该任务将从列表移出，继续？')) return
@@ -462,6 +586,8 @@ function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
     h('div', { style: { fontSize: 12, fontWeight: 600, color: 'var(--vx-text-dim)', marginBottom: 6 } }, title), children)
   const list = (value: any): any[] => (Array.isArray(value) ? value : (value?.items ?? value?.goals ?? []))
   const goalRows = list(goals.data)
+  const findingRows: any[] = findings.data?.items ?? []
+  const findingTotal = Number(findings.data?.total ?? findingRows.length)
   const intentRows = list(intents.data)
   const nodeRows = list(nodes.data)
   const cover = coverage.data ?? {}
@@ -482,11 +608,32 @@ function TaskDetail({ id, onBack }: { id: string; onBack: () => void }) {
       h('span', { style: { fontSize: 18, fontWeight: 600 } }, String(row.description ?? row.name ?? id)),
       h('span', { className: 'vx-ov-pill' }, status === '' ? '未知' : status),
       h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, `${id} · 创建 ${fmtAgo(row.created_unix)} · 最近活动 ${fmtAgo(row.last_activity_unix)}`)),
-    h('div', { style: { display: 'flex', gap: 8, margin: '10px 0 16px' } },
+    h('div', { style: { display: 'flex', gap: 8, margin: '10px 0 16px', flexWrap: 'wrap' } },
       status === 'running' ? h('button', { type: 'button', onClick: () => act('pause'), style: { cursor: 'pointer' } }, '暂停') : null,
       status === 'paused' ? h('button', { type: 'button', onClick: () => act('resume'), style: { cursor: 'pointer' } }, '恢复') : null,
-      h('button', { type: 'button', onClick: () => act('archive'), style: { cursor: 'pointer' } }, '归档')),
+      h('button', { type: 'button', onClick: () => act('archive'), style: { cursor: 'pointer' } }, '归档'),
+      h('button', { type: 'button', onClick: () => setTick((value) => value + 1), style: { cursor: 'pointer' } }, '刷新'),
+      onOpenFindings ? h('button', {
+        type: 'button', onClick: () => onOpenFindings(id), style: { cursor: 'pointer' }
+      }, `在发现里查看（${findingRows.length}）`) : null),
     meta('目标', h('div', { style: { fontSize: 13, lineHeight: 1.6 } }, String(row.goal ?? '—'))),
+    meta(`发现（${findingRows.length}${findingTotal > findingRows.length ? ` / 共 ${findingTotal}` : ''}）`,
+      findingRows.length === 0
+        ? h('div', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '该任务还没有登记发现。')
+        : h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 } },
+            findingRows.map((finding: any) => h('div', {
+              key: String(finding.finding_id),
+              onClick: onOpenFinding ? () => onOpenFinding(String(finding.finding_id)) : undefined,
+              style: { display: 'flex', gap: 8, alignItems: 'baseline', cursor: onOpenFinding ? 'pointer' : 'default' }
+            },
+              h('span', { className: 'vx-ov-pill' }, labelOf(SEVERITY_LABELS, finding.severity)),
+              h('span', { style: { color: 'var(--vx-text-dim)', fontFamily: 'var(--vx-mono)' } }, finding.vulnclass ?? ''),
+              h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, finding.summary ?? ''),
+              h('span', { style: { color: 'var(--vx-text-faint)', fontSize: 11, marginLeft: 'auto' } },
+                labelOf(FINDING_STATUS_LABELS, finding.status)))))),
+    meta('工具执行', h('div', null,
+      h(ToolRunPage, { taskID: id }),
+      h('div', { style: { marginTop: 14 } }, h(ExecStream, { taskID: id })))),
     meta('统计', h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: 12 } },
       pills.map(([label, value]) => h('span', { key: label, style: { color: 'var(--vx-text-dim)' } },
         `${label} `, h('b', { style: { color: 'var(--vx-text)', fontWeight: 600 } }, value))))),
@@ -729,25 +876,88 @@ function PanelShell({ title, desc, children }: { title: string; desc?: string; c
     children ?? null)
 }
 
-function FindingList({ taskID = '', onSelect }: { taskID?: string; onSelect?: (id: string) => void }) {
-  // task_id 是任务身份（Go 与 core 都按它过滤），执行台把同一个范围带给三个页签。
-  const url = `/api/exploration/findings?page=1&limit=50${taskID ? `&task_id=${encodeURIComponent(taskID)}` : ''}`
+/** 发现清单：严重度 / 状态 / 任务 / 关键字筛选，分页由 core 的 page+limit 承担。 */
+function FindingsTab({ scope, onScope, onOpen }: {
+  scope: string
+  onScope: (taskID: string) => void
+  onOpen: (findingID: string) => void
+}) {
+  const tasks = useApi('/api/tasks')
+  const [severity, setSeverity] = useState('all')
+  const [status, setStatus] = useState('all')
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1) }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
+  if (scope) params.set('task_id', scope)
+  if (severity !== 'all') params.set('severity', severity)
+  if (status !== 'all') params.set('status', status)
+  if (query) params.set('q', query)
+  const url = `/api/exploration/findings?${params.toString()}`
   const { data, error, loading } = useApi(url, [url])
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = data?.items ?? []
+
+  const rows: any[] = data?.items ?? []
+  const total = Number(data?.total ?? 0)
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const options: any[] = tasks.data?.tasks ?? []
+
   return h('div', null,
-    h('div', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)', marginBottom: 8 } },
-      taskID ? `任务 #${taskID} · 共 ${data?.total ?? 0} 条` : `全部任务 · 共 ${data?.total ?? 0} 条`),
-    h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-      h('thead', null, h('tr', null, ['ID', '任务', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', { key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' } }, title)))),
-      h('tbody', null, rows.map((row: any) => h('tr', { key: row.finding_id, onClick: () => onSelect?.(String(row.finding_id)), style: { cursor: onSelect ? 'pointer' : 'default' } },
-        h('td', { style: { padding: '6px 8px' } }, row.finding_id),
-        h('td', { style: { padding: '6px 8px' } }, row.task_id ?? '—'),
-        h('td', { style: { padding: '6px 8px' } }, row.vulnclass),
-        h('td', { style: { padding: '6px 8px' } }, row.severity),
-        h('td', { style: { padding: '6px 8px' } }, row.status),
-        h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, row.summary))))))
+    h(Toolbar, null,
+      h('input', {
+        placeholder: '搜索摘要 / 证据 / 漏洞类',
+        value: search,
+        onChange: (event: any) => setSearch(event.target.value),
+        style: { minWidth: 240 }
+      }),
+      h('select', {
+        'aria-label': '严重度',
+        value: severity,
+        onChange: (event: any) => { setSeverity(event.target.value); setPage(1) }
+      },
+        h('option', { key: 'all', value: 'all' }, '全部严重度'),
+        SEVERITY_LABELS.map(([value, label]) => h('option', { key: value, value }, label))),
+      h('select', {
+        'aria-label': '处置状态',
+        value: status,
+        onChange: (event: any) => { setStatus(event.target.value); setPage(1) }
+      },
+        h('option', { key: 'all', value: 'all' }, '全部状态'),
+        FINDING_STATUS_LABELS.map(([value, label]) => h('option', { key: value, value }, label))),
+      h('select', {
+        'aria-label': '任务范围',
+        value: scope,
+        onChange: (event: any) => { onScope(event.target.value); setPage(1) }
+      },
+        h('option', { key: 'all', value: '' }, '全部任务'),
+        options.slice(0, 200).map((task: any) => h('option', { key: task.id, value: String(task.id) },
+          `${task.id} · ${task.name || task.description || '未命名'}`)))),
+    loading && rows.length === 0 ? h('div', null, '加载中…') : null,
+    error ? h('div', { role: 'alert', style: { color: '#dc2626' } }, error) : null,
+    !loading && !error && rows.length === 0
+      ? h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } },
+          scope ? `任务 #${scope} 下没有符合筛选条件的发现。` : '没有符合筛选条件的发现。')
+      : rows.length > 0 && h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
+          h('thead', null, h('tr', null,
+            ['ID', '任务', '漏洞类', '严重度', '状态', '摘要'].map((title) => h('th', {
+              key: title, style: { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--vx-border, #e5e7eb)' }
+            }, title)))),
+          h('tbody', null, rows.map((finding: any) => h('tr', {
+            key: finding.finding_id, onClick: () => onOpen(String(finding.finding_id)), style: { cursor: 'pointer' }
+          },
+            h('td', { style: { padding: '6px 8px', fontFamily: 'var(--vx-mono)' } }, finding.finding_id),
+            h('td', { style: { padding: '6px 8px', fontFamily: 'var(--vx-mono)', color: 'var(--vx-text-dim)' } }, finding.task_id ?? '—'),
+            h('td', { style: { padding: '6px 8px' } }, finding.vulnclass ?? ''),
+            h('td', { style: { padding: '6px 8px' } }, labelOf(SEVERITY_LABELS, finding.severity)),
+            h('td', { style: { padding: '6px 8px' } }, labelOf(FINDING_STATUS_LABELS, finding.status)),
+            h('td', { style: { padding: '6px 8px', maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+              finding.summary ?? ''))))),
+    h(Pager, { page: Math.min(page, pageCount) - 1, pageCount, total, unit: '条发现', onPage: (next) => setPage(next + 1) }))
 }
 
 function FindingDetail({ id, onBack }: { id: string; onBack: () => void }) {
@@ -784,70 +994,53 @@ function FindingDetail({ id, onBack }: { id: string; onBack: () => void }) {
         : h('pre', { style: { fontSize: 12, whiteSpace: 'pre-wrap', background: 'var(--vx-code, #f8fafc)', padding: 10, borderRadius: 8, maxHeight: 280, overflow: 'auto' } }, body.text)) : null)
 }
 
-type WorkbenchTab = 'tasks' | 'findings' | 'runs'
+type TasksTab = 'tasks' | 'findings'
 
-const WORKBENCH_TABS: ReadonlyArray<readonly [WorkbenchTab, string]> = [
+const TASKS_TABS: ReadonlyArray<readonly [TasksTab, string]> = [
   ['tasks', '任务'],
-  ['findings', '发现'],
-  ['runs', '工具执行']
+  ['findings', '发现']
 ]
 
 /**
- * 执行台：任务 / 发现 / 工具执行 三面合一。
+ * 任务面板：清单 + 发现两页签。
  *
- * 三个视图共用顶部那个任务范围，所以"看到某个任务 → 看它的发现 → 看它调过哪些工具"
- * 不用三次重新筛选。原先独立的「任务」「发现」「工具执行」入口和「日志」面板都并进
- * 这里：日志展示的就是工具执行页签里那份 activity 流，只是另一种视图。
+ * 任务是对象，发现是它的产出，两者共用一个「任务范围」；工具执行与执行记录属于任务的
+ * 从属数据，放在任务详情里（选中任务就能跑工具、看它调过什么），不占顶层页签。
  */
-function WorkbenchPanel() {
-  const tasks = useApi('/api/tasks')
-  const [tab, setTab] = useState<WorkbenchTab>('tasks')
-  const [taskID, setTaskID] = useState('')
+function TasksPanel() {
+  const [tab, setTab] = useState<TasksTab>('tasks')
   const [detailID, setDetailID] = useState('')
   const [findingID, setFindingID] = useState('')
-  const options: any[] = tasks.data?.tasks ?? []
-  const scoped = taskID !== ''
-  const pick = (id: string): void => { setTaskID(id); setDetailID(''); setFindingID('') }
+  const [scope, setScope] = useState('')
 
-  const tabButton = (id: WorkbenchTab, label: string): ReactNode =>
+  const tabButton = (id: TasksTab, label: string): ReactNode =>
     h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
+
+  const openFindings = (taskID: string): void => { setScope(taskID); setFindingID(''); setTab('findings') }
 
   let body: ReactNode
   if (tab === 'tasks') {
     body = detailID
-      ? h(TaskDetail, { id: detailID, onBack: () => setDetailID('') })
-      : h('div', null,
-          h(Dashboard),
-          h(TaskList, { scope: taskID, onSelect: (id: string) => { setDetailID(id); setTaskID(id) } }))
-  } else if (tab === 'findings') {
+      ? h(TaskDetail, {
+          id: detailID,
+          onBack: () => setDetailID(''),
+          onOpenFindings: openFindings,
+          onOpenFinding: (findingID: string) => { setFindingID(findingID); setTab('findings') }
+        })
+      : h('div', null, h(Dashboard), h(TaskList, { onOpen: (id: string) => setDetailID(id) }))
+  } else {
     body = findingID
       ? h(FindingDetail, { id: findingID, onBack: () => setFindingID('') })
-      : h(FindingList, { taskID, onSelect: setFindingID })
-  } else {
-    body = h('div', null,
-      h(ToolRunPage, { taskID }),
-      h('div', { style: { marginTop: 18 } },
-        scoped
-          ? h(ExecStream, { taskID })
-          : h('p', { style: { fontSize: 12, color: 'var(--vx-text-dim)', margin: 0 } },
-              '选一个任务即可看它的执行记录：planner / main 每一步，含工具调用与结果。')))
+      : h(FindingsTab, { scope, onScope: setScope, onOpen: setFindingID })
   }
 
-  return h(PanelShell, { title: '执行台', desc: '任务 / 发现 / 工具执行共用同一个任务范围' },
+  return h(PanelShell, { title: '任务', desc: '任务清单、发现，以及每个任务的执行记录' },
     h('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 } },
-      h('div', { className: 'vx-seg', role: 'group', 'aria-label': '执行台视图' },
-        WORKBENCH_TABS.map(([id, label]) => tabButton(id, label))),
-      h('select', {
-        key: 'scope',
-        'aria-label': '任务范围',
-        value: taskID,
-        onChange: (event: any) => pick(event.target.value),
-        style: { minWidth: 240 }
-      },
-        h('option', { key: 'all', value: '' }, '全部任务'),
-        options.slice(0, 100).map((task: any) => h('option', { key: task.id, value: String(task.id) },
-          `${task.id} · ${task.name || task.description || '未命名'}`))),
-      scoped ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, '三个视图共用这个任务范围') : null),
+      h('div', { className: 'vx-seg', role: 'group', 'aria-label': '任务视图' },
+        TASKS_TABS.map(([id, label]) => tabButton(id, label))),
+      tab === 'findings' && scope
+        ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, `任务范围 #${scope}`)
+        : null),
     body)
 }
 
@@ -882,10 +1075,10 @@ function InterceptSettings() {
   return h(PanelShell, { title: '拦截规则', desc: '工具输入/输出拦截（经 core 代理 Go）' }, h(InterceptPage))
 }
 
-// 侧边栏入口：执行台把任务/发现/工具执行收在一起，日志不再是独立页面。
+// 侧边栏入口：任务是对象视图（清单 + 发现），工具执行与执行记录在任务详情里。
 const PANELS = [
   { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
-  { id: 'vexnar-workbench', label: '执行台', order: 100, component: WorkbenchPanel },
+  { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
   { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel }
 ]
 
