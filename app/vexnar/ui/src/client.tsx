@@ -2,11 +2,12 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { createElement as h, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+import { installStyles } from './styles.js'
 
 /**
- * VEXNAR tool cards for the dsh web client.
+ * VEXNAR tool cards for the dsh client.
  *
  * Two keyed tool views render the domain tools the Go MCP bridge exposes:
  *   - mcp__vexnar__report_finding      → finding card
@@ -14,6 +15,10 @@ import type { CSSProperties, ReactNode } from 'react'
  *
  * Cards are presentation only: the payload is the tool result already recorded
  * in the session log, so nothing here refetches or re-derives domain state.
+ *
+ * Styling rules (see styles.ts): no colour literal reaches a component. Every
+ * value resolves through the `--vx-*` bridge into dsh's alias tokens, so the
+ * cards follow the shell's theme, font-size setting and dark mode.
  */
 
 const FINDING_TOOL = 'mcp__vexnar__report_finding'
@@ -27,34 +32,6 @@ interface ToolViewProps {
     isError?: boolean
     argsRaw?: string
   }
-}
-
-const palette = {
-  border: 'var(--dsw-alias-border-secondary, #e5e7eb)',
-  bg: 'var(--dsw-alias-bg-secondary, #f8fafc)',
-  text: 'var(--dsw-alias-label-primary, #111827)',
-  subtle: 'var(--dsw-alias-label-secondary, #6b7280)',
-  mono: 'ui-monospace, SFMono-Regular, Menlo, monospace'
-}
-
-const cardStyle: CSSProperties = {
-  border: `1px solid ${palette.border}`,
-  borderRadius: 10,
-  background: palette.bg,
-  padding: '10px 12px',
-  margin: '6px 0',
-  color: palette.text,
-  font: '13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-}
-
-const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }
-const chipStyle: CSSProperties = {
-  borderRadius: 999,
-  padding: '1px 8px',
-  fontSize: 11,
-  fontWeight: 600,
-  border: `1px solid ${palette.border}`,
-  background: '#fff'
 }
 
 function textOf(block: ToolViewProps['block']): string {
@@ -78,30 +55,67 @@ function jsonOf(text: string): Record<string, unknown> | null {
   }
 }
 
-function severityColor(severity: unknown): string {
-  switch (String(severity ?? '').toLowerCase()) {
+type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'none'
+
+const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: '严重',
+  high: '高危',
+  medium: '中危',
+  low: '低危',
+  info: '提示',
+  none: 'finding'
+}
+
+function severityOf(value: unknown): Severity {
+  switch (String(value ?? '').trim().toLowerCase()) {
     case 'critical':
-      return '#b91c1c'
+    case '严重':
+      return 'critical'
     case 'high':
-      return '#c2410c'
+    case '高危':
+      return 'high'
     case 'medium':
-      return '#a16207'
+    case '中危':
+      return 'medium'
     case 'low':
-      return '#15803d'
+    case '低危':
+      return 'low'
+    case 'info':
+      return 'info'
     default:
-      return palette.subtle as string
+      return 'none'
   }
 }
 
+function formatBytes(text: string): string {
+  const bytes = new TextEncoder().encode(text).length
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 function LoadingCard({ label }: { label: string }): ReactNode {
-  return h('div', { style: cardStyle }, h('div', { style: { ...rowStyle, color: palette.subtle } }, label))
+  return h(
+    'div',
+    { className: 'vx-card', 'data-phase': 'loading' },
+    h('span', { className: 'vx-loading' }, label)
+  )
+}
+
+function SeverityChip({ severity }: { severity: Severity }): ReactNode {
+  return h(
+    'span',
+    { className: `vx-chip vx-chip--sev vx-sev-${severity}` },
+    h('span', { className: 'vx-dot', 'aria-hidden': 'true' }),
+    SEVERITY_LABEL[severity]
+  )
 }
 
 export function FindingCard({ phase, block }: ToolViewProps): ReactNode {
   if (phase !== 'result') return h(LoadingCard, { label: '记录漏洞…' })
   const text = textOf(block)
   const data = jsonOf(text) ?? {}
-  const severity = data.severity ?? data.Severity
+  const severity = severityOf(data.severity ?? data.Severity)
   const vulnclass = data.vulnclass ?? data.Vulnclass ?? data.category
   const summary = data.summary ?? data.Summary
   const findingId = data.finding_id ?? data.FindingID
@@ -110,23 +124,25 @@ export function FindingCard({ phase, block }: ToolViewProps): ReactNode {
 
   return h(
     'div',
-    { style: { ...cardStyle, borderColor: failed ? '#fca5a5' : palette.border } },
+    { className: 'vx-card', 'data-error': failed ? '1' : '0' },
     h(
       'div',
-      { style: rowStyle },
-      h('span', { style: { ...chipStyle, color: severityColor(severity), borderColor: severityColor(severity) } },
-        String(severity ?? 'finding')),
-      vulnclass ? h('strong', { style: { fontSize: 13 } }, String(vulnclass)) : null,
-      findingId !== undefined ? h('span', { style: { color: palette.subtle, fontSize: 12 } }, `#${String(findingId)}`) : null,
+      { className: 'vx-head' },
+      h(SeverityChip, { severity }),
+      vulnclass
+        ? h('span', { className: 'vx-title' }, String(vulnclass))
+        : h('span', { className: 'vx-title' }, '漏洞记录'),
+      findingId !== undefined
+        ? h('span', { className: 'vx-meta vx-meta--faint' }, `#${String(findingId)}`)
+        : null,
       trafficCount !== undefined
-        ? h('span', { style: { color: palette.subtle, fontSize: 12 } }, `证据流量 ${String(trafficCount)} 条`)
+        ? h('span', { className: 'vx-meta vx-spacer' }, `证据流量 ${String(trafficCount)} 条`)
         : null
     ),
     summary
-      ? h('div', { style: { marginTop: 6 } }, String(summary))
-      : h('pre', { style: { margin: '6px 0 0', fontFamily: palette.mono, fontSize: 12, whiteSpace: 'pre-wrap' } },
-          text.slice(0, 800) || '(空)'),
-    failed ? h('div', { style: { marginTop: 6, color: '#b91c1c', fontSize: 12 } }, '上报失败，见输出') : null
+      ? h('div', { className: 'vx-pre vx-pre--tight' }, String(summary))
+      : h('pre', { className: 'vx-pre vx-pre--tight' }, text.slice(0, 800) || '(空)'),
+    failed ? h('div', { className: 'vx-failed' }, '上报失败，见上方输出') : null
   )
 }
 
@@ -136,72 +152,60 @@ function splitHttp(text: string): { head: string; body: string } {
   return { head: text.slice(0, match.index), body: text.slice(match.index + match[0].length) }
 }
 
+/** First line of an HTTP dump is the request/status line — a good card title. */
+function headlineOf(head: string): string {
+  const first = head.split(/\r?\n/, 1)[0]?.trim() ?? ''
+  return first.length > 64 ? `${first.slice(0, 63)}…` : first
+}
+
 export function TrafficViewer({ phase, block }: ToolViewProps): ReactNode {
   const [tab, setTab] = useState<'head' | 'body'>('head')
   const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 1200)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
   if (phase !== 'result') return h(LoadingCard, { label: '读取流量…' })
   const text = textOf(block)
   const parts = splitHttp(text)
   const failed = block?.isError === true
+  const headline = headlineOf(parts.head)
 
   const copy = (): void => {
-    void navigator.clipboard?.writeText(text).then(() => {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1200)
-    })
+    void navigator.clipboard?.writeText(text).then(() => setCopied(true))
   }
 
   const tabButton = (id: 'head' | 'body', label: string): ReactNode =>
     h(
       'button',
-      {
-        type: 'button',
-        onClick: () => setTab(id),
-        style: {
-          ...chipStyle,
-          cursor: 'pointer',
-          background: tab === id ? palette.text : '#fff',
-          color: tab === id ? '#fff' : palette.text
-        }
-      },
+      { type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) },
       label
     )
 
   return h(
     'div',
-    { style: { ...cardStyle, borderColor: failed ? '#fca5a5' : palette.border } },
+    { className: 'vx-card', 'data-error': failed ? '1' : '0' },
     h(
       'div',
-      { style: rowStyle },
-      h('strong', { style: { fontSize: 12 } }, 'HTTP 流量'),
-      tabButton('head', '头'),
-      tabButton('body', '正文'),
-      h('span', { style: { color: palette.subtle, fontSize: 11 } }, `${new TextEncoder().encode(text).length} B`),
-      h('button', {
-        type: 'button',
-        onClick: copy,
-        style: { ...chipStyle, cursor: 'pointer', marginLeft: 'auto' }
-      }, copied ? '已复制' : '复制')
+      { className: 'vx-head' },
+      h('span', { className: 'vx-title vx-title--mono' }, headline || 'HTTP 流量'),
+      h('span', { className: 'vx-meta vx-meta--faint' }, formatBytes(text)),
+      h(
+        'div',
+        { className: 'vx-seg vx-spacer', role: 'group', 'aria-label': '查看内容' },
+        tabButton('head', '头'),
+        tabButton('body', '正文')
+      ),
+      h(
+        'button',
+        { type: 'button', className: 'vx-chip vx-chip--action', onClick: copy },
+        copied ? '已复制' : '复制'
+      )
     ),
-    h(
-      'pre',
-      {
-        style: {
-          margin: '8px 0 0',
-          padding: 8,
-          maxHeight: 320,
-          overflow: 'auto',
-          background: '#fff',
-          border: `1px solid ${palette.border}`,
-          borderRadius: 6,
-          fontFamily: palette.mono,
-          fontSize: 12,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all'
-        }
-      },
-      (tab === 'head' ? parts.head : parts.body) || '(空)'
-    )
+    h('pre', { className: 'vx-pre' }, (tab === 'head' ? parts.head : parts.body) || '(空)'),
+    failed ? h('div', { className: 'vx-failed' }, '读取失败，见上方输出') : null
   )
 }
 
@@ -217,16 +221,13 @@ function BrandMark({ size }: { size?: number }): ReactNode {
     width: px,
     height: px,
     alt: 'VEXNAR',
-    style: { display: 'block', borderRadius: 4 }
+    className: 'vx-mark',
+    style: { borderRadius: 4 }
   })
 }
 
 function BrandName(): ReactNode {
-  return h(
-    'span',
-    { style: { fontWeight: 700, letterSpacing: '0.08em', fontSize: 13 } },
-    'VEXNAR'
-  )
+  return h('span', { className: 'vx-brand-name' }, 'VEXNAR')
 }
 
 function HeroLogo({ size }: { size?: number }): ReactNode {
@@ -237,13 +238,15 @@ function HeroLogo({ size }: { size?: number }): ReactNode {
     width: px,
     height: px,
     alt: 'VEXNAR',
-    style: { display: 'block', borderRadius: 6 }
+    className: 'vx-mark',
+    style: { borderRadius: 6 }
   })
 }
 
 /**
  * The hero headline has no slot, so it is replaced in place: the title group is
  * located by its class fragment and rewritten when the blank-home hero mounts.
+ * The marker attribute also opts the node into the gradient treatment.
  */
 function installHeroSlogan(): () => void {
   const slogan = () =>
@@ -270,10 +273,13 @@ const FULL_ACCESS_LABELS = new Set([
 ])
 
 /**
- * Full-access mode is the dangerous preset: paint its trigger and menu entry
- * red so the current state cannot be mistaken for the sandboxed default.
+ * Full-access mode is the dangerous preset: paint its trigger and menu entry in
+ * the negative colour so the current state cannot be mistaken for the
+ * sandboxed default. Uses the bridge token, so dark mode stays legible.
  */
 function installPermissionWarning(): () => void {
+  const negative = (): string =>
+    getComputedStyle(document.body).getPropertyValue('--vx-negative').trim() || '#dc2626'
   const sweep = (): void => {
     document
       .querySelectorAll('[class*="triggerLabel"], [class*="optionLabelText"]')
@@ -282,7 +288,7 @@ function installPermissionWarning(): () => void {
         const full = FULL_ACCESS_LABELS.has((node.textContent ?? '').trim())
         if (full && node.dataset.vexnarFull !== '1') {
           node.dataset.vexnarFull = '1'
-          node.style.color = '#dc2626'
+          node.style.color = negative()
           node.style.fontWeight = '600'
         } else if (!full && node.dataset.vexnarFull === '1') {
           delete node.dataset.vexnarFull
@@ -304,6 +310,10 @@ export function apply(ctx: {
   }
   effect?: (fn: () => () => void) => void
 }): void {
+  // Stylesheet first and once: cards may mount before the plugin's own effects
+  // run, and the injection is idempotent, so it is not wired to disposal.
+  installStyles()
+
   ctx.slots.inject('tool.call.toolview', () =>
     ctx.slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
   ctx.slots.inject('tool.call.toolview', () =>
@@ -318,10 +328,6 @@ export function apply(ctx: {
   // place because the headline has no slot of its own.
   ctx.slots.inject('conversation.hero.brand.mark', () =>
     ctx.slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
-  ctx.effect?.(installHeroSlogan)
-  ctx.effect?.(installPermissionWarning)
+  ctx.effect?.(() => installHeroSlogan())
+  ctx.effect?.(() => installPermissionWarning())
 }
-
-export const inject = ['slots']
-
-export default { name: '@vexnar/dsh-ui', inject, apply }
