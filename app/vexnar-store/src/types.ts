@@ -85,7 +85,7 @@ export interface TaskMetrics {
 }
 
 export interface Store {
-  backend: 'json' | 'postgres'
+  backend: 'json' | 'postgres' | 'sqlite'
   init(): Promise<void>
   tasks: {
     list(): Promise<any[]>

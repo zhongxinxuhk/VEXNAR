@@ -6,25 +6,25 @@ import { assetRow, companyRow, findingRow, nodeRow, taskRow, type Store, type Ta
 import { readPerRecord } from './per-record.js'
 
 /**
- * dsh-style JSON store. Graph and asset data use the per-record layout
- * (`<root>/<table>/<key>.json`), so a single update replaces one document;
- * metadata lives in the separate `meta.json` single-file domain.
+ * Shared query engine over a table reader. The JSON backend reads per-record
+ * files, the SQLite backend reads a single `kv` table — every filter/sort below
+ * is identical, so domain read semantics cannot drift between backends.
  */
-export function jsonStore(root: string): Store {
+export function createStore(backend: Store['backend'], readTable: (table: string, schema: { parse: (value: unknown) => any }) => Promise<any[]>, init: () => Promise<void> = async () => {}, cacheEnabled = true): Store {
   const cache: Record<string, any[] | undefined> = {}
 
   async function load(key: string, schema: { parse: (value: unknown) => any }): Promise<any[]> {
-    if (cache[key]) return cache[key]!
-    cache[key] = await readPerRecord(root, key, schema as any)
-    return cache[key]!
+    if (cacheEnabled && cache[key]) return cache[key]!
+    const rows = await readTable(key, schema)
+    if (cacheEnabled) cache[key] = rows
+    return rows
   }
 
   return {
-    backend: 'json',
-    async init() {
-      await mkdir(root, { recursive: true, mode: 0o700 })
-    },
-    invalidate(tables) {
+    backend,
+    init,
+    async invalidate(tables?: string[]) {
+      if (!cacheEnabled) return
       if (!tables) {
         for (const key of Object.keys(cache)) delete cache[key]
         return
@@ -307,4 +307,13 @@ export function jsonStore(root: string): Store {
       }
     }
   }
+}
+
+/**
+ * dsh-style JSON backend: per-record files under `<root>/<table>/<key>.json`.
+ */
+export function jsonStore(root: string): Store {
+  return createStore('json', (table, schema) => readPerRecord(root, table, schema as any), async () => {
+    await mkdir(root, { recursive: true, mode: 0o700 })
+  })
 }

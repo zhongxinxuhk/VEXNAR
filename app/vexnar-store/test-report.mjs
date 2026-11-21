@@ -13,14 +13,8 @@ const task = await ops.createTask({ description: 'audit', goal: 'audit example.c
 const intent = await ops.addNode(task.id, { kind: 'intent', payload: { text: 'probe' }, state: 'running' })
 await ops.reportFinding({ task_id: task.id, intent_id: String(intent.id), vulnclass: 'SQL注入', severity: 'high', summary: 'union based', evidence: "id=1' UNION SELECT 1--" })
 await ops.addAsset(task.id, { type: 'endpoint', url: 'https://example.com' })
-const findings = []
-for (const name of await (await import('node:fs/promises')).readdir(join(root, 'findings'))) {
-  if (name.endsWith('.json')) findings.push(JSON.parse(await (await import('node:fs/promises')).readFile(join(root, 'findings', name), 'utf8')).record)
-}
-const assets = []
-for (const name of await (await import('node:fs/promises')).readdir(join(root, 'assets'))) {
-  if (name.endsWith('.json')) assets.push(JSON.parse(await (await import('node:fs/promises')).readFile(join(root, 'assets', name), 'utf8')).record)
-}
+const findings = await ops.writer.list('findings')
+const assets = await ops.writer.list('assets')
 const report = buildReport({ task: await ops.writer.readRecord('tasks', task.id), findings, assets })
 const results = []
 const check = (name, ok, detail = '') => results.push({ name, ok, detail })

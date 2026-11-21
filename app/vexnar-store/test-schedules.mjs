@@ -19,11 +19,8 @@ const current = await ops.writer.readRecord('schedules', String(schedule.id))
 await ops.writer.put({ table: 'schedules', key: String(schedule.id), record: { ...current, next_fire_at: new Date(Date.now() - 60_000).toISOString() }, expectedRev: Number(current.rev ?? 0) })
 
 const store = { schedules: { list: async () => {
-  const { readdir, readFile } = await import('node:fs/promises')
   const rows = []
-  for (const name of await readdir(join(root, 'schedules')).catch(() => [])) {
-    if (name.endsWith('.json')) rows.push(JSON.parse(await readFile(join(root, 'schedules', name), 'utf8')).record)
-  }
+  rows.push(...await ops.writer.list('schedules'))
   return rows
 } } }
 
