@@ -11583,8 +11583,10 @@ function RulesTab() {
   const [editing, setEditing] = (0, import_react10.useState)(null);
   const [removing, setRemoving] = (0, import_react10.useState)(null);
   const [busy, setBusy] = (0, import_react10.useState)(0);
+  const [bulk, setBulk] = (0, import_react10.useState)(false);
   const [error, setError] = (0, import_react10.useState)("");
   const rows = rules.data ?? [];
+  const enabledCount = rows.filter((rule) => rule.enabled).length;
   const toggle = async (rule) => {
     setError("");
     setBusy(rule.id);
@@ -11595,6 +11597,20 @@ function RulesTab() {
       setError(errText(reason));
     } finally {
       setBusy(0);
+    }
+  };
+  const enableAll = async () => {
+    const pending = rows.filter((rule) => !rule.enabled);
+    if (pending.length === 0) return;
+    setError("");
+    setBulk(true);
+    try {
+      await Promise.all(pending.map((rule) => interceptApi.toggleRule(rule.id, true)));
+      rules.reload();
+    } catch (reason) {
+      setError(errText(reason));
+    } finally {
+      setBulk(false);
     }
   };
   const remove = async (rule) => {
@@ -11616,8 +11632,11 @@ function RulesTab() {
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "vx-int-count", children: [
         "\u5171 ",
         rows.length,
-        " \u6761\u89C4\u5219"
+        " \u6761\u89C4\u5219 \xB7 ",
+        enabledCount,
+        " \u6761\u542F\u7528"
       ] }),
+      enabledCount < rows.length ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { tone: "ghost", disabled: bulk, onClick: () => void enableAll(), children: bulk ? "\u542F\u7528\u4E2D\u2026" : "\u5168\u90E8\u542F\u7528" }) : null,
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Button, { tone: "primary", onClick: () => setCreating(true), children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(PlusIcon, {}),
         "\u65B0\u5EFA\u89C4\u5219"

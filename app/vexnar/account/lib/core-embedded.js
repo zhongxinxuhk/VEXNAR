@@ -460,7 +460,7 @@ var init_request = __esm({
       * ```
       */
       json() {
-        return this.#cachedBody("text").then((text3) => JSON.parse(text3));
+        return this.#cachedBody("text").then((text4) => JSON.parse(text4));
       }
       /**
       * `.text()` can parse Request body of type `text/plain`
@@ -990,8 +990,8 @@ var init_context = __esm({
       * })
       * ```
       */
-      text = (text3, arg, headers) => {
-        return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text3) : this.#newResponse(text3, arg, setDefaultContentType(TEXT_PLAIN, headers));
+      text = (text4, arg, headers) => {
+        return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text4) : this.#newResponse(text4, arg, setDefaultContentType(TEXT_PLAIN, headers));
       };
       /**
       * `.json()` can render JSON as `Content-Type:application/json`.
@@ -3273,11 +3273,11 @@ var require_utils2 = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha2562(text3) {
-      return await subtleCrypto.digest("SHA-256", text3);
+    async function sha2562(text4) {
+      return await subtleCrypto.digest("SHA-256", text4);
     }
-    async function hashByName(hashName, text3) {
-      return await subtleCrypto.digest(hashName, text3);
+    async function hashByName(hashName, text4) {
+      return await subtleCrypto.digest(hashName, text4);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -3498,21 +3498,21 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
-    function isPrintableChars(text3) {
-      if (typeof text3 !== "string") {
+    function isPrintableChars(text4) {
+      if (typeof text4 !== "string") {
         throw new TypeError("SASL: text must be a string");
       }
-      return text3.split("").map((_, i) => text3.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
+      return text4.split("").map((_, i) => text4.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
     }
-    function isBase64(text3) {
-      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text3);
+    function isBase64(text4) {
+      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text4);
     }
-    function parseAttributePairs(text3) {
-      if (typeof text3 !== "string") {
+    function parseAttributePairs(text4) {
+      if (typeof text4 !== "string") {
         throw new TypeError("SASL: attribute pairs text must be a string");
       }
       return new Map(
-        text3.split(",").map((attrValue) => {
+        text4.split(",").map((attrValue) => {
           if (!/^.=/.test(attrValue)) {
             throw new Error("SASL: Invalid attribute pair entry");
           }
@@ -4394,9 +4394,9 @@ var require_messages = __commonJS({
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text3) {
+      constructor(length, text4) {
         this.length = length;
-        this.text = text3;
+        this.text = text4;
         this.name = "commandComplete";
       }
     };
@@ -4577,8 +4577,8 @@ var require_serializer = __commonJS({
         /* code.startup */
       );
     };
-    var query = (text3) => {
-      return writer4.addCString(text3).flush(
+    var query = (text4) => {
+      return writer4.addCString(text4).flush(
         81
         /* code.query */
       );
@@ -4695,8 +4695,8 @@ var require_serializer = __commonJS({
       return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
     var close = (msg) => {
-      const text3 = `${msg.type}${msg.name || ""}`;
-      return cstringMessage(67, text3);
+      const text4 = `${msg.type}${msg.name || ""}`;
+      return cstringMessage(67, text4);
     };
     var copyData = (chunk) => {
       return writer4.add(chunk).flush(
@@ -4968,8 +4968,8 @@ var require_parser = __commonJS({
       return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
     };
     var parseCommandCompleteMessage = (reader) => {
-      const text3 = reader.cstring();
-      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text3);
+      const text4 = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text4);
     };
     var parseCopyData = (reader, length) => {
       const chunk = reader.bytes(length - 4);
@@ -5133,7 +5133,7 @@ var require_dist = __commonJS({
     function parse5(stream2, callback) {
       const parser = new parser_1.Parser();
       stream2.on("data", (buffer) => parser.parse(buffer, callback));
-      return new Promise((resolve4) => stream2.on("end", () => resolve4()));
+      return new Promise((resolve5) => stream2.on("end", () => resolve5()));
     }
   }
 });
@@ -5356,8 +5356,8 @@ var require_connection = __commonJS({
         }
         return this.stream.write(buffer);
       }
-      query(text3) {
-        this._send(serialize.query(text3));
+      query(text4) {
+        this._send(serialize.query(text4));
       }
       // send parse message
       parse(query) {
@@ -5902,12 +5902,12 @@ var require_client = __commonJS({
           this._connect(callback);
           return;
         }
-        return new this._Promise((resolve4, reject) => {
+        return new this._Promise((resolve5, reject) => {
           this._connect((error62) => {
             if (error62) {
               reject(error62);
             } else {
-              resolve4(this);
+              resolve5(this);
             }
           });
         });
@@ -6289,8 +6289,8 @@ var require_client = __commonJS({
         } else {
           query = new Query2(config2, values, callback);
           if (!query.callback) {
-            result = new this._Promise((resolve4, reject) => {
-              query.callback = (err4, res) => err4 ? reject(err4) : resolve4(res);
+            result = new this._Promise((resolve5, reject) => {
+              query.callback = (err4, res) => err4 ? reject(err4) : resolve5(res);
             }).catch((err4) => {
               Error.captureStackTrace(err4);
               throw err4;
@@ -6390,8 +6390,8 @@ var require_client = __commonJS({
         if (cb) {
           this.connection.once("end", cb);
         } else {
-          return new this._Promise((resolve4) => {
-            this.connection.once("end", resolve4);
+          return new this._Promise((resolve5) => {
+            this.connection.once("end", resolve5);
           });
         }
       }
@@ -6440,8 +6440,8 @@ var require_pg_pool = __commonJS({
       const cb = function(err4, client) {
         err4 ? rej(err4) : res(client);
       };
-      const result = new Promise2(function(resolve4, reject) {
-        res = resolve4;
+      const result = new Promise2(function(resolve5, reject) {
+        res = resolve5;
         rej = reject;
       }).catch((err4) => {
         Error.captureStackTrace(err4);
@@ -6502,7 +6502,7 @@ var require_pg_pool = __commonJS({
         if (typeof Promise2.try === "function") {
           return Promise2.try(f);
         }
-        return new Promise2((resolve4) => resolve4(f()));
+        return new Promise2((resolve5) => resolve5(f()));
       }
       _isFull() {
         return this._clients.length >= this.options.max;
@@ -6752,9 +6752,9 @@ var require_pg_pool = __commonJS({
         this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
-      query(text3, values, cb) {
-        if (typeof text3 === "function") {
-          const response2 = promisify(this.Promise, text3);
+      query(text4, values, cb) {
+        if (typeof text4 === "function") {
+          const response2 = promisify(this.Promise, text4);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -6782,7 +6782,7 @@ var require_pg_pool = __commonJS({
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text3, values, (err5, res) => {
+            client.query(text4, values, (err5, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
@@ -6897,8 +6897,8 @@ var require_query2 = __commonJS({
     NativeQuery.prototype._getPromise = function() {
       if (this._promise) return this._promise;
       this._promise = new Promise(
-        function(resolve4, reject) {
-          this._once("end", resolve4);
+        function(resolve5, reject) {
+          this._once("end", resolve5);
           this._once("error", reject);
         }.bind(this)
       );
@@ -7077,12 +7077,12 @@ var require_client2 = __commonJS({
         this._connect(callback);
         return;
       }
-      return new this._Promise((resolve4, reject) => {
+      return new this._Promise((resolve5, reject) => {
         this._connect((error62) => {
           if (error62) {
             reject(error62);
           } else {
-            resolve4(this);
+            resolve5(this);
           }
         });
       });
@@ -7106,8 +7106,8 @@ var require_client2 = __commonJS({
         query = new NativeQuery(config2, values, callback);
         if (!query.callback) {
           let resolveOut, rejectOut;
-          result = new this._Promise((resolve4, reject) => {
-            resolveOut = resolve4;
+          result = new this._Promise((resolve5, reject) => {
+            resolveOut = resolve5;
             rejectOut = reject;
           }).catch((err4) => {
             Error.captureStackTrace(err4);
@@ -7170,8 +7170,8 @@ var require_client2 = __commonJS({
       }
       let result;
       if (!cb) {
-        result = new this._Promise(function(resolve4, reject) {
-          cb = (err4) => err4 ? reject(err4) : resolve4();
+        result = new this._Promise(function(resolve5, reject) {
+          cb = (err4) => err4 ? reject(err4) : resolve5();
         });
       }
       const doEnd = function() {
@@ -7387,6 +7387,21 @@ var require_lib2 = __commonJS({
 });
 
 // ../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs
+var esm_exports = {};
+__export(esm_exports, {
+  Client: () => Client,
+  Connection: () => Connection,
+  DatabaseError: () => DatabaseError,
+  Pool: () => Pool,
+  Query: () => Query,
+  Result: () => Result,
+  TypeOverrides: () => TypeOverrides,
+  default: () => esm_default,
+  defaults: () => defaults,
+  escapeIdentifier: () => escapeIdentifier,
+  escapeLiteral: () => escapeLiteral,
+  types: () => types
+});
 var import_lib, Client, Pool, Connection, types, Query, DatabaseError, escapeIdentifier, escapeLiteral, Result, TypeOverrides, defaults, esm_default;
 var init_esm = __esm({
   "../node_modules/.pnpm/pg@8.23.1/node_modules/pg/esm/index.mjs"() {
@@ -12048,7 +12063,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve4) {
+function isRecursive(inst, stack, resolve5) {
   const cached3 = recursive.get(inst);
   if (cached3 !== void 0)
     return cached3 ? PROVEN : NONE;
@@ -12058,7 +12073,7 @@ function isRecursive(inst, stack, resolve4) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve4);
+      const answer = isRecursive(child, stack, resolve5);
       if (answer > result)
         result = answer;
     }
@@ -12069,7 +12084,7 @@ function isRecursive(inst, stack, resolve4) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve5) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -12133,7 +12148,7 @@ function isRecursive(inst, stack, resolve4) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve5 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -16496,8 +16511,8 @@ var capitalizeFirstCharacter, error33;
 var init_lt = __esm({
   "../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js"() {
     init_util();
-    capitalizeFirstCharacter = (text3) => {
-      return text3.charAt(0).toUpperCase() + text3.slice(1);
+    capitalizeFirstCharacter = (text4) => {
+      return text4.charAt(0).toUpperCase() + text4.slice(1);
     };
     error33 = () => {
       const Sizable = {
@@ -27994,7 +28009,7 @@ var init_types = __esm({
 // ../vexnar-store/src/pg-store.ts
 function pgStore(connection) {
   const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
-  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
+  const q = async (text4, values = []) => (await pool.query(text4, values)).rows;
   const rfc2 = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
   const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
   const TASK_SELECT = `SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
@@ -28062,11 +28077,11 @@ function pgStore(connection) {
           filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
         }
         const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
-        const join14 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
+        const join15 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
         const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
         const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
           a.last_seen::text AS last_seen${linkSelect}
-          FROM assets a ${join14} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
+          FROM assets a ${join15} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
         const countValues = [];
         const countFilters = [];
         if (type) {
@@ -29104,7 +29119,7 @@ function pgMetaStore(connection, fallback) {
     ssl: connection.ssl === false ? false : { rejectUnauthorized: false },
     max: 4
   });
-  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
+  const q = async (text4, values = []) => (await pool.query(text4, values)).rows;
   async function settings() {
     const rows = await q("SELECT key, value FROM settings ORDER BY key");
     return Object.fromEntries(rows.filter((row) => !SENSITIVE_SETTING.test(row.key)).map(settingsRow));
@@ -29491,23 +29506,23 @@ function storeOperations(_root) {
     return { deleted: true, id: Number(id) };
   }
   async function createCategory(name) {
-    const text3 = String(name ?? "").trim();
-    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text4 = String(name ?? "").trim();
+    if (!text4) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
-    if (rows.some((row2) => row2.name === text3)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
+    if (rows.some((row2) => row2.name === text4)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
     const now2 = rfc3339(/* @__PURE__ */ new Date());
-    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text3, task_count: 0, created_at: now2, updated_at: now2 };
+    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text4, task_count: 0, created_at: now2, updated_at: now2 };
     rows.push(row);
     await meta4.save(tables);
     return row;
   }
   async function renameCategory(id, name) {
-    const text3 = String(name ?? "").trim();
-    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text4 = String(name ?? "").trim();
+    if (!text4) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
     const row = rows.find((item) => String(item.id) === String(id));
     if (!row) throw Object.assign(new Error("\u5206\u7C7B\u4E0D\u5B58\u5728"), { status: 404 });
-    row.name = text3;
+    row.name = text4;
     row.updated_at = rfc3339(/* @__PURE__ */ new Date());
     await meta4.save(tables);
     return row;
@@ -29886,12 +29901,12 @@ function storeOperations(_root) {
   async function addGoal(taskId, input2) {
     const task = await writer4.readRecord("tasks", taskId);
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    const text3 = String(input2.text ?? "").trim();
-    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text4 = String(input2.text ?? "").trim();
+    if (!text4) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const explorationId = Number(task.exploration_id);
     const nodes = await writer4.list("nodes");
     const nodeId = Math.max(0, ...nodes.map((node2) => Number(node2.id))) + 1;
-    const payload = { text: text3 };
+    const payload = { text: text4 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const record2 = {
       id: String(nodeId),
@@ -29910,11 +29925,11 @@ function storeOperations(_root) {
     return record2;
   }
   async function editGoal(taskId, goalId, input2) {
-    const text3 = String(input2.text ?? "").trim();
-    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text4 = String(input2.text ?? "").trim();
+    if (!text4) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const node2 = await writer4.readRecord("nodes", goalId);
     if (!node2 || node2.kind !== "goal") throw Object.assign(new Error("\u76EE\u6807\u4E0D\u5B58\u5728"), { status: 404 });
-    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text3 };
+    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text4 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const next = { ...node2, payload };
     delete next.rev;
@@ -30041,11 +30056,11 @@ function storeOperations(_root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const kind = String(input2.kind ?? "");
     if (kind !== "allow" && kind !== "deny") throw Object.assign(new Error("kind \u9700\u4E3A allow \u6216 deny"), { status: 400 });
-    const text3 = String(input2.text ?? "").trim();
-    if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text4 = String(input2.text ?? "").trim();
+    if (!text4) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const rows = await writer4.list("constraints");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
-    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text3, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
+    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text4, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
     await writer4.commit([{ table: "constraints", key: String(id), record: record2 }]);
     return record2;
   }
@@ -30058,9 +30073,9 @@ function storeOperations(_root) {
       next.kind = input2.kind;
     }
     if (input2.text !== void 0) {
-      const text3 = String(input2.text).trim();
-      if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-      next.text = text3;
+      const text4 = String(input2.text).trim();
+      if (!text4) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+      next.text = text4;
     }
     delete next.rev;
     const [written] = await writer4.commit([{ table: "constraints", key: constraintId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
@@ -30602,10 +30617,10 @@ var init_tools = __esm({
         parse(output2) {
           const urls = [];
           for (const line of output2.split("\n")) {
-            const text3 = line.trim();
-            if (!text3.startsWith("{")) continue;
+            const text4 = line.trim();
+            if (!text4.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text3);
+              const row = JSON.parse(text4);
               urls.push({ url: row.url ?? row.input, status: Number(row.status_code ?? 0), title: row.title ?? "", tech: row.tech ?? row.technologies ?? [], host: row.host ?? "" });
             } catch {
             }
@@ -30662,10 +30677,10 @@ var init_tools = __esm({
         parse(output2) {
           const findings = [];
           for (const line of output2.split("\n")) {
-            const text3 = line.replace(/^\+\s*/, "").trim();
-            if (!text3 || text3.startsWith("Target") || text3.startsWith("Start Time") || text3.startsWith("End Time")) continue;
-            const osvdb = text3.match(/OSVDB-(\d+)/);
-            if (text3.includes(":") || osvdb) findings.push({ text: text3, osvdb: osvdb?.[1] ?? "" });
+            const text4 = line.replace(/^\+\s*/, "").trim();
+            if (!text4 || text4.startsWith("Target") || text4.startsWith("Start Time") || text4.startsWith("End Time")) continue;
+            const osvdb = text4.match(/OSVDB-(\d+)/);
+            if (text4.includes(":") || osvdb) findings.push({ text: text4, osvdb: osvdb?.[1] ?? "" });
           }
           return { findings };
         }
@@ -30693,10 +30708,10 @@ var init_tools = __esm({
         parse(output2) {
           const urls = [];
           for (const line of output2.split("\n")) {
-            const text3 = line.trim();
-            if (!text3.startsWith("{")) continue;
+            const text4 = line.trim();
+            if (!text4.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text3);
+              const row = JSON.parse(text4);
               const url2 = row.request?.endpoint ?? row.url ?? "";
               if (url2) urls.push({ url: url2, status: Number(row.response?.status_code ?? 0) });
             } catch {
@@ -30714,17 +30729,17 @@ var init_tools = __esm({
         parse(output2) {
           const hosts = [];
           for (const line of output2.split("\n")) {
-            const text3 = line.trim();
-            if (!text3) continue;
-            if (text3.startsWith("{")) {
+            const text4 = line.trim();
+            if (!text4) continue;
+            if (text4.startsWith("{")) {
               try {
-                const row = JSON.parse(text3);
+                const row = JSON.parse(text4);
                 if (row.host) hosts.push({ host: row.host, source: row.source ?? "" });
                 continue;
               } catch {
               }
             }
-            hosts.push({ host: text3, source: "subfinder" });
+            hosts.push({ host: text4, source: "subfinder" });
           }
           return { hosts };
         }
@@ -30741,10 +30756,10 @@ var init_tools = __esm({
         parse(output2) {
           const findings = [];
           for (const line of output2.split("\n")) {
-            const text3 = line.trim();
-            if (!text3.startsWith("{")) continue;
+            const text4 = line.trim();
+            if (!text4.startsWith("{")) continue;
             try {
-              const row = JSON.parse(text3);
+              const row = JSON.parse(text4);
               findings.push({
                 template: row["template-id"] ?? row.templateID ?? "",
                 name: row.info?.name ?? "",
@@ -30779,8 +30794,8 @@ var init_tools = __esm({
 });
 
 // ../vexnar-store/src/engine.ts
-function parseJson(text3) {
-  const trimmed = text3.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
+function parseJson(text4) {
+  const trimmed = text4.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
   try {
     return JSON.parse(trimmed);
   } catch {
@@ -30814,8 +30829,8 @@ function createEngine(store2, ops, engineOptions = {}) {
     const root = page.items.find((node2) => node2.kind === "fact" && node2.state === "origin") ?? page.items.find((node2) => node2.kind === "fact");
     const existing = page.items.filter((node2) => node2.kind === "intent").map((node2) => (typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload)?.text).filter(Boolean);
     const created = [];
-    const normalize2 = (text3) => text3.toLowerCase().replace(/\s+/g, " ").trim();
-    const seen = new Set(existing.map((text3) => normalize2(text3)));
+    const normalize2 = (text4) => text4.toLowerCase().replace(/\s+/g, " ").trim();
+    const seen = new Set(existing.map((text4) => normalize2(text4)));
     for (let round = 0; round < rounds; round++) {
       const reply = await complete([
         { role: "system", content: '\u4F60\u662F\u6E17\u900F\u6D4B\u8BD5\u4EFB\u52A1\u7684\u89C4\u5212\u8005\u3002\u628A\u76EE\u6807\u62C6\u6210\u53EF\u72EC\u7ACB\u9A8C\u8BC1\u7684\u610F\u56FE\uFF0C\u53EA\u8F93\u51FA JSON\uFF1A{"intents":[{"text":"...","priority":0}]}\u3002\u4E0D\u8981\u91CD\u590D\u5DF2\u6709\u610F\u56FE\u3002' },
@@ -30828,14 +30843,14 @@ function createEngine(store2, ops, engineOptions = {}) {
       const intents = Array.isArray(data.intents) ? data.intents.slice(0, maxIntents) : [];
       let added = 0;
       for (const intent of intents) {
-        const text3 = String(intent.text ?? "").trim();
-        if (!text3) continue;
-        const key = normalize2(text3);
+        const text4 = String(intent.text ?? "").trim();
+        if (!text4) continue;
+        const key = normalize2(text4);
         if (seen.has(key)) continue;
         seen.add(key);
         created.push(await ops.addNode(taskId, {
           kind: "intent",
-          payload: { text: text3 },
+          payload: { text: text4 },
           state: "open",
           priority: Number(intent.priority ?? 0),
           origin: "planner",
@@ -30891,11 +30906,11 @@ function createEngine(store2, ops, engineOptions = {}) {
           return { intent: Number(claimed.id), state: "done", summary: String(action.args?.summary ?? "") };
         }
         if (action.tool === "add_fact") {
-          const text3 = String(action.args?.text ?? "").trim();
-          if (!text3) throw new Error("add_fact \u7F3A\u5C11 text");
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text3 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
-          facts.push(text3);
-          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text3 });
+          const text4 = String(action.args?.text ?? "").trim();
+          if (!text4) throw new Error("add_fact \u7F3A\u5C11 text");
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text4 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          facts.push(text4);
+          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text4 });
           continue;
         }
         if (action.tool === "list_assets") {
@@ -30937,12 +30952,12 @@ function createEngine(store2, ops, engineOptions = {}) {
         if (action.tool === "run_command") {
           if (!engineOptions.runner) throw new Error("run_command \u672A\u542F\u7528");
           const result = await engineOptions.runner.run(String(action.args?.command ?? ""), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 3e4) });
-          const text3 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
+          const text4 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
 ${result.stdout.slice(0, 4e3)}${result.stderr ? `
 ${result.stderr.slice(0, 2e3)}` : ""}`;
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text3, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text4, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
           await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "run_command", node_id: String(claimed.id), is_error: result.code !== 0, summary: `${result.command} code=${result.code}` });
-          facts.push(text3.slice(0, 500));
+          facts.push(text4.slice(0, 500));
           continue;
         }
         if (action.tool === "report_finding") {
@@ -31011,7 +31026,7 @@ function createRunner(options = {}) {
       active++;
       return;
     }
-    await new Promise((resolve4) => queue.push(resolve4));
+    await new Promise((resolve5) => queue.push(resolve5));
     active++;
   }
   function release() {
@@ -31024,7 +31039,7 @@ function createRunner(options = {}) {
     await acquire();
     const started = Date.now();
     try {
-      return await new Promise((resolve4, reject) => {
+      return await new Promise((resolve5, reject) => {
         const child = spawn(command, args, {
           cwd: runOptions.cwd,
           env: { PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin", HOME: process.env.HOME ?? "", ...runOptions.env },
@@ -31036,17 +31051,17 @@ function createRunner(options = {}) {
         let timedOut = false;
         const max = runOptions.maxOutput ?? defaultMaxOutput;
         const append = (target, chunk) => {
-          const text3 = chunk.toString("utf8");
+          const text4 = chunk.toString("utf8");
           if (target === "stdout") {
-            if (stdout.length + text3.length > max) {
-              stdout += text3.slice(0, Math.max(max - stdout.length, 0));
+            if (stdout.length + text4.length > max) {
+              stdout += text4.slice(0, Math.max(max - stdout.length, 0));
               truncated = true;
-            } else stdout += text3;
+            } else stdout += text4;
           } else {
-            if (stderr.length + text3.length > max) {
-              stderr += text3.slice(0, Math.max(max - stderr.length, 0));
+            if (stderr.length + text4.length > max) {
+              stderr += text4.slice(0, Math.max(max - stderr.length, 0));
               truncated = true;
-            } else stderr += text3;
+            } else stderr += text4;
           }
         };
         child.stdout.on("data", (chunk) => append("stdout", chunk));
@@ -31061,7 +31076,7 @@ function createRunner(options = {}) {
         });
         child.on("close", (code, signal) => {
           clearTimeout(timer);
-          resolve4({ command, args, code, signal, stdout, stderr, truncated, timed_out: timedOut, duration_ms: Date.now() - started });
+          resolve5({ command, args, code, signal, stdout, stderr, truncated, timed_out: timedOut, duration_ms: Date.now() - started });
         });
       });
     } finally {
@@ -31136,8 +31151,8 @@ function createScheduler(options = {}) {
   return {
     enqueue(job) {
       if (stopped) return Promise.reject(new Error("scheduler stopped"));
-      return new Promise((resolve4, reject) => {
-        queue.push({ job, resolve: resolve4, reject });
+      return new Promise((resolve5, reject) => {
+        queue.push({ job, resolve: resolve5, reject });
         pump();
       });
     },
@@ -31229,11 +31244,11 @@ var init_notify = __esm({
 
 // ../vexnar-store/src/triggers.ts
 async function spawnTriggerTask(ops, agentKey, fire) {
-  const text3 = String(fire.message || fire.event);
+  const text4 = String(fire.message || fire.event);
   return ops.createTask({
     name: `trigger:${fire.event}`,
-    description: `agent ${agentKey} ${fire.event}: ${text3}`,
-    goal: text3
+    description: `agent ${agentKey} ${fire.event}: ${text4}`,
+    goal: text4
   });
 }
 async function startTriggers(store2, scheduler2, ops, agentKey, handler) {
@@ -31338,8 +31353,8 @@ function createTaskQueue(options = {}) {
   return {
     enqueue(taskId, job) {
       cancelled.delete(taskId);
-      return new Promise((resolve4, reject) => {
-        entries.push({ taskId, job, resolve: resolve4, reject, state: "queued" });
+      return new Promise((resolve5, reject) => {
+        entries.push({ taskId, job, resolve: resolve5, reject, state: "queued" });
         pump();
       });
     },
@@ -31545,9 +31560,9 @@ async function gatewayComplete(messages) {
     body: JSON.stringify({ model: process.env.VEXNAR_GATEWAY_MODEL || "deepseek-flash", messages, stream: false })
   });
   if (response.status === 409) {
-    const text3 = await response.text();
-    if (text3.includes("openai-responses")) return responsesComplete(base, token, messages);
-    throw Object.assign(new Error(`gateway 409: ${text3}`), { status: 502 });
+    const text4 = await response.text();
+    if (text4.includes("openai-responses")) return responsesComplete(base, token, messages);
+    throw Object.assign(new Error(`gateway 409: ${text4}`), { status: 502 });
   }
   if (!response.ok) throw Object.assign(new Error(`gateway ${response.status}: ${await response.text()}`), { status: 502 });
   const data = await response.json();
@@ -31562,51 +31577,51 @@ var init_gateway = __esm({
 });
 
 // src/dsl.ts
-function readToken(text3, pos) {
-  if (text3[pos] === '"') {
-    const end = text3.indexOf('"', pos + 1);
-    return [text3.slice(pos + 1, end < 0 ? text3.length : end), end < 0 ? text3.length : end + 1];
+function readToken(text4, pos) {
+  if (text4[pos] === '"') {
+    const end = text4.indexOf('"', pos + 1);
+    return [text4.slice(pos + 1, end < 0 ? text4.length : end), end < 0 ? text4.length : end + 1];
   }
   let i = pos;
-  while (i < text3.length && !/\s|\(|\)/.test(text3[i])) i++;
-  return [text3.slice(pos, i), i];
+  while (i < text4.length && !/\s|\(|\)/.test(text4[i])) i++;
+  return [text4.slice(pos, i), i];
 }
-function tokenize(text3) {
+function tokenize(text4) {
   const tokens = [];
   let i = 0;
-  while (i < text3.length) {
-    while (i < text3.length && /\s/.test(text3[i])) i++;
-    if (i >= text3.length) break;
-    if (text3[i] === "(") {
+  while (i < text4.length) {
+    while (i < text4.length && /\s/.test(text4[i])) i++;
+    if (i >= text4.length) break;
+    if (text4[i] === "(") {
       tokens.push({ kind: "LP" });
       i++;
       continue;
     }
-    if (text3[i] === ")") {
+    if (text4[i] === ")") {
       tokens.push({ kind: "RP" });
       i++;
       continue;
     }
     let matched = false;
-    if (/[A-Za-z_]/.test(text3[i])) {
+    if (/[A-Za-z_]/.test(text4[i])) {
       let j = i;
-      while (j < text3.length && /[A-Za-z0-9_]/.test(text3[j])) j++;
-      const field = text3.slice(i, j).toLowerCase();
-      if (isField(field) && j < text3.length && "=!><".includes(text3[j])) {
-        let op = text3[j];
+      while (j < text4.length && /[A-Za-z0-9_]/.test(text4[j])) j++;
+      const field = text4.slice(i, j).toLowerCase();
+      if (isField(field) && j < text4.length && "=!><".includes(text4[j])) {
+        let op = text4[j];
         j++;
-        if (j < text3.length && text3[j] === "=") {
+        if (j < text4.length && text4[j] === "=") {
           op += "=";
           j++;
         }
-        const [value, end2] = readToken(text3, j);
+        const [value, end2] = readToken(text4, j);
         tokens.push({ kind: "FIELD", expr: { field, op, value } });
         i = end2;
         matched = true;
       }
     }
     if (matched) continue;
-    const [word, end] = readToken(text3, i);
+    const [word, end] = readToken(text4, i);
     if (!word) {
       i++;
       continue;
@@ -31874,15 +31889,15 @@ function paginationParam(raw2, fallback, upperBound) {
   return value;
 }
 function normFilter(value) {
-  const text3 = String(value ?? "").trim();
-  return text3 === "all" ? "" : text3;
+  const text4 = String(value ?? "").trim();
+  return text4 === "all" ? "" : text4;
 }
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
-function sliceRunes(text3, max) {
-  const chars = [...text3];
-  return chars.length > max ? chars.slice(0, max).join("") : text3;
+function sliceRunes(text4, max) {
+  const chars = [...text4];
+  return chars.length > max ? chars.slice(0, max).join("") : text4;
 }
 async function resolveTask(raw2) {
   const key = String(raw2 ?? "").trim();
@@ -32314,8 +32329,8 @@ function singleFindingMarkdown(row, taskNames, generatedAt) {
   return lines.join("\n");
 }
 function csvCell(value) {
-  const text3 = String(value ?? "");
-  return /[",\r\n]/.test(text3) ? `"${text3.replace(/"/g, '""')}"` : text3;
+  const text4 = String(value ?? "");
+  return /[",\r\n]/.test(text4) ? `"${text4.replace(/"/g, '""')}"` : text4;
 }
 function findingsCsv(rows, taskNames) {
   const items = exportOrder(rows);
@@ -32633,10 +32648,10 @@ function register(api2) {
       if (scope === "selected") {
         const ids = [];
         for (const part of String(c.req.query("ids") ?? "").split(",")) {
-          const text3 = part.trim();
-          if (!text3) continue;
-          const id = Number(text3);
-          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text3}` }, 400);
+          const text4 = part.trim();
+          if (!text4) continue;
+          const id = Number(text4);
+          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text4}` }, 400);
           ids.push(id);
         }
         if (!ids.length) return c.json({ error: "no findings selected" }, 400);
@@ -33044,12 +33059,12 @@ function err2(c, e) {
   return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
 }
 function firstLine(s, max) {
-  let text3 = String(s ?? "").trim();
-  const nl = text3.search(/[\r\n]/);
-  if (nl >= 0) text3 = text3.slice(0, nl);
-  const runes = [...text3];
-  if (runes.length > max) text3 = runes.slice(0, max).join("") + "\u2026";
-  return text3;
+  let text4 = String(s ?? "").trim();
+  const nl = text4.search(/[\r\n]/);
+  if (nl >= 0) text4 = text4.slice(0, nl);
+  const runes = [...text4];
+  if (runes.length > max) text4 = runes.slice(0, max).join("") + "\u2026";
+  return text4;
 }
 function humanBytes(n) {
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
@@ -33639,16 +33654,16 @@ var init_conversations = __esm({
       kind = "";
       text = "";
       created = "";
-      async push(kind, text3) {
+      async push(kind, text4) {
         if (this.id && this.kind !== kind) this.seal();
         this.kind = kind;
-        this.text = text3;
+        this.text = text4;
         if (!this.id) {
           this.created = nowIso();
-          const row = await appendActivity(this.convId, { worker: this.worker, kind, summary: firstLine(text3, 200), detail: text3, created_at: this.created });
+          const row = await appendActivity(this.convId, { worker: this.worker, kind, summary: firstLine(text4, 200), detail: text4, created_at: this.created });
           this.id = Number(row.id);
         } else {
-          await updateActivityText(this.convId, this.id, firstLine(text3, 200), text3);
+          await updateActivityText(this.convId, this.id, firstLine(text4, 200), text4);
         }
       }
       snapshot() {
@@ -33852,8 +33867,8 @@ function transcriptText(row) {
   if ((kind === "text" || kind === "result") && !row.is_error) return String(row.detail ?? row.summary ?? "");
   return String(row.summary ?? "");
 }
-function firstLine2(text3, max) {
-  let s = String(text3 ?? "").trim();
+function firstLine2(text4, max) {
+  let s = String(text4 ?? "").trim();
   const nl = s.search(/[\r\n]/);
   if (nl >= 0) s = s.slice(0, nl);
   const chars = [...s];
@@ -34924,14 +34939,14 @@ async function listModels2(body) {
   for (const cand of candidates) {
     try {
       const resp = await fetch(cand.url, { method: "GET", headers: cand.headers, signal: AbortSignal.timeout(3e4) });
-      const text3 = await resp.text();
+      const text4 = await resp.text();
       if (resp.status !== 200) {
-        lastErr = `API \u8FD4\u56DE ${resp.status}: ${text3.slice(0, 512)}`;
+        lastErr = `API \u8FD4\u56DE ${resp.status}: ${text4.slice(0, 512)}`;
         continue;
       }
       let parsed;
       try {
-        parsed = JSON.parse(text3);
+        parsed = JSON.parse(text4);
       } catch (error62) {
         lastErr = `\u89E3\u6790\u54CD\u5E94\u5931\u8D25: ${error62?.message ?? error62}`;
         continue;
@@ -34970,11 +34985,11 @@ async function minimalCompletion(opts) {
     payload = JSON.stringify({ model: opts.model || "claude-opus-4-8", max_tokens: 32, messages });
   }
   const resp = await fetch(url2, { method: "POST", headers, body: payload, signal: AbortSignal.timeout(3e4) });
-  const text3 = await resp.text();
-  if (!resp.ok) throw new Error(`status ${resp.status}: ${text3.slice(0, 512)}`);
+  const text4 = await resp.text();
+  if (!resp.ok) throw new Error(`status ${resp.status}: ${text4.slice(0, 512)}`);
   let data;
   try {
-    data = JSON.parse(text3);
+    data = JSON.parse(text4);
   } catch {
     throw new Error("\u89E3\u6790\u54CD\u5E94\u5931\u8D25");
   }
@@ -36024,20 +36039,20 @@ var init_intercept = __esm({
 
 // src/traffic-scope.ts
 function parseScope(raw2) {
-  const text3 = String(raw2 ?? "").trim();
-  const global2 = { raw: text3, kind: "global", convId: 0, taskId: 0, intentId: 0 };
-  if (text3.startsWith("conv-")) {
-    const id = Number(text3.slice(5));
+  const text4 = String(raw2 ?? "").trim();
+  const global2 = { raw: text4, kind: "global", convId: 0, taskId: 0, intentId: 0 };
+  if (text4.startsWith("conv-")) {
+    const id = Number(text4.slice(5));
     if (Number.isInteger(id) && id > 0) return { ...global2, kind: "conv", convId: id };
     return global2;
   }
-  if (text3.startsWith("session-")) {
-    const id = text3.slice(8);
+  if (text4.startsWith("session-")) {
+    const id = text4.slice(8);
     if (SESSION_ID.test(id)) return { ...global2, kind: "session" };
     return global2;
   }
-  if (text3.startsWith("task-")) {
-    const rest = text3.slice(5);
+  if (text4.startsWith("task-")) {
+    const rest = text4.slice(5);
     const intentAt = rest.indexOf("-i");
     if (intentAt > 0) {
       const taskId2 = Number(rest.slice(0, intentAt));
@@ -36333,12 +36348,12 @@ function toBuffer(body) {
 async function spillBody(contentType, body) {
   const buf = toBuffer(body);
   if (!buf) return { hash: "", inline: "", len: 0 };
-  const text3 = !isBinaryBody(contentType, buf);
+  const text4 = !isBinaryBody(contentType, buf);
   if (buf.length <= MAX_INLINE_BODY) {
-    return { hash: "", inline: text3 ? buf.toString("utf8") : binaryTag(contentType, buf), len: buf.length };
+    return { hash: "", inline: text4 ? buf.toString("utf8") : binaryTag(contentType, buf), len: buf.length };
   }
   const { hash: hash2 } = await blobs().put(buf);
-  return { hash: hash2, inline: text3 ? truncateUTF8(buf, BLOB_PREVIEW) : binaryTag(contentType, buf), len: buf.length };
+  return { hash: hash2, inline: text4 ? truncateUTF8(buf, BLOB_PREVIEW) : binaryTag(contentType, buf), len: buf.length };
 }
 function assembleRaw(head, inline, blob, total) {
   let out = `${head}
@@ -37193,10 +37208,10 @@ function capturePayload(capture, sample) {
     last_ts: sample.last_ts
   };
 }
-function mountScopeTraffic(api2, base, resolve4) {
+function mountScopeTraffic(api2, base, resolve5) {
   api2.get(`${base}/traffic`, async (c) => {
     try {
-      const scope = await resolve4(String(c.req.param("id")));
+      const scope = await resolve5(String(c.req.param("id")));
       const afterSeq = Math.max(Number(c.req.query("after_seq") ?? 0) || 0, 0);
       const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 200) || 200, 1), 500);
       const items = await listScopedExchanges(scope, afterSeq, limit);
@@ -37216,7 +37231,7 @@ function mountScopeTraffic(api2, base, resolve4) {
   api2.get(`${base}/traffic/stream`, async (c) => {
     let scope;
     try {
-      scope = await resolve4(String(c.req.param("id")));
+      scope = await resolve5(String(c.req.param("id")));
     } catch (e) {
       return err3(c, e);
     }
@@ -37254,13 +37269,13 @@ function mountScopeTraffic(api2, base, resolve4) {
           await stream2.writeSSE({ event: "ping", data: "" });
           lastPing = Date.now();
         }
-        await new Promise((resolve5) => setTimeout(resolve5, rows.length ? 50 : STREAM_POLL_MS2));
+        await new Promise((resolve6) => setTimeout(resolve6, rows.length ? 50 : STREAM_POLL_MS2));
       }
     });
   });
   api2.get(`${base}/traffic/exchange`, async (c) => {
     try {
-      const scope = await resolve4(String(c.req.param("id")));
+      const scope = await resolve5(String(c.req.param("id")));
       const exchangeId = String(c.req.query("id") ?? "").trim();
       if (!exchangeId) return c.json({ error: "missing id" }, 400);
       const rows = await operations.writer.list("traffic_exchanges");
@@ -37276,7 +37291,7 @@ function mountScopeTraffic(api2, base, resolve4) {
   });
   api2.get(`${base}/traffic/endpoint`, async (c) => {
     try {
-      const scope = await resolve4(String(c.req.param("id")));
+      const scope = await resolve5(String(c.req.param("id")));
       const capture = await captureOf(scope);
       const sample = await scopeSample(scope);
       const origin = originOf(c);
@@ -37294,7 +37309,7 @@ function mountScopeTraffic(api2, base, resolve4) {
   });
   api2.post(`${base}/traffic/capture`, async (c) => {
     try {
-      const scope = await resolve4(String(c.req.param("id")));
+      const scope = await resolve5(String(c.req.param("id")));
       const body = await c.req.json().catch(() => ({}));
       const action = String(body?.action ?? "start");
       if (action !== "start" && action !== "stop") return c.json({ error: "action \u53EA\u80FD\u662F start \u6216 stop" }, 400);
@@ -40180,9 +40195,9 @@ async function notifyPost(url2, init) {
   } catch (error62) {
     throw new Error(`\u8BF7\u6C42\u5931\u8D25: ${String(error62?.message ?? error62)}`);
   }
-  const text3 = await response.text().catch(() => "");
-  if (!response.ok) throw new Error(`HTTP ${response.status}${text3 ? `: ${truncate(text3, 200)}` : ""}`);
-  return text3;
+  const text4 = await response.text().catch(() => "");
+  if (!response.ok) throw new Error(`HTTP ${response.status}${text4 ? `: ${truncate(text4, 200)}` : ""}`);
+  return text4;
 }
 function renderWebhookTemplate(template, msg) {
   const scalars = {
@@ -40225,11 +40240,11 @@ function markdownFor(msg) {
     ...msg.detail_url ? ["", `[\u67E5\u770B\u8BE6\u60C5](${msg.detail_url})`] : []
   ].join("\n");
 }
-async function expectJsonOk(text3, keys) {
-  if (!text3.trim()) return;
+async function expectJsonOk(text4, keys) {
+  if (!text4.trim()) return;
   let doc = null;
   try {
-    doc = JSON.parse(text3);
+    doc = JSON.parse(text4);
   } catch {
     return;
   }
@@ -40473,13 +40488,13 @@ async function discoverStdioTools(server, timeoutMs) {
       else entry.resolve(message.result);
     }
   });
-  const request = (method, params) => new Promise((resolve4, reject) => {
+  const request = (method, params) => new Promise((resolve5, reject) => {
     if (closed) {
       reject(new Error("\u8FDE\u63A5\u5DF2\u5173\u95ED"));
       return;
     }
     const id = nextId2++;
-    pending.set(id, { resolve: resolve4, reject });
+    pending.set(id, { resolve: resolve5, reject });
     try {
       child.stdin?.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}
 `);
@@ -40509,8 +40524,8 @@ async function discoverStdioTools(server, timeoutMs) {
     settleAll();
   }
 }
-function parseRpcPayload(text3, contentType) {
-  const trimmed = text3.trim();
+function parseRpcPayload(text4, contentType) {
+  const trimmed = text4.trim();
   if (!trimmed) return null;
   if (contentType.includes("text/event-stream") || trimmed.startsWith("event:") || trimmed.startsWith("data:")) {
     let last = null;
@@ -40558,9 +40573,9 @@ async function discoverHttpTools(server, timeoutMs) {
     }
     const sid = response.headers.get("mcp-session-id");
     if (sid) session = sid;
-    const text3 = await response.text().catch(() => "");
-    if (!response.ok) throw new Error(`HTTP ${response.status}${text3 ? `: ${truncate(text3, 200)}` : ""}`);
-    const message = parseRpcPayload(text3, response.headers.get("content-type") ?? "");
+    const text4 = await response.text().catch(() => "");
+    if (!response.ok) throw new Error(`HTTP ${response.status}${text4 ? `: ${truncate(text4, 200)}` : ""}`);
+    const message = parseRpcPayload(text4, response.headers.get("content-type") ?? "");
     if (message?.error) throw new Error(String(message.error?.message ?? "JSON-RPC \u9519\u8BEF"));
     return message?.result ?? null;
   };
@@ -40733,13 +40748,13 @@ function register12(api2) {
   });
   api2.post("/api/mcp/import", async (c) => {
     try {
-      const text3 = await c.req.text().catch(() => "");
-      if (text3.length > MCP_MAX_IMPORT_BYTES) throw fail4("\u5BFC\u5165\u5185\u5BB9\u8D85\u8FC7 1MB", 400);
+      const text4 = await c.req.text().catch(() => "");
+      if (text4.length > MCP_MAX_IMPORT_BYTES) throw fail4("\u5BFC\u5165\u5185\u5BB9\u8D85\u8FC7 1MB", 400);
       let body = {};
-      if (text3.trim()) {
+      if (text4.trim()) {
         try {
-          const parsed = JSON.parse(text3);
-          body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { raw: text3 };
+          const parsed = JSON.parse(text4);
+          body = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : { raw: text4 };
         } catch (error62) {
           throw fail4(`\u8BF7\u6C42\u4F53\u4E0D\u662F\u5408\u6CD5 JSON\uFF1A${String(error62?.message ?? error62)}`, 400);
         }
@@ -40851,11 +40866,11 @@ function register12(api2) {
   });
   api2.post("/api/side-questions", async (c) => {
     try {
-      const text3 = await c.req.text().catch(() => "");
-      if (text3.length > 32 * 1024) throw fail4("\u8BF7\u6C42\u4F53\u8FC7\u5927", 400);
+      const text4 = await c.req.text().catch(() => "");
+      if (text4.length > 32 * 1024) throw fail4("\u8BF7\u6C42\u4F53\u8FC7\u5927", 400);
       let body;
       try {
-        body = text3.trim() ? JSON.parse(text3) : {};
+        body = text4.trim() ? JSON.parse(text4) : {};
       } catch {
         throw fail4("bad json", 400);
       }
@@ -40934,11 +40949,11 @@ var init_notify_mcp = __esm({
     SIDE_PAGE_DEFAULT = 20;
     SIDE_PAGE_MAX = 50;
     rfc33396 = (date5) => date5.toISOString().replace(/\.\d{3}Z$/, "Z");
-    truncate = (text3, max = NOTIFY_MAX_ERROR_CHARS) => {
-      if (text3.length <= max) return text3;
+    truncate = (text4, max = NOTIFY_MAX_ERROR_CHARS) => {
+      if (text4.length <= max) return text4;
       let cut = max;
-      while (cut > 0 && (text3.charCodeAt(cut) & 192) === 128) cut--;
-      return `${text3.slice(0, cut)}\u2026`;
+      while (cut > 0 && (text4.charCodeAt(cut) & 192) === 128) cut--;
+      return `${text4.slice(0, cut)}\u2026`;
     };
     isMasked = (value) => typeof value === "string" && value.startsWith(NOTIFY_MASKED_PREFIX);
     LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
@@ -40963,11 +40978,11 @@ ${secret}`).digest("base64");
             const glue = webhook.includes("?") ? "&" : "?";
             url2 = `${webhook}${glue}timestamp=${ts}&sign=${encodeURIComponent(sign)}`;
           }
-          const text3 = await notifyPost(url2, {
+          const text4 = await notifyPost(url2, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ msgtype: "markdown", markdown: { title: msg.title, text: markdownFor(msg) } })
           });
-          await expectJsonOk(text3, ["errcode"]);
+          await expectJsonOk(text4, ["errcode"]);
         }
       },
       email: {
@@ -41003,11 +41018,11 @@ ${msg.summary}` } };
             payload.sign = createHmac("sha256", `${ts}
 ${secret}`).update("").digest("base64");
           }
-          const text3 = await notifyPost(webhook, {
+          const text4 = await notifyPost(webhook, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify(payload)
           });
-          await expectJsonOk(text3, ["code", "StatusCode"]);
+          await expectJsonOk(text4, ["code", "StatusCode"]);
         }
       },
       telegram: {
@@ -41023,15 +41038,15 @@ ${secret}`).update("").digest("base64");
           const chatId = cfgString(cfg, "chat_id");
           const base = (cfgString(cfg, "base_url") || "https://api.telegram.org").replace(/\/+$/, "");
           await validateHttpTarget(base);
-          const text3 = await notifyPost(`${base}/bot${token}/sendMessage`, {
+          const text4 = await notifyPost(`${base}/bot${token}/sendMessage`, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ chat_id: chatId, text: `${msg.title}
 ${msg.summary}`, disable_web_page_preview: true })
           });
-          if (text3.trim()) {
+          if (text4.trim()) {
             let doc = null;
             try {
-              doc = JSON.parse(text3);
+              doc = JSON.parse(text4);
             } catch {
               doc = null;
             }
@@ -41062,12 +41077,12 @@ ${msg.summary}`, disable_web_page_preview: true })
           for (const [key, value] of Object.entries(extra)) headers[key] = String(value);
           const contentType = cfgString(cfg, "content_type") || "application/json";
           if (method !== "GET") headers["content-type"] = headers["content-type"] ?? contentType;
-          const text3 = await notifyPost(url2, {
+          const text4 = await notifyPost(url2, {
             method,
             headers,
             body: method === "GET" ? void 0 : webhookBody(cfg, msg)
           });
-          void text3;
+          void text4;
         }
       },
       wecom: {
@@ -41080,11 +41095,11 @@ ${msg.summary}`, disable_web_page_preview: true })
         async send(cfg, msg) {
           const webhook = cfgString(cfg, "webhook");
           await validateHttpTarget(webhook);
-          const text3 = await notifyPost(webhook, {
+          const text4 = await notifyPost(webhook, {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ msgtype: "markdown", markdown: { content: markdownFor(msg) } })
           });
-          await expectJsonOk(text3, ["errcode"]);
+          await expectJsonOk(text4, ["errcode"]);
         }
       }
     };
@@ -42077,8 +42092,8 @@ async function findMCPByName(name) {
   const all = await meta3.table("mcp");
   return all.find((m) => m.name === name) ?? null;
 }
-function parseSSEJson(text3, id) {
-  for (const line of text3.split("\n")) {
+function parseSSEJson(text4, id) {
+  for (const line of text4.split("\n")) {
     if (!line.startsWith("data:")) continue;
     const payload = line.slice(5).trim();
     if (!payload) continue;
@@ -42175,8 +42190,8 @@ async function addCompanyScope(companyId, roots, reason) {
   });
 }
 async function ssProjectMeta(cl, projectID) {
-  const text3 = await cl.call("get_project", { id: projectID });
-  const p = JSON.parse(text3);
+  const text4 = await cl.call("get_project", { id: projectID });
+  const p = JSON.parse(text4);
   const roots = String(p?.target ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
   return { name: String(p?.name ?? ""), roots };
 }
@@ -42186,8 +42201,8 @@ async function ssPageAll(cl, ssType, filter, pageSize) {
   for (let page = 1; ; page++) {
     const args = { asset_type: ssType, pageIndex: page, pageSize };
     if (Object.keys(filter).length) args.filter = filter;
-    const text3 = await cl.call("list_assets", args);
-    const env = JSON.parse(text3);
+    const text4 = await cl.call("list_assets", args);
+    const env = JSON.parse(text4);
     const list = env?.list ?? [];
     if (!list.length) break;
     items.push(...list);
@@ -42333,15 +42348,15 @@ function register15(api2) {
     const args = { pageIndex: queryInt(c, "page", 1), pageSize: queryInt(c, "size", 50) };
     const search = c.req.query("search");
     if (search) args.search = search;
-    let text3;
+    let text4;
     try {
-      text3 = await cl.call("list_projects_data", args);
+      text4 = await cl.call("list_projects_data", args);
     } catch (e) {
       return c.json({ error: `list_projects_data \u5931\u8D25: ${e?.message ?? e}` }, 502);
     }
     let env = {};
     try {
-      env = JSON.parse(text3);
+      env = JSON.parse(text4);
     } catch (e) {
       return c.json({ error: "\u89E3\u6790\u9879\u76EE\u5217\u8868\u5931\u8D25: " + String(e?.message ?? e) }, 502);
     }
@@ -42359,15 +42374,15 @@ function register15(api2) {
     const args = { pageIndex: queryInt(c, "page", 1), pageSize: queryInt(c, "size", 50) };
     const search = c.req.query("search");
     if (search) args.search = search;
-    let text3;
+    let text4;
     try {
-      text3 = await cl.call("list_tasks", args);
+      text4 = await cl.call("list_tasks", args);
     } catch (e) {
       return c.json({ error: `list_tasks \u5931\u8D25: ${e?.message ?? e}` }, 502);
     }
     let env = {};
     try {
-      env = JSON.parse(text3);
+      env = JSON.parse(text4);
     } catch (e) {
       return c.json({ error: "\u89E3\u6790\u4EFB\u52A1\u5217\u8868\u5931\u8D25: " + String(e?.message ?? e) }, 502);
     }
@@ -42498,12 +42513,12 @@ var init_sync = __esm({
       async call(tool, args) {
         const result = await this.roundTrip("tools/call", { name: tool, arguments: args }, true);
         const content = Array.isArray(result?.content) ? result.content : [];
-        let text3 = "";
+        let text4 = "";
         for (const blk of content) {
-          if (blk && blk.type === "text" && blk.text != null) text3 += String(blk.text);
+          if (blk && blk.type === "text" && blk.text != null) text4 += String(blk.text);
         }
-        if (result?.isError) throw new Error(`mcp tool "${tool}" error: ${text3}`);
-        return text3;
+        if (result?.isError) throw new Error(`mcp tool "${tool}" error: ${text4}`);
+        return text4;
       }
       async tools() {
         const result = await this.roundTrip("tools/list", {}, true);
@@ -47220,9 +47235,9 @@ function toLine(value) {
 function jwtSigningKey() {
   if (cachedKey) return cachedKey;
   try {
-    const text3 = readFileSync2(JWT_KEY_PATH, "utf8").trim();
-    if (text3.length >= 32) {
-      cachedKey = Buffer.from(text3);
+    const text4 = readFileSync2(JWT_KEY_PATH, "utf8").trim();
+    if (text4.length >= 32) {
+      cachedKey = Buffer.from(text4);
       return cachedKey;
     }
   } catch {
@@ -47392,12 +47407,12 @@ function bcryptBase64(bytes) {
   }
   return out;
 }
-function bcryptUnbase64(text3, bytes) {
+function bcryptUnbase64(text4, bytes) {
   const out = Buffer.alloc(bytes);
   let acc = 0;
   let bits = 0;
   let cursor = 0;
-  for (const char of text3) {
+  for (const char of text4) {
     const value = BCRYPT_REVERSE[char];
     if (value === void 0) throw apiError(400, "\u5BC6\u7801\u54C8\u5E0C\u683C\u5F0F\u9519\u8BEF");
     acc = (acc << 6 | value) & 16777215;
@@ -47486,8 +47501,8 @@ function validatePassword(password) {
   if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) return `\u5BC6\u7801\u957F\u5EA6\u4E0D\u80FD\u8D85\u8FC7 ${MAX_PASSWORD_BYTES} \u5B57\u8282`;
   return "";
 }
-function levelOf(text3) {
-  const low = text3.toLowerCase();
+function levelOf(text4) {
+  const low = text4.toLowerCase();
   for (const key of ["fatal", "panic", "error", "err:", "\u5931\u8D25", "\u4E22\u5F03", "\u62D2\u7EDD", "\u2715", "\u4E0D\u53EF\u8FBE"]) {
     if (low.includes(key)) return "error";
   }
@@ -47497,17 +47512,17 @@ function levelOf(text3) {
   return "info";
 }
 function normalizeLine(line) {
-  let text3 = line.replace(/\n+$/, "");
-  if (text3.length >= 20 && text3[4] === "/" && text3[7] === "/" && text3[10] === " ") text3 = text3.slice(19).trim();
+  let text4 = line.replace(/\n+$/, "");
+  if (text4.length >= 20 && text4[4] === "/" && text4[7] === "/" && text4[10] === " ") text4 = text4.slice(19).trim();
   let tag = "";
-  if (text3.startsWith("[")) {
-    const end = text3.indexOf("]");
-    if (end > 1) tag = text3.slice(1, end);
+  if (text4.startsWith("[")) {
+    const end = text4.indexOf("]");
+    if (end > 1) tag = text4.slice(1, end);
   }
-  return { tag, text: text3 };
+  return { tag, text: text4 };
 }
-function appendLog(text3, levelOverride) {
-  const cleaned = normalizeLine(text3);
+function appendLog(text4, levelOverride) {
+  const cleaned = normalizeLine(text4);
   if (!cleaned.text.trim()) return null;
   const line = {
     seq: ++logSeq,
@@ -47601,14 +47616,14 @@ function logQueue() {
     async take(ms) {
       if (items.length) return items.shift();
       if (closed) return null;
-      const timedOut = await new Promise((resolve4) => {
+      const timedOut = await new Promise((resolve5) => {
         const timer = setTimeout(() => {
           wake = null;
-          resolve4(true);
+          resolve5(true);
         }, ms);
         wake = () => {
           clearTimeout(timer);
-          resolve4(false);
+          resolve5(false);
         };
       });
       if (timedOut) return null;
@@ -48135,9 +48150,9 @@ function register18(api2) {
         const cmd = String(exec.command ?? params.command ?? "");
         if (!cmd) return c.json({ error: "command \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
         const args = Array.isArray(exec.args) ? exec.args.map(String) : [];
-        const out = await new Promise((resolve4) => {
+        const out = await new Promise((resolve5) => {
           execFile(cmd, args, { cwd: storeRoot(), timeout: 6e4 }, (err4, stdout, stderr) => {
-            resolve4({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
+            resolve5({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
           });
         });
         return c.json({ output: `${out.stdout}${out.stderr}`.trim(), is_error: out.code !== 0 });
@@ -48145,9 +48160,9 @@ function register18(api2) {
       if (kind === "script") {
         const script = String(exec.script ?? exec.inline ?? "");
         const interp = String(exec.interpreter ?? "python3");
-        const out = await new Promise((resolve4) => {
+        const out = await new Promise((resolve5) => {
           const child = execFile(interp, ["-c", script], { cwd: storeRoot(), timeout: 6e4 }, (err4, stdout, stderr) => {
-            resolve4({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
+            resolve5({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
           });
           void child;
         });
@@ -48158,8 +48173,8 @@ function register18(api2) {
         const method = String(exec.method ?? "GET").toUpperCase();
         if (!url2) return c.json({ error: "url \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
         const r = await fetch(url2, { method, headers: exec.headers ?? {} });
-        const text3 = await r.text();
-        return c.json({ output: text3.slice(0, 64 * 1024), is_error: !r.ok });
+        const text4 = await r.text();
+        return c.json({ output: text4.slice(0, 64 * 1024), is_error: !r.ok });
       }
       return c.json({ error: `\u672A\u77E5\u5DE5\u5177\u7C7B\u578B: ${kind}` }, 400);
     } catch (e) {
@@ -49557,8 +49572,399 @@ async function goData(request, localPeer) {
   }
 }
 
+// src/intercept-seed.ts
+await init_context2();
+import { readFile as readFile10 } from "node:fs/promises";
+import { existsSync as existsSync3 } from "node:fs";
+import { dirname as dirname6, join as join14, resolve as resolve4 } from "node:path";
+var TABLE_RULES2 = "intercept_rules";
+var TABLE_SEED = "intercept_seed";
+var SEED_KEY = "intercept_rules";
+function rfc333910(date5) {
+  const offset = -date5.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const pad = (value) => String(Math.floor(Math.abs(value))).padStart(2, "0");
+  return `${date5.toISOString().slice(0, 23)}${sign}${pad(offset / 60)}:${pad(offset % 60)}`.replace("Z", "");
+}
+var text3 = (value, fallback = "") => value == null ? fallback : String(value);
+function rowOf(source, id) {
+  const stamp2 = (value) => {
+    if (value instanceof Date) return rfc333910(value);
+    const parsed = value == null || value === "" ? null : new Date(String(value));
+    return parsed !== null && Number.isFinite(parsed.getTime()) ? rfc333910(parsed) : rfc333910(/* @__PURE__ */ new Date());
+  };
+  return {
+    id,
+    name: text3(source.name),
+    enabled: Boolean(source.enabled),
+    priority: Number(source.priority ?? 0) || 0,
+    match_target: text3(source.match_target, "tool_input"),
+    match_type: text3(source.match_type, "string"),
+    pattern: text3(source.pattern),
+    action: text3(source.action, "deny"),
+    message: text3(source.message),
+    timeout_enabled: Boolean(source.timeout_enabled),
+    timeout_seconds: Number(source.timeout_seconds ?? 0) || 0,
+    timeout_action: text3(source.timeout_action, "deny"),
+    created_at: stamp2(source.created_at),
+    updated_at: stamp2(source.updated_at)
+  };
+}
+function findConfig() {
+  const explicit = process.env.VEXNAR_CONFIG;
+  if (explicit && existsSync3(explicit)) return resolve4(explicit);
+  const candidates = [];
+  let dir = process.cwd();
+  for (let depth = 0; depth < 6; depth += 1) {
+    candidates.push(join14(dir, "config.json"));
+    const parent = dirname6(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  candidates.push(join14(dirname6(new URL(import.meta.url).pathname), "..", "..", "..", "config.json"));
+  return candidates.find((path) => existsSync3(path)) ?? null;
+}
+async function loadRulesFromPostgres() {
+  const configPath = findConfig();
+  if (!configPath) throw new Error("\u627E\u4E0D\u5230 config.json\uFF0C\u65E0\u6CD5\u8FDE\u63A5 PostgreSQL");
+  const raw2 = JSON.parse(await readFile10(configPath, "utf8"));
+  const cfg = raw2.database ?? {};
+  const pg2 = await Promise.resolve().then(() => (init_esm(), esm_exports));
+  const Client2 = pg2.Client ?? pg2.default?.Client;
+  const client = new Client2({
+    host: cfg.host ?? "127.0.0.1",
+    port: Number(cfg.port ?? 5432),
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.dbname ?? cfg.database,
+    ssl: cfg.sslmode === "disable" ? false : { rejectUnauthorized: false }
+  });
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT id, name, enabled, priority, match_target, match_type, pattern, action, message,
+              timeout_enabled, timeout_seconds, timeout_action, created_at, updated_at
+         FROM intercept_rules
+        ORDER BY id`
+    );
+    return result.rows.map((row, index) => rowOf(row, Number(row.id) || index + 1));
+  } finally {
+    await client.end().catch(() => {
+    });
+  }
+}
+var BUILTIN_SEED = [
+  {
+    name: "[\u5185\u7F6E] \u9012\u5F52\u5F3A\u5236\u5220\u9664 rm -rf",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\brm\\b.{0,80}(?:-[a-z]*r[a-z]*f[a-z]*|-[a-z]*f[a-z]*r[a-z]*|--recursive|--no-preserve-root)",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C\u9012\u5F52\u5F3A\u5236\u5220\u9664\uFF08rm -rf / rm --recursive\uFF09\uFF0C\u53EF\u80FD\u6C38\u4E45\u635F\u574F\u7CFB\u7EDF\u6216\u9776\u673A\u73AF\u5883",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u5220\u9664\u7CFB\u7EDF\u5173\u952E\u76EE\u5F55",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: `\\brm\\b[^"\\'\\n]{0,60}["\\'\\s](/|/etc|/bin|/usr|/boot|/var|/lib|/sys|/proc|/dev|/sbin|/root)`,
+    action: "deny",
+    message: "\u7981\u6B62\u5220\u9664\u7CFB\u7EDF\u5173\u952E\u8DEF\u5F84",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u78C1\u76D8\u683C\u5F0F\u5316 mkfs",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\bmkfs\\b",
+    action: "deny",
+    message: "\u7981\u6B62\u683C\u5F0F\u5316\u78C1\u76D8\uFF08mkfs\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u8986\u5199\u78C1\u76D8\u8BBE\u5907 dd",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\bdd\\b[^|\\n]{0,100}\\bof=\\s*/dev/[a-zA-Z]",
+    action: "deny",
+    message: "\u7981\u6B62\u4F7F\u7528 dd \u8986\u5199\u78C1\u76D8\u8BBE\u5907",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] Fork \u70B8\u5F39",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: ":\\(\\)\\s*\\{[^}]*:\\|:",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C Fork \u70B8\u5F39",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u5173\u673A / \u91CD\u542F",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\b(?:shutdown|reboot|halt|poweroff|init\\s+[06])\\b",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C\u5173\u673A\u6216\u91CD\u542F\u547D\u4EE4",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u6740\u6B7B\u5168\u90E8\u8FDB\u7A0B",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\bkill\\s+-9\\s+-1\\b|\\bkillall\\s+-9\\b",
+    action: "deny",
+    message: "\u7981\u6B62 kill -9 -1 \u6216 killall -9\uFF08\u6740\u6B7B\u6240\u6709\u8FDB\u7A0B\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u78C1\u76D8\u64E6\u9664 shred / wipe",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\b(?:shred|wipe)\\b[^|\\n]{0,80}/dev/[a-zA-Z]",
+    action: "deny",
+    message: "\u7981\u6B62\u5BF9\u78C1\u76D8\u8BBE\u5907\u6267\u884C shred/wipe \u64E6\u9664",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u6E05\u7A7A\u9632\u706B\u5899\u89C4\u5219",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "\\biptables\\s+(?:-F|--flush)\\b|\\bnft\\s+flush\\s+ruleset\\b",
+    action: "deny",
+    message: "\u7981\u6B62\u6E05\u7A7A\u9632\u706B\u5899\u89C4\u5219\uFF08iptables -F / nft flush\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] SQL DROP DATABASE / TABLE / SCHEMA",
+    enabled: true,
+    priority: 90,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\bDROP\\s+(?:DATABASE|TABLE|SCHEMA|INDEX|VIEW|TABLESPACE|USER|ROLE)\\b",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C DROP \u64CD\u4F5C\uFF0C\u53EF\u80FD\u4E0D\u53EF\u9006\u5730\u9500\u6BC1\u6570\u636E\u5E93\u5BF9\u8C61",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] SQL TRUNCATE",
+    enabled: true,
+    priority: 90,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\bTRUNCATE\\s+(?:TABLE\\s+)?\\w",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C TRUNCATE\uFF0C\u53EF\u80FD\u6E05\u7A7A\u6570\u636E\u8868\u6240\u6709\u6570\u636E",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] MongoDB drop / dropDatabase",
+    enabled: true,
+    priority: 90,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\.(?:dropDatabase|dropCollection|drop)\\s*\\(",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C MongoDB drop \u64CD\u4F5C",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] Redis FLUSHALL / FLUSHDB",
+    enabled: true,
+    priority: 90,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\b(?:FLUSHALL|FLUSHDB)\\b",
+    action: "deny",
+    message: "\u7981\u6B62\u6267\u884C Redis FLUSHALL / FLUSHDB\uFF0C\u53EF\u80FD\u6E05\u7A7A\u5168\u90E8\u7F13\u5B58\u6570\u636E",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] curl / wget \u53D1\u9001 DELETE \u8BF7\u6C42",
+    enabled: true,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: '(?i)\\bcurl\\b[^|\\n&;"]{0,300}(?:-X\\s*DELETE|--request\\s+DELETE|-XDELETE)|\\bwget\\b[^|\\n&;"]{0,300}--method[=\\s]+DELETE',
+    action: "deny",
+    message: "\u7981\u6B62\u901A\u8FC7 curl/wget \u53D1\u9001 HTTP DELETE \u8BF7\u6C42\uFF0C\u53EF\u80FD\u5220\u9664\u76EE\u6807\u7CFB\u7EDF\u6570\u636E",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] Python HTTP \u5BA2\u6237\u7AEF DELETE\uFF08requests/httpx/aiohttp\uFF09",
+    enabled: true,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\b(?:requests|httpx|aiohttp|urllib\\.request)\\.delete\\s*\\(|session\\.delete\\s*\\(|client\\.delete\\s*\\(",
+    action: "deny",
+    message: "\u7981\u6B62\u4F7F\u7528 Python HTTP \u5BA2\u6237\u7AEF\u53D1\u9001 DELETE \u8BF7\u6C42",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u811A\u672C\u4E2D\u58F0\u660E HTTP DELETE \u65B9\u6CD5\uFF08JS/\u901A\u7528\uFF09",
+    enabled: true,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: `(?i)axios\\.delete\\s*\\(|method\\s*[:=]\\s*['"]DELETE['"]`,
+    action: "deny",
+    message: "\u7981\u6B62\u5728\u811A\u672C\u4E2D\u58F0\u660E\u5E76\u53D1\u9001 HTTP DELETE \u8BF7\u6C42",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u6279\u91CF\u6E05\u7A7A / \u6E05\u9664\u63A5\u53E3\u8DEF\u5F84",
+    enabled: true,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: `(?i)/(?:clear|wipe|flush|purge|truncate|drop|destroy|factory[-_]reset|reset[-_]all)(?:[/?#"'\\s]|$)`,
+    action: "deny",
+    message: "\u7981\u6B62\u8C03\u7528\u6279\u91CF\u6E05\u7A7A\u6216\u9500\u6BC1\u7C7B\u63A5\u53E3\uFF08/clear /wipe /flush /purge \u7B49\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u7834\u574F\u6027\u7CFB\u7EDF\u547D\u4EE4",
+    enabled: true,
+    priority: 100,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)\\b(rm\\s+-rf\\s+/|mkfs|dd\\s+if=|:\\(\\)\\s*\\{|shutdown|reboot|>\\s*/dev/sd)",
+    action: "deny",
+    message: "\u7834\u574F\u6027\u547D\u4EE4\u88AB\u62D2\u7EDD\uFF08rm -rf / / mkfs / dd / fork bomb / \u5173\u673A\u91CD\u542F / \u8986\u5199\u78C1\u76D8\u8BBE\u5907\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    // 这条 Go 侧默认关闭：curl/wget/nc 管道在正常渗透的反弹 shell 与传数据时会误伤。
+    name: "[\u5185\u7F6E] \u6570\u636E\u5916\u6CC4\u7BA1\u9053",
+    enabled: false,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: "(?i)(curl|wget|nc|ncat)\\b[^|]*\\b(\\|\\s*(curl|wget|nc))",
+    action: "deny",
+    message: "\u7591\u4F3C\u6570\u636E\u5916\u6CC4\u7BA1\u9053\u88AB\u62D2\u7EDD\uFF08\u547D\u4EE4\u8F93\u51FA\u7ECF curl/wget/nc \u5916\u4F20\uFF09",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  },
+  {
+    name: "[\u5185\u7F6E] \u5220\u9664\u7C7B\u63A5\u53E3\u8DEF\u5F84",
+    enabled: true,
+    priority: 80,
+    match_target: "tool_input",
+    match_type: "regex",
+    pattern: `(?i)/(?:(?:delete|remove|unlink|erase|destroy)[-\\w]*|del)(?:[/?#"'\\s]|$)`,
+    action: "deny",
+    message: "\u7981\u6B62\u8C03\u7528\u5220\u9664\u7C7B\u63A5\u53E3\uFF08/delete /remove /unlink /erase \u7B49\uFF09\uFF0C\u4E0D\u8BBA\u4F7F\u7528\u54EA\u79CD HTTP \u65B9\u6CD5\u2014\u2014\u591A\u6570\u5E94\u7528\u7684\u5220\u9664\u63A5\u53E3\u7528 GET/POST \u5C31\u80FD\u89E6\u53D1\uFF0C\u540C\u6837\u4F1A\u771F\u5B9E\u5220\u9664\u76EE\u6807\u6570\u636E",
+    timeout_enabled: false,
+    timeout_seconds: 60,
+    timeout_action: "deny"
+  }
+];
+function builtinSeedRows(now2 = /* @__PURE__ */ new Date()) {
+  const stamp2 = rfc333910(now2);
+  return BUILTIN_SEED.map((rule, index) => ({ ...rule, id: index + 1, created_at: stamp2, updated_at: stamp2 }));
+}
+async function readTables() {
+  meta3.reload();
+  return await meta3.load();
+}
+async function ensureInterceptRulesSeeded(loadRows = loadRulesFromPostgres) {
+  const tables = await readTables();
+  const seededAlready = Array.isArray(tables[TABLE_SEED]) && tables[TABLE_SEED].some((row) => row?.key === SEED_KEY);
+  if (seededAlready) return { seeded: 0, source: "done" };
+  const existing = Array.isArray(tables[TABLE_RULES2]) ? tables[TABLE_RULES2] : [];
+  if (existing.length > 0) {
+    tables[TABLE_SEED] = [{ key: SEED_KEY, source: "existing", count: existing.length, at: rfc333910(/* @__PURE__ */ new Date()) }];
+    await meta3.save(tables);
+    return { seeded: 0, source: "existing" };
+  }
+  let rows = [];
+  let source = "postgres";
+  try {
+    rows = await loadRows();
+  } catch (error62) {
+    console.warn("[vexnar] \u62E6\u622A\u89C4\u5219\u8FC1\u79FB\uFF1APostgreSQL \u4E0D\u53EF\u8BFB\uFF0C\u6539\u7528\u5185\u7F6E\u79CD\u5B50", error62);
+    rows = [];
+  }
+  if (rows.length === 0) {
+    rows = builtinSeedRows();
+    source = "builtin";
+  }
+  tables[TABLE_RULES2] = rows;
+  tables[TABLE_SEED] = [{ key: SEED_KEY, source, count: rows.length, at: rfc333910(/* @__PURE__ */ new Date()) }];
+  await meta3.save(tables);
+  return { seeded: rows.length, source };
+}
+
 // src/embedded.ts
+var migration = null;
+function migrateOnce() {
+  migration ??= ensureInterceptRulesSeeded().then(
+    (outcome) => {
+      if (outcome.seeded > 0) console.log(`[vexnar] \u62E6\u622A\u89C4\u5219\u8FC1\u79FB\uFF1A${outcome.seeded} \u6761\uFF08\u6765\u6E90 ${outcome.source}\uFF09`);
+    },
+    (error62) => console.error("[vexnar] \u62E6\u622A\u89C4\u5219\u8FC1\u79FB\u5931\u8D25\uFF08\u4E0D\u5F71\u54CD\u5176\u5B83\u63A5\u53E3\uFF09", error62)
+  );
+  return migration;
+}
 async function handle(request, localPeer) {
+  await migrateOnce();
   return await goData(request, localPeer) ?? api.fetch(request);
 }
 export {

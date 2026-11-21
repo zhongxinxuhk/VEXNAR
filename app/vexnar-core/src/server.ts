@@ -7,6 +7,7 @@ import { cors } from 'hono/cors'
 import { auth, serviceToken } from './auth.js'
 import { proxyBridge } from './proxy-bridge.ts'
 import { api } from './routes.js'
+import { ensureInterceptRulesSeeded } from './intercept-seed.js'
 
 const app = new Hono()
 const fallback = (process.env.VEXNAR_GO_FALLBACK || '').replace(/\/$/, '')
@@ -66,7 +67,15 @@ app.all('/api/*', async (c) => {
   return new Response(upstream.body, { status: upstream.status, headers: responseHeaders })
 })
 
+// 规则迁移在建监听之前跑：第一次打开拦截规则页时就该看到原有规则，而不是空表。
+// 迁移源不可用只记日志，服务照常起。
 const port = Number(process.env.PORT ?? 8790)
+await ensureInterceptRulesSeeded().then(
+  (outcome) => {
+    if (outcome.seeded > 0) console.log(`[vexnar] 拦截规则迁移：${outcome.seeded} 条（来源 ${outcome.source}）`)
+  },
+  (error) => console.error('[vexnar] 拦截规则迁移失败（不影响其它接口）', error)
+)
 serve({ fetch: app.fetch, hostname: '127.0.0.1', port }, (info) => {
   console.log(`vexnar-core listening on http://127.0.0.1:${info.port}`)
 })
