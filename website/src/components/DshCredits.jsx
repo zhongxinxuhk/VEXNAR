@@ -38,6 +38,8 @@ export default function DshCredits({ dsh }) {
     return dsh.builtins.filter(row => (group === '全部' || row.group === group) && (!q || `${row.package} ${row.id} ${row.description}`.toLowerCase().includes(q)));
   }, [dsh, group, query]);
   const enabled = dsh.builtins.filter(row => row.state === '启用').length;
+  const disabled = dsh.builtins.filter(row => row.state === '停用').length;
+  const conditional = dsh.builtins.filter(row => row.state === '条件启用').length;
 
   return <section className="dsh-credits" id="dsh">
     <div className="directory-heading">
@@ -58,6 +60,8 @@ export default function DshCredits({ dsh }) {
         <div className="dsh-stats">
           <span><b>{dsh.builtins.length}</b> 内置组件</span>
           <span><b>{enabled}</b> 直接启用</span>
+          <span><b>{disabled}</b> 显式停用</span>
+          <span><b>{conditional}</b> 条件启用</span>
           <span><b>{dsh.themes.length}</b> 主题与外观</span>
           <span><b>web profile</b> VEXNAR 组合</span>
         </div>
