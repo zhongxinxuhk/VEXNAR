@@ -27,7 +27,9 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 - **元数据**（agents/tools/mcp/notify/llm/settings/categories/templates）：`meta.json`
   单文件域（`vexnar-meta`）；
 - **companies** 走 store（assets 域）；core 不再直接连接 PostgreSQL；
-- `VEXNAR_STORE=postgres` + `VEXNAR_PG_URL` 可整体切回 PostgreSQL；存量导入：
+写路径：`journal`（prepared→apply→committed）+ 每记录 `rev` + 单写者锁
+（`store.lock`，崩溃残留 pid 会被识别并接管）；读侧写后自动失效缓存。
+`VEXNAR_STORE=postgres` + `VEXNAR_PG_URL` 可整体切回 PostgreSQL；存量导入：
   `cd ../vexnar-store && npm run seed`。
 
 ## 端点（20）
@@ -51,6 +53,8 @@ node compare.mjs           # 逐端点对比 Go 与 TS
 | `GET /api/assets` | 🟡 已实现核心字段，DSL/图查询未迁 |
 | `GET /api/exploration/findings`、`/:id` | 🟡 已实现，traffic/report 版本字段暂为 0 |
 | `GET /api/exploration/nodes` | 🟡 已实现 items/edges，refs 暂空 |
+| `POST /api/tasks` | ✅ 新建任务：journal + rev，返回任务 DTO |
+| `PATCH /api/exploration/findings/:id` | ✅ 改状态/严重度：乐观锁，冲突 409 |
 
 最近一次对账：元数据 **12/12 PASS**（全部走 store）；
 领域端点 **6/6 PASS**

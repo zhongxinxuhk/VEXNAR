@@ -65,6 +65,18 @@ npm run compare     # JSON store vs PG 适配器逐项对比
    store 在两种后端输出同一形状。
 5. **统计的任务下拉**：JSON 侧需要 join 内存里的 tasks 才能补 name/description。
 
+## 写路径
+
+```text
+writer.commit(ops)   写 journal(prepared) → 逐条原子写 → journal(committed)
+writer.recover()     启动时重放 prepared/failed 的提交（幂等）
+writer.lock()        单写者锁；崩溃残留 pid 会被检测并接管
+```
+
+- 每条记录带 `rev`，`expectedRev` 不匹配抛 `StoreConflict`（HTTP 409）；
+- 写入是"一条记录一个文档"，不会整表重写；
+- 测试：`npm run test:writes`（创建任务、分配探索、改漏洞、冲突、日志重放、锁释放）。
+
 ## 与 dsh 的关系
 
 dsh 的 `storage-domain` 是"schema 校验 + 可替换 backend"的 KV 域。本包按同一模型实现

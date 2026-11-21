@@ -9,7 +9,8 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "seed": "tsx seed.mjs",
-    "compare": "tsx compare.mjs"
+    "compare": "tsx compare.mjs",
+    "test:writes": "tsx test-writes.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",

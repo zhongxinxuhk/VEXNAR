@@ -24,6 +24,13 @@ export function jsonStore(root: string): Store {
     async init() {
       await mkdir(root, { recursive: true, mode: 0o700 })
     },
+    invalidate(tables) {
+      if (!tables) {
+        for (const key of Object.keys(cache)) delete cache[key]
+        return
+      }
+      for (const key of tables) delete cache[key]
+    },
     tasks: {
       list: async () => [...(await load('tasks', taskRow))].sort((a, b) => Number(b.id) - Number(a.id)),
       get: async (id) => (await load('tasks', taskRow)).find((row) => String(row.id) === String(id))
