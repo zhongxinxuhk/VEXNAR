@@ -2,11 +2,10 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React from 'react';
-import { External, Icon } from './UI.jsx';
-import { REPO } from '../content.js';
-import Architecture3D from '../architecture/Arch3D.jsx';
-import ArchitectureLab from '../Architecture.jsx';
+import { External, Icon } from './UI.tsx';
+import { REPO } from '../content.ts';
+import Architecture3D from '../architecture/Arch3D.tsx';
+import ArchitectureLab from '../Architecture.tsx';
 
 const capabilities = [
   { layer: 'orchestration', icon: 'target', index: '01', title: '任务编排', text: 'Manager 管理生命周期，Engine 驱动规划循环，Worker 池并行领取意图。暂停、恢复与取消都有明确的取消原因。' },

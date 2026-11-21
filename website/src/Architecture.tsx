@@ -2,11 +2,17 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React, { useEffect, useState } from 'react';
-import { architectures, sourceRevision } from './architecture.js';
-import { REPO } from './content.js';
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { architectures, sourceRevision, type ArchDiagram, type ArchNode } from './architecture.ts';
+import { REPO } from './content.ts';
 
-function edgePath(a, b, viewId) {
+/** Props of the node-level diagram switcher; `bare` drops the section heading. */
+interface ArchitectureProps { bare?: boolean }
+
+/** Resolve a diagram id; the registry is static, so the first view is the fallback. */
+function findView(id: string): ArchDiagram { return architectures.find(view => view.id === id) ?? architectures[0]; }
+
+function edgePath(a: ArchNode, b: ArchNode, viewId: string): string {
   const ax = a.x + 95, ay = a.y + 40, bx = b.x + 95, by = b.y + 40;
   if (viewId === 'cache') return `M ${ax + 95} ${ay} C ${ax + 165} ${ay}, ${bx - 165} ${by}, ${bx - 95} ${by}`;
   if (Math.abs(ay - by) < 80) {
@@ -18,30 +24,30 @@ function edgePath(a, b, viewId) {
   return `M ${ax} ${ay + 40 * direction} C ${ax} ${middle}, ${bx} ${middle}, ${bx} ${by - 40 * direction}`;
 }
 
-export default function Architecture({ bare = false }) {
+export default function Architecture({ bare = false }: ArchitectureProps) {
   const [viewId, setViewId] = useState('system');
   const [selectedId, setSelectedId] = useState('api');
   const [playing, setPlaying] = useState(false);
-  const view = architectures.find(v => v.id === viewId);
-  const selected = view.nodes.find(n => n.id === selectedId) || view.nodes[0];
+  const view = findView(viewId);
+  const selected = view.nodes.find(n => n.id === selectedId) ?? view.nodes[0];
   useEffect(() => {
     if (!playing) return;
     const timer = setInterval(() => setSelectedId(previous => view.sequence[(view.sequence.indexOf(previous) + 1) % view.sequence.length]), 2200);
     return () => clearInterval(timer);
   }, [playing, view]);
-  const chooseView = id => {
-    const next = architectures.find(v => v.id === id);
+  const chooseView = (id: string) => {
+    const next = findView(id);
     setViewId(id); setSelectedId(next.nodes[0].id); setPlaying(false);
   };
-  function tabKeys(event, index) {
-    let next;
+  function tabKeys(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: number;
     if (event.key === 'ArrowRight') next = (index + 1) % architectures.length;
     else if (event.key === 'ArrowLeft') next = (index + architectures.length - 1) % architectures.length;
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = architectures.length - 1;
     else return;
     event.preventDefault(); chooseView(architectures[next].id);
-    document.getElementById(`tab-${architectures[next].id}`).focus();
+    document.getElementById(`tab-${architectures[next].id}`)?.focus();
   }
   return <section id="architecture" className={`architecture-section section reveal ${bare ? 'is-bare' : ''}`}>
     {!bare && <div className="section-heading"><div><div className="eyebrow">技术架构</div><h2>系统如何运行。</h2></div><p>系统、缓存、工具与双图的实现关系。<br />选择节点查看说明及源码。</p></div>}
@@ -51,13 +57,14 @@ export default function Architecture({ bare = false }) {
     <div id="architecture-panel" className="architecture-panel" role="tabpanel" aria-labelledby={`tab-${viewId}`}>
       <div className="diagram-heading"><div><h3>{view.title}</h3><p>{view.description}</p></div><button className={`tour-button ${playing ? 'playing' : ''}`} onClick={() => setPlaying(!playing)} aria-pressed={playing}>{playing ? '暂停浏览' : '逐步浏览'}</button></div>
       <div className="diagram-layout">
-        <div className="diagram-scroll" tabIndex="0" role="region" aria-label={`${view.label}节点图，可横向滚动`}>
+        <div className="diagram-scroll" tabIndex={0} role="region" aria-label={`${view.label}节点图，可横向滚动`}>
           <div className="diagram-board" key={view.id}>
             <div className="diagram-grid" aria-hidden="true" />
             <svg viewBox="0 0 1000 530" className="diagram-lines" aria-hidden="true">
               <defs><marker id={`head-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#9aa9bd" /></marker><marker id={`lit-${view.id}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#315cc9" /></marker></defs>
               {view.edges.map(([from, to]) => {
                 const a = view.nodes.find(n => n.id === from), b = view.nodes.find(n => n.id === to);
+                if (!a || !b) return null;
                 const lit = from === selected.id || to === selected.id;
                 return <path key={`${from}-${to}`} d={edgePath(a, b, view.id)} className={lit ? 'edge edge-lit' : 'edge'} markerEnd={`url(#${lit ? 'lit' : 'head'}-${view.id})`} />;
               })}

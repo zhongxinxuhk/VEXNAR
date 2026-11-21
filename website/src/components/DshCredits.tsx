@@ -2,14 +2,68 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React, { useMemo, useState } from 'react';
-import { External, Icon } from './UI.jsx';
+import { useMemo, useState } from 'react';
+import { External, Icon } from './UI.tsx';
+
+/** One built-in row of the DSH package list (`credits.json` → `dsh.builtins`). */
+interface DshBuiltinRow {
+  id: string;
+  package: string;
+  dir: string;
+  description: string;
+  license: string;
+  version: string;
+  source: string;
+  state: string;
+  group: string;
+  url: string;
+  license_url: string;
+}
+
+/** One bundled theme or appearance entry (`credits.json` → `dsh.themes`). */
+interface DshTheme {
+  name: string;
+  en: string;
+  kind: string;
+  license: string;
+  license_url: string;
+  source: string;
+  note: string;
+  author?: string;
+}
+
+/** The whole DSH block of the credits catalog. */
+interface DshCatalog {
+  name: string;
+  short: string;
+  author: string;
+  version: string;
+  tag: string;
+  commit: string;
+  license: string;
+  license_url: string;
+  repository: string;
+  logo: string;
+  role: string;
+  sources: string[];
+  themes: DshTheme[];
+  builtins: DshBuiltinRow[];
+}
 
 const GROUP_ORDER = ['全部', 'Agent 能力', '工具与文件', '会话与数据', '插件与设置', '模型与网络', '客户端界面', '平台与传输', '安全与审批', '主题与外观'];
-const stateTone = { 启用: 'green', 停用: 'slate', 条件启用: 'amber' };
-const sourceLabel = { 'dsh-base': 'base', 'dsh-web-app': 'web-app' };
+/** Tone class per built-in state; unknown states fall back to `slate`. */
+const stateTone: Record<string, string> = { 启用: 'green', 停用: 'slate', 条件启用: 'amber' };
+/** Short label per DSH bundle the row came from. */
+const sourceLabel: Record<string, string> = { 'dsh-base': 'base', 'dsh-web-app': 'web-app' };
 
-function ThemeCard({ theme, repository, tag }) {
+/** Props of one theme card: the theme row plus the repository coordinates it links to. */
+interface ThemeCardProps {
+  theme: DshTheme;
+  repository: string;
+  tag: string;
+}
+
+function ThemeCard({ theme, repository, tag }: ThemeCardProps) {
   const sourcePath = theme.source.replace(/^app\/dsh\//, '');
   const tone = /浅色/.test(theme.name) ? 'light' : /深色/.test(theme.name) ? 'dark' : /系统/.test(theme.name) ? 'system' : /Montserrat/.test(theme.name) ? 'font' : /Shiki/.test(theme.name) ? 'code' : 'tokens';
   return <article className={`dsh-theme dsh-theme-${tone}`}>
@@ -28,11 +82,14 @@ function ThemeCard({ theme, repository, tag }) {
   </article>;
 }
 
-export default function DshCredits({ dsh }) {
+/** Props of the DSH credits section: the catalog block of `credits.json`. */
+interface DshCreditsProps { dsh: DshCatalog }
+
+export default function DshCredits({ dsh }: DshCreditsProps) {
   const [group, setGroup] = useState('全部');
   const [query, setQuery] = useState('');
   const groups = useMemo(() => GROUP_ORDER.filter(name => name === '全部' || dsh.builtins.some(row => row.group === name)), [dsh]);
-  const counts = useMemo(() => dsh.builtins.reduce((acc, row) => ({ ...acc, [row.group]: (acc[row.group] || 0) + 1 }), {}), [dsh]);
+  const counts = useMemo(() => dsh.builtins.reduce<Record<string, number>>((acc, row) => ({ ...acc, [row.group]: (acc[row.group] || 0) + 1 }), {}), [dsh]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return dsh.builtins.filter(row => (group === '全部' || row.group === group) && (!q || `${row.package} ${row.id} ${row.description}`.toLowerCase().includes(q)));

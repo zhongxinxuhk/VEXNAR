@@ -3,31 +3,50 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { Badge, Modal } from './primitives.jsx';
-import { consoleNav, viewLabels } from './nav.js';
-import { approvals as approvalRows, conversations, tasks as taskSeed } from './data.js';
-import Chat from './Chat.jsx';
-import Dashboard from './Dashboard.jsx';
-import { Assets, Commands, Findings, LlmRecords, Sync, Tasks, Traffic, Workspace } from './Work.jsx';
-import { Agents, Approvals, AssetIntercept, Intercept, Llm, Logs, Mcp, Notify as NotifyView, Settings, Skills, Tools } from './Systems.jsx';
+import { Icon } from '../components/UI.tsx';
+import { Badge, Modal } from './primitives.tsx';
+import { consoleNav, viewLabels } from './nav.ts';
+import { approvals as approvalRows, conversations, tasks as taskSeed } from './data.ts';
+import type { ApprovalState, TaskRow } from './data.ts';
+import Chat from './Chat.tsx';
+import Dashboard from './Dashboard.tsx';
+import { Assets, Commands, Findings, LlmRecords, Sync, Tasks, Traffic, Workspace } from './Work.tsx';
+import { Agents, Approvals, AssetIntercept, Intercept, Llm, Logs, Mcp, Notify as NotifyView, Settings, Skills, Tools } from './Systems.tsx';
 
-const initialApprovals = () => approvalRows.reduce((map, row) => ({ ...map, [row.id]: row.state }), {});
+// Demo fixtures and navigation metadata live in data.ts / nav.ts (typed by the
+// modules that own them). Only the shell's own UI state is declared here.
+type Toast = { id: string; message: string };
+type PaletteItem = { id: string; label: string; hint: string; icon: string; action: () => void };
+type NewTaskDraft = { target: string; template: string; profile: string };
 
-export default function AgentConsole({ initialView = 'chat', className = '', mode = 'embed' }) {
+interface AgentConsoleProps {
+  initialView?: string;
+  className?: string;
+  mode?: string;
+}
+
+// Buttons elsewhere hand back plain strings; keep the stored decision inside the
+// demo's own vocabulary instead of widening the record to `string`.
+const approvalStates: readonly ApprovalState[] = ['pending', 'approved', 'denied'];
+const toApprovalState = (value: unknown): ApprovalState => approvalStates.find(state => state === value) ?? 'pending';
+
+const initialApprovals = (): Record<string, ApprovalState> =>
+  approvalRows.reduce<Record<string, ApprovalState>>((map, row) => ({ ...map, [row.id]: row.state }), {});
+
+export default function AgentConsole({ initialView = 'chat', className = '', mode = 'embed' }: AgentConsoleProps) {
   const client = mode === 'client';
   const [view, setView] = useState(initialView);
   const [collapsed, setCollapsed] = useState(false);
   const [palette, setPalette] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [navOpen, setNavOpen] = useState(false);
-  const [decisions, setDecisions] = useState(initialApprovals);
-  const [toasts, setToasts] = useState([]);
-  const [rows, setRows] = useState(taskSeed);
+  const [decisions, setDecisions] = useState<Record<string, ApprovalState>>(initialApprovals);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [rows, setRows] = useState<TaskRow[]>(taskSeed);
   const [createOpen, setCreateOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ target: 'shop.acme.test', template: '外部渗透', profile: '默认（Claude Opus 4.8）' });
-  const timers = useRef([]);
-  const paletteInput = useRef(null);
+  const [newTask, setNewTask] = useState<NewTaskDraft>({ target: 'shop.acme.test', template: '外部渗透', profile: '默认（Claude Opus 4.8）' });
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const paletteInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
@@ -38,7 +57,7 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
   }, [palette]);
 
   useEffect(() => {
-    const key = event => {
+    const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') { event.preventDefault(); setPalette(value => !value); }
       if (event.key === 'Escape') setPalette(false);
     };
@@ -46,23 +65,23 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
     return () => document.removeEventListener('keydown', key);
   }, []);
 
-  const notify = message => {
+  const notify = (message: string) => {
     const id = `t-${Math.random().toString(36).slice(2, 8)}`;
     setToasts(list => [...list, { id, message }]);
     timers.current.push(setTimeout(() => setToasts(list => list.filter(item => item.id !== id)), 2800));
   };
 
-  const decide = (id, state) => setDecisions(map => ({ ...map, [id]: state }));
+  const decide = (id: string, state: string) => setDecisions(map => ({ ...map, [id]: toApprovalState(state) }));
   const pendingCount = Object.values(decisions).filter(state => state === 'pending').length;
 
-  const go = next => {
+  const go = (next?: string): void => {
     if (!next) return;
     setView(next);
     setNavOpen(false);
     setPalette(false);
   };
 
-  const paletteItems = useMemo(() => {
+  const paletteItems = useMemo<PaletteItem[]>(() => {
     const navItems = consoleNav.flatMap(group => group.items.map(item => ({ id: `nav-${item.id}`, label: item.label, hint: group.label, icon: item.icon, action: () => go(item.id) })));
     const chats = conversations.map(chat => ({ id: `conv-${chat.id}`, label: chat.name, hint: '对话', icon: 'chat', action: () => go('chat') }));
     const query = paletteQuery.trim().toLowerCase();
@@ -78,7 +97,7 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
     notify(`任务 ${id} 已创建（演示，不会执行）`);
   }
 
-  const content = (() => {
+  const content: React.ReactNode = (() => {
     switch (view) {
       case 'dashboard': return <Dashboard onNavigate={go} onCreateTask={() => setCreateOpen(true)} notify={notify} />;
       case 'chat': return <Chat approvals={decisions} decideApproval={decide} notify={notify} />;
@@ -148,7 +167,7 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
       <div className="cx-shell">
         <header className="cx-top">
           <button type="button" className="cx-icon-btn cx-top-collapse" aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'} onClick={() => setCollapsed(value => !value)}><Icon name="menu" size={16} /></button>
-          <div className="cx-top-path"><span>VEXNAR</span><Icon name="chevronRight" size={12} /><b>{viewLabels[view]}</b></div>
+          <div className="cx-top-path"><span>VEXNAR</span><Icon name="chevronRight" size={12} /><b>{viewLabels[view as keyof typeof viewLabels]}</b></div>
           <button type="button" className="cx-searchbtn" onClick={() => setPalette(true)}><Icon name="search" size={15} /><span>搜索</span><kbd>⌘J</kbd></button>
           <div className="cx-top-right">
             <Badge tone="green" dot>LLM 已配置</Badge>
@@ -161,9 +180,9 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
       </div>
     </div>
 
-    {palette && <div className="cx-palette-backdrop" onClick={event => { if (event.target === event.currentTarget) setPalette(false); }}>
+    {palette && <div className="cx-palette-backdrop" onClick={(event: React.MouseEvent<HTMLDivElement>) => { if (event.target === event.currentTarget) setPalette(false); }}>
       <div className="cx-palette" role="dialog" aria-label="控制台快速导航">
-        <div className="cx-palette-input"><Icon name="search" size={16} /><input ref={paletteInput} value={paletteQuery} onChange={event => setPaletteQuery(event.target.value)} placeholder="搜索页面或会话…" aria-label="搜索页面或会话" /><kbd>Esc</kbd></div>
+        <div className="cx-palette-input"><Icon name="search" size={16} /><input ref={paletteInput} value={paletteQuery} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setPaletteQuery(event.target.value)} placeholder="搜索页面或会话…" aria-label="搜索页面或会话" /><kbd>Esc</kbd></div>
         <div className="cx-palette-list">
           {paletteItems.map(item => <button key={item.id} type="button" onClick={item.action}><Icon name={item.icon} size={15} /><span>{item.label}</span><small>{item.hint}</small></button>)}
           {!paletteItems.length && <p className="cx-palette-empty">没有匹配的页面。</p>}
@@ -181,9 +200,9 @@ export default function AgentConsole({ initialView = 'chat', className = '', mod
       <button type="button" className="cx-btn cx-btn-primary" onClick={createTask}><Icon name="plus" size={14} />创建任务</button>
     </>}>
       <div className="cx-form">
-        <label className="cx-field"><span>目标</span><input value={newTask.target} onChange={event => setNewTask({ ...newTask, target: event.target.value })} placeholder="example.test" /><small>仅用于演示，任务不会启动。</small></label>
-        <label className="cx-field"><span>任务模板</span><select value={newTask.template} onChange={event => setNewTask({ ...newTask, template: event.target.value })}><option>外部渗透</option><option>内网横向</option><option>只读复核</option><option>业务复核</option></select></label>
-        <label className="cx-field"><span>模型 profile</span><select value={newTask.profile} onChange={event => setNewTask({ ...newTask, profile: event.target.value })}><option>默认（Claude Opus 4.8）</option><option>DeepSeek V4</option><option>本地 Qwen（离线）</option></select></label>
+        <label className="cx-field"><span>目标</span><input value={newTask.target} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setNewTask({ ...newTask, target: event.target.value })} placeholder="example.test" /><small>仅用于演示，任务不会启动。</small></label>
+        <label className="cx-field"><span>任务模板</span><select value={newTask.template} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setNewTask({ ...newTask, template: event.target.value })}><option>外部渗透</option><option>内网横向</option><option>只读复核</option><option>业务复核</option></select></label>
+        <label className="cx-field"><span>模型 profile</span><select value={newTask.profile} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setNewTask({ ...newTask, profile: event.target.value })}><option>默认（Claude Opus 4.8）</option><option>DeepSeek V4</option><option>本地 Qwen（离线）</option></select></label>
       </div>
     </Modal>
   </div>;

@@ -2,9 +2,30 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+/** Counters a nav entry can show; resolved against live state by the caller. */
+export type NavBadge = 'approvals';
+
+/**
+ * One console destination. `icon` is a key of the glyph table in
+ * `components/UI.tsx`; it stays `string` here so the demo dataset does not keep
+ * a second copy of the icon inventory.
+ */
+export interface NavEntry {
+  id: string;
+  label: string;
+  icon: string;
+  badge?: NavBadge;
+}
+
+/** A titled block of nav entries ("功能" / "系统"). */
+export interface NavGroup {
+  label: string;
+  items: NavEntry[];
+}
+
 // Console navigation mirrors web/src/navigation/sidebar/sidebar-items.ts so the
 // demo reads like the real product shell. Every entry maps to a live view.
-export const consoleNav = [
+export const consoleNav: NavGroup[] = [
   {
     label: '功能',
     items: [
@@ -38,6 +59,7 @@ export const consoleNav = [
   }
 ];
 
-export const viewLabels = Object.fromEntries(
-  consoleNav.flatMap(group => group.items.map(item => [item.id, item.label]))
+/** View id → nav label, used by the console breadcrumb. */
+export const viewLabels: Record<string, string> = Object.fromEntries(
+  consoleNav.flatMap((group): Array<[string, string]> => group.items.map((item): [string, string] => [item.id, item.label]))
 );

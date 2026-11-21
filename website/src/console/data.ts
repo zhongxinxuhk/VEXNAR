@@ -4,7 +4,420 @@
 
 // Every value below is demo content rendered by React in the browser. Hosts use
 // the reserved .test TLD, nothing here is fetched, measured or transmitted.
-export const task = {
+
+/** Visual tone keys shared by stat cards, badges, graph and asset coloring. */
+export type Tone = 'slate' | 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'red';
+
+/** Guard decision the console shows for one tool call. */
+export type ToolPolicy = 'allow' | 'ask' | 'deny';
+
+/** Outcome of one tool run. */
+export type RunStatus = 'ok' | 'error';
+
+/** Lifecycle state of a task row. */
+export type TaskStatus = '探索中' | '暂停' | '已完成';
+
+/** State of a conversation rail entry; `empty` means it carries no transcript. */
+export type ConversationState = 'live' | 'done' | 'empty';
+
+/** Kind of one activity-feed entry; also the filter vocabulary. */
+export type ActivityKind = 'tool_use' | 'tool_result' | 'text' | 'thinking';
+
+/** Severity of a confirmed or candidate finding. */
+export type Severity = '高危' | '中危' | '低危';
+
+/** Verification state of a finding. */
+export type FindingStatus = '已验证' | '已提交' | '验证中' | '待复验' | '已修复';
+
+/** Human approval decision attached to an intercepted call. */
+export type ApprovalState = 'pending' | 'approved' | 'denied';
+
+/** Log severity shown by the log view. */
+export type LogLevel = 'INFO' | 'WARN' | 'ERROR';
+
+/** Kind of node in the asset tree. */
+export type AssetKind = '域名' | '站点' | '服务' | '端点' | '接口组';
+
+/** Node type in the exploration-graph demo view. */
+export type GraphNodeType = '起点' | '目标' | '意图' | '事实' | '漏洞' | '提示';
+
+/** Relation label on an exploration-graph edge. */
+export type GraphRelation = '派生' | '意图链' | '产出' | '证明' | '提示';
+
+/** Scope mode applied to one target. */
+export type AssetScopeMode = '允许' | '只读' | '拦截';
+
+/** MCP connection state. */
+export type ConnectionState = '已连接' | '未连接';
+
+/** Asset-sync state. */
+export type SyncState = '已同步' | '未同步';
+
+/** Model profile state. */
+export type ProfileState = '已配置' | '未验证';
+
+/** Where a skill comes from. */
+export type SkillKind = '内置' | '扩展';
+
+/** Header card describing the running demo task. */
+export interface TaskSummary {
+  id: string;
+  name: string;
+  template: string;
+  profile: string;
+  goal: string;
+  status: TaskStatus;
+  elapsed: string;
+  workers: number;
+  intents: number;
+  facts: number;
+  findings: number;
+  assets: number;
+}
+
+/** One dashboard stat card. */
+export interface DashboardStat {
+  id: string;
+  label: string;
+  value: string;
+  sub: string;
+  tone: Tone;
+  icon: string;
+}
+
+/** One slice of the token-usage breakdown. */
+export interface TokenSlice {
+  label: string;
+  value: string;
+  share: number;
+  tone: Tone;
+}
+
+/** Selectable token-usage window. */
+export type TokenRangeKey = '7天' | '30天' | '3月' | '6月' | '一年';
+
+/** `[date, input, cached, output]` in millions of tokens. */
+export type TokenPoint = [date: string, input: number, cached: number, output: number];
+
+/** Token series per selectable window. */
+export type TokenSeries = Record<TokenRangeKey, TokenPoint[]>;
+
+/** Filter chip of the activity feed. */
+export type ActivityFilter = '全部' | ActivityKind;
+
+/** One row of the activity feed. */
+export interface ActivityEntry {
+  id: number;
+  worker: string;
+  kind: ActivityKind;
+  title: string;
+  text: string;
+  time: string;
+}
+
+/** One finding row. */
+export interface Finding {
+  id: string;
+  title: string;
+  severity: Severity;
+  status: FindingStatus;
+  target: string;
+  scope: string;
+  detail: string;
+  evidence: string;
+  cwe: string;
+  time: string;
+  agent: string;
+}
+
+/** One task row of the task table. */
+export interface TaskRow {
+  id: string;
+  name: string;
+  category: string;
+  status: TaskStatus;
+  profile: string;
+  intents: number;
+  facts: number;
+  findings: number;
+  assets: number;
+  elapsed: string;
+  created: string;
+}
+
+/** One conversation rail entry. `meta` is absent for worker conversations. */
+export interface Conversation {
+  id: string;
+  rail: string;
+  name: string;
+  state: ConversationState;
+  meta?: string;
+}
+
+/**
+ * What a tool card shows above its output: a command line, a header block, or
+ * structured arguments. Kept structural because every tool renders its own.
+ */
+export type ToolInput = string | Readonly<Record<string, unknown>> | ReadonlyArray<Readonly<Record<string, unknown>>>;
+
+/** Result strip shared by tool turns and command runs. */
+export interface RunTiming {
+  status: RunStatus;
+  duration: string;
+}
+
+interface TranscriptTurnBase {
+  id: string;
+}
+
+/** Operator message in a transcript. */
+export interface UserTurn extends TranscriptTurnBase {
+  kind: 'user';
+  text: string;
+}
+
+/** Reasoning block in a transcript. */
+export interface ThinkingTurn extends TranscriptTurnBase {
+  kind: 'thinking';
+  label: string;
+  text: string;
+}
+
+/** Tool invocation in a transcript. */
+export interface ToolTurn extends TranscriptTurnBase, RunTiming {
+  kind: 'tool';
+  tool: string;
+  title: string;
+  summary: string;
+  input: ToolInput;
+  output: string[];
+}
+
+/**
+ * Approval prompt in a transcript. `approval` optionally pins the approval row
+ * it corresponds to; the demo prompt is raised before an id is issued.
+ */
+export interface ApprovalTurn extends TranscriptTurnBase {
+  kind: 'approval';
+  title: string;
+  summary: string;
+  risk: string;
+  reason: string;
+  state: ApprovalState;
+  approval?: string;
+}
+
+/** Plain assistant prose in a transcript. */
+export interface TextTurn extends TranscriptTurnBase {
+  kind: 'text';
+  text: string;
+}
+
+/** One transcript step; narrow on `kind` to reach the variant fields. */
+export type TranscriptTurn = UserTurn | ThinkingTurn | ToolTurn | ApprovalTurn | TextTurn;
+
+/** Transcript per conversation id. */
+export type TranscriptMap = Record<string, TranscriptTurn[]>;
+
+/** One node of the exploration-graph demo view. */
+export interface GraphNode {
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  sub: string;
+  x: number;
+  y: number;
+  detail: string;
+  reached?: boolean;
+}
+
+/** A directed exploration-graph edge: `[from, to, relation]`. */
+export type GraphEdge = [from: string, to: string, relation: GraphRelation];
+
+/** The exploration-graph demo view. */
+export interface ExplorationGraph {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+/** One legend row of the exploration-graph view. */
+export interface GraphLegendEntry {
+  type: GraphNodeType;
+  tone: Tone;
+}
+
+/** One node of the asset tree; `children` nests services and endpoints. */
+export interface AssetNode {
+  id: string;
+  name: string;
+  kind: AssetKind;
+  tone: Tone;
+  detail: string;
+  children?: AssetNode[];
+}
+
+/** One recorded HTTP exchange. */
+export interface TrafficRow {
+  id: string;
+  method: string;
+  host: string;
+  path: string;
+  status: number;
+  size: string;
+  ms: number;
+  agent: string;
+  finding: string;
+  request: string;
+  response: string;
+}
+
+/** One command run of the tool-execution view. */
+export interface CommandRun {
+  id: string;
+  tool: string;
+  agent: string;
+  summary: string;
+  status: RunStatus;
+  duration: string;
+  output: string;
+  time: string;
+}
+
+/** One row of the LLM recording table. */
+export interface LlmRecord {
+  id: string;
+  profile: string;
+  model: string;
+  agent: string;
+  input: string;
+  cached: string;
+  output: string;
+  latency: string;
+  retries: number;
+  time: string;
+}
+
+/** One model profile. */
+export interface ModelProfile {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  default: boolean;
+  chain: string[];
+  state: ProfileState;
+}
+
+/** One Agent definition. */
+export interface AgentRow {
+  id: string;
+  name: string;
+  role: string;
+  model: string;
+  tools: string[];
+  skills: string[];
+  enabled: boolean;
+  note: string;
+}
+
+/** One MCP server binding. */
+export interface McpServer {
+  id: string;
+  name: string;
+  transport: string;
+  state: ConnectionState;
+  tools: number;
+  url: string;
+  latency: string;
+}
+
+/** One installed skill. */
+export interface SkillRow {
+  id: string;
+  name: string;
+  kind: SkillKind;
+  unlocked: boolean;
+  note: string;
+}
+
+/** One row of the tool catalog; `policy` is the default guard decision. */
+export interface ToolSpec {
+  id: string;
+  name: string;
+  source: string;
+  policy: ToolPolicy;
+  note: string;
+}
+
+/** One intercept rule. */
+export interface InterceptRule {
+  id: string;
+  name: string;
+  pattern: string;
+  action: ToolPolicy;
+  enabled: boolean;
+  hits: number;
+}
+
+/** One target scope of the asset-intercept view. */
+export interface AssetScope {
+  id: string;
+  target: string;
+  mode: AssetScopeMode;
+  note: string;
+  enabled: boolean;
+}
+
+/** One approval row of the approval queue. */
+export interface ApprovalRow {
+  id: string;
+  tool: string;
+  target: string;
+  risk: string;
+  agent: string;
+  state: ApprovalState;
+  reason: string;
+  time: string;
+}
+
+/** One log line. */
+export interface LogRow {
+  id: string;
+  level: LogLevel;
+  source: string;
+  text: string;
+  time: string;
+}
+
+/** One asset-sync source. */
+export interface SyncSource {
+  id: string;
+  name: string;
+  kind: string;
+  rows: number;
+  state: SyncState;
+  time: string;
+}
+
+/** One workspace file. */
+export interface WorkspaceFile {
+  id: string;
+  name: string;
+  kind: string;
+  size: string;
+  time: string;
+}
+
+/** One notification channel. */
+export interface NotifyChannel {
+  id: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  note: string;
+}
+
+export const task: TaskSummary = {
   id: 'T-2407',
   name: 'acme.test 外部渗透（Web + API）',
   template: 't-acme-web',
@@ -19,7 +432,7 @@ export const task = {
   assets: 18
 };
 
-export const dashboardStats = [
+export const dashboardStats: DashboardStat[] = [
   { id: 'tasks', label: '活跃任务', value: '2 / 4', sub: '探索 2 · 暂停 1 · 完成 1', tone: 'blue', icon: 'target' },
   { id: 'findings', label: '确认发现', value: '10', sub: '高危 4 · 中危 4 · 低危 2', tone: 'red', icon: 'bug' },
   { id: 'assets', label: '资产节点', value: '18', sub: '跨任务共享', tone: 'green', icon: 'network' },
@@ -27,13 +440,13 @@ export const dashboardStats = [
   { id: 'tokens', label: 'Token 用量', value: '2.9M', sub: '入 2.7M · 出 211.7k', tone: 'violet', icon: 'cpu' }
 ];
 
-export const tokenBreakdown = [
+export const tokenBreakdown: TokenSlice[] = [
   { label: '输入（未命中）', value: '985.4k', share: 34, tone: 'blue' },
   { label: '缓存命中', value: '1.7M', share: 58, tone: 'green' },
   { label: '输出', value: '211.7k', share: 8, tone: 'violet' }
 ];
 
-export const tokenRanges = {
+export const tokenRanges: TokenSeries = {
   '7天': [['07-18', 0.62, 0.44, 0.06], ['07-22', 0.38, 0.2, 0.04], ['07-24', 1.24, 0.72, 0.12], ['07-25', 0.78, 0.34, 0.09]],
   '30天': [['07-02', 0.42, 0.24, 0.05], ['07-08', 0.56, 0.4, 0.05], ['07-14', 0.71, 0.52, 0.08], ['07-18', 0.62, 0.44, 0.06], ['07-22', 0.38, 0.2, 0.04], ['07-24', 1.24, 0.72, 0.12], ['07-25', 0.78, 0.34, 0.09]],
   '3月': [['05-05', 0.31, 0.16, 0.03], ['05-20', 0.46, 0.28, 0.04], ['06-04', 0.66, 0.42, 0.07], ['06-18', 0.52, 0.36, 0.05], ['07-04', 0.88, 0.58, 0.08], ['07-18', 0.62, 0.44, 0.06], ['07-24', 1.24, 0.72, 0.12], ['07-25', 0.78, 0.34, 0.09]],
@@ -41,9 +454,9 @@ export const tokenRanges = {
   '一年': [['09-12', 0.12, 0.04, 0.01], ['10-18', 0.16, 0.06, 0.02], ['11-22', 0.22, 0.1, 0.02], ['01-08', 0.28, 0.14, 0.03], ['02-20', 0.34, 0.2, 0.04], ['04-11', 0.5, 0.32, 0.05], ['06-02', 0.58, 0.4, 0.06], ['07-24', 1.24, 0.72, 0.12], ['07-25', 0.78, 0.34, 0.09]]
 };
 
-export const activityKinds = ['全部', 'tool_use', 'tool_result', 'text', 'thinking'];
+export const activityKinds: ActivityFilter[] = ['全部', 'tool_use', 'tool_result', 'text', 'thinking'];
 
-export const activity = [
+export const activity: ActivityEntry[] = [
   { id: 1, worker: 'mainagent', kind: 'tool_use', title: 'bash', text: 'subfinder -d acme.test -silent | httpx -sc -title', time: '5h 前' },
   { id: 2, worker: 'mainagent', kind: 'tool_result', title: 'bash', text: '发现 5 个存活子域，admin.acme.test 返回 Element-UI 后台登录页', time: '5h 前' },
   { id: 3, worker: 'planner', kind: 'thinking', title: '态势研判', text: '后台类目标优先验证默认口令；写操作全部需要审批。', time: '5h 前' },
@@ -54,7 +467,7 @@ export const activity = [
   { id: 8, worker: 'planner', kind: 'thinking', title: '下一轮', text: '把「读取用户敏感数据」拆成导出接口与列表分页两条并行意图。', time: '1h 前' }
 ];
 
-export const findings = [
+export const findings: Finding[] = [
   { id: 'F-101', title: '后台默认口令', severity: '高危', status: '已验证', target: 'admin.acme.test', scope: 'Acme 官网与后台外部渗透', detail: 'admin.acme.test 的后台登录接口接受 admin / admin123。登录后可访问用户列表与导出功能，全程只读验证，未导出真实数据。', evidence: 'HTTPS 200 · /api/login · token 已脱敏', cwe: 'CWE-1392', time: '5h 前', agent: 'work#3' },
   { id: 'F-102', title: 'Weak JWT 签名', severity: '高危', status: '已提交', target: 'api.acme.test', scope: 'API 越权面梳理', detail: 'JWT 使用弱口令可离线爆破，签名密钥空间不足。已用测试账号验证可伪造普通用户身份。', evidence: 'HS256 · 口令字典命中', cwe: 'CWE-326', time: '5h 前', agent: 'work#5' },
   { id: 'F-103', title: 'IDOR 订单越权读取', severity: '高危', status: '验证中', target: 'api.acme.test', scope: 'API 越权面梳理', detail: 'GET /api/orders/{id} 未校验归属，普通账号可读取他人订单与收货信息。', evidence: 'GET /api/orders/1042 → 他人订单 JSON', cwe: 'CWE-639', time: '6h 前', agent: 'work#5' },
@@ -67,14 +480,14 @@ export const findings = [
   { id: 'F-110', title: '监控端点未授权', severity: '中危', status: '待复验', target: 'admin.acme.test', scope: 'API 越权面梳理', detail: '/metrics 无需认证返回进程与连接数指标。', evidence: 'GET /metrics → 200 text/plain', cwe: 'CWE-306', time: '1d 前', agent: 'work#3' }
 ];
 
-export const tasks = [
+export const tasks: TaskRow[] = [
   { id: 'T-2407', name: 'acme.test 外部渗透（Web + API）', category: '外部渗透', status: '探索中', profile: 'Claude Opus 4.8', intents: 12, facts: 8, findings: 4, assets: 18, elapsed: '34m08s', created: '07-25 06:00' },
   { id: 'T-2406', name: 'corp.test 内网横向与凭据复用', category: '内网横向', status: '暂停', profile: 'DeepSeek V4', intents: 9, facts: 5, findings: 1, assets: 12, elapsed: '1h12m', created: '07-25 04:20' },
   { id: 'T-2405', name: 'shop.acme.test 支付流程复核', category: '业务复核', status: '已完成', profile: 'Claude Opus 4.8', intents: 22, facts: 31, findings: 6, assets: 24, elapsed: '2h41m', created: '07-24 21:10' },
   { id: 'T-2404', name: 'api.acme.test 只读复核', category: '复核', status: '已完成', profile: 'DeepSeek V4', intents: 7, facts: 12, findings: 2, assets: 9, elapsed: '48m02s', created: '07-24 18:02' }
 ];
 
-export const conversations = [
+export const conversations: Conversation[] = [
   { id: 'main', rail: '主 Agent', name: '主 Agent · 编排会话', state: 'live', meta: '34m08s' },
   { id: 'planner', rail: '规划 Planner', name: '规划 Planner · 态势研判', state: 'live', meta: '12 轮' },
   { id: 'w1', rail: 'Workers', name: '#1 acme.test 子域枚举与端口扫描', state: 'done' },
@@ -84,9 +497,9 @@ export const conversations = [
   { id: 'w5', rail: 'Workers', name: '#5 api.acme.test 订单接口越权(IDOR) 测试', state: 'live' }
 ];
 
-const ok = (extra = {}) => ({ status: 'ok', duration: '1.2s', ...extra });
+const ok = (extra: Partial<RunTiming> = {}): RunTiming => ({ status: 'ok', duration: '1.2s', ...extra });
 
-export const transcripts = {
+export const transcripts: TranscriptMap = {
   main: [
     { id: 'm1', kind: 'user', text: '目标 acme.test，范围只包含 Web 与 API。优先拿后台权限，注意不要改动生产数据。' },
     { id: 'm2', kind: 'thinking', label: '思考', text: '先确认可达面：子域、端口、指纹。后台类目标优先验证默认口令与未授权接口；任何写操作都走审批。把候选面拆成并行意图交给 Worker。' },
@@ -152,7 +565,9 @@ export const transcripts = {
   ]
 };
 
-Object.assign(transcripts, {
+// Worker transcripts are declared separately and merged below, so the typed
+// literal stays checkable instead of being an unchecked argument to Object.assign.
+const workerTranscripts: TranscriptMap = {
   w1: [
     { id: 'w11', kind: 'user', text: '意图 P6：acme.test 子域枚举与端口扫描。只做被动收集与常见端口，不跑全端口扫描。' },
     { id: 'w12', kind: 'tool', tool: 'bash', title: '被动子域收集', summary: 'subfinder 返回 7 条候选', input: 'subfinder -d acme.test -silent', output: ['www.acme.test', 'admin.acme.test', 'api.acme.test', 'static.acme.test', 'legacy.acme.test', 'mail.acme.test', 'vpn.acme.test'], ...ok({ duration: '6.1s' }) },
@@ -181,9 +596,10 @@ Object.assign(transcripts, {
     { id: 'w54', kind: 'tool', tool: 'record_fact', title: '写入事实', summary: '事实 #f05：订单接口缺少归属校验', input: { summary: '相邻 ID 可读到他人订单，缺少 owner 校验', anchor: 'asset:api.acme.test' }, output: ['fact #f05 已写入'], ...ok({ duration: '48ms' }) },
     { id: 'w55', kind: 'text', text: '越权可复现，候选发现 F-103 已提交。建议复验时同时检查导出与批量查询接口。' }
   ]
-});
+};
+Object.assign(transcripts, workerTranscripts);
 
-export const graph = {
+export const graph: ExplorationGraph = {
   nodes: [
     { id: 'root', type: '起点', label: 'acme.test 外部渗透', sub: '起点', x: 54, y: 208, reached: true, detail: '任务根节点：范围仅包含 acme.test 的 Web 与 API 面。' },
     { id: 'hint', type: '提示', label: '「后台是 Element-UI，优先跑默认口令表」', sub: '提示', x: 54, y: 318, detail: '来自用户在对话中的补充说明，规划时优先考虑后台类目标。' },
@@ -207,7 +623,7 @@ export const graph = {
   ]
 };
 
-export const graphLegend = [
+export const graphLegend: GraphLegendEntry[] = [
   { type: '起点', tone: 'slate' },
   { type: '目标', tone: 'green' },
   { type: '意图', tone: 'blue' },
@@ -216,7 +632,7 @@ export const graphLegend = [
   { type: '提示', tone: 'violet' }
 ];
 
-export const assetTree = [
+export const assetTree: AssetNode[] = [
   {
     id: 'acme.test', name: 'acme.test', kind: '域名', tone: 'blue', detail: '主域，ICP 与证书均指向同一组织。首次发现于任务 T-2407。',
     children: [
@@ -248,7 +664,7 @@ export const assetTree = [
   }
 ];
 
-export const traffic = [
+export const traffic: TrafficRow[] = [
   { id: 'tx1', method: 'GET', host: 'admin.acme.test', path: '/api/menus', status: 200, size: '1.4 KB', ms: 318, agent: 'work#3', finding: 'F-110', request: 'GET /api/menus HTTP/1.1\nHost: admin.acme.test\nCookie: acme_admin_session=***\nAccept: application/json', response: 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{"items":[{"key":"user.list"},{"key":"user.export"},{"key":"settings.write"}]}' },
   { id: 'tx2', method: 'POST', host: 'admin.acme.test', path: '/api/login', status: 200, size: '684 B', ms: 268, agent: 'mainagent', finding: 'F-101', request: 'POST /api/login HTTP/1.1\nHost: admin.acme.test\nContent-Type: application/json\n\n{"username":"admin","password":"admin123"}', response: 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{"token":"eyJhbGciOiJIUzI1NiJ9.***","role":"superadmin"}' },
   { id: 'tx3', method: 'GET', host: 'api.acme.test', path: '/api/orders/1042', status: 200, size: '2.1 KB', ms: 141, agent: 'work#5', finding: 'F-103', request: 'GET /api/orders/1042 HTTP/1.1\nHost: api.acme.test\nAuthorization: Bearer ***\nX-Test-Account: viewer-2', response: 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{"id":1042,"owner":"another-user","items":[{"sku":"A-19","qty":2}],"address":"***"}' },
@@ -259,7 +675,7 @@ export const traffic = [
   { id: 'tx8', method: 'OPTIONS', host: 'legacy.acme.test', path: '/', status: 200, size: '0 B', ms: 154, agent: 'work#1', finding: 'F-108', request: 'OPTIONS / HTTP/1.1\nHost: legacy.acme.test', response: 'HTTP/1.1 200 OK\nAllow: GET, HEAD\nTLS: TLS1.0 / AES128-SHA' }
 ];
 
-export const commandRuns = [
+export const commandRuns: CommandRun[] = [
   { id: 'c1', tool: 'bash', agent: 'work#1', summary: 'subfinder -d acme.test -silent | httpx -sc -title', status: 'ok', duration: '8.4s', output: '5 个子域存活；admin.acme.test 暴露后台登录页', time: '5h 前' },
   { id: 'c2', tool: 'http_request', agent: 'mainagent', summary: 'POST https://admin.acme.test/api/login', status: 'ok', duration: '268ms', output: '200 · 会话 token 已脱敏', time: '5h 前' },
   { id: 'c3', tool: 'http_request', agent: 'work#3', summary: 'GET https://admin.acme.test/api/menus', status: 'ok', duration: '318ms', output: '200 · 9 个菜单入口（未按角色裁剪）', time: '4h 前' },
@@ -268,40 +684,40 @@ export const commandRuns = [
   { id: 'c6', tool: 'mcp__probe__scan', agent: 'work#1', summary: 'mcp probe scan --target admin.acme.test', status: 'error', duration: '30s', output: 'timeout: context deadline exceeded（已按 MCP 错误返回，未中断任务）', time: '1h 前' }
 ];
 
-export const llmRecords = [
+export const llmRecords: LlmRecord[] = [
   { id: 'r1', profile: 'Claude Opus 4.8', model: 'claude-opus-4-8', agent: 'mainagent', input: '184.2k', cached: '142.9k', output: '12.4k', latency: '6.2s', retries: 0, time: '5h 前' },
   { id: 'r2', profile: 'Claude Opus 4.8', model: 'claude-opus-4-8', agent: 'planner', input: '96.4k', cached: '71.2k', output: '4.1k', latency: '3.8s', retries: 0, time: '5h 前' },
   { id: 'r3', profile: 'DeepSeek V4', model: 'deepseek-v4', agent: 'work#4', input: '212.7k', cached: '168.3k', output: '9.8k', latency: '4.4s', retries: 1, time: '3h 前' },
   { id: 'r4', profile: 'DeepSeek V4', model: 'deepseek-v4', agent: 'work#5', input: '88.1k', cached: '61.4k', output: '3.2k', latency: '2.9s', retries: 0, time: '2h 前' }
 ];
 
-export const profiles = [
+export const profiles: ModelProfile[] = [
   { id: 'p1', name: '默认（Claude Opus 4.8）', provider: 'Anthropic', model: 'claude-opus-4-8', default: true, chain: ['DeepSeek V4'], state: '已配置' },
   { id: 'p2', name: 'DeepSeek V4', provider: 'DeepSeek', model: 'deepseek-v4', default: false, chain: [], state: '已配置' },
   { id: 'p3', name: '本地 Qwen（离线）', provider: 'OpenAI 兼容', model: 'qwen3-coder', default: false, chain: [], state: '未验证' }
 ];
 
-export const agentsList = [
+export const agentsList: AgentRow[] = [
   { id: 'main', name: '主 Agent', role: '编排', model: '默认（Claude Opus 4.8）', tools: ['http_request', 'bash', 'record_fact', 'insert_assets', 'delegate_worker', 'graph_overview'], skills: ['web-recon'], enabled: true, note: '对用户消息做出响应，决定是否委派 Worker。' },
   { id: 'planner', name: '规划 Planner', role: '规划', model: '默认（Claude Opus 4.8）', tools: ['graph_overview', 'add_hint', 'record_fact'], skills: ['web-recon'], enabled: true, note: '读取探索图，生成意图并维护跨轮待办。' },
   { id: 'worker', name: 'Worker 池', role: '执行', model: 'DeepSeek V4', tools: ['http_request', 'bash', 'record_fact', 'insert_assets', 'report_finding', 'mcp__probe__scan'], skills: ['api-authz', 'web-recon'], enabled: true, note: '领取意图执行，结果写回探索图与资产图。' },
   { id: 'verifier', name: '复验会话', role: '验证', model: '默认（Claude Opus 4.8）', tools: ['http_request', 'record_fact', 'list_findings'], skills: ['report-writer'], enabled: true, note: '发现提交后独立复现，结论与候选分开记录。' }
 ];
 
-export const mcpServers = [
+export const mcpServers: McpServer[] = [
   { id: 'm1', name: 'probe-kit', transport: 'Streamable HTTP', state: '已连接', tools: 7, url: 'http://127.0.0.1:7331/mcp', latency: '12ms' },
   { id: 'm2', name: 'filesystem', transport: 'stdio', state: '已连接', tools: 4, url: 'npx @modelcontextprotocol/server-filesystem', latency: '—' },
   { id: 'm3', name: 'scan-kit', transport: 'SSE', state: '未连接', tools: 3, url: 'https://mcp.example.test/sse', latency: '—' }
 ];
 
-export const skillsList = [
+export const skillsList: SkillRow[] = [
   { id: 's1', name: 'web-recon', kind: '内置', unlocked: true, note: '子域、指纹、目录与参数收集的执行套路。' },
   { id: 's2', name: 'api-authz', kind: '内置', unlocked: true, note: '越权对照实验：水平、垂直与对象级权限。' },
   { id: 's3', name: 'report-writer', kind: '内置', unlocked: false, note: '把已验证发现整理为报告结构。' },
   { id: 's4', name: 'sqlmap-helper', kind: '扩展', unlocked: false, note: '封装 sqlmap 的只读参数模板。' }
 ];
 
-export const toolCatalog = [
+export const toolCatalog: ToolSpec[] = [
   { id: 't1', name: 'http_request', source: '内置', policy: 'allow', note: '发起 HTTP 请求并保留请求/响应证据。' },
   { id: 't2', name: 'bash', source: '内置', policy: 'ask', note: '在工作目录内执行命令，输出并入会话。' },
   { id: 't3', name: 'record_fact', source: '内置', policy: 'allow', note: '把事实写入探索图并挂到资产锚点。' },
@@ -315,21 +731,21 @@ export const toolCatalog = [
   { id: 't9', name: 'skill:sqlmap-helper', source: 'Skill', policy: 'deny', note: '未解锁的扩展技能，调用会被拦截。' }
 ];
 
-export const interceptRules = [
+export const interceptRules: InterceptRule[] = [
   { id: 'ir1', name: '生产写请求需审批', pattern: 'method in (POST, PUT, PATCH, DELETE) and host ~ *.acme.test', action: 'ask', enabled: true, hits: 18 },
   { id: 'ir2', name: '后台管理路径限速', pattern: 'path ^/admin/ and rps > 5', action: 'deny', enabled: true, hits: 4 },
   { id: 'ir3', name: '大文件下载拦截', pattern: 'response.size > 10MB', action: 'deny', enabled: true, hits: 0 },
   { id: 'ir4', name: '出网白名单', pattern: 'egress not in (acme.test, api.acme.test)', action: 'deny', enabled: false, hits: 0 }
 ];
 
-export const assetScopes = [
+export const assetScopes: AssetScope[] = [
   { id: 'as1', target: 'acme.test', mode: '允许', note: '本次任务主目标域。', enabled: true },
   { id: 'as2', target: 'corp.test', mode: '只读', note: '跨任务资产，仅允许 GET / HEAD。', enabled: true },
   { id: 'as3', target: '169.254.169.254', mode: '拦截', note: '云元数据地址，禁止访问。', enabled: true },
   { id: 'as4', target: '*.internal.test', mode: '拦截', note: '内网域，未经授权不得探测。', enabled: false }
 ];
 
-export const approvals = [
+export const approvals: ApprovalRow[] = [
   { id: 'AP-88', tool: 'http_request', target: 'POST https://admin.acme.test/api/export', risk: '高风险读取', agent: 'mainagent', state: 'pending', reason: '将读取 200 条用户记录', time: '2m 前' },
   { id: 'AP-87', tool: 'bash', target: 'nmap -sV -p- admin.acme.test', risk: '中等', agent: 'work#1', state: 'pending', reason: '全端口扫描可能触发告警', time: '6m 前' },
   { id: 'AP-86', tool: 'http_request', target: 'POST https://admin.acme.test/api/login', risk: '低', agent: 'mainagent', state: 'approved', reason: '默认口令验证（只读）', time: '5h 前' },
@@ -337,7 +753,7 @@ export const approvals = [
   { id: 'AP-84', tool: 'bash', target: 'rm -rf /tmp/acme-cache', risk: '高', agent: 'work#2', state: 'denied', reason: '超出任务范围的破坏性命令', time: '7h 前' }
 ];
 
-export const logs = [
+export const logs: LogRow[] = [
   { id: 'l1', level: 'INFO', source: 'engine', text: 'task T-2407 planner round 12 started (frontier 3)', time: '20:38:02' },
   { id: 'l2', level: 'INFO', source: 'guard', text: 'PreToolUse http_request action=ask rule=ir1 reason=production-write', time: '20:37:55' },
   { id: 'l3', level: 'WARN', source: 'llm', text: 'provider anthropic retry 1/2 after 429 (retry-after 3s)', time: '20:37:41' },
@@ -350,25 +766,25 @@ export const logs = [
   { id: 'l10', level: 'INFO', source: 'db', text: 'assets merge domain acme.test children=5', time: '20:29:04' }
 ];
 
-export const syncSources = [
+export const syncSources: SyncSource[] = [
   { id: 'sy1', name: 'acme.test 资产清单', kind: 'CSV', rows: 42, state: '已同步', time: '12m 前' },
   { id: 'sy2', name: '历史任务资产（T-2401…T-2406）', kind: 'PostgreSQL', rows: 186, state: '已同步', time: '1h 前' },
   { id: 'sy3', name: '第三方测绘导出', kind: 'JSON', rows: 0, state: '未同步', time: '—' }
 ];
 
-export const workspaceFiles = [
+export const workspaceFiles: WorkspaceFile[] = [
   { id: 'ws1', name: 'notes/acme-recon.md', kind: '文档', size: '12 KB', time: '20:14' },
   { id: 'ws2', name: 'evidence/tx-1042.http', kind: '证据', size: '2 KB', time: '19:58' },
   { id: 'ws3', name: 'reports/acme-draft.md', kind: '报告', size: '28 KB', time: '19:40' }
 ];
 
-export const notifyChannels = [
+export const notifyChannels: NotifyChannel[] = [
   { id: 'n1', name: 'Webhook · 团队频道', kind: 'webhook', enabled: true, note: '任务暂停、发现确认、审批待处理' },
   { id: 'n2', name: '邮件摘要（每日）', kind: 'email', enabled: false, note: '每天 09:00 汇总发现与 Token 用量' },
   { id: 'n3', name: '桌面通知', kind: 'desktop', enabled: true, note: '浏览器通知，需用户授权' }
 ];
 
-export const reportDraft = `# acme.test 外部渗透报告（草稿）
+export const reportDraft: string = `# acme.test 外部渗透报告（草稿）
 
 ## 范围
 - Web: www.acme.test, admin.acme.test

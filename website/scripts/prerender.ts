@@ -3,11 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import fs from 'node:fs/promises';
-import { render } from '../.ssr/entry-server.js';
-import { pages } from '../src/content.js';
+import { pages, type PageId } from '../src/content.ts';
+
+/** Export shape of the generated SSR bundle (`vite build --ssr src/entry-server.tsx --outDir .ssr`). */
+interface SsrEntry { render: (page: PageId) => string }
+
+// The bundle is a build artifact without declarations, so it is loaded by URL and narrowed here.
+const ssrEntryUrl = new URL('../.ssr/entry-server.js', import.meta.url).href;
+const ssrEntryModule: unknown = await import(ssrEntryUrl);
+const { render } = ssrEntryModule as SsrEntry;
 const template = await fs.readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
 await fs.cp(new URL('../assets', import.meta.url), new URL('../dist/assets', import.meta.url), { recursive: true });
-for (const page of [...pages, { id: 'notfound', label: '页面未找到' }]) {
+/** Every document this run writes: the registered pages plus the shared 404. */
+const renderedPages: { id: PageId; label: string }[] = [...pages, { id: 'notfound', label: '页面未找到' }];
+for (const page of renderedPages) {
   let html = template.replace('<!--app-html-->', () => render(page.id)).replace(/<title>.*?<\/title>/, `<title>${page.label} · VEXNAR</title>`);
   if (page.id === 'notfound') html = html.replace('<head>', '<head><base href="/VEXNAR/">');
   await fs.writeFile(new URL(`../dist/${page.id === 'notfound' ? '404' : page.id}.html`, import.meta.url), html);

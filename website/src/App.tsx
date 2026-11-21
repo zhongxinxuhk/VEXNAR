@@ -2,19 +2,25 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React, { useEffect, useRef, useState } from 'react';
-import Home from './components/Home.jsx';
-import Credits from './components/Credits.jsx';
-import QuickSearch from './components/QuickSearch.jsx';
-import ConsolePage from './components/ConsolePage.jsx';
-import ArchitecturePage from './components/ArchitecturePage.jsx';
-import { Downloads, Releases, Branches, Commits, Contributors } from './components/ProjectPages.jsx';
-import { Brand, External, Empty, Icon } from './components/UI.jsx';
-import github from '../.generated/github.json';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
+import Home from './components/Home.tsx';
+import Credits from './components/Credits.tsx';
+import QuickSearch from './components/QuickSearch.tsx';
+import ConsolePage from './components/ConsolePage.tsx';
+import ArchitecturePage from './components/ArchitecturePage.tsx';
+import { Downloads, Releases, Branches, Commits, Contributors } from './components/ProjectPages.tsx';
+import { Brand, External, Empty, Icon } from './components/UI.tsx';
+import githubData from '../.generated/github.json';
 import credits from '../credits.json';
-import { REPO, pages, pageFromPath } from './content.js';
+import { REPO, pages, pageFromPath, type PageId } from './content.ts';
 
-const content = {
+/** The public fields of the generated snapshot the shell prints in the page intro. */
+interface GithubShellSnapshot { updatedAt: string }
+
+const github: GithubShellSnapshot = githubData;
+
+/** Page component per route id; unknown routes render the not-found panel instead. */
+const content: Partial<Record<PageId, ComponentType>> = {
   index: Home,
   console: ConsolePage,
   architecture: ArchitecturePage,
@@ -25,17 +31,21 @@ const content = {
   contributors: Contributors,
   credits: Credits
 };
-const ownIntro = new Set(['console', 'architecture']);
+/** Routes that open on their own intro instead of the shell's page breadcrumb. */
+const ownIntro: ReadonlySet<string> = new Set(['console', 'architecture']);
 
-export default function App({ initialPage = 'index' }) {
-  const [route, setRoute] = useState(initialPage), [menu, setMenu] = useState(false), [search, setSearch] = useState(false), [scrolled, setScrolled] = useState(false);
-  const mainRef = useRef(null), firstRender = useRef(true), menuButton = useRef(null);
+/** Props of the site shell: the route this document was resolved for. */
+interface AppProps { initialPage?: PageId }
+
+export default function App({ initialPage = 'index' }: AppProps) {
+  const [route, setRoute] = useState<PageId>(initialPage), [menu, setMenu] = useState(false), [search, setSearch] = useState(false), [scrolled, setScrolled] = useState(false);
+  const mainRef = useRef<HTMLElement>(null), firstRender = useRef(true), menuButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const pagePaths = new Set(pages.map(page => `${page.id}.html`));
     const pop = () => { setRoute(pageFromPath(location.pathname)); setMenu(false); setSearch(false); };
-    const click = event => {
+    const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const anchor = event.target.closest('a');
+      const anchor = event.target instanceof Element ? event.target.closest('a') : null;
       if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
       const url = new URL(anchor.href);
       if (url.origin !== location.origin || url.hash) return;
@@ -48,7 +58,7 @@ export default function App({ initialPage = 'index' }) {
       window.scrollTo({ top: 0, behavior: 'instant' });
     };
     const scroll = () => setScrolled(scrollY > 20);
-    const key = event => {
+    const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearch(previous => !previous); }
       if (event.key === 'Escape') setMenu(wasOpen => { if (wasOpen) menuButton.current?.focus(); return false; });
     };
@@ -96,7 +106,7 @@ export default function App({ initialPage = 'index' }) {
       </div>
     </header>
     <QuickSearch open={search} onClose={() => setSearch(false)} />
-    <main id="main" tabIndex="-1" ref={mainRef} key={route} className={`page page-${route}`}>
+    <main id="main" tabIndex={-1} ref={mainRef} key={route} className={`page page-${route}`}>
       {page && route !== 'index' && !ownIntro.has(route) && <section className="page-intro">
         <div className="page-breadcrumb"><a href="index.html">VEXNAR</a><span>/</span><span>{page.label}</span></div>
         <div className="page-intro-content">

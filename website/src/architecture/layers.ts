@@ -5,7 +5,63 @@
 // Six layers of the running product, from the browser surface down to
 // PostgreSQL. Every node points at a public source file so the 3D view can be
 // read as an index into the implementation rather than a marketing graphic.
-export const layers = [
+
+/** One node of a layer: its glyph, its `source` file and the tags shown on the plate. */
+export interface LayerNode {
+  id: string;
+  label: string;
+  sub: string;
+  icon: string;
+  source: string;
+  line: number;
+  tags: string[];
+  detail: string;
+}
+
+/** One `[label, value]` pair of the fact strip in the layer detail panel. */
+export type LayerFact = [label: string, value: string];
+
+/** One `[from, payload, failure]` row of the per-layer contract list. */
+export type LayerContract = [from: string, payload: string, failure: string];
+
+/** One of the six layers, from the browser surface down to PostgreSQL. */
+export interface Layer {
+  id: string;
+  index: string;
+  name: string;
+  en: string;
+  tone: string;
+  tagline: string;
+  purpose: string;
+  facts: LayerFact[];
+  nodes: LayerNode[];
+  contracts: LayerContract[];
+  risks: string[];
+}
+
+/** One event of the annotated lifecycle the tour steps through. */
+export interface LifecycleStep {
+  id: string;
+  event: string;
+  layer: string;
+  node: string;
+  text: string;
+}
+
+/** One row of the cross-layer contract table. */
+export type LayerContractRow = [from: string, to: string, payload: string, failure: string, note: string];
+
+/** One card of the design-decisions grid; `tone` selects its accent colour. */
+export interface DesignDecision {
+  title: string;
+  text: string;
+  tone: string;
+}
+
+/** A node addressed together with the layer it belongs to. */
+export type LayerNodeRef = LayerNode & { layer: string };
+
+export const layers: Layer[] = [
   {
     id: 'interaction',
     index: '01',
@@ -146,7 +202,7 @@ export const layers = [
   }
 ];
 
-export const lifecycle = [
+export const lifecycle: LifecycleStep[] = [
   { id: 'lc1', event: 'task.created', layer: 'orchestration', node: 'manager', text: 'Manager 写入任务行，初始化探索图根节点与工作目录。' },
   { id: 'lc2', event: 'engine.round', layer: 'orchestration', node: 'engine', text: 'Engine 启动一轮规划循环，读取任务当前前沿。' },
   { id: 'lc3', event: 'planner.plan', layer: 'orchestration', node: 'planner', text: 'Planner 生成意图与优先级，写入探索图并保留派生边。' },
@@ -157,7 +213,7 @@ export const lifecycle = [
   { id: 'lc8', event: 'finding.verified', layer: 'evidence', node: 'verify', text: 'report_finding 触发独立复验会话，确认结论与候选分开记录。' }
 ];
 
-export const contracts = [
+export const contracts: LayerContractRow[] = [
   ['交互层', '接入层', 'JSON + Bearer token / SSE', '401 · 403 · 409', '鉴权与业务错误共用错误体'],
   ['接入层', '编排层', '任务命令、配置快照', '404 · 409', '未知任务与并发冲突分开返回'],
   ['编排层', '智能层', '意图、工具清单、上下文窗口', '工具错误作为结果', '单次工具失败不终止任务'],
@@ -165,7 +221,7 @@ export const contracts = [
   ['证据层', '编排层', '图变更事件', '下一轮读取兜底', '事件不是唯一真值来源']
 ];
 
-export const decisions = [
+export const decisions: DesignDecision[] = [
   { title: '模型访问只在 Go 服务端', text: 'Provider、目录、凭据与故障转移都留在服务端；客户端只看到 profile 名称，不持有上游地址。', tone: 'blue' },
   { title: '双图分开建模', text: '探索图回答「任务怎样推进」，资产图回答「对象是什么」。锚点连接两者，避免一张图同时承担流程与对象。', tone: 'green' },
   { title: '候选发现与结论分离', text: '提交发现只产生候选，独立复验会话复现后才记为确认；报告中两者标注不同状态。', tone: 'amber' },
@@ -174,5 +230,5 @@ export const decisions = [
   { title: '可见不等于可用', text: '延迟发现缩小首轮上下文；工具名可见，但调用仍需通过解锁集合与审查。', tone: 'slate' }
 ];
 
-export const layerById = Object.fromEntries(layers.map(layer => [layer.id, layer]));
-export const nodeById = Object.fromEntries(layers.flatMap(layer => layer.nodes.map(node => [node.id, { ...node, layer: layer.id }])));
+export const layerById: Record<string, Layer> = Object.fromEntries(layers.map((layer): [string, Layer] => [layer.id, layer]));
+export const nodeById: Record<string, LayerNodeRef> = Object.fromEntries(layers.flatMap(layer => layer.nodes.map((node): [string, LayerNodeRef] => [node.id, { ...node, layer: layer.id }])));

@@ -2,8 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React from 'react';
-import AgentConsole from '../console/Console.jsx';
+import AgentConsole from '../console/Console.tsx';
 
 // The client page is deliberately bare: no marketing header, footer, search or
 // page padding. Opening /console.html should feel like launching the client,

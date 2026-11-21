@@ -3,11 +3,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { Badge } from './primitives.jsx';
-import { conversations, transcripts, agentsList, profiles } from './data.js';
+import { Icon } from '../components/UI.tsx';
+import { Badge } from './primitives.tsx';
+import { conversations, transcripts, agentsList, profiles } from './data.ts';
+import type { ApprovalState, Conversation, TranscriptTurn } from './data.ts';
 
-const toolIcon = tool => {
+// Demo fixtures and their shapes live in data.ts (typed by the module that owns
+// it); this screen narrows transcript turns on `kind` and only declares the
+// local UI state of the replay.
+type NewChat = { id: string; name: string };
+type PlanItem = { id: string; text: string; done: boolean };
+type RailGroup = [string, Conversation[]];
+
+interface ChatProps {
+  approvals: Record<string, ApprovalState>;
+  decideApproval: (id: string, state: string) => void;
+  notify: (message: string) => void;
+}
+
+interface StepProps {
+  step: TranscriptTurn;
+  open: boolean;
+  onToggle: React.MouseEventHandler<HTMLButtonElement>;
+  approvals: Record<string, ApprovalState>;
+  decideApproval: (id: string, state: string) => void;
+  conversation: string;
+}
+
+const toolIcon = (tool?: string): string => {
   if (tool === 'bash') return 'terminal';
   if (tool === 'http_request') return 'activity';
   if (tool === 'record_fact') return 'flag';
@@ -20,10 +43,10 @@ const toolIcon = tool => {
   return 'wrench';
 };
 
-const laneOf = id => (id === 'main' ? 'mainagent' : id === 'planner' ? 'planner' : id.replace('w', 'work#'));
-const laneTone = lane => (lane === 'planner' ? 'amber' : lane === 'mainagent' ? 'ink' : `w${(Number(String(lane).replace('work#', '')) - 1) % 5}`);
+const laneOf = (id: string): string => (id === 'main' ? 'mainagent' : id === 'planner' ? 'planner' : id.replace('w', 'work#'));
+const laneTone = (lane: string): string => (lane === 'planner' ? 'amber' : lane === 'mainagent' ? 'ink' : `w${(Number(String(lane).replace('work#', '')) - 1) % 5}`);
 
-const initialPlan = [
+const initialPlan: PlanItem[] = [
   { id: 'p1', text: '确认 admin.acme.test 后台入口与指纹', done: true },
   { id: 'p2', text: '验证默认口令（只读）并写入事实', done: true },
   { id: 'p3', text: '枚举后台只读列表接口，判断角色裁剪', done: false },
@@ -31,13 +54,13 @@ const initialPlan = [
   { id: 'p5', text: '复验 F-103 订单越权并升级结论', done: false }
 ];
 
-function laneClass(id) {
+function laneClass(id: string): string {
   const lane = laneOf(id);
   const tone = laneTone(lane);
   return `cx-lane cx-lane-${tone}`;
 }
 
-function Step({ step, open, onToggle, approvals, decideApproval, conversation }) {
+function Step({ step, open, onToggle, approvals, decideApproval, conversation }: StepProps) {
   if (step.kind === 'user') {
     return <div className="cx-msg cx-msg-user">
       <div className="cx-bubble cx-bubble-user">{step.text}</div>
@@ -57,7 +80,8 @@ function Step({ step, open, onToggle, approvals, decideApproval, conversation })
     </details>;
   }
   if (step.kind === 'approval') {
-    const state = approvals[step.approval] || step.state;
+    const approvalId = step.approval ?? '';
+    const state = approvals[approvalId] || step.state;
     return <div className={`cx-approval cx-approval-${state}`}>
       <header>
         <span className="cx-approval-icon"><Icon name="shield" size={16} /></span>
@@ -66,9 +90,9 @@ function Step({ step, open, onToggle, approvals, decideApproval, conversation })
       </header>
       <p>{step.reason}</p>
       {state === 'pending' ? <footer>
-        <button type="button" className="cx-btn cx-btn-primary" onClick={() => decideApproval(step.approval, 'approved')}>允许一次</button>
-        <button type="button" className="cx-btn" onClick={() => decideApproval(step.approval, 'approved')}>始终允许</button>
-        <button type="button" className="cx-btn cx-btn-ghost" onClick={() => decideApproval(step.approval, 'denied')}>拒绝</button>
+        <button type="button" className="cx-btn cx-btn-primary" onClick={() => decideApproval(approvalId, 'approved')}>允许一次</button>
+        <button type="button" className="cx-btn" onClick={() => decideApproval(approvalId, 'approved')}>始终允许</button>
+        <button type="button" className="cx-btn cx-btn-ghost" onClick={() => decideApproval(approvalId, 'denied')}>拒绝</button>
         <span className="cx-approval-note">{step.risk} · 审批范围仅限本次调用</span>
       </footer> : <footer className="cx-approval-result">
         <Icon name={state === 'approved' ? 'check' : 'ban'} size={14} />
@@ -99,19 +123,19 @@ function Step({ step, open, onToggle, approvals, decideApproval, conversation })
   </div>;
 }
 
-export default function Chat({ approvals, decideApproval, notify }) {
+export default function Chat({ approvals, decideApproval, notify }: ChatProps) {
   const [active, setActive] = useState('main');
-  const [newChats, setNewChats] = useState([]);
-  const [sent, setSent] = useState({});
-  const [open, setOpen] = useState({ m3: true, m6: false, w32: true });
+  const [newChats, setNewChats] = useState<NewChat[]>([]);
+  const [sent, setSent] = useState<Record<string, TranscriptTurn[]>>({});
+  const [open, setOpen] = useState<Record<string, boolean>>({ m3: true, m6: false, w32: true });
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [plan, setPlan] = useState(initialPlan);
+  const [plan, setPlan] = useState<PlanItem[]>(initialPlan);
   const [showPlan, setShowPlan] = useState(false);
   const [agent, setAgent] = useState('主 Agent');
   const [model, setModel] = useState(profiles[0].name);
-  const timers = useRef([]);
-  const thread = useRef(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const thread = useRef<HTMLDivElement>(null);
   const replyCount = useRef(0);
   const painted = useRef(false);
 
@@ -130,19 +154,19 @@ export default function Chat({ approvals, decideApproval, notify }) {
     if (node) node.scrollTop = node.scrollHeight;
   }, [sent, sending]);
 
-  const scheduled = (fn, delay) => { timers.current.push(setTimeout(fn, delay)); };
+  const scheduled = (fn: () => void, delay: number) => { timers.current.push(setTimeout(fn, delay)); };
 
-  const allChats = useMemo(() => [
-    ...newChats.map(chat => ({ id: chat.id, rail: '新对话', name: chat.name, state: 'empty' })),
+  const allChats = useMemo<Conversation[]>(() => [
+    ...newChats.map((chat): Conversation => ({ id: chat.id, rail: '新对话', name: chat.name, state: 'empty' })),
     ...conversations
   ], [newChats]);
 
-  const steps = [...(transcripts[active] || []), ...(sent[active] || [])];
-  const railGroups = useMemo(() => {
-    const groups = new Map();
+  const steps: TranscriptTurn[] = [...(transcripts[active] ?? []), ...(sent[active] || [])];
+  const railGroups = useMemo<RailGroup[]>(() => {
+    const groups = new Map<string, Conversation[]>();
     allChats.forEach(chat => {
       if (!groups.has(chat.rail)) groups.set(chat.rail, []);
-      groups.get(chat.rail).push(chat);
+      groups.get(chat.rail)!.push(chat);
     });
     return [...groups.entries()];
   }, [allChats]);
@@ -158,7 +182,7 @@ export default function Chat({ approvals, decideApproval, notify }) {
     notify('已创建新的 Agent 会话（演示）');
   }
 
-  function send(text) {
+  function send(text?: string) {
     const content = (text ?? draft).trim();
     if (!content || sending) return;
     setDraft('');
@@ -281,8 +305,8 @@ export default function Chat({ approvals, decideApproval, notify }) {
             value={draft}
             placeholder="给「Agent」发消息，描述目标或补充约束…"
             aria-label="消息输入"
-            onChange={event => setDraft(event.target.value)}
-            onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
+            onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => setDraft(event.target.value)}
+            onKeyDown={(event: React.KeyboardEvent<HTMLTextAreaElement>) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
           />
           {sending
             ? <button type="button" className="cx-send is-stop" aria-label="停止生成" onClick={stopStreaming}><Icon name="stop" size={16} /></button>

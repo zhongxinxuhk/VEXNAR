@@ -5,12 +5,119 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import { pages, pageFromPath, platformAssets, filterCredits, safeGithub } from '../src/content.js';
-import { architectures } from '../src/architecture.js';
-import { contracts as layerContracts, layers, lifecycle } from '../src/architecture/layers.js';
-import { approvals as demoApprovals, conversations, graph, graphLegend, toolCatalog, transcripts } from '../src/console/data.js';
-import { consoleNav } from '../src/console/nav.js';
-const read = path => fs.readFile(new URL(path, import.meta.url), 'utf8');
+import { pages, pageFromPath, platformAssets, filterCredits, safeGithub } from '../src/content.ts';
+import type { CreditProject } from '../src/content.ts';
+import { architectures } from '../src/architecture.ts';
+import { contracts as layerContracts, layers, lifecycle } from '../src/architecture/layers.ts';
+import { approvals as demoApprovals, conversations, graph, graphLegend, toolCatalog, transcripts } from '../src/console/data.ts';
+import type { GraphNodeType } from '../src/console/data.ts';
+import { consoleNav } from '../src/console/nav.ts';
+const read = (path: string): Promise<string> => fs.readFile(new URL(path, import.meta.url), 'utf8');
+
+// `credits.json` is an untrusted file boundary: parse it to `unknown`, then
+// narrow field by field. A malformed catalog fails the contract test loudly
+// instead of smuggling an implicit `any` into the assertions below.
+interface DshBuiltin {
+  id: string;
+  package: string;
+  dir: string;
+  url: string;
+  state: string;
+  license: string;
+  license_url: string;
+  group: string;
+}
+interface DshTheme {
+  name: string;
+  kind: string;
+  license: string;
+  license_url: string;
+  source: string;
+}
+interface DshCatalog {
+  name: string;
+  version: string;
+  tag: string;
+  logo: string;
+  builtins: DshBuiltin[];
+  themes: DshTheme[];
+}
+interface CreditsCatalog {
+  projects: CreditProject[];
+  dsh: DshCatalog;
+}
+const record = (value: unknown, label: string): Record<string, unknown> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${label} must be an object`);
+  return value as Record<string, unknown>;
+};
+const text = (value: unknown, label: string): string => {
+  if (typeof value !== 'string') throw new Error(`${label} must be a string`);
+  return value;
+};
+const optionalText = (value: unknown, label: string): string | undefined => (value === undefined ? undefined : text(value, label));
+const list = (value: unknown, label: string): unknown[] => {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+  return value;
+};
+const toProject = (value: unknown, label: string): CreditProject => {
+  const row = record(value, label);
+  return {
+    name: text(row.name, `${label}.name`),
+    github: text(row.github, `${label}.github`),
+    author: text(row.author, `${label}.author`),
+    category: text(row.category, `${label}.category`),
+    kind: text(row.kind, `${label}.kind`),
+    usage: text(row.usage, `${label}.usage`),
+    license: text(row.license, `${label}.license`),
+    license_url: text(row.license_url, `${label}.license_url`),
+    logo: optionalText(row.logo, `${label}.logo`),
+    logo_kind: optionalText(row.logo_kind, `${label}.logo_kind`),
+    logo_source: optionalText(row.logo_source, `${label}.logo_source`),
+    note: optionalText(row.note, `${label}.note`)
+  };
+};
+const toBuiltin = (value: unknown, label: string): DshBuiltin => {
+  const row = record(value, label);
+  return {
+    id: text(row.id, `${label}.id`),
+    package: text(row.package, `${label}.package`),
+    dir: text(row.dir, `${label}.dir`),
+    url: text(row.url, `${label}.url`),
+    state: text(row.state, `${label}.state`),
+    license: text(row.license, `${label}.license`),
+    license_url: text(row.license_url, `${label}.license_url`),
+    group: text(row.group, `${label}.group`)
+  };
+};
+const toTheme = (value: unknown, label: string): DshTheme => {
+  const row = record(value, label);
+  return {
+    name: text(row.name, `${label}.name`),
+    kind: text(row.kind, `${label}.kind`),
+    license: text(row.license, `${label}.license`),
+    license_url: text(row.license_url, `${label}.license_url`),
+    source: text(row.source, `${label}.source`)
+  };
+};
+const toDsh = (value: unknown): DshCatalog => {
+  const row = record(value, 'credits.dsh');
+  return {
+    name: text(row.name, 'credits.dsh.name'),
+    version: text(row.version, 'credits.dsh.version'),
+    tag: text(row.tag, 'credits.dsh.tag'),
+    logo: text(row.logo, 'credits.dsh.logo'),
+    builtins: list(row.builtins, 'credits.dsh.builtins').map((entry, index) => toBuiltin(entry, `credits.dsh.builtins[${index}]`)),
+    themes: list(row.themes, 'credits.dsh.themes').map((entry, index) => toTheme(entry, `credits.dsh.themes[${index}]`))
+  };
+};
+const parseCredits = (source: string): CreditsCatalog => {
+  const parsed: unknown = JSON.parse(source);
+  const catalog = record(parsed, 'credits');
+  return {
+    projects: list(catalog.projects, 'credits.projects').map((entry, index) => toProject(entry, `credits.projects[${index}]`)),
+    dsh: toDsh(catalog.dsh)
+  };
+};
 
 test('existing public URLs retain page identity, including project base and 404', () => {
   for (const page of pages) assert.equal(pageFromPath(`/VEXNAR/${page.id}.html`), page.id);
@@ -29,14 +136,14 @@ test('downloads exclude prereleases and do not confuse Darwin with Windows', () 
   assert.equal(platformAssets([], 'linux').length, 0);
 });
 test('credit search combines purpose and text filters', async () => {
-  const catalog = JSON.parse(await read('../credits.json'));
+  const catalog = parseCredits(await read('../credits.json'));
   assert.equal(filterCredits(catalog.projects, 'Monaco', '全部').length, 1);
   assert.equal(filterCredits(catalog.projects, '', '编辑器与终端').length, 3);
   assert.equal(filterCredits(catalog.projects, 'Monaco', '数据与运行时').length, 0);
   assert.equal(new Set(catalog.projects.map(p => p.github)).size, catalog.projects.length);
 });
 test('agent UI references appear in the published credits with MIT links', async () => {
-  const catalog = JSON.parse(await read('../credits.json'));
+  const catalog = parseCredits(await read('../credits.json'));
   const rendered = await read('../dist/credits.html');
   for (const [name, kind] of [['Motif', '交互改编'], ['GAIA UI', '设计参考'], ['Halaska UI', '设计参考']]) {
     const [project] = filterCredits(catalog.projects, name, 'UI 与交互');
@@ -142,9 +249,10 @@ test('client page is a bare application shell, architecture ships interactive ma
 });
 
 test('exploration graph demo keeps typed nodes, legend tones and bounded coordinates', () => {
-  const types = new Set(graphLegend.map(row => row.type));
-  for (const type of ['起点', '目标', '意图', '事实', '漏洞', '提示']) assert.ok(types.has(type), type);
-  assert.equal(graphLegend.length, graph.nodes.reduce((set, node) => set.add(node.type), new Set()).size);
+  const types = new Set<GraphNodeType>(graphLegend.map(row => row.type));
+  const requiredTypes: GraphNodeType[] = ['起点', '目标', '意图', '事实', '漏洞', '提示'];
+  for (const type of requiredTypes) assert.ok(types.has(type), type);
+  assert.equal(graphLegend.length, graph.nodes.reduce((set, node) => set.add(node.type), new Set<GraphNodeType>()).size);
   for (const node of graph.nodes) {
     assert.ok(types.has(node.type), node.id);
     assert.ok(node.x >= 0 && node.x + 160 <= 1000, `${node.id} x`);
@@ -156,7 +264,7 @@ test('exploration graph demo keeps typed nodes, legend tones and bounded coordin
 });
 
 test('credits put DSH first and enumerate its built-in plugins and themes', async () => {
-  const catalog = JSON.parse(await read('../credits.json'));
+  const catalog = parseCredits(await read('../credits.json'));
   const dsh = catalog.dsh;
   assert.equal(dsh.name, 'DeepSeek Harness');
   assert.ok(dsh.version.startsWith('0.2.'));

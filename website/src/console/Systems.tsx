@@ -3,11 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import React, { useMemo, useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { Badge, Chips, DataTable, EmptyState, KV, Panel, Tabs, Toggle } from './primitives.jsx';
-import { agentsList, approvals, assetScopes, interceptRules, logs, mcpServers, notifyChannels, profiles, skillsList, toolCatalog } from './data.js';
+import { Icon } from '../components/UI.tsx';
+import { Badge, Chips, DataTable, EmptyState, KV, Panel, Tabs, Toggle } from './primitives.tsx';
+import { agentsList, approvals, assetScopes, interceptRules, logs, mcpServers, notifyChannels, profiles, skillsList, toolCatalog } from './data.ts';
+import type { AgentRow, ApprovalRow, ApprovalState, AssetScope, AssetScopeMode, InterceptRule, LogRow, McpServer, ModelProfile, NotifyChannel, SkillRow, ToolPolicy, ToolSpec } from './data.ts';
 
-function ViewHead({ eyebrow, title, sub, actions }) {
+// Toast sink handed down by Console.tsx.
+type Notify = (message: string) => void;
+// Approval decisions this screen can write: approved / denied.
+type Decision = 'approved' | 'denied';
+
+// Local shapes: the demo rows come typed from data.ts, only form drafts and the
+// settings panel state are declared here.
+type InterceptDraft = { name: string; pattern: string; action: ToolPolicy };
+type SettingsForm = { workers: number; maxRounds: number; proxy: string; autoUpdate: boolean; telemetry: boolean; desktopNotify: boolean; requireApproval: boolean };
+
+type ViewHeadProps = {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  sub?: React.ReactNode;
+  actions?: React.ReactNode;
+};
+
+function ViewHead({ eyebrow, title, sub, actions }: ViewHeadProps) {
   return <div className="cx-view-head">
     <div>{eyebrow && <span className="cx-eyebrow">{eyebrow}</span>}<h1>{title}</h1>{sub && <p>{sub}</p>}</div>
     {actions && <div className="cx-view-actions">{actions}</div>}
@@ -15,11 +33,13 @@ function ViewHead({ eyebrow, title, sub, actions }) {
 }
 
 /* ------------------------------- LLM ------------------------------- */
-export function Llm({ notify }) {
-  const [rows, setRows] = useState(profiles);
-  const setDefault = id => {
+type LlmProps = { notify: Notify };
+
+export function Llm({ notify }: LlmProps) {
+  const [rows, setRows] = useState<ModelProfile[]>(profiles);
+  const setDefault = (id: string) => {
     setRows(list => list.map(row => ({ ...row, default: row.id === id })));
-    notify(`已将「${rows.find(row => row.id === id).name}」设为默认 profile`);
+    notify(`已将「${rows.find(row => row.id === id)!.name}」设为默认 profile`);
   };
   return <div className="cx-view">
     <ViewHead eyebrow="LLM" title="模型配置由 Go 服务端持有" sub="界面只显示 profile 名称；上游地址与密钥不进入浏览器。" />
@@ -52,10 +72,12 @@ export function Llm({ notify }) {
 }
 
 /* ------------------------------ Agent ------------------------------ */
-export function Agents({ notify }) {
-  const [rows, setRows] = useState(agentsList);
+type AgentsProps = { notify: Notify };
+
+export function Agents({ notify }: AgentsProps) {
+  const [rows, setRows] = useState<AgentRow[]>(agentsList);
   const [active, setActive] = useState(agentsList[0].id);
-  const item = rows.find(row => row.id === active);
+  const item = rows.find(row => row.id === active)!;
   return <div className="cx-view">
     <ViewHead eyebrow="Agent" title="Agent 装配与工具可见性" sub="每个 Agent 有自己的模型、工具、Skill 与审查范围；可见不等于已解锁。" />
     <div className="cx-split">
@@ -85,9 +107,11 @@ export function Agents({ notify }) {
 }
 
 /* ------------------------------- MCP ------------------------------- */
-export function Mcp({ notify }) {
-  const [rows, setRows] = useState(mcpServers);
-  const discover = id => {
+type McpProps = { notify: Notify };
+
+export function Mcp({ notify }: McpProps) {
+  const [rows, setRows] = useState<McpServer[]>(mcpServers);
+  const discover = (id: string) => {
     setRows(list => list.map(row => row.id === id ? { ...row, state: '已连接', tools: row.tools + 1, latency: '14ms' } : row));
     notify('重新执行 tools/list，目录已刷新（演示 +1）');
   };
@@ -113,8 +137,10 @@ export function Mcp({ notify }) {
 }
 
 /* ------------------------------ Skill ------------------------------ */
-export function Skills({ notify }) {
-  const [rows, setRows] = useState(skillsList);
+type SkillsProps = { notify: Notify };
+
+export function Skills({ notify }: SkillsProps) {
+  const [rows, setRows] = useState<SkillRow[]>(skillsList);
   return <div className="cx-view">
     <ViewHead eyebrow="Skill" title="可解锁的能力包" sub="Skill 提供执行套路与提示，不绕过工具审查。" />
     <Panel title="Skill 目录" sub={`${rows.filter(row => row.unlocked).length} / ${rows.length} 已解锁`} bodyClass="cx-tight">
@@ -131,9 +157,11 @@ export function Skills({ notify }) {
 }
 
 /* ------------------------------- 工具 ------------------------------- */
-export function Tools({ notify }) {
-  const [rows, setRows] = useState(toolCatalog);
-  const counts = useMemo(() => rows.reduce((acc, row) => ({ ...acc, [row.policy]: (acc[row.policy] || 0) + 1 }), {}), [rows]);
+type ToolsProps = { notify: Notify };
+
+export function Tools({ notify }: ToolsProps) {
+  const [rows, setRows] = useState<ToolSpec[]>(toolCatalog);
+  const counts = useMemo<Record<string, number>>(() => rows.reduce<Record<string, number>>((acc, row) => ({ ...acc, [row.policy]: (acc[row.policy] || 0) + 1 }), {}), [rows]);
   return <div className="cx-view">
     <ViewHead eyebrow="工具" title="工具目录与审批策略" sub="每个工具的策略决定调用是直接放行、进入审批，还是被拦截。" />
     <div className="cx-stats cx-stats-3">
@@ -147,7 +175,7 @@ export function Tools({ notify }) {
           <span>{row.source}</span>
           <span className="cx-muted">{row.note}</span>
           <span>
-            <select className="cx-select" value={row.policy} aria-label={`${row.name} 策略`} onChange={event => { const value = event.target.value; setRows(list => list.map(item => item.id === row.id ? { ...item, policy: value } : item)); notify(`${row.name} 策略改为 ${value}`); }}>
+            <select className="cx-select" value={row.policy} aria-label={`${row.name} 策略`} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => { const value = event.target.value as ToolPolicy; setRows(list => list.map(item => item.id === row.id ? { ...item, policy: value } : item)); notify(`${row.name} 策略改为 ${value}`); }}>
               <option value="allow">allow</option>
               <option value="ask">ask</option>
               <option value="deny">deny</option>
@@ -160,8 +188,10 @@ export function Tools({ notify }) {
 }
 
 /* ------------------------------ 通知推送 ------------------------------ */
-export function Notify({ notify }) {
-  const [rows, setRows] = useState(notifyChannels);
+type NotifyViewProps = { notify: Notify };
+
+export function Notify({ notify }: NotifyViewProps) {
+  const [rows, setRows] = useState<NotifyChannel[]>(notifyChannels);
   return <div className="cx-view">
     <ViewHead eyebrow="通知推送" title="关键事件推送到团队渠道" sub="任务暂停、发现确认与审批待处理可以走不同渠道。" />
     <div className="cx-cards-3">
@@ -177,9 +207,11 @@ export function Notify({ notify }) {
 }
 
 /* ------------------------------ 拦截规则 ------------------------------ */
-export function Intercept({ notify }) {
-  const [rows, setRows] = useState(interceptRules);
-  const [draft, setDraft] = useState({ name: '', pattern: '', action: 'ask' });
+type InterceptProps = { notify: Notify };
+
+export function Intercept({ notify }: InterceptProps) {
+  const [rows, setRows] = useState<InterceptRule[]>(interceptRules);
+  const [draft, setDraft] = useState<InterceptDraft>({ name: '', pattern: '', action: 'ask' });
   const add = () => {
     if (!draft.name.trim() || !draft.pattern.trim()) return;
     setRows(list => [...list, { id: `ir-${list.length + 1}`, name: draft.name, pattern: draft.pattern, action: draft.action, enabled: true, hits: 0 }]);
@@ -199,10 +231,10 @@ export function Intercept({ notify }) {
       </Panel>
       <Panel title="新增规则" sub="演示表单不会保存到磁盘">
         <div className="cx-form">
-          <label className="cx-field"><span>名称</span><input value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="例如：导出接口需审批" /></label>
-          <label className="cx-field"><span>匹配表达式</span><input value={draft.pattern} onChange={event => setDraft({ ...draft, pattern: event.target.value })} placeholder="method = POST and path ^/api/export" /></label>
+          <label className="cx-field"><span>名称</span><input value={draft.name} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, name: event.target.value })} placeholder="例如：导出接口需审批" /></label>
+          <label className="cx-field"><span>匹配表达式</span><input value={draft.pattern} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, pattern: event.target.value })} placeholder="method = POST and path ^/api/export" /></label>
           <label className="cx-field"><span>动作</span>
-            <select value={draft.action} onChange={event => setDraft({ ...draft, action: event.target.value })}>
+            <select value={draft.action} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setDraft({ ...draft, action: event.target.value as ToolPolicy })}>
               <option value="ask">ask · 创建审批</option>
               <option value="deny">deny · 直接拒绝</option>
               <option value="allow">allow · 放行并记录</option>
@@ -217,14 +249,14 @@ export function Intercept({ notify }) {
 
 /* ------------------------------ 资产拦截 ------------------------------ */
 export function AssetIntercept() {
-  const [rows, setRows] = useState(assetScopes);
+  const [rows, setRows] = useState<AssetScope[]>(assetScopes);
   return <div className="cx-view">
     <ViewHead eyebrow="资产拦截" title="按资产定义可测范围" sub="资产拦截先于工具调用：不在范围内的目标即使工具可用也不会被执行。" />
     <Panel title="作用域" sub={`${rows.filter(row => row.enabled).length} 条生效`} bodyClass="cx-tight">
       <div className="cx-scope-list">
         {rows.map(row => <div key={row.id} className="cx-scope-row">
           <div><b>{row.target}</b><small>{row.note}</small></div>
-          <select className="cx-select" value={row.mode} aria-label={`${row.target} 模式`} onChange={event => setRows(list => list.map(item => item.id === row.id ? { ...item, mode: event.target.value } : item))}>
+          <select className="cx-select" value={row.mode} aria-label={`${row.target} 模式`} onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setRows(list => list.map(item => item.id === row.id ? { ...item, mode: event.target.value as AssetScopeMode } : item))}>
             <option value="允许">允许</option><option value="只读">只读</option><option value="拦截">拦截</option>
           </select>
           <Toggle label="启用" checked={row.enabled} onChange={value => setRows(list => list.map(item => item.id === row.id ? { ...item, enabled: value } : item))} />
@@ -242,8 +274,14 @@ export function AssetIntercept() {
 }
 
 /* ------------------------------ 审批记录 ------------------------------ */
-export function Approvals({ decisions, decide, notify }) {
-  const stateOf = row => decisions[row.id] || row.state;
+type ApprovalsProps = {
+  decisions: Record<string, ApprovalState>;
+  decide: (id: string, state: Decision) => void;
+  notify: Notify;
+};
+
+export function Approvals({ decisions, decide, notify }: ApprovalsProps) {
+  const stateOf = (row: ApprovalRow) => decisions[row.id] || row.state;
   const pending = approvals.filter(row => stateOf(row) === 'pending');
   const history = approvals.filter(row => stateOf(row) !== 'pending');
   return <div className="cx-view">
@@ -280,12 +318,12 @@ export function Approvals({ decisions, decide, notify }) {
 export function Logs() {
   const [level, setLevel] = useState('全部');
   const [query, setQuery] = useState('');
-  const rows = logs.filter(row => (level === '全部' || row.level === level) && `${row.source} ${row.text}`.toLowerCase().includes(query.toLowerCase()));
+  const rows: LogRow[] = logs.filter(row => (level === '全部' || row.level === level) && `${row.source} ${row.text}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="cx-view">
     <ViewHead eyebrow="日志" title="服务端事件流" sub="任务、工具审查、模型重试与存储写入的同一份日志。" />
     <div className="cx-filterbar">
       <Chips items={['全部', 'INFO', 'WARN', 'ERROR']} value={level} onChange={setLevel} label="日志级别" />
-      <label className="cx-search"><Icon name="search" size={14} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索来源或内容" aria-label="搜索日志" /></label>
+      <label className="cx-search"><Icon name="search" size={14} /><input value={query} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} placeholder="搜索来源或内容" aria-label="搜索日志" /></label>
       <span className="cx-filter-note">{rows.length} / {logs.length} 条</span>
     </div>
     <Panel title="日志流" bodyClass="cx-tight">
@@ -300,19 +338,21 @@ export function Logs() {
 }
 
 /* ------------------------------ 系统配置 ------------------------------ */
-export function Settings({ notify }) {
+type SettingsProps = { notify: Notify };
+
+export function Settings({ notify }: SettingsProps) {
   const [tab, setTab] = useState('general');
-  const [form, setForm] = useState({ workers: 3, maxRounds: 24, proxy: 'http://127.0.0.1:8083', autoUpdate: true, telemetry: false, desktopNotify: true, requireApproval: true });
-  const set = (key, value) => setForm(current => ({ ...current, [key]: value }));
+  const [form, setForm] = useState<SettingsForm>({ workers: 3, maxRounds: 24, proxy: 'http://127.0.0.1:8083', autoUpdate: true, telemetry: false, desktopNotify: true, requireApproval: true });
+  const set = <Key extends keyof SettingsForm>(key: Key, value: SettingsForm[Key]) => setForm(current => ({ ...current, [key]: value }));
   return <div className="cx-view">
     <ViewHead eyebrow="系统配置" title="运行参数与安全开关" sub="配置保存在服务端；界面只提交变更。演示表单不会写出任何文件。" actions={<button type="button" className="cx-btn cx-btn-primary" onClick={() => notify('配置已保存（演示，不落盘）')}><Icon name="check" size={14} />保存配置</button>} />
     <Panel title="配置" sub="3 组参数">
       <Tabs items={[['general', '常规'], ['security', '安全'], ['update', '更新']]} value={tab} onChange={setTab} label="配置分类" />
       <div className="cx-tab-body">
         {tab === 'general' && <div className="cx-form cx-form-2">
-          <label className="cx-field"><span>并行 Worker 数</span><input type="number" min="1" max="8" value={form.workers} onChange={event => set('workers', Number(event.target.value))} /><small>超过上游配额时会排队等待。</small></label>
-          <label className="cx-field"><span>单任务最大规划轮次</span><input type="number" min="1" max="100" value={form.maxRounds} onChange={event => set('maxRounds', Number(event.target.value))} /><small>达到上限后任务暂停，可手动恢复。</small></label>
-          <label className="cx-field"><span>记录型代理</span><input value={form.proxy} onChange={event => set('proxy', event.target.value)} /><small>工具流量经代理落证据，凭据落盘前脱敏。</small></label>
+          <label className="cx-field"><span>并行 Worker 数</span><input type="number" min="1" max="8" value={form.workers} onChange={(event: React.ChangeEvent<HTMLInputElement>) => set('workers', Number(event.target.value))} /><small>超过上游配额时会排队等待。</small></label>
+          <label className="cx-field"><span>单任务最大规划轮次</span><input type="number" min="1" max="100" value={form.maxRounds} onChange={(event: React.ChangeEvent<HTMLInputElement>) => set('maxRounds', Number(event.target.value))} /><small>达到上限后任务暂停，可手动恢复。</small></label>
+          <label className="cx-field"><span>记录型代理</span><input value={form.proxy} onChange={(event: React.ChangeEvent<HTMLInputElement>) => set('proxy', event.target.value)} /><small>工具流量经代理落证据，凭据落盘前脱敏。</small></label>
           <div className="cx-field"><span>桌面通知</span><Toggle label="允许浏览器通知" checked={form.desktopNotify} onChange={value => set('desktopNotify', value)} /></div>
         </div>}
         {tab === 'security' && <div className="cx-form cx-form-2">

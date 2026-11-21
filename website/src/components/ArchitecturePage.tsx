@@ -2,13 +2,12 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React from 'react';
-import { External, Icon } from './UI.jsx';
-import { REPO } from '../content.js';
-import Architecture3D, { ContractTable } from '../architecture/Arch3D.jsx';
-import ArchitectureLab from '../Architecture.jsx';
-import { sourceRevision } from '../architecture.js';
-import { decisions, layers } from '../architecture/layers.js';
+import { External, Icon } from './UI.tsx';
+import { REPO } from '../content.ts';
+import Architecture3D, { ContractTable } from '../architecture/Arch3D.tsx';
+import ArchitectureLab from '../Architecture.tsx';
+import { sourceRevision } from '../architecture.ts';
+import { decisions, layers } from '../architecture/layers.ts';
 
 export default function ArchitecturePage() {
   return <div className="v-shell">

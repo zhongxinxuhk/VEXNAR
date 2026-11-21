@@ -3,17 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import React, { useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { Panel, Stat, Segmented, Chips, Badge, Meter } from './primitives.jsx';
-import { activity, activityKinds, dashboardStats, findings, tokenBreakdown, tokenRanges } from './data.js';
+import { Icon } from '../components/UI.tsx';
+import { Panel, Stat, Segmented, Chips, Badge, Meter } from './primitives.tsx';
+import { activity, activityKinds, dashboardStats, findings, tokenBreakdown, tokenRanges } from './data.ts';
+import type { Finding, TokenPoint, TokenRangeKey, Tone } from './data.ts';
 
-const modelFilters = ['全部', 'Claude Opus 4.8', 'DeepSeek V4'];
-const toneOf = item => item.severity === '高危' ? 'red' : item.severity === '中危' ? 'amber' : 'slate';
+interface TokenChartProps {
+  range: string;
+  model: string;
+}
 
-function TokenChart({ range, model }) {
-  const series = tokenRanges[range];
+interface DashboardProps {
+  onNavigate: (view: string) => void;
+  onCreateTask: () => void;
+  notify: (message: string) => void;
+}
+
+const modelFilters: string[] = ['全部', 'Claude Opus 4.8', 'DeepSeek V4'];
+const toneOf = (item: Finding): Tone => item.severity === '高危' ? 'red' : item.severity === '中危' ? 'amber' : 'slate';
+
+function TokenChart({ range, model }: TokenChartProps): React.ReactElement {
+  const series: TokenPoint[] = tokenRanges[range as TokenRangeKey];
   const factor = model === '全部' ? 1 : model === 'Claude Opus 4.8' ? 0.68 : 0.32;
-  const scaled = series.map(([label, input, cache, output]) => [label, input * factor, cache * factor, output * factor]);
+  const scaled: TokenPoint[] = series.map(([label, input, cache, output]) => [label, input * factor, cache * factor, output * factor]);
   const max = Math.max(...scaled.map(item => item[1] + item[2] + item[3]));
   const height = 168;
   return <div className="cx-chart">
@@ -52,7 +64,7 @@ function TokenChart({ range, model }) {
   </div>;
 }
 
-export default function Dashboard({ onNavigate, onCreateTask, notify }) {
+export default function Dashboard({ onNavigate, onCreateTask, notify }: DashboardProps) {
   const [range, setRange] = useState('7天');
   const [model, setModel] = useState('全部');
   const [kind, setKind] = useState('全部');
@@ -67,7 +79,7 @@ export default function Dashboard({ onNavigate, onCreateTask, notify }) {
     </div>
 
     <div className="cx-stats">
-      {dashboardStats.map(item => <button type="button" key={item.id} className="cx-stat-btn" onClick={() => onNavigate({ tasks: 'tasks', findings: 'findings', assets: 'assets', traffic: 'traffic', tokens: 'llm-records' }[item.id])}>
+      {dashboardStats.map(item => <button type="button" key={item.id} className="cx-stat-btn" onClick={() => onNavigate(({ tasks: 'tasks', findings: 'findings', assets: 'assets', traffic: 'traffic', tokens: 'llm-records' } as Record<string, string>)[item.id])}>
         <Stat label={item.label} value={item.value} sub={item.sub} tone={item.tone} icon={item.icon} />
       </button>)}
     </div>
@@ -77,7 +89,7 @@ export default function Dashboard({ onNavigate, onCreateTask, notify }) {
       sub="4 个任务累计 · 按模型筛选只影响展示"
       actions={<div className="cx-panel-tools">
         <Chips items={modelFilters} value={model} onChange={setModel} label="模型筛选" />
-        <Segmented items={Object.keys(tokenRanges).map(key => [key, key])} value={range} onChange={setRange} label="时间范围" />
+        <Segmented items={Object.keys(tokenRanges).map(key => [key, key] as [string, string])} value={range} onChange={setRange} label="时间范围" />
       </div>}
     >
       <div className="cx-token-grid">
@@ -126,7 +138,7 @@ export default function Dashboard({ onNavigate, onCreateTask, notify }) {
     <div className="cx-grid-3">
       <Panel title="资产分布" sub="跨任务共享的资产图" actions={<button type="button" className="cx-link" onClick={() => onNavigate('assets')}>查看<Icon name="chevronRight" size={12} /></button>}>
         <div className="cx-mini-bars">
-          {[['域名', 6, 'blue'], ['服务', 7, 'cyan'], ['应用', 3, 'violet'], ['端点', 9, 'amber']].map(([label, value, tone]) => <div key={label}>
+          {([['域名', 6, 'blue'], ['服务', 7, 'cyan'], ['应用', 3, 'violet'], ['端点', 9, 'amber']] as const).map(([label, value, tone]) => <div key={label}>
             <span>{label}</span><b>{value}</b><Meter value={(value / 9) * 100} tone={tone} label={`${label} ${value}`} />
           </div>)}
         </div>
@@ -139,7 +151,7 @@ export default function Dashboard({ onNavigate, onCreateTask, notify }) {
       </Panel>
       <Panel title="运行中的 Worker" sub="并行领取意图">
         <div className="cx-worker-mini">
-          {[['#3 后台功能枚举', 68, 'blue'], ['#4 搜索页注入', 100, 'green'], ['#5 订单越权', 42, 'violet']].map(([label, value, tone]) => <div key={label}>
+          {([['#3 后台功能枚举', 68, 'blue'], ['#4 搜索页注入', 100, 'green'], ['#5 订单越权', 42, 'violet']] as const).map(([label, value, tone]) => <div key={label}>
             <span>{label}</span><Meter value={value} tone={tone} label={`${label} ${value}%`} /><b>{value}%</b>
           </div>)}
         </div>

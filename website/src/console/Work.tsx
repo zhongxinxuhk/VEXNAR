@@ -3,14 +3,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { Badge, Chips, DataTable, EmptyState, KV, Meter, Panel, Tabs } from './primitives.jsx';
-import { approvals, assetTree, commandRuns, findings, graph, graphLegend, llmRecords, reportDraft, syncSources, traffic, workspaceFiles } from './data.js';
+import { Icon } from '../components/UI.tsx';
+import { Badge, Chips, DataTable, EmptyState, KV, Meter, Panel, Tabs } from './primitives.tsx';
+import { approvals, assetTree, commandRuns, findings, graph, graphLegend, llmRecords, reportDraft, syncSources, traffic, workspaceFiles } from './data.ts';
+import type { AssetNode, Finding, GraphNode, GraphNodeType, GraphRelation, SyncSource, TaskRow, Tone } from './data.ts';
 
-const sevTone = level => (level === '高危' ? 'red' : level === '中危' ? 'amber' : 'slate');
-const statusTone = status => (/已验证|已修复|已完成|已同步/.test(status) ? 'green' : /验证中|探索中|已提交/.test(status) ? 'blue' : /待复验|暂停/.test(status) ? 'amber' : 'slate');
+// Toast sink handed down by Console.tsx.
+type Notify = (message: string) => void;
 
-function ViewHead({ eyebrow, title, sub, actions }) {
+const sevTone = (level: string): Tone => (level === '高危' ? 'red' : level === '中危' ? 'amber' : 'slate');
+const statusTone = (status: string): Tone => (/已验证|已修复|已完成|已同步/.test(status) ? 'green' : /验证中|探索中|已提交/.test(status) ? 'blue' : /待复验|暂停/.test(status) ? 'amber' : 'slate');
+
+type ViewHeadProps = {
+  eyebrow?: React.ReactNode;
+  title: React.ReactNode;
+  sub?: React.ReactNode;
+  actions?: React.ReactNode;
+};
+
+function ViewHead({ eyebrow, title, sub, actions }: ViewHeadProps) {
   return <div className="cx-view-head">
     <div>{eyebrow && <span className="cx-eyebrow">{eyebrow}</span>}<h1>{title}</h1>{sub && <p>{sub}</p>}</div>
     {actions && <div className="cx-view-actions">{actions}</div>}
@@ -18,7 +29,14 @@ function ViewHead({ eyebrow, title, sub, actions }) {
 }
 
 /* ------------------------------- 任务 ------------------------------- */
-export function Tasks({ notify, onCreateTask, rows, setRows }) {
+type TasksProps = {
+  notify: Notify;
+  onCreateTask: () => void;
+  rows: TaskRow[];
+  setRows: React.Dispatch<React.SetStateAction<TaskRow[]>>;
+};
+
+export function Tasks({ notify, onCreateTask, rows, setRows }: TasksProps) {
   const [active, setActive] = useState(rows[0]?.id || 'T-2407');
   const [tab, setTab] = useState('overview');
   const task = rows.find(row => row.id === active) || rows[0];
@@ -64,7 +82,7 @@ export function Tasks({ notify, onCreateTask, rows, setRows }) {
           </>}
           {tab === 'chain' && <GraphBoard notify={notify} />}
           {tab === 'findings' && <div className="cx-stack">{findings.slice(0, 4).map(item => <div key={item.id} className="cx-rowline"><Badge tone={sevTone(item.severity)}>{item.severity}</Badge><b>{item.title}</b><span>{item.target}</span></div>)}</div>}
-          {tab === 'assets' && <div className="cx-stack">{assetTree[0].children.map(item => <div key={item.id} className="cx-rowline"><Badge tone="blue">{item.kind}</Badge><b>{item.name}</b><span>{item.detail.slice(0, 34)}…</span></div>)}</div>}
+          {tab === 'assets' && <div className="cx-stack">{assetTree[0].children!.map(item => <div key={item.id} className="cx-rowline"><Badge tone="blue">{item.kind}</Badge><b>{item.name}</b><span>{item.detail.slice(0, 34)}…</span></div>)}</div>}
           {tab === 'approvals' && <div className="cx-stack">{approvals.slice(0, 4).map(item => <div key={item.id} className="cx-rowline"><Badge tone={item.state === 'pending' ? 'amber' : item.state === 'approved' ? 'green' : 'red'}>{item.state === 'pending' ? '待审批' : item.state === 'approved' ? '已允许' : '已拒绝'}</Badge><b>{item.id}</b><span>{item.target}</span></div>)}</div>}
           {tab === 'report' && <pre className="cx-report">{reportDraft}</pre>}
         </div>
@@ -74,18 +92,20 @@ export function Tasks({ notify, onCreateTask, rows, setRows }) {
 }
 
 /* ---------------------------- 探索图 ---------------------------- */
-const typeTone = { 起点: 'slate', 目标: 'green', 意图: 'blue', 事实: 'amber', 漏洞: 'red', 提示: 'violet' };
-const edgeTone = { 派生: 'green', 意图链: 'blue', 产出: 'amber', 证明: 'red', 提示: 'violet' };
+const typeTone: Record<GraphNodeType, Tone> = { 起点: 'slate', 目标: 'green', 意图: 'blue', 事实: 'amber', 漏洞: 'red', 提示: 'violet' };
+const edgeTone: Record<GraphRelation, Tone> = { 派生: 'green', 意图链: 'blue', 产出: 'amber', 证明: 'red', 提示: 'violet' };
 const NODE_W = 160, NODE_H = 54;
 
-function edgePath(from, to) {
+function edgePath(from: GraphNode, to: GraphNode) {
   const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
   const x2 = to.x, y2 = to.y + NODE_H / 2;
   const bend = Math.max(36, Math.abs(x2 - x1) * 0.5);
   return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
 }
 
-function GraphBoard({ notify }) {
+type GraphBoardProps = { notify: Notify };
+
+function GraphBoard({ notify }: GraphBoardProps) {
   const [selected, setSelected] = useState('g1');
   const [zoom, setZoom] = useState(1);
   const node = graph.nodes.find(entry => entry.id === selected);
@@ -108,7 +128,7 @@ function GraphBoard({ notify }) {
           {graph.edges.map(([a, b, relation]) => {
             const from = graph.nodes.find(entry => entry.id === a), to = graph.nodes.find(entry => entry.id === b);
             const lit = a === selected || b === selected;
-            return <path key={`${a}-${b}`} d={edgePath(from, to)} className={`cx-edge cx-edge-${edgeTone[relation]} ${lit ? 'is-lit' : ''}`} />;
+            return <path key={`${a}-${b}`} d={edgePath(from!, to!)} className={`cx-edge cx-edge-${edgeTone[relation]} ${lit ? 'is-lit' : ''}`} />;
           })}
         </svg>
         {graph.nodes.map(entry => <button
@@ -135,8 +155,10 @@ function GraphBoard({ notify }) {
 }
 
 /* ------------------------------- 发现 ------------------------------- */
-export function Findings({ notify }) {
-  const [rows, setRows] = useState(findings);
+type FindingsProps = { notify: Notify };
+
+export function Findings({ notify }: FindingsProps) {
+  const [rows, setRows] = useState<Finding[]>(findings);
   const [severity, setSeverity] = useState('全部');
   const [status, setStatus] = useState('全部');
   const [query, setQuery] = useState('');
@@ -156,7 +178,7 @@ export function Findings({ notify }) {
     <div className="cx-filterbar">
       <Chips items={['全部', '高危', '中危', '低危']} value={severity} onChange={setSeverity} label="严重级别" />
       <Chips items={['全部', '已验证', '验证中', '待复验', '已提交', '已修复']} value={status} onChange={setStatus} label="状态" />
-      <label className="cx-search"><Icon name="search" size={14} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索标题、目标或描述" aria-label="搜索发现" /></label>
+      <label className="cx-search"><Icon name="search" size={14} /><input value={query} onChange={(event: React.ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)} placeholder="搜索标题、目标或描述" aria-label="搜索发现" /></label>
     </div>
     <div className="cx-split">
       <Panel title="发现列表" sub={`${filtered.length} / ${rows.length} 条`} bodyClass="cx-tight">
@@ -290,7 +312,16 @@ export function LlmRecords() {
 }
 
 /* ------------------------------ 资产 ------------------------------ */
-function TreeNode({ node, depth, expanded, toggleExpanded, selected, onSelect }) {
+type TreeNodeProps = {
+  node: AssetNode;
+  depth: number;
+  expanded: Record<string, boolean>;
+  toggleExpanded: (id: string) => void;
+  selected: string;
+  onSelect: (id: string) => void;
+};
+
+function TreeNode({ node, depth, expanded, toggleExpanded, selected, onSelect }: TreeNodeProps) {
   const hasChildren = Boolean(node.children?.length);
   const open = expanded[node.id] ?? depth < 2;
   return <div className="cx-tree-node">
@@ -304,16 +335,18 @@ function TreeNode({ node, depth, expanded, toggleExpanded, selected, onSelect })
         <em>{node.kind}</em>
       </button>
     </div>
-    {hasChildren && open && node.children.map(child => <TreeNode key={child.id} node={child} depth={depth + 1} expanded={expanded} toggleExpanded={toggleExpanded} selected={selected} onSelect={onSelect} />)}
+    {hasChildren && open && node.children!.map(child => <TreeNode key={child.id} node={child} depth={depth + 1} expanded={expanded} toggleExpanded={toggleExpanded} selected={selected} onSelect={onSelect} />)}
   </div>;
 }
 
-export function Assets({ notify }) {
-  const [expanded, setExpanded] = useState({});
+type AssetsProps = { notify: Notify };
+
+export function Assets({ notify }: AssetsProps) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState('admin.acme.test');
-  const flat = useMemo(() => {
-    const list = [];
-    const walk = node => { list.push(node); node.children?.forEach(walk); };
+  const flat = useMemo<AssetNode[]>(() => {
+    const list: AssetNode[] = [];
+    const walk = (node: AssetNode) => { list.push(node); node.children?.forEach(walk); };
     assetTree.forEach(walk);
     return list;
   }, []);
@@ -347,12 +380,14 @@ export function Assets({ notify }) {
 }
 
 /* ---------------------------- 资产同步 ---------------------------- */
-export function Sync({ notify }) {
-  const [rows, setRows] = useState(syncSources);
-  const [progress, setProgress] = useState({});
-  const timers = useRef([]);
+type SyncProps = { notify: Notify };
+
+export function Sync({ notify }: SyncProps) {
+  const [rows, setRows] = useState<SyncSource[]>(syncSources);
+  const [progress, setProgress] = useState<Record<string, number>>({});
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const run = row => {
+  const run = (row: SyncSource) => {
     if (progress[row.id]) return;
     setProgress(map => ({ ...map, [row.id]: 12 }));
     [30, 62, 88].forEach((value, index) => timers.current.push(setTimeout(() => setProgress(map => ({ ...map, [row.id]: value })), 260 * (index + 1))));
@@ -387,12 +422,12 @@ export function Sync({ notify }) {
 /* ---------------------------- 工作空间 ---------------------------- */
 export function Workspace() {
   const [active, setActive] = useState(workspaceFiles[0].id);
-  const file = workspaceFiles.find(item => item.id === active);
-  const body = {
+  const file = workspaceFiles.find(item => item.id === active)!;
+  const body = ({
     ws1: '# acme 资产梳理\n\n- admin.acme.test：Vue3 + Element Plus 后台\n- api.acme.test：Go API，JWT 认证\n- www.acme.test：官网，search 页存在注入\n\n## 待确认\n- 导出接口的角色校验\n- 菜单接口是否只做前端隐藏',
     ws2: 'GET /api/orders/1042 HTTP/1.1\nHost: api.acme.test\nAuthorization: Bearer ***\n\nHTTP/1.1 200 OK\n{"id":1042,"owner":"another-user"}',
     ws3: reportDraft
-  }[active];
+  } as Record<string, string>)[active];
   return <div className="cx-view">
     <ViewHead eyebrow="工作空间" title="任务工作目录" sub="Agent 的笔记、证据与报告草稿保存在任务工作目录；界面只预览，不执行。" />
     <div className="cx-split">

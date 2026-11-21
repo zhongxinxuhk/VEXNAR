@@ -2,21 +2,40 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Icon } from '../components/UI.jsx';
-import { REPO } from '../content.js';
-import { sourceRevision } from '../architecture.js';
-import { contracts, layerById, layers, lifecycle } from './layers.js';
+import React, { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { Icon } from '../components/UI.tsx';
+import { REPO } from '../content.ts';
+import { sourceRevision } from '../architecture.ts';
+import { contracts, layerById, layers, lifecycle } from './layers.ts';
 
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
-function SourceRef({ file, line, label = '查看实现' }) {
+/** Inline style carrying the CSS custom properties the 3D transform reads. */
+type StyleVars = CSSProperties & { [custom: `--${string}`]: string | number };
+
+/** Per-layer stacking offset handed to the transform through `--i`. */
+const layerStyle = (index: number): StyleVars => ({ '--i': index });
+
+/** Props of the source link shown under a selected node. */
+interface SourceRefProps {
+  file: string;
+  line: number;
+  label?: string;
+}
+
+function SourceRef({ file, line, label = '查看实现' }: SourceRefProps) {
   return <a className="a3-source" href={`${REPO}/blob/${sourceRevision}/${file}#L${line}`} target="_blank" rel="noopener noreferrer">
     <span>{label}</span><code>{file}:{line}</code><Icon name="external" size={11} />
   </a>;
 }
 
-export default function Architecture3D({ compact = false, className = '' }) {
+/** Props of the interactive 3D layer view. */
+interface Architecture3DProps {
+  compact?: boolean;
+  className?: string;
+}
+
+export default function Architecture3D({ compact = false, className = '' }: Architecture3DProps) {
   const [rx, setRx] = useState(compact ? 16 : 19);
   const [ry, setRy] = useState(-13);
   const [exploded, setExploded] = useState(false);
@@ -26,8 +45,8 @@ export default function Architecture3D({ compact = false, className = '' }) {
   const [nodeId, setNodeId] = useState('engine');
   const [tour, setTour] = useState(-1);
   const [playing, setPlaying] = useState(false);
-  const drag = useRef(null);
-  const stage = useRef(null);
+  const drag = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const direction = useRef(1);
   const playingRef = useRef(false);
 
@@ -93,23 +112,23 @@ export default function Architecture3D({ compact = false, className = '' }) {
     setRx(compact ? 16 : 19); setRy(-13); setExploded(false); setAuto(false); playingRef.current = false; setPlaying(false); setTour(-1);
   }
 
-  function pointerDown(event) {
-    if (event.target.closest('button, a, input, select')) return;
+  function pointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.target instanceof Element && event.target.closest('button, a, input, select')) return;
     drag.current = { x: event.clientX, y: event.clientY, rx, ry };
     stage.current?.setPointerCapture?.(event.pointerId);
   }
-  function pointerMove(event) {
+  function pointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!drag.current) return;
     const dx = event.clientX - drag.current.x;
     const dy = event.clientY - drag.current.y;
     setRx(clamp(drag.current.rx - dy * 0.12, 0, 40));
     setRy(clamp(drag.current.ry + dx * 0.16, -32, 32));
   }
-  function pointerUp(event) {
+  function pointerUp(event: ReactPointerEvent<HTMLDivElement>) {
     drag.current = null;
     stage.current?.releasePointerCapture?.(event.pointerId);
   }
-  function keydown(event) {
+  function keydown(event: ReactKeyboardEvent<HTMLDivElement>) {
     const step = event.shiftKey ? 6 : 3;
     if (event.key === 'ArrowLeft') { event.preventDefault(); setRy(value => clamp(value - step, -32, 32)); }
     else if (event.key === 'ArrowRight') { event.preventDefault(); setRy(value => clamp(value + step, -32, 32)); }
@@ -119,6 +138,7 @@ export default function Architecture3D({ compact = false, className = '' }) {
   }
 
   const activeStep = tour >= 0 ? lifecycle[tour] : null;
+  const stageStyle: StyleVars = { '--rx': `${rx}deg`, '--ry': `${ry}deg` };
 
   return <div className={`a3 ${compact ? 'is-compact' : ''} ${className}`} data-tone={layer.tone}>
     <div className="a3-head">
@@ -156,7 +176,7 @@ export default function Architecture3D({ compact = false, className = '' }) {
         onPointerUp={pointerUp}
         onPointerCancel={pointerUp}
         onKeyDown={keydown}
-        style={{ '--rx': `${rx}deg`, '--ry': `${ry}deg` }}
+        style={stageStyle}
       >
         <div className="a3-floor" aria-hidden="true" />
         <div className="a3-ambient" aria-hidden="true"><span /><span /><span /></div>
@@ -164,7 +184,7 @@ export default function Architecture3D({ compact = false, className = '' }) {
           <div className="a3-stack">
             {layers.map((item, index) => <React.Fragment key={item.id}>
               {index > 0 && <div className={`a3-beam a3-beam-${item.tone}`} aria-hidden="true"><i /><i /><i /></div>}
-              <div className={`a3-layer a3-layer-${item.tone} ${item.id === layer.id ? 'is-selected' : ''}`} style={{ '--i': index }}>
+              <div className={`a3-layer a3-layer-${item.tone} ${item.id === layer.id ? 'is-selected' : ''}`} style={layerStyle(index)}>
                 <div className="a3-plate">
                   <header>
                     <span className="a3-plate-index">{item.index}</span>

@@ -3,8 +3,41 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 export const sourceRevision = 'c33874497a672f08276fb8e842139df0f66bdffa';
-const node = (id, label, subtitle, x, y, detail, source, line = 1, tags = []) => ({ id, label, subtitle, x, y, detail, source, line, tags });
-export const architectures = [
+
+/**
+ * One box of a node-level architecture diagram. `x`/`y` are layout coordinates
+ * consumed by the 3D view, `source`/`line` point at the public file that backs
+ * the claim, and `tags` are the short capability labels shown on the card.
+ */
+export interface ArchNode {
+  id: string;
+  label: string;
+  subtitle: string;
+  x: number;
+  y: number;
+  detail: string;
+  source: string;
+  line: number;
+  tags: string[];
+}
+
+/** A directed relation between two node ids of the same diagram. */
+export type ArchEdge = [from: string, to: string];
+
+/** One architecture view: its copy, its nodes, its edges and its tour order. */
+export interface ArchDiagram {
+  id: string;
+  label: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  nodes: ArchNode[];
+  edges: ArchEdge[];
+  sequence: string[];
+}
+
+const node = (id: string, label: string, subtitle: string, x: number, y: number, detail: string, source: string, line = 1, tags: string[] = []): ArchNode => ({ id, label, subtitle, x, y, detail, source, line, tags });
+export const architectures: ArchDiagram[] = [
   {
     id: 'system', label: '系统架构', eyebrow: 'SYSTEM ARCHITECTURE', title: 'Go 服务端与任务编排',
     description: '客户端负责呈现与控制。任务生命周期、模型配置、Agent 编排和双图真值由 Go 服务与 PostgreSQL 承载。',

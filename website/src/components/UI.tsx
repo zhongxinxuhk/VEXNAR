@@ -2,14 +2,20 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import React from 'react';
-import { REPO, safeGithub } from '../content.js';
+import type { AnchorHTMLAttributes, ReactNode, SVGProps } from 'react';
+import { REPO, safeGithub } from '../content.ts';
 
-export function External({ href, children, className = '', ...rest }) {
+/** Props of an outbound link: every anchor attribute except the sanitized `href`. */
+interface ExternalProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
+  href: string;
+}
+
+export function External({ href, children, className = '', ...rest }: ExternalProps) {
   return <a className={className} href={safeGithub(href)} target="_blank" rel="noopener noreferrer" {...rest}>{children}</a>;
 }
 
-const P = {
+/** Every named icon of the sprite. Keys are the `name` values the site uses. */
+const P: Record<string, ReactNode> = {
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
   graph: <><circle cx="5" cy="12" r="3" /><circle cx="18" cy="5" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8 10 7-4M8 14l7 4" /></>,
   terminal: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="m7 9 3 3-3 3m6 0h4" /></>,
@@ -88,7 +94,13 @@ const P = {
   shuffle: <path d="M3 7h4l10 10h4m0 0-3-3m3 3-3 3M3 17h4l3-3m4-4 3-3h4m0 0-3-3m3 3-3 3" />
 };
 
-export function Icon({ name = 'grid', size = 20, ...props }) {
+/** Props of a sprite icon: its name, its pixel size and any extra `<svg>` attribute. */
+interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
+  name?: string;
+  size?: number;
+}
+
+export function Icon({ name = 'grid', size = 20, ...props }: IconProps) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{P[name] || P.grid}</svg>;
 }
 
@@ -96,11 +108,24 @@ export function Brand() {
   return <a className="brand" href="index.html" aria-label="VEXNAR 首页"><img src="assets/logo.png" width="32" height="32" alt="" /><span>VEXNAR</span></a>;
 }
 
-export function Empty({ title, children, href = REPO, label = '查看项目仓库' }) {
+/** Props of the empty-state panel: heading, body copy and the fallback link. */
+interface EmptyProps {
+  title: ReactNode;
+  children?: ReactNode;
+  href?: string;
+  label?: string;
+}
+
+export function Empty({ title, children, href = REPO, label = '查看项目仓库' }: EmptyProps) {
   return <div className="empty"><div className="empty-icon"><Icon name="layers" size={28} /></div><h2>{title}</h2><p>{children}</p><External href={href} className="button secondary">{label}</External></div>;
 }
 
-export function Severity({ level }) {
+/** Props of the severity tag: the label is also the tone selector. */
+interface SeverityProps {
+  level: string;
+}
+
+export function Severity({ level }: SeverityProps) {
   const tone = level === '高危' ? 'red' : level === '中危' ? 'amber' : 'slate';
   return <span className={`vtag vtag-${tone}`}>{level}</span>;
 }
