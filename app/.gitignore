@@ -12,7 +12,8 @@ dsh/
 
 # pnpm workspace install state: every node_modules under app/ is reproducible
 # from app/pnpm-lock.yaml and never committed. `pnpm install` in app/ rebuilds it.
-node_modules/
+# 不带斜杠：`node_modules/` 匹配不到指向别处的同名软链，那种软链会被误提交。
+node_modules
 
 # UI package build inputs/outputs that are reproducible.
 vexnar/ui/lib/client.cjs
