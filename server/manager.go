@@ -257,6 +257,10 @@ type Manager struct {
 	egress       *egress.Manager
 	egressURL    string // credential URL of the global-default session
 	egressPoolID int64  // 0 = no default pool
+	// recordings holds per-session recording listeners (capture on + pool bound).
+	// Keyed by sanitized session key; created lazily, closed on task end.
+	recMu      sync.Mutex
+	recordings map[string]*traffic.Listener
 }
 
 // Settings keys the UI toggles at runtime.
@@ -388,7 +392,7 @@ func NewManager(dir, proxyAddr string) (*Manager, error) {
 	if err := pg.EnsureLLMUsageTable(); err != nil {
 		log.Printf("[llmusage] create table: %v", err)
 	}
-	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg)}
+	m := &Manager{dir: dir, pg: pg, assets: pg.Assets(), tasks: map[string]*Task{}, interceptor: intercept.New(pg), recordings: map[string]*traffic.Listener{}}
 	if proxyAddr != "" {
 		tr, err := traffic.Open(filepath.Join(dir, "traffic"), proxyAddr)
 		if err != nil {
