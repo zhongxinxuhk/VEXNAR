@@ -14,6 +14,7 @@ export { storeOperations } from './operations.js'
 export { createEngine } from './engine.js'
 export { createRunner } from './exec.js'
 export { runTool, persistToolResult, toolSpecs } from './tools.js'
+export { blobStore } from './blobs.js'
 export { storeWriter, StoreConflict } from './writer.js'
 
 export function storeRoot() {
