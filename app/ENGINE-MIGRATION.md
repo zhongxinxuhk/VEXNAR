@@ -46,8 +46,14 @@
   `VEXNAR_GATEWAY_URL` + `VEXNAR_GATEWAY_TOKEN` 走 Go 回环网关；
 - 假模型测试 3/3；未配置 token 时返回 503，不会静默本地推理。
 
+## E3 首段
+
+- worker 工具循环新增 `add_asset`、`link_assets`（写资产并锚定到当前意图节点）；
+- `graphOverview`：按 kind/state 计数、边数、锚点数、待领意图；
+- 资产列表/DSL 已由 `/api/assets?task_id=&dsl=` 提供，供工具层复用。
+
 ## 下一步
 
 - E2 续：上下文压缩、多 worker 并发、blocked 自动重试；
-- E3：`list_assets` / `graph_overview` / `add_asset` 等内置工具；
+- E3 续：`list_assets` / `graph_overview` 作为模型可见工具注入；
 - 之后 E4 外部工具执行。

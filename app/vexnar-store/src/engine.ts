@@ -63,10 +63,11 @@ export function createEngine(store: Store, ops: Ops) {
     const intent = typeof claimed.payload === 'string' ? JSON.parse(claimed.payload) : claimed.payload
     const task = await store.tasks.get(taskId)
     const facts: string[] = []
+    let lastAsset: number | null = null
     try {
       for (let turn = 0; turn < maxTurns; turn++) {
         const reply = await complete([
-          { role: 'system', content: '你是渗透测试执行者。每回合只输出一个 JSON 动作：{"tool":"add_fact","args":{"text":"..."}}、{"tool":"report_finding","args":{"vulnclass":"","severity":"low","summary":"","evidence":""}} 或 {"tool":"finish","args":{"summary":"..."}}。' },
+          { role: 'system', content: '你是渗透测试执行者。每回合只输出一个 JSON 动作：add_fact、add_asset、link_assets、report_finding 或 finish。add_asset 参数含 type/domain/ip/url/port；link_assets 参数含 asset_ids。' },
           { role: 'user', content: `任务：${task?.goal}\n当前意图：${intent?.text}\n已得事实：${facts.join(' | ') || '无'}` }
         ])
         const action = parseJson(reply)
@@ -81,6 +82,19 @@ export function createEngine(store: Store, ops: Ops) {
           await ops.addNode(taskId, { kind: 'fact', payload: { text }, state: 'confirmed', origin: worker, parent_id: String(claimed.id), rel: 'yields' })
           facts.push(text)
           await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'add_fact', node_id: String(claimed.id), summary: text })
+          continue
+        }
+        if (action.tool === 'add_asset') {
+          const asset = await ops.addAsset(taskId, action.args ?? {})
+          lastAsset = Number(asset.id)
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'add_asset', node_id: String(claimed.id), summary: `${asset.type} ${asset.domain ?? asset.ip ?? asset.url ?? asset.id}` })
+          continue
+        }
+        if (action.tool === 'link_assets') {
+          const ids = Array.isArray(action.args?.asset_ids) && action.args.asset_ids.length ? action.args.asset_ids : lastAsset ? [lastAsset] : []
+          if (!ids.length) throw new Error('link_assets 缺少 asset_ids')
+          const linked = await ops.linkAssets(taskId, String(claimed.id), ids)
+          await ops.appendActivity(taskId, { kind: 'tool_result', worker, tool: 'link_assets', node_id: String(claimed.id), summary: `linked ${linked.linked}` })
           continue
         }
         if (action.tool === 'report_finding') {
