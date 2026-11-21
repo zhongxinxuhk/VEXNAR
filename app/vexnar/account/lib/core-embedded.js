@@ -31450,7 +31450,9 @@ api.get("/api/exploration/nodes", async (c) => {
 });
 var routeModules = [
   { file: "./routes/conversations.ts", scope: "conversations/chat" },
-  { file: "./routes/desktop.ts", scope: "desktop gateway" }
+  { file: "./routes/desktop.ts", scope: "desktop gateway" },
+  { file: "./routes/llm.ts", scope: "llm pool/records" },
+  { file: "./routes/intercept.ts", scope: "intercept approvals" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {
