@@ -64,3 +64,486 @@
   disabled: true
 - id: ui-settings-web-search
   disabled: true
+
+# ── Agent presets: the engine's roles, registered as built-in dsh agents ────
+# The engine seeds eight named roles (goals / planner / main / worker / auto /
+# pentest / reporter / retester). They are copied here as ordinary
+# @deepseek-ai/dsh-agent-preset rows, so the roster, the names, the
+# descriptions and every capability composition live in dsh's own 设置 →
+# Agent 预设. VEXNAR ships no agent settings section of its own: a second panel
+# listing the same rows made two truths out of one roster and left the
+# question "which one is actually in effect" unanswerable.
+#
+# Renaming or disabling a role is therefore a patch/bundle edit (dsh 创造模式),
+# not a PATCH request. Per-run agents the engine spawns on demand
+# (lock_agent_<id> / write_lock_agent_<id>) are run artifacts, not roster
+# entries, and deliberately do not appear here.
+- insert:
+    # 目标拆解：只读地把目标拆成可验证子目标。
+    - id: preset-vexnar-goals
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-goals
+        name: 目标拆解
+        description: 把渗透任务目标拆解成若干独立、可验证的子目标。
+        order: 20
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的目标拆解 agent（role=goals）。把任务目标读清楚，拆成彼此独立、可验证的子目标：
+                每个子目标写清验证方式（看到什么算达成）和依赖关系，不臆造目标里没有的范围。
+                只做拆解与核对，不执行利用、不改资产、不登记漏洞。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 规划：读态势、补方向，不直接执行。
+    - id: preset-vexnar-planner
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-planner
+        name: 规划
+        description: 读取态势、判定目标，只在确有未覆盖的新方向时补充探索意图。
+        order: 21
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的规划 agent（role=planner）。先读态势：任务目标、已覆盖的目标、资产与已确认发现。
+                只有在确有未覆盖的新方向时才追加探索意图，并给出理由与预期验证方式；没有新方向就明确说没有，
+                不要为了产出而重复已有方向。你不执行利用，把动作留给执行 agent。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 主：人机接口，把人的意图落成 hint 或高优先级意图。
+    - id: preset-vexnar-main
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-main
+        name: 主
+        description: 人机接口：观察进展，把人的意图落成 hint 或高优先级意图。
+        order: 22
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的主 agent（role=main），负责人与引擎之间的接口。先读进展（任务、意图、发现、流量），
+                再把人的意图翻译成可执行的 hint 或高优先级意图；信息不足时先问清再动手。
+                你可以直接操作工具，但优先让引擎按意图推进，避免与人抢同一条线索。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 执行：领一条意图做完就停。
+    - id: preset-vexnar-worker
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-worker
+        name: 执行
+        description: 领取一条意图执行，把发现的事实/漏洞写回知识图谱后停止。
+        order: 23
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的执行 agent（role=worker）。一次只做分配给你的那一条意图：先确认范围与证据，
+                再动手验证，把事实、漏洞与证据流量写回，然后停止——不自行扩大目标，不改任务目标。
+                拿不到证据时如实说明卡在哪里，而不是猜结论。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # Auto：平台操作助手。
+    - id: preset-vexnar-auto
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-auto
+        name: 平台操作
+        description: 平台操作助手：用工具管理任务、资产、skill、自定义工具与 MCP。
+        order: 24
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的平台操作 agent（role=assistant）。用工具管理平台本身：建任务/看任务/暂停/给提示、
+                管资产、维护 skill 与自定义工具、启停 MCP。不参与渗透编排循环，也不擅自对目标发起探测——
+                要探测时先建任务并说明范围。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 渗透测试：一人走完整条链。
+    - id: preset-vexnar-pentest
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-pentest
+        name: 渗透测试
+        description: 独立渗透 agent：侦察→攻击面→利用→验证→收尾，自己规划、执行并对抗式验证。
+        order: 25
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的独立渗透 agent（role=assistant）。一人走完整条链：侦察 → 找攻击面 → 深入利用 → 验证 → 收尾。
+                自己规划、自己执行、自己对抗式验证：每个结论都要有证据（请求/响应、命令输出），
+                拿不到证据就标成待验证。范围只限任务里写明的资产，不越界、不碰未授权目标。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 报告撰写：漏洞被登记即触发，读证据、写 Markdown 报告并回写。
+    - id: preset-vexnar-reporter
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-reporter
+        name: 报告撰写
+        description: 漏洞详细报告撰写：发现漏洞时触发，读证据与执行过程后写报告并回写。
+        order: 26
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的报告撰写 agent（role=reporter）。触发时先读这条漏洞的证据清单与执行过程，
+                再写 Markdown 报告并回写：影响与危害、复现步骤、证据/PoC、修复建议，一段不缺。
+                只写证据支持得住的内容：证据为空就照实写"无流量证据"，不补想象出来的请求响应，
+                也不为了报告好看去发起新的攻击请求。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+    # 漏洞复测：读原始证据，做最小验证，回写复测结论。
+    - id: preset-vexnar-retester
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: vexnar-retester
+        name: 漏洞复测
+        description: 读漏洞原始证据与约束，做最小化复测验证，把结论回写为该漏洞的复测记录。
+        order: 27
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是 VEXNAR 的漏洞复测 agent（role=retester）。先取这条漏洞的原始证据与约束，
+                再用**最小**的验证请求/命令确认它现在是否还成立；失败就如实写"未复现"并说明差异，
+                不为了复现去打不该打的接口、不走量、不扩大范围。结论与证据一起回写。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'

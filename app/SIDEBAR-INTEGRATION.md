@@ -29,7 +29,7 @@ dsh 侧边栏
 └─ 流量        → main: vexnar-traffic（Yak 内核 History）
 
 dsh 设置页
-├─ Agent 管理  → settings.section: vexnar-agents
+├─ Agent 预设  → **dsh 原生设置节**（名册 = app/vexnar/cordis.patch.yml 的 preset 行）
 ├─ 通知推送    → settings.section: vexnar-notify
 └─ 拦截规则    → settings.section: vexnar-intercept（列表 + 新增/编辑/删除）
 
@@ -46,6 +46,12 @@ dsh 设置页 · 内置插件
   任务范围，切页签不用重新选。
 - **日志** 不再是入口：它列的就是 `activity/history` 里 planner / main 的每一步，和
   工具执行页签底部那张执行记录表是同一批数据。留着只是同一件事的第二个视图。
+- **Agent 名册只有一份**：引擎的每个角色都是 `app/vexnar/cordis.patch.yml` 里一条
+  `@deepseek-ai/dsh-agent-preset`（goals / planner / main / worker / auto / pentest /
+  reporter / retester）。名称、描述、能力组合都在那份声明里，展示与编辑归 dsh 自己的
+  设置 → Agent 预设；再挂一个 VEXNAR 的「Agent 管理」只是同一份名册的第二个视图，
+  而且它的编辑写回引擎库，改的还不是 dsh 真正在跑的那份定义。引擎按需生成的
+  `lock_agent_<id>` / `write_lock_agent_<id>` 是运行产物，不进名册。
 - **MCP / 工具** 是同一件事的两半（工具从哪来），而「谁提供、能不能调」本来就是
   插件与权限的问题。所以它们不占独立设置节，而是「内置插件」分区的两个标签页：清单
   只读，启停与调用权限由 dsh（插件页 + 权限预设）统一管理，避免两处开关互相打架。
@@ -62,7 +68,7 @@ dsh 设置页 · 内置插件
 | 工具执行 / 执行记录 | 任务详情内（按任务落库） | `POST /api/engine/tools/run`、`/api/exploration/activity/history` | 已接 |
 | 流量 | Yak 内核 History 与会话项目流量 | `POST /api/yak/history` | 已接 |
 | LLM 录制 | 面板内记录 | `/api/exploration/activity/history` | 骨架 |
-| Agent | 面板内配置 | `/api/agents`、triggers | 骨架 |
+| Agent | **dsh 原生「Agent 预设」设置节**（`cordis.patch.yml` 的 preset 行） | preset 声明（名称/描述/插件组合） | 已接 |
 | MCP / 工具 / Skill | 「内置插件」分区标签页（只读清单，权限归 dsh） | `/api/mcp`、`/api/tools` | 骨架 |
 | 通知推送 | 面板内渠道 | `/api/notify/channels` | 骨架 |
 | 拦截规则 / 资产拦截 | 面板内规则 | 待迁 | 规划 |
@@ -78,7 +84,7 @@ dsh 设置页 · 内置插件
 - 发现：最近 30 条发现（id/漏洞类/严重度/状态/摘要）；
 - 任务详情：点击任务行进入，展示目标、意图、覆盖度与最近节点；
 - 发现详情：证据、流量绑定、请求/响应正文分段；
-- 系统页：Agent 编辑、MCP 启停/删除、工具启停、通知渠道新增/删除；
+- 系统页：MCP 启停/删除、工具启停、通知渠道新增/删除；Agent 名册不在这里，它归 dsh 的「Agent 预设」；
 - 任务面板：清单的状态筛选 / 关键字搜索 / 分页全部下推后端（`/api/tasks?status=&q=&page=&size=`，
   与 Go 同一套语义，`total` 是筛选后的全集）；发现页签支持严重度 / 处置状态 / 任务范围 / 关键字，
   分页走 `page`+`limit`，任务范围用可搜索输入（datalist + 直接键入 id，不限前 200）；任务详情里给出
@@ -105,7 +111,7 @@ dsh 设置页 · 内置插件
 
 1. **只读三屏**：仪表盘（计数卡片）、任务列表、发现列表——直接调用 core 的只读 API；
 2. **详情**：任务详情（意图/目标/活动）、发现详情（证据/流量）；
-3. **系统页**：Agent/MCP/工具/通知的 CRUD（core 已实现）；
+3. **系统页**：MCP/工具/通知的 CRUD（core 已实现）；Agent 名册走 dsh preset 声明，不再做 VEXNAR 侧 CRUD；
 4. **工具执行**：把 `run_tool` 暴露成面板表单，结果落库后刷新图谱。
 
 ## 约束

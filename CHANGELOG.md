@@ -20,8 +20,11 @@
 - **工具执行下沉到任务详情**：选中任务后即可跑 nmap/httpx/ffuf/sqlmap（结果按该任务落库），
   下方列出该任务的 `activity/history` 执行记录（planner / main 逐步，含工具与结果）。执行记录属于
   任务的从属数据，不再占顶层入口。
-- **设置里「MCP」与「工具」合成「工具与 MCP」**（`settings.section: vexnar-tools-mcp`）：工具和提供工具的
-  MCP server 是同一件事的两半，分两节只会让人来回切。
+- **设置里「MCP」与「工具」并入「内置插件」分区**：工具和提供工具的 MCP server 是同一件事的两半，
+  而「谁提供、能不能调」本来就是插件与权限的问题。
+- **Agent 名册回给 dsh**：引擎的八个角色（goals / planner / main / worker / auto / pentest / reporter /
+  retester）是 `app/vexnar/cordis.patch.yml` 里的 `@deepseek-ai/dsh-agent-preset` 行，名称、描述与能力
+  组合都写在声明里，展示与编辑归 dsh 自己的「设置 → Agent 预设」。
 
 #### 接口
 
@@ -43,6 +46,8 @@
   里的执行记录是同一批数据；独立入口只是同一件事的第二个视图。
 - **移除「资产同步」设置节**（`vexnar-asset-sync`）：遗留资产导入入口已随资产面板一起退出 dsh 客户端，
   导入由 core 的 `/api/assets` 承担。
+- **移除「Agent 管理」设置节**（`vexnar-agents`）：同一批角色在 dsh 的「Agent 预设」里已经有一份声明式名册，
+  VEXNAR 那节只是它的第二个视图，而且改名写回的是引擎库、不是 dsh 真正在跑的定义。
 
 #### 修复的问题
 

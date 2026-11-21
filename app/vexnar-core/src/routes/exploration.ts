@@ -745,7 +745,9 @@ async function retestAgentReady() {
   const agents = await meta.table<any[]>('agents')
   const agent = agents.find((row) => row.key === FINDING_RETEST_AGENT_KEY)
   if (!agent || !agent.enabled) {
-    throw httpError(409, '漏洞复测 Agent 不存在或未启用，请在 Agent 管理中配置 retester')
+    // 名册在 dsh：设置 → Agent 预设 里有 vexnar-retester 角色。引擎侧的 retester 行
+    // 由引擎自己维护（启用 + 工具绑定），不再有 VEXNAR 的 Agent 管理页可跳。
+    throw httpError(409, '漏洞复测 Agent 不存在或未启用：请确认 dsh 设置 → Agent 预设 中的 retester 角色，以及引擎侧该 agent 已启用')
   }
   const tools = await meta.table<any[]>('tools')
   for (const key of FINDING_RETEST_TOOLS) {
