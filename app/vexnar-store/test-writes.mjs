@@ -196,6 +196,9 @@ check('schedule lifecycle', schedule.next_fire_at && scheduleUpdate.frequency ==
 const delivery = await ops.recordDelivery({ channel_id: 1, event_kind: 'finding_created', title: 't', status: 'ok', attempts: 1 })
 check('delivery record', delivery.status === 'ok' && delivery.attempts === 1, JSON.stringify(delivery))
 
+const imported = await ops.importAssets([{ type: 'root_domain', domain: 'import.example' }, { type: 'root_domain', domain: 'import.example' }, { type: 'ip', ip: '10.0.0.9' }])
+check('asset import dedupe', imported.requested === 3 && imported.created === 2 && imported.existing === 1, JSON.stringify(imported))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

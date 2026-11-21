@@ -1051,13 +1051,28 @@ function ApprovalsPage() {
   );
 }
 function AssetSyncSettings() {
+  const [text, setText] = (0, import_react.useState)('{"assets":[{"type":"root_domain","domain":"example.com"}]}');
+  const [result, setResult] = (0, import_react.useState)("");
+  const submit = async () => {
+    setResult("\u5BFC\u5165\u4E2D\u2026");
+    try {
+      const parsed = JSON.parse(text);
+      const assets = Array.isArray(parsed) ? parsed : parsed.assets;
+      const data = await callApi("/api/assets/import", "POST", { assets });
+      setResult(`requested=${data.requested} created=${data.created} existing=${data.existing}`);
+    } catch (error) {
+      setResult(String(error?.message ?? error));
+    }
+  };
   return (0, import_react.createElement)(
     PanelShell,
-    { title: "\u8D44\u4EA7\u540C\u6B65", desc: "\u5916\u90E8\u8D44\u4EA7\u6E90\u540C\u6B65" },
+    { title: "\u8D44\u4EA7\u540C\u6B65", desc: "\u4ECE JSON \u5BFC\u5165\u8D44\u4EA7\uFF08\u57DF\u540D/IP/URL\uFF09\uFF0C\u6309\u7C7B\u578B\u4E0E\u6807\u8BC6\u53BB\u91CD" },
+    (0, import_react.createElement)("textarea", { value: text, onChange: (event) => setText(event.target.value), rows: 10, style: { width: "100%", fontFamily: "monospace", fontSize: 12 } }),
     (0, import_react.createElement)(
       "div",
-      { style: { border: "1px dashed var(--vx-border, #e5e7eb)", borderRadius: 12, padding: 20, fontSize: 13, color: "var(--vx-muted, #6b7280)" } },
-      "\u8D44\u4EA7\u540C\u6B65\u540E\u7AEF\u5C1A\u672A\u8FC1\u79FB\uFF08Go \u4FA7\u65E0\u72EC\u7ACB REST \u5951\u7EA6\uFF09\u3002\u63A5\u5165\u65F6\u590D\u7528\u8D44\u4EA7\u7684 journal \u5199\u8DEF\u5F84\uFF0C\u5E76\u5728\u6B64\u63D0\u4F9B\u540C\u6B65\u6E90\u914D\u7F6E\u4E0E\u6700\u8FD1\u4E00\u6B21\u7ED3\u679C\u3002"
+      { style: { display: "flex", gap: 8, marginTop: 8 } },
+      (0, import_react.createElement)("button", { type: "button", onClick: submit, style: { cursor: "pointer" } }, "\u5BFC\u5165"),
+      (0, import_react.createElement)("span", { style: { fontSize: 12, color: "var(--vx-muted, #6b7280)" } }, result)
     )
   );
 }

@@ -688,9 +688,22 @@ function ApprovalsPage() {
 }
 
 function AssetSyncSettings() {
-  return h(PanelShell, { title: '资产同步', desc: '外部资产源同步' },
-    h('div', { style: { border: '1px dashed var(--vx-border, #e5e7eb)', borderRadius: 12, padding: 20, fontSize: 13, color: 'var(--vx-muted, #6b7280)' } },
-      '资产同步后端尚未迁移（Go 侧无独立 REST 契约）。接入时复用资产的 journal 写路径，并在此提供同步源配置与最近一次结果。'))
+  const [text, setText] = useState('{"assets":[{"type":"root_domain","domain":"example.com"}]}')
+  const [result, setResult] = useState('')
+  const submit = async () => {
+    setResult('导入中…')
+    try {
+      const parsed = JSON.parse(text)
+      const assets = Array.isArray(parsed) ? parsed : parsed.assets
+      const data = await callApi('/api/assets/import', 'POST', { assets })
+      setResult(`requested=${data.requested} created=${data.created} existing=${data.existing}`)
+    } catch (error: any) { setResult(String(error?.message ?? error)) }
+  }
+  return h(PanelShell, { title: '资产同步', desc: '从 JSON 导入资产（域名/IP/URL），按类型与标识去重' },
+    h('textarea', { value: text, onChange: (event: any) => setText(event.target.value), rows: 10, style: { width: '100%', fontFamily: 'monospace', fontSize: 12 } }),
+    h('div', { style: { display: 'flex', gap: 8, marginTop: 8 } },
+      h('button', { type: 'button', onClick: submit, style: { cursor: 'pointer' } }, '导入'),
+      h('span', { style: { fontSize: 12, color: 'var(--vx-muted, #6b7280)' } }, result)))
 }
 
 function LogsPanel() {

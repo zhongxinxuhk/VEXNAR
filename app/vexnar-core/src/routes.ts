@@ -506,6 +506,17 @@ api.get('/api/assets', async (c) => {
   return c.json({ assets: rows.map(assetDto), count: rows.length, total })
 })
 
+api.post('/api/assets/import', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  const assets = Array.isArray(body.assets) ? body.assets : []
+  if (!assets.length) return c.json({ error: 'assets 不能为空' }, 400)
+  try {
+    const result = await operations.importAssets(assets)
+    store.invalidate?.(['assets'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, 400) }
+})
+
 api.get('/api/assets/counts', async (c) => c.json(await store.assets.counts(c.req.query('task_id') || undefined)))
 
 // ── findings / nodes ──────────────────────────────────────────────────────
