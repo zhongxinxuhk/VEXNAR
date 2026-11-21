@@ -81,6 +81,29 @@ function apply(ctx) {
   registerYakHistoryTools(ctx);
   if (process.env.VEXNAR_CORE_EMBEDDED !== "0") {
     const app = import("./core-embedded.js");
+    ctx.provide("vexnarCore", {
+      request: async (path, init = {}) => {
+        const { handle } = await app;
+        const requestInit = {
+          method: init.method ?? "GET",
+          headers: { "content-type": "application/json", ...init.headers ?? {} }
+        };
+        if (init.body !== void 0) requestInit.body = JSON.stringify(init.body);
+        const response = await handle(new Request(new URL(path, "http://127.0.0.1"), requestInit), true);
+        const text = await response.text();
+        let data = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          data = { raw: text };
+        }
+        if (!response.ok) {
+          const message = data?.error ?? text ?? `HTTP ${response.status}`;
+          throw new Error(message);
+        }
+        return data;
+      }
+    });
     ctx.effect(() => ctx.webServer.register({
       kind: "prefix",
       path: "/vexnar-api",

@@ -31,6 +31,17 @@
 - id: ui-settings-models
   disabled: true
 
+# ── Agent egress tools (TS) ────────────────────────────────────────────────
+# 代理池/跳板/链式代理/浏览器固定端口/带代理的 shell 执行都在 TS 侧；agent 通过
+# 这些工具拿会话出口，不再依赖 Go 的 bash 环境注入。
+- insert:
+    - id: vexnar-egress
+      name: '@vexnar/dsh-egress'
+      config:
+        coreUrl: http://127.0.0.1:8790
+        tokenEnv: VEXNAR_API_TOKEN
+        taskIdEnv: VEXNAR_TASK_ID
+
 # ── Domain tools (transitional) ────────────────────────────────────────────
 # Task/finding/traffic tools still live in the Go service while the TS
 # migration lands. Remove this row once those tools exist in TypeScript.
@@ -273,6 +284,9 @@
                 你是 VEXNAR 的执行 agent（role=worker）。一次只做分配给你的那一条意图：先确认范围与证据，
                 再动手验证，把事实、漏洞与证据流量写回，然后停止——不自行扩大目标，不改任务目标。
                 拿不到证据时如实说明卡在哪里，而不是猜结论。
+                需要出网时用 egress_exec 跑命令（自动带本任务会话代理）；单节点被 WAF/拦截页挡住时用
+                fanout_fetch 并发取证；拿到 SSH -D / C2 socks 等跳板立即 pivot_add（可用 via_node_id 链式），
+                然后按“证据→跳板→下一层”记录层级，不越出任务范围。
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:
@@ -391,6 +405,9 @@
                 你是 VEXNAR 的独立渗透 agent（role=assistant）。一人走完整条链：侦察 → 找攻击面 → 深入利用 → 验证 → 收尾。
                 自己规划、自己执行、自己对抗式验证：每个结论都要有证据（请求/响应、命令输出），
                 拿不到证据就标成待验证。范围只限任务里写明的资产，不越界、不碰未授权目标。
+                出网统一走 egress_exec（会话代理）；被单节点拦截时用 fanout_fetch 对抗取证；
+                取得跳板后用 pivot_add 登记，可用 via_node_id 把跳板串在已有节点后面做链式代理，
+                再逐层验证下一跳/内网目标；每一层的证据、跳板 node_id 与依赖关系都要写回，便于复现整条利用链。
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:

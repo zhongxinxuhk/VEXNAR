@@ -17,14 +17,11 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "tsx --test *.test.ts",
     "test:traffic-index": "tsx traffic-index.test.ts",
-    "test:egress": "tsx egress.test.ts && tsx egress-routes.test.ts",
+    "test:egress": "tsx egress.test.ts && tsx egress-routes.test.ts && tsx egress-chain.test.ts",
     "test:bridge": "tsx proxy-bridge.test.ts",
     "fetch:mihomo": "tsx ../scripts/fetch-mihomo.ts",
-    "test:traffic-index": "tsx traffic-index.test.ts",
-    "test:egress": "tsx egress.test.ts && tsx egress-routes.test.ts",
-    "test:bridge": "tsx proxy-bridge.test.ts",
-    "fetch:mihomo": "tsx ../scripts/fetch-mihomo.ts",
-    "test:mitm": "tsx traffic-mitm.test.ts"
+    "test:mitm": "tsx traffic-mitm.test.ts",
+    "test:chain": "tsx egress-chain.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",

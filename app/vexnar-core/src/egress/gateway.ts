@@ -10,7 +10,7 @@
 import { Agent, createServer as createHttpServer, request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createServer as createNetServer, createConnection, type Server, type Socket } from 'node:net'
 
-import { dialNode, type Dialed } from './dialer.ts'
+import type { Dialed } from './dialer.ts'
 import { EgressError, type Acquired, type EgressManager, type Route } from './manager.ts'
 
 export interface GatewayAddresses {
@@ -23,6 +23,7 @@ export class EgressGateway {
   private socks?: Server
   private addresses: GatewayAddresses = { httpPort: 0, socksPort: 0 }
   private readonly manager: EgressManager
+  private readonly fixed = new Map<string, { server: ReturnType<typeof createHttpServer>; port: number }>()
 
   constructor(manager: EgressManager) {
     this.manager = manager
@@ -33,7 +34,7 @@ export class EgressGateway {
       void this.forward(req, res)
     })
     this.http.on('connect', (req, client, head) => {
-      void this.connect(req, client as Socket, head)
+      void this.connect(req, client as Socket, head).catch((error) => console.error('[egress] connect failed:', error))
     })
     await listen(this.http, 0)
     this.addresses.httpPort = (this.http.address() as { port: number }).port
@@ -47,18 +48,42 @@ export class EgressGateway {
     return this.addresses
   }
 
+  /** 无认证固定端口（浏览器/MCP 只能配置静态代理时使用）；按会话 key 复用。 */
+  async openFixed(key: string): Promise<number> {
+    const existing = this.fixed.get(key)
+    if (existing) return existing.port
+    const server = createHttpServer((req, res) => {
+      void this.forward(req, res, key)
+    })
+    server.on('connect', (req, client, head) => {
+      void this.connect(req, client as Socket, head, key).catch((error) => console.error('[egress] connect failed:', error))
+    })
+    await listen(server, 0)
+    const port = (server.address() as { port: number }).port
+    this.fixed.set(key, { server, port })
+    return port
+  }
+
+  closeFixed(key: string): void {
+    const entry = this.fixed.get(key)
+    if (!entry) return
+    this.fixed.delete(key)
+    entry.server.close()
+  }
+
   async stop(): Promise<void> {
+    for (const key of [...this.fixed.keys()]) this.closeFixed(key)
     await Promise.all([
       new Promise<void>((resolve) => (this.http ? this.http.close(() => resolve()) : resolve())),
       new Promise<void>((resolve) => (this.socks ? this.socks.close(() => resolve()) : resolve()))
     ])
   }
 
-  private async connect(req: IncomingMessage, client: Socket, head: Buffer): Promise<void> {
+  private async connect(req: IncomingMessage, client: Socket, head: Buffer, fixedKey?: string): Promise<void> {
     let route: Route
     try {
-      route = this.manager.route(...basicAuth(req.headers['proxy-authorization']))
-    } catch {
+      route = fixedKey ? this.manager.fixedRoute(fixedKey) : this.manager.route(...basicAuth(req.headers['proxy-authorization']))
+    } catch (error) {
       client.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="vexnar-egress"\r\n\r\n')
       return
     }
@@ -74,7 +99,7 @@ export class EgressGateway {
     try {
       const upstream = acquired.direct
         ? createConnection({ host, port })
-        : await dialNode(acquired.node!.node, this.manager.engine, host, port)
+        : await this.manager.dialTarget(acquired.node!.node, host, port)
       await connected(upstream)
       client.write('HTTP/1.1 200 Connection Established\r\n\r\n')
       if (head?.length) upstream.write(head)
@@ -96,7 +121,7 @@ export class EgressGateway {
         finish()
       })
       upstream.once('close', () => {
-        client.destroy()
+        client.end()
         finish()
       })
       upstream.once('error', (error) => {
@@ -109,10 +134,10 @@ export class EgressGateway {
     }
   }
 
-  private async forward(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async forward(req: IncomingMessage, res: ServerResponse, fixedKey?: string): Promise<void> {
     let route: Route
     try {
-      route = this.manager.route(...basicAuth(req.headers['proxy-authorization']))
+      route = fixedKey ? this.manager.fixedRoute(fixedKey) : this.manager.route(...basicAuth(req.headers['proxy-authorization']))
     } catch {
       res.writeHead(407, {
         'proxy-authenticate': 'Basic realm="vexnar-egress"',
@@ -142,7 +167,7 @@ export class EgressGateway {
     try {
       upstream = acquired.direct
         ? createConnection({ host: target.hostname, port })
-        : await dialNode(acquired.node!.node, this.manager.engine, target.hostname, port)
+        : await this.manager.dialTarget(acquired.node!.node, target.hostname, port)
     } catch (error) {
       acquired.release(0, 0, 0, error as Error)
       respondProxyError(res, error)
@@ -274,7 +299,7 @@ export class EgressGateway {
           try {
             const upstream = acquired.direct
               ? createConnection({ host, port })
-              : await dialNode(acquired.node!.node, this.manager.engine, host, port)
+              : await this.manager.dialTarget(acquired.node!.node, host, port)
             await connected(upstream)
             socket.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]))
             let up = 0

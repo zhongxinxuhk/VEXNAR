@@ -19,6 +19,7 @@ packages:
   - vexnar/account
   # dsh 插件包：入口 index.ts → index.js（node_modules 下 Node 不擦类型）
   - vexnar-mcp
+  - vexnar-egress
   # TypeScript 核心与存储
   - vexnar-core
   - vexnar-store

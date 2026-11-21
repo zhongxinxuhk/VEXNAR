@@ -69,9 +69,19 @@ export interface Socks5Options {
 }
 
 export function socks5Connect(options: Socks5Options): Promise<Socket> {
-  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT
   return new Promise((resolve, reject) => {
     const socket = createConnection({ host: options.proxyHost, port: options.proxyPort })
+    socket.once('connect', () => {
+      socks5Over(socket, options).then(resolve, reject)
+    })
+    socket.once('error', reject)
+  })
+}
+
+/** 在一个已建立（或经链式代理拨通）的 socket 上完成 SOCKS5 握手并 CONNECT。 */
+export function socks5Over(socket: Socket, options: Omit<Socks5Options, 'proxyHost' | 'proxyPort'>): Promise<Socket> {
+  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT
+  return new Promise((resolve, reject) => {
     const reader = new SocketReader(socket)
     let settled = false
     const fail = (error: Error) => {
@@ -81,16 +91,15 @@ export function socks5Connect(options: Socks5Options): Promise<Socket> {
       socket.destroy()
       reject(error)
     }
-    const timer = setTimeout(() => fail(new Error(`连接代理 ${options.proxyHost}:${options.proxyPort} 超时`)), timeout)
+    const timer = setTimeout(() => fail(new Error(`SOCKS5 握手超时（${options.host}:${options.port}）`)), timeout)
     socket.once('error', (error) => {
       clearTimeout(timer)
       fail(error)
     })
-    socket.once('connect', () => {
-      const wantsAuth = Boolean(options.username)
-      const methods = wantsAuth ? [0x00, 0x02] : [0x00]
-      socket.write(Buffer.from([0x05, methods.length, ...methods]))
-      void (async () => {
+    const wantsAuth = Boolean(options.username)
+    const methods = wantsAuth ? [0x00, 0x02] : [0x00]
+    socket.write(Buffer.from([0x05, methods.length, ...methods]))
+    void (async () => {
         const greeting = await reader.read(2)
         if (greeting[0] !== 0x05) throw new Error('SOCKS5 版本不匹配')
         if (greeting[1] === 0x02) {
@@ -123,7 +132,6 @@ export function socks5Connect(options: Socks5Options): Promise<Socket> {
         clearTimeout(timer)
         fail(error as Error)
       })
-    })
   })
 }
 
@@ -198,11 +206,21 @@ export interface HttpProxyOptions {
 }
 
 export function httpConnect(options: HttpProxyOptions): Promise<Dialed> {
-  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT
   return new Promise((resolve, reject) => {
     const socket: Dialed = options.tls
       ? tlsConnect({ host: options.proxyHost, port: options.proxyPort, servername: options.proxyHost })
       : createConnection({ host: options.proxyHost, port: options.proxyPort })
+    socket.once('error', reject)
+    socket.once(options.tls ? 'secureConnect' : 'connect', () => {
+      httpOver(socket, options).then(resolve, reject)
+    })
+  })
+}
+
+/** 在已拨通的 socket 上发 CONNECT（链式代理的第二跳也用它）。 */
+export function httpOver(socket: Dialed, options: Omit<HttpProxyOptions, 'proxyHost' | 'proxyPort' | 'tls'>): Promise<Dialed> {
+  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT
+  return new Promise((resolve, reject) => {
     let settled = false
     const fail = (error: Error) => {
       if (settled) return
@@ -210,12 +228,7 @@ export function httpConnect(options: HttpProxyOptions): Promise<Dialed> {
       socket.destroy()
       reject(error)
     }
-    const timer = setTimeout(() => fail(new Error(`HTTP 代理 ${options.proxyHost}:${options.proxyPort} 超时`)), timeout)
-    socket.once('error', (error) => {
-      clearTimeout(timer)
-      fail(error)
-    })
-    socket.once(options.tls ? 'secureConnect' : 'connect', () => {
+    const timer = setTimeout(() => fail(new Error(`HTTP 代理 CONNECT 超时（${options.host}:${options.port}）`)), timeout)
       const target = `${options.host}:${options.port}`
       const lines = [
         `CONNECT ${target} HTTP/1.1`,
@@ -252,7 +265,6 @@ export function httpConnect(options: HttpProxyOptions): Promise<Dialed> {
         resolve(socket)
       }
       socket.on('data', onData)
-    })
   })
 }
 
