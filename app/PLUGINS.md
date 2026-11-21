@@ -6,15 +6,11 @@
 
 # 内置插件：Craft Anything 与插件商店
 
-两套能力都装在**本仓库自己的 dsh home**（`app/.dsh-home`），与用户安装版隔离。
+插件装在 VEXNAR 的独立配置 `app/.vexnar-home/profiles/vexnar`。
 
 ## Craft Anything（来自插件商店）
 
-不再自建插件：直接安装商店里的 `dsh-craft-anything@0.6.1`（MIT，Fanqi89）：
-
-```sh
-dsh plugin --profile web add dsh-craft-anything@0.6.1
-```
+在 VEXNAR 的插件面板安装 `dsh-craft-anything@0.6.1`（MIT，Fanqi89）。
 
 它自带：
 
@@ -25,15 +21,11 @@ dsh plugin --profile web add dsh-craft-anything@0.6.1
   下载并校验 SHA256，更新后重启 MCP 桥；
 - 中英文界面、环境依赖检查与一键补齐。
 
-CLI 由插件管理在 `~/.dsh/plugins-data/craft-anything/`，不再需要仓库内的 `craft:update` 脚本。
+VEXNAR 使用自己数据目录下的 `plugins-data/craft-anything/`。
 
 ## dsh-plugin-shop（插件商店）
 
-已装进 web profile：
-
-```sh
-dsh plugin --profile web add dsh-plugin-shop@0.9.4
-```
+用 `pnpm run shop:update` 安装到 VEXNAR 配置。
 
 - 侧栏出现 **Plugin shop**；
 - 商店自身支持检查更新并自更新；
@@ -44,9 +36,9 @@ pnpm run shop:check
 pnpm run shop:update
 ```
 
-**注意**：新增 bundle 需要重启 dsh 才生效；启用/禁用已安装插件是热生效。
+**注意**：新增 bundle 需要重启 VEXNAR 才生效；启用/禁用已安装插件是热生效。
 
 ## 首次同步
 
-`app/vexnar/cordis.patch.yml` 是唯一真源，`pnpm run setup` 会把它复制到
-`app/.dsh-home/profiles/web/cordis.patch.yml`。改完 patch 后要重新 setup（或复制）并重启 dsh。
+`app/vexnar/cordis.patch.yml` 是 VEXNAR bundle 的配置。修改后重新执行
+`pnpm run setup` 并重启 VEXNAR，用户配置继续保存在自己的 profile 内。

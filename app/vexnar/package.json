@@ -8,10 +8,15 @@
   "repository": "https://github.com/zhongxinxuhk/VEXNAR",
   "license": "AGPL-3.0-or-later",
   "dsh": {
-    "bundle": "./cordis.patch.yml"
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-llm-pi-ai": "0.2.2-rc.5",
     "@deepseek-ai/dsh-mcp-manager": "0.2.2-rc.5"
-  }
+  },
+  "files": [
+    "cordis.patch.yml"
+  ]
 }

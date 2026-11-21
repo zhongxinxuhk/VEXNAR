@@ -1,3 +1,9 @@
+<!--
+  Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+  Repository: https://github.com/zhongxinxuhk/VEXNAR
+  SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Setup app profile" type="js.build_tools.npm" factoryName="npm">
     <package-json value="$PROJECT_DIR$/package.json" />
@@ -8,7 +14,7 @@
     <node-interpreter value="project" />
     <package-manager value="pnpm" />
     <envs>
-      <env name="VEXNAR_DSH_HOME" value="$PROJECT_DIR$/.dsh-home" />
+      <env name="VEXNAR_HOME" value="$PROJECT_DIR$/.vexnar-home" />
     </envs>
     <method v="2" />
   </configuration>

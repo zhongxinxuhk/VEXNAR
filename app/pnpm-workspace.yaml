@@ -23,13 +23,17 @@ packages:
   # P0 验证 spike
   - spike/*
 
-# 以下 pnpm 设置只认 pnpm-workspace.yaml（pnpm 11 起 .npmrc 里的同名项不再生效）：
-# 插件运行在 dsh runtime/profile 里，@deepseek-ai/* 由 profile 提供，
-# 所以 workspace 既不自动装 peer，也不因缺 peer 报错。
-autoInstallPeers: false
+# 官方运行时安装在 VEXNAR workspace 内，由 pnpm 补全运行时 peer。
+autoInstallPeers: true
 strictPeerDependencies: false
 engineStrict: false
 
-# 构建脚本白名单：只有 esbuild（ui/account 打包）需要跑 postinstall。
+# 运行时原生依赖与客户端 bundle 的构建脚本。
 allowBuilds:
   esbuild: true
+  electron: true
+  '@deepseek-ai/dsh-subprocess-local': true
+  koffi: true
+  node-pty: true
+  '@google/genai': false
+  protobufjs: false

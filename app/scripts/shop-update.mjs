@@ -11,12 +11,10 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { dshHome, resolveRuntime } from './dsh-runtime.mjs'
+import { profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.mjs'
 
-const profile = 'web'
-const bin = join(resolveRuntime(), 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-if (!existsSync(bin)) throw new Error(`dsh CLI not found: ${bin}`)
-const manifestPath = join(dshHome(), 'profiles', profile, 'package.json')
+const bin = runtimeBin()
+const manifestPath = join(vexnarHome(), 'profiles', profileName, 'package.json')
 const installed = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')).dependencies?.['dsh-plugin-shop'] ?? '' : ''
 
 if (process.argv.includes('--check')) {
@@ -24,7 +22,7 @@ if (process.argv.includes('--check')) {
   process.exit(0)
 }
 
-const args = [bin, 'plugin', '--profile', profile, 'add', 'dsh-plugin-shop@latest']
-const result = spawnSync(process.execPath, args, { stdio: 'inherit', env: { ...process.env, DSH_HOME: dshHome() } })
+const args = [bin, 'plugin', '--profile', profileName, 'add', 'dsh-plugin-shop@latest']
+const result = spawnSync(process.execPath, args, { stdio: 'inherit', env: runtimeEnv() })
 if (result.status !== 0) process.exit(result.status ?? 1)
-spawnSync(process.execPath, [bin, 'plugin', '--profile', profile, 'list', '--depth', '0'], { stdio: 'inherit', env: { ...process.env, DSH_HOME: dshHome() } })
+spawnSync(process.execPath, [bin, 'plugin', '--profile', profileName, 'list', '--depth', '0'], { stdio: 'inherit', env: runtimeEnv() })

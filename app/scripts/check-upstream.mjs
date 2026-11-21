@@ -88,9 +88,10 @@ const accountPkg = JSON.parse(readFileSync(join(app, 'vexnar/account/package.jso
 const accountInject = accountPkg.dsh?.client?.inject ?? []
 ok('account client injects settings', accountInject.includes('@deepseek-ai/dsh-client-ui-settings'))
 
-const accountHost = readFileSync(join(app, 'vexnar/account/lib/index.js'), 'utf8')
-ok('account host configures pi-ai directly', accountHost.includes("ctx.settings.update('llm-pi-ai'"))
-ok('account host does not call the Go gateway', !accountHost.includes('/api/desktop/llm'))
+const accountHost = readFileSync(join(app, 'vexnar/account/lib/platform.js'), 'utf8')
+ok('VEXNAR host uses the branded Go gateway', accountHost.includes('/api/desktop/vexnar'))
+ok('VEXNAR host synchronizes only the loopback model catalog', accountHost.includes("ctx.settings.replace('llm-pi-ai'"))
+ok('VEXNAR disables upstream model settings', /id: ui-settings-models\s+disabled: true/.test(patch))
 
 const accountBundle = join(app, 'vexnar/account/lib/client.js')
 ok('account bundle built', existsSync(accountBundle), 'run `pnpm run account:build`')
@@ -108,7 +109,7 @@ if (existsSync(bundle)) {
 
 // ── 4. 单一包管理器（pnpm）──────────────────────────────────────────────────
 // app/ 只认 pnpm：一个根 workspace、一个根 lockfile，子包不许自带包管理器状态。
-const SKIP_DIRS = new Set(['node_modules', 'dsh', '.dsh-home', '.git', '.idea', 'lib'])
+const SKIP_DIRS = new Set(['node_modules', 'dsh', '.dsh-home', '.vexnar-home', '.git', '.idea', 'lib'])
 
 function walk(rel = '') {
   const found = []
