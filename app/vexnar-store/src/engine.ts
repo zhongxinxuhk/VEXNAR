@@ -112,7 +112,7 @@ export function createEngine(store: Store, ops: Ops, engineOptions: { runner?: i
 - graph_overview {}
 - report_finding {"vulnclass","severity","summary","evidence"}
 - run_command {"command","args":[...]}（仅限允许列表）
-- run_tool {"name":"nmap|httpx|ffuf|sqlmap","target":"...","extra":{}}（结果自动落资产/发现）
+- run_tool {"name":"nmap|httpx|ffuf|sqlmap|nuclei","target":"...","extra":{}}（结果自动落资产/发现）
 - finish {"summary"}
 只输出 {"tool":"...","args":{...}}，不要解释。` },
           { role: 'user', content: `任务：${compact([String(task?.goal ?? '')], 1000)}\n当前意图：${compact([String(intent?.text ?? '')], 1000)}\n已得事实：${compact(facts) || '无'}\n历史记忆：${compact(memory, 2000) || '无'}` }

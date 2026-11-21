@@ -29,7 +29,8 @@ const fake = {
   async run(command, args) {
     const output = command === 'nmap' ? nmap
       : command === 'httpx' ? JSON.stringify({ url: 'https://example.com', status_code: 200, title: 'Example', tech: ['nginx'], host: 'example.com' })
-      : command === 'ffuf' ? '/admin [Status: 200, Size: 1234]'
+      : command === 'ffuf' ? JSON.stringify({ results: [{ url: 'https://example.com/admin', status: 200, length: 1234 }] })
+      : command === 'nuclei' ? JSON.stringify({ 'template-id': 'CVE-2024-0001', info: { name: 'Demo RCE', severity: 'critical', description: 'demo' }, 'matched-at': 'https://example.com/x', 'extracted-results': ['root'] })
       : 'Parameter: id (GET)\n    Type: boolean-based blind\n    Title: AND boolean-based blind\n    Payload: id=1 AND 1=1\n[INFO] GET parameter \'id\' is vulnerable'
     return { command, args, code: 0, signal: null, stdout: output, stderr: '', truncated: false, timed_out: false, duration_ms: 1 }
   }
@@ -49,7 +50,12 @@ check('httpx persists endpoint', httpxPersist.length === 1, JSON.stringify(httpx
 
 const ffufRun = await runTool(fake, 'ffuf', 'https://example.com')
 const ffufPersist = await persistToolResult(ops, task.id, String(intent.id), 'ffuf', ffufRun.parsed, 'https://example.com/FUZZ\n' + ffufRun.stdout)
-check('ffuf persists endpoint', ffufPersist.length === 1, JSON.stringify(ffufPersist))
+check('ffuf persists endpoint', ffufPersist.length === 1 && ffufRun.parsed.results[0]?.status === 200, JSON.stringify(ffufPersist))
+
+const nucleiRun = await runTool(fake, 'nuclei', 'https://example.com')
+const nucleiPersist = await persistToolResult(ops, task.id, String(intent.id), 'nuclei', nucleiRun.parsed, nucleiRun.stdout)
+const nucleiFinding = await ops.writer.readRecord('findings', String(nucleiPersist.find((item) => item.kind === 'finding')?.id))
+check('nuclei reports finding', nucleiRun.parsed.findings.length === 1 && nucleiFinding?.severity === 'critical' && nucleiFinding?.vulnclass === 'CVE-2024-0001', JSON.stringify({ parsed: nucleiRun.parsed.findings[0], finding: nucleiFinding?.id }))
 
 const sqlmapRun = await runTool(fake, 'sqlmap', 'https://example.com/?id=1')
 const sqlmapPersist = await persistToolResult(ops, task.id, String(intent.id), 'sqlmap', sqlmapRun.parsed, sqlmapRun.stdout)

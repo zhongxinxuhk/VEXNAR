@@ -6,7 +6,7 @@ import type { storeOperations } from './operations.js'
 
 type Ops = ReturnType<typeof storeOperations>
 
-export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap'
+export type ToolName = 'nmap' | 'httpx' | 'ffuf' | 'sqlmap' | 'nuclei'
 
 export interface ToolSpec {
   name: ToolName
@@ -68,15 +68,56 @@ const templates: Record<ToolName, ToolSpec> = {
     description: '目录/接口爆破',
     build(target, extra = {}) {
       const wordlist = String(extra.wordlist ?? '/usr/share/wordlists/dirb/common.txt')
-      return { command: 'ffuf', args: ['-u', target.includes('FUZZ') ? target : `${target.replace(/\/$/, '')}/FUZZ`, '-w', wordlist, '-mc', String(extra.match ?? '200,204,301,302,403'), '-s'] }
+      return { command: 'ffuf', args: ['-u', target.includes('FUZZ') ? target : `${target.replace(/\/$/, '')}/FUZZ`, '-w', wordlist, '-mc', String(extra.match ?? '200,204,301,302,403'), '-of', 'json', '-o', '/dev/stdout', '-s'] }
     },
     parse(output) {
       const results = []
+      const trimmed = output.trim()
+      if (trimmed.startsWith('{')) {
+        try {
+          const data = JSON.parse(trimmed)
+          for (const row of data.results ?? []) results.push({ path: row.url ?? row.input?.FUZZ ?? '', status: Number(row.status ?? 0), size: Number(row.length ?? 0) })
+          return { results }
+        } catch {
+          // fall through to text parsing
+        }
+      }
       for (const line of output.split('\n')) {
         const row = line.match(/^(\S+)\s+\[Status:\s*(\d+)(?:,\s*Size:\s*(\d+))?/)
         if (row) results.push({ path: row[1], status: Number(row[2]), size: row[3] ? Number(row[3]) : 0 })
       }
       return { results }
+    }
+  },
+  nuclei: {
+    name: 'nuclei',
+    description: '模板化漏洞扫描',
+    build(target, extra = {}) {
+      const args = ['-u', target, '-jsonl', '-silent', '-nc']
+      if (extra.tags) args.push('-tags', String(extra.tags))
+      if (extra.severity) args.push('-severity', String(extra.severity))
+      return { command: 'nuclei', args }
+    },
+    parse(output) {
+      const findings = []
+      for (const line of output.split('\n')) {
+        const text = line.trim()
+        if (!text.startsWith('{')) continue
+        try {
+          const row = JSON.parse(text)
+          findings.push({
+            template: row['template-id'] ?? row.templateID ?? '',
+            name: row.info?.name ?? '',
+            severity: String(row.info?.severity ?? 'low').toLowerCase(),
+            matched_at: row['matched-at'] ?? row.host ?? '',
+            description: row.info?.description ?? '',
+            extracted: row['extracted-results'] ?? []
+          })
+        } catch {
+          // ignore malformed line
+        }
+      }
+      return { findings }
     }
   },
   sqlmap: {
@@ -134,6 +175,17 @@ export async function persistToolResult(ops: Ops, taskId: string, nodeId: string
       const url = /^https?:/.test(row.path) ? row.path : `${raw.match(/https?:\/\/[^\s]+/)?.[0]?.replace(/\/FUZZ.*$/, '') ?? ''}/${row.path.replace(/^\//, '')}`
       const asset = await ops.addAsset(taskId, { type: 'endpoint', url, status_code: row.status })
       created.push({ kind: 'asset', id: asset.id })
+    }
+  }
+  if (name === 'nuclei') {
+    for (const row of parsed.findings ?? []) {
+      const severity = ['critical', 'high', 'medium', 'low'].includes(row.severity) ? row.severity : 'low'
+      const finding = await ops.reportFinding({
+        task_id: taskId, intent_id: nodeId, vulnclass: row.template || row.name || 'nuclei', name: row.name,
+        severity, summary: row.name || row.template || 'nuclei finding',
+        evidence: [row.matched_at, ...(row.extracted ?? [])].filter(Boolean).join('\n'), worker: 'engine'
+      })
+      created.push({ kind: 'finding', id: finding.finding_id })
     }
   }
   if (name === 'sqlmap' && parsed.vulnerable) {

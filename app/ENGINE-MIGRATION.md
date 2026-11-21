@@ -56,7 +56,8 @@
 
 ## E4 完成
 
-- 工具模板：nmap / httpx / ffuf / sqlmap（参数构建 + 输出解析）；
+- 工具模板：nmap / httpx / ffuf / sqlmap / nuclei（参数构建 + 输出解析）；
+- ffuf 支持 JSON 输出解析（`-of json`），nuclei 解析 JSONL 并自动写 finding；
 - 解析结果自动落库：nmap→ip/service 资产、httpx→endpoint、ffuf→endpoint、
   sqlmap 注入信号→finding（SQL注入/high），全部复用 journal 写；
 - worker `run_tool` 一步完成“执行 + 解析 + 落资产/发现”；
