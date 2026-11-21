@@ -10,7 +10,8 @@
   "scripts": {
     "seed": "tsx seed.mjs",
     "compare": "tsx compare.mjs",
-    "test:writes": "tsx test-writes.mjs"
+    "test:writes": "tsx test-writes.mjs",
+    "test:engine": "tsx test-engine.mjs"
   },
   "dependencies": {
     "pg": "^8.23.1",

@@ -11,12 +11,14 @@ function parseJson(value: unknown): unknown {
     return value
   }
 }
-import { metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { createEngine, metaStore, openStore, storeOperations, storeRoot } from '../../vexnar-store/src/index.ts'
+import { gatewayComplete } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 
 const store = await openStore()
 const meta = metaStore(storeRoot())
 const operations = storeOperations(storeRoot())
+const engine = createEngine(store as any, operations as any)
 await operations.writer.recover().catch(() => {})
 const releaseStoreLock = await operations.writer.lock()
 process.once('SIGINT', () => { void releaseStoreLock(); process.exit(0) })
@@ -611,6 +613,20 @@ api.get('/api/exploration/findings/:id/traffic', async (c) => {
   }
   const bindings = out.bindings.map((binding: any) => ({ ...binding, snapshot: snapshotDto(binding.snapshot) }))
   return c.json({ ...out, bindings })
+})
+
+api.post('/api/engine/plan', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  if (!body.task_id) return c.json({ error: 'task_id 不能为空' }, 400)
+  try { return c.json({ intents: await engine.plan(String(body.task_id), gatewayComplete) }) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
+})
+
+api.post('/api/engine/work', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  if (!body.task_id) return c.json({ error: 'task_id 不能为空' }, 400)
+  try { return c.json({ result: await engine.work(String(body.task_id), gatewayComplete, String(body.worker ?? 'work#1')) }) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 500) }
 })
 
 api.get('/api/tasks/:id/coverage', async (c) => {

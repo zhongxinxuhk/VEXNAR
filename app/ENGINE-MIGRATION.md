@@ -10,7 +10,7 @@
 本文只描述**执行引擎**（图谱、Agent 循环、工具、流量），读接口与存储见
 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。
 
-## 现状（E1 已完成）
+## 现状（E2 首段已完成）
 
 - 图 store 写入原语：`addNode / setNodeState / claimIntent / reclaimExpired /
   appendActivity / anchorAsset`，全部走 journal + `rev`；
@@ -38,8 +38,16 @@
 2. **同一数据单写者**：引擎写入 core 的 store，不并行写 PG。
 3. **可回退**：每个阶段保留 Go 对应实现，按任务切读/切写。
 
-## 下一步（E2）
+## E2 已完成的首段
 
-- Agent 循环：planner 拆解目标 → 生成 intent → worker 抢占 → 工具调用 → 写回 fact/finding；
-- 模型调用只走 Go 回环网关；
-- 用 Go 的同一任务做行为回放（节点/边/活动序列）。
+- `createEngine.plan`：读目标与已有意图 → 模型输出 JSON → 建 intent 节点 + `spawns` 边；
+- `createEngine.work`：租约抢占 → 有界工具循环（`add_fact` / `report_finding` / `finish`）→ done/blocked；
+- 模型注入式设计，生产入口 `POST /api/engine/plan`、`/api/engine/work` 经
+  `VEXNAR_GATEWAY_URL` + `VEXNAR_GATEWAY_TOKEN` 走 Go 回环网关；
+- 假模型测试 3/3；未配置 token 时返回 503，不会静默本地推理。
+
+## 下一步
+
+- E2 续：上下文压缩、多 worker 并发、blocked 自动重试；
+- E3：`list_assets` / `graph_overview` / `add_asset` 等内置工具；
+- 之后 E4 外部工具执行。
