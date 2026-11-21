@@ -32630,7 +32630,8 @@ var routeModules = [
   { file: "./routes/workspace.ts", scope: "workspace" },
   { file: "./routes/sync.ts", scope: "scopesentry sync" },
   { file: "./routes/update.ts", scope: "update/self-update" },
-  { file: "./routes/auth.ts", scope: "auth/logs/system" }
+  { file: "./routes/auth.ts", scope: "auth/logs/system" },
+  { file: "./routes/gaps.ts", scope: "misc gap fill" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {
