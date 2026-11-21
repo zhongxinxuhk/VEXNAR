@@ -1,0 +1,17 @@
+{
+  "name": "@vexnar/app-bundle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VEXNAR app layer over dsh: Go model gateway provider, Go MCP tool endpoint, and VEXNAR client plugins",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "dsh": {
+    "bundle": "./cordis.patch.yml"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm-pi-ai": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-mcp-manager": "0.2.2-rc.5"
+  }
+}
