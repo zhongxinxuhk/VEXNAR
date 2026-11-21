@@ -107,6 +107,7 @@ export interface Store {
   activity: {
     history(options: { taskId: string; session?: string; before?: number; limit?: number }): Promise<{ items: any[]; snapshot: number; hasMore: boolean }>
     tokenStats(taskId: string): Promise<{ workers: any[]; sessions: any[]; total: any }>
+    dailyTokens(days: number): Promise<any[]>
   }
   invalidate?(tables?: string[]): void
   nodes: {

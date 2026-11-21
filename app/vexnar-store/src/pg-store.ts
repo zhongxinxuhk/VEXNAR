@@ -141,6 +141,15 @@ export function pgStore(connection: {
           FROM activity WHERE ${filters.join(' AND ')} ORDER BY id DESC LIMIT $2`, values)
         return { items: rows.slice(0, limit).reverse(), snapshot: Number(max.n), hasMore: rows.length > limit }
       },
+      dailyTokens: async (days) => {
+        const rows = await q(`SELECT TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
+          COALESCE(SUM(input_tokens),0)::bigint AS input_tokens,
+          COALESCE(SUM(output_tokens),0)::bigint AS output_tokens,
+          COALESCE(SUM(cache_read_tokens),0)::bigint AS cache_read_tokens
+          FROM activity WHERE kind='result' AND created_at >= NOW() - ($1 * INTERVAL '1 day')
+          GROUP BY day ORDER BY day`, [Math.max(Number(days) || 30, 1)])
+        return rows.map((row) => ({ day: row.day, input_tokens: Number(row.input_tokens), output_tokens: Number(row.output_tokens), cache_read_tokens: Number(row.cache_read_tokens) }))
+      },
       tokenStats: async (taskId) => {
         const [task] = await q('SELECT exploration_id FROM tasks WHERE id = $1', [taskId])
         if (!task) return { workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } }

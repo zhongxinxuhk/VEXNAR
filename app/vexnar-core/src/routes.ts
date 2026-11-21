@@ -569,6 +569,11 @@ api.get('/api/tasks/:id/goals', async (c) => {
   return c.json({ goals })
 })
 
+api.get('/api/tokens/daily', async (c) => {
+  const days = Math.max(Number(c.req.query('days') ?? 30) || 30, 1)
+  return c.json(await store.activity.dailyTokens(days))
+})
+
 api.get('/api/exploration/tokens', async (c) => {
   const taskId = c.req.query('task') ?? ''
   if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } })
