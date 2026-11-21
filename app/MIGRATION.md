@@ -251,6 +251,13 @@ assets / exploration_nodes`，与运行中的 Go API 对账：
 `report_finding` 的 TS 实现与 Go MCP 工具对账：**9/9 通过**（读工具逐字节一致，
 写工具用事务回滚验证插入形状）。对账暴露的 `TrimSpace`、DSL 转义、校验顺序已记录。
 
+### P0-3 已完成（2026-11-21）
+
+[`app/spike/p0-worker`](./spike/p0-worker/README.md)：TS 用
+`FOR UPDATE SKIP LOCKED` 领取意图，执行模拟工具，写回 fact / edge / activity，
+6/6 断言通过；随后重启 Go，`/api/exploration/nodes` 能读到同一张图
+（intent done、fact confirmed、两条边）。临时任务已清理。
+
 ---
 
 ## 10. 验收标准（功能对等）
