@@ -199,7 +199,8 @@ activity 域已进 store（`activity/<id>.json`，9.6k 条），任务指标
 软删除（任务从列表消失，findings/图保留）。写入测试 **14/14**。
 journal 恢复只重放 `prepared`；`failed`（如乐观锁冲突）不重放，避免半记录覆盖。
 
-M3 第一段：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理，未迁移路由原样转发 Go；
+M3：core 增加 `VEXNAR_GO_FALLBACK` 过渡代理与 `VEXNAR_FALLBACK_METHODS`
+方法白名单（例如只放行 GET），未迁移的写请求直接 501；
 `/api/_migration` 暴露原生清单。web 可先整体指向 TS core，再逐条把写接口迁过来。
 
 分类/模板、资产挂载、任务范围写路由已迁；资产挂载幂等计数，范围域名/IP
