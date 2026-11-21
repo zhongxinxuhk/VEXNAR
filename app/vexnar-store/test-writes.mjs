@@ -65,6 +65,21 @@ const updatedTemplate = await ops.updateTemplate(String(template.id), { name: 'T
 const removedTemplate = await ops.deleteTemplate(String(template.id))
 check('template lifecycle', updatedTemplate.name === 'T1 renamed' && removedTemplate.deleted === Number(template.id), JSON.stringify({ created: template.id, renamed: updatedTemplate.name }))
 
+await ops.writer.put({ table: 'assets', key: '500', record: { id: 500, type: 'root_domain', domain: 'asset.example', task_ids: [], last_seen: 'x' } })
+const attach1 = await ops.attachAssets(second.id, [500])
+const attach2 = await ops.attachAssets(second.id, [500])
+const detach = await ops.detachAsset(second.id, '500')
+check('asset attach/detach', attach1.attached === 1 && attach2.existing === 1 && detach.detached === 500, JSON.stringify({ attach1, attach2, detach }))
+let attachMissing = null
+try { await ops.attachAssets(second.id, [999999]) } catch (error) { attachMissing = error }
+check('attach rejects unknown asset', attachMissing?.status === 404, String(attachMissing))
+
+const scope1 = await ops.addScope(second.id, { kind: 'domain', value: 'scope.example', reason: 'manual' })
+const scope2 = await ops.addScope(second.id, { kind: 'domain', value: 'scope.example', reason: 'manual' })
+const scopeId = scope1.scopes_added === 1 ? 1 : 2
+const scopeDel = await ops.deleteScope(second.id, String(scopeId))
+check('scope add/dedupe/delete', scope1.scopes_added === 1 && scope1.assets_linked === 1 && scope2.scopes_existing === 1 && scopeDel.deleted === scopeId, JSON.stringify({ scope1, scope2, scopeDel }))
+
 let staleTask = null
 try { await ops.updateTask(task.id, { name: 'stale' }, 1) } catch (error) { staleTask = error }
 check('task rev conflict', staleTask instanceof StoreConflict, String(staleTask))

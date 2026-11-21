@@ -181,6 +181,37 @@ api.patch('/api/tasks/:id/category', async (c) => {
   } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
 })
 
+api.post('/api/tasks/:id/assets', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const result = await operations.attachAssets(c.req.param('id'), body.asset_ids ?? [], String(body.source_summary ?? ''))
+    store.invalidate?.(['assets'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/tasks/:id/assets/:assetID', async (c) => {
+  try {
+    const result = await operations.detachAsset(c.req.param('id'), c.req.param('assetID'))
+    store.invalidate?.(['assets'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.post('/api/tasks/:id/scope', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  try {
+    const result = await operations.addScope(c.req.param('id'), body)
+    store.invalidate?.(['assets'])
+    return c.json(result)
+  } catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
+api.delete('/api/tasks/:id/scope/:sid', async (c) => {
+  try { return c.json(await operations.deleteScope(c.req.param('id'), c.req.param('sid'))) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+})
+
 api.patch('/api/tasks/:id', async (c) => {
   const body = await c.req.json().catch(() => ({}))
   try {
