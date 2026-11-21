@@ -10,5 +10,6 @@ import './style.css';
 import './styles/home.css';
 import './styles/console.css';
 import './styles/architecture.css';
+import './styles/credits.css';
 
 hydrateRoot(document.getElementById('root'), <App initialPage={pageFromPath(window.location.pathname)} />);

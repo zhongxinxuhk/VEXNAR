@@ -1,0 +1,109 @@
+/* Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+ * Repository: https://github.com/zhongxinxuhk/VEXNAR
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+/* DSH appears first on the credits page: one feature block, the built-in
+   appearance set, then every composed plugin row from the real profiles. */
+
+.dsh-credits{padding:6px 0 10px;margin-bottom:12px;border-bottom:1px solid var(--v-line)}
+.dsh-feature{position:relative;display:grid;grid-template-columns:92px minmax(0,1fr);gap:24px;padding:26px;border:1px solid #dbe5f4;border-radius:18px;background:
+  radial-gradient(900px 300px at 8% -20%,rgba(39,73,200,.10),transparent 60%),
+  radial-gradient(700px 260px at 98% 120%,rgba(106,75,216,.10),transparent 62%),
+  linear-gradient(135deg,#f8faff,#f1f5fe 55%,#fbfcff);overflow:hidden}
+.dsh-feature::after{content:'';position:absolute;right:-40px;top:-60px;width:260px;height:260px;border-radius:50%;border:1px solid rgba(39,73,200,.12);pointer-events:none}
+.dsh-logo{display:grid;place-items:center;width:92px;height:92px;border-radius:22px;background:#fff;border:1px solid #dfe7f4;box-shadow:0 18px 34px -22px rgba(20,36,66,.5)}
+.dsh-logo img{width:60px;height:60px;object-fit:contain}
+.dsh-feature-body{min-width:0}
+.dsh-feature-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dsh-feature-title h3{font-size:23px;line-height:1.2;font-weight:600;letter-spacing:-.02em;margin:0;color:var(--v-ink)}
+.dsh-version{font-family:'SFMono-Regular',Consolas,monospace;font-size:10px;color:var(--v-muted);border:1px solid var(--v-line);border-radius:5px;padding:2px 6px;background:#fff}
+.dsh-author{font-size:11px;color:var(--v-faint);margin:5px 0 0}
+.dsh-role{font-size:12.5px;line-height:1.88;color:var(--v-muted);margin:10px 0 0;max-width:94ch}
+.dsh-stats{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:14px}
+.dsh-stats span{font-size:11px;color:var(--v-faint)}
+.dsh-stats b{color:var(--v-ink);font-size:13px;font-weight:600;margin-right:4px}
+.dsh-feature-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.dsh-primary-link,.dsh-secondary-link{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:8px;font-size:11px;text-decoration:none;transition:background .18s,border-color .18s}
+.dsh-primary-link{background:var(--v-ink);color:#fff;border:1px solid var(--v-ink)}
+.dsh-primary-link:hover{background:#1b2a40;color:#fff}
+.dsh-secondary-link{background:#fff;border:1px solid var(--v-line);color:var(--v-ink-2)}
+.dsh-secondary-link:hover{border-color:var(--v-line-2);color:var(--v-ink)}
+.dsh-subhead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:28px 0 12px}
+.dsh-subhead h3{font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--v-ink);margin:0}
+.dsh-subhead p{font-size:11.5px;line-height:1.7;color:var(--v-faint);margin:0}
+.dsh-themes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dsh-theme{display:grid;grid-template-columns:60px minmax(0,1fr);gap:14px;padding:15px;border:1px solid var(--v-line);border-radius:14px;background:var(--v-white);transition:border-color .18s,box-shadow .18s}
+.dsh-theme:hover{border-color:var(--v-line-2);box-shadow:0 16px 28px -24px rgba(20,36,66,.5)}
+.dsh-theme-art{position:relative;display:grid;place-items:center;width:60px;height:60px;border-radius:12px;background:var(--v-soft);border:1px solid var(--v-line);overflow:hidden}
+.dsh-theme-body{min-width:0}
+.dsh-theme-title{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.dsh-theme-title b{font-size:12.5px;font-weight:600;color:var(--v-ink)}
+.dsh-theme-title em{font-style:normal;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--v-faint)}
+.dsh-theme p{font-size:11px;line-height:1.72;color:var(--v-muted);margin:5px 0 8px}
+.dsh-theme-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.dsh-license{font-family:'SFMono-Regular',Consolas,monospace;font-size:9px;color:var(--v-faint);text-decoration:none;border:1px solid var(--v-line);border-radius:4px;padding:1px 5px}
+.dsh-license:hover{color:var(--v-blue);border-color:var(--v-line-2)}
+.dsh-source-link{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:var(--v-muted);text-decoration:none}
+.dsh-source-link:hover{color:var(--v-blue)}
+.dsh-theme-window{display:flex;gap:3px}
+.dsh-theme-window i{width:8px;height:34px;border-radius:3px;background:#e7edf6;border:1px solid #d9e2ef}
+.dsh-theme-light .dsh-theme-art{background:#fff}
+.dsh-theme-dark .dsh-theme-art{background:#151517;border-color:#2a2a30}
+.dsh-theme-dark .dsh-theme-window i{background:#2c2d34;border-color:#3a3b44}
+.dsh-theme-system .dsh-theme-art{background:linear-gradient(90deg,#fff 50%,#151517 50%)}
+.dsh-theme-system .dsh-theme-window i{background:rgba(120,150,200,.3);border-color:rgba(120,150,200,.4)}
+.dsh-font-glyph{font-family:Georgia,'Times New Roman',serif;font-size:24px;color:var(--v-ink)}
+.dsh-code-glyph{font-family:'SFMono-Regular',Consolas,monospace;font-size:16px;color:var(--v-blue)}
+.dsh-token-dots{display:grid;grid-template-columns:repeat(2,10px);gap:4px}
+.dsh-token-dots i{width:10px;height:10px;border-radius:3px;background:var(--v-blue)}
+.dsh-token-dots i:nth-child(2){background:var(--v-violet)}
+.dsh-token-dots i:nth-child(3){background:#12a06a}
+.dsh-token-dots i:nth-child(4){background:#d98b1f}
+
+.dsh-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.dsh-search{width:320px;max-width:100%}
+.dsh-toolbar .credit-filters{flex:1;min-width:240px}
+.dsh-toolbar .result-count{white-space:nowrap}
+.dsh-table{border:1px solid var(--v-line);border-radius:14px;background:var(--v-white);max-height:560px;overflow:auto;scrollbar-width:thin}
+.dsh-row{display:grid;grid-template-columns:minmax(0,2.4fr) 148px 112px 66px 76px 62px;gap:12px;align-items:center;padding:7px 14px;border-top:1px solid var(--v-line);font-size:11.5px}
+.dsh-row:first-child{border-top:0}
+.dsh-head{position:sticky;top:0;z-index:1;background:var(--v-soft);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--v-faint);font-weight:600;padding-top:9px;padding-bottom:9px}
+.dsh-pkg{display:flex;flex-direction:column;min-width:0;gap:1px}
+.dsh-pkg a{font-family:'SFMono-Regular',Consolas,monospace;font-size:10.5px;color:var(--v-blue);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsh-pkg a:hover{text-decoration:underline}
+.dsh-pkg small{font-size:9.5px;line-height:1.5;color:var(--v-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsh-id code{font-size:10px;color:var(--v-ink-2);overflow-wrap:anywhere}
+.dsh-origin code{font-size:9.5px;color:var(--v-faint)}
+.dsh-state-pill{display:inline-block;font-size:9px;font-weight:600;border-radius:99px;padding:1px 7px;white-space:nowrap}
+.dsh-state-pill.is-green{background:#e8f6f0;color:var(--v-green)}
+.dsh-state-pill.is-amber{background:#fdf3e2;color:var(--v-amber)}
+.dsh-state-pill.is-slate{background:var(--v-soft);color:var(--v-faint)}
+.dsh-license-cell a{font-family:'SFMono-Regular',Consolas,monospace;font-size:9.5px;color:var(--v-muted);text-decoration:none}
+.dsh-license-cell a:hover{color:var(--v-blue)}
+.dsh-credits .data-note{margin:14px 0 4px}
+.dsh-role code,.dsh-credits code{font-family:'SFMono-Regular',Consolas,monospace}
+.dsh-credits .data-note code{display:inline-block;font-size:9.5px;color:var(--v-faint);margin:0 8px 3px 0;overflow-wrap:anywhere}
+.dsh-credits .filter-empty{margin:8px}
+
+@media(max-width:1100px){
+  .dsh-themes{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .dsh-feature{grid-template-columns:74px minmax(0,1fr);padding:20px;gap:16px}
+  .dsh-logo{width:74px;height:74px;border-radius:18px}
+  .dsh-logo img{width:48px;height:48px}
+  .dsh-row{grid-template-columns:minmax(0,1fr) 132px 74px 58px;gap:10px}
+  .dsh-group,.dsh-origin{display:none}
+  .dsh-head span:nth-child(3),.dsh-head span:nth-child(4){display:none}
+}
+@media(max-width:680px){
+  .dsh-themes{grid-template-columns:minmax(0,1fr)}
+  .dsh-feature{grid-template-columns:minmax(0,1fr)}
+  .dsh-feature-title h3{font-size:20px}
+  .dsh-row{grid-template-columns:minmax(0,1fr) 74px 54px;gap:8px;padding:7px 10px}
+  .dsh-id{display:none}
+  .dsh-head span:nth-child(2){display:none}
+  .dsh-pkg small{display:none}
+  .dsh-toolbar .credit-filters{order:3;flex-basis:100%}
+}

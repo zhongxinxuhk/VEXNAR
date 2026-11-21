@@ -153,3 +153,29 @@ test('exploration graph demo keeps typed nodes, legend tones and bounded coordin
   assert.equal(graph.edges.length, 13);
   assert.equal(new Set(graph.nodes.map(node => node.id)).size, graph.nodes.length);
 });
+
+test('credits put DSH first and enumerate its built-in plugins and themes', async () => {
+  const catalog = JSON.parse(await read('../credits.json'));
+  const dsh = catalog.dsh;
+  assert.equal(dsh.name, 'DeepSeek Harness');
+  assert.ok(dsh.version.startsWith('0.2.'));
+  assert.ok(dsh.builtins.length >= 190, String(dsh.builtins.length));
+  const ids = new Set();
+  for (const row of dsh.builtins) {
+    assert.ok(row.package.startsWith('@deepseek-ai/'), row.package);
+    assert.ok(ids.add(row.id), `duplicate ${row.id}`);
+    assert.ok(row.dir && row.url.includes(`/tree/${dsh.tag}/`), row.id);
+    assert.ok(['启用', '停用', '条件启用'].includes(row.state), row.id);
+    assert.ok(row.license && row.license_url.includes('/LICENSE'), row.id);
+  }
+  for (const pkg of ['@deepseek-ai/dsh-client-ui-theme', '@deepseek-ai/dsh-plugin-manager', '@deepseek-ai/dsh-mcp-manager', '@deepseek-ai/dsh-skill-office']) {
+    assert.ok(dsh.builtins.some(row => row.package === pkg), pkg);
+  }
+  for (const name of ['浅色主题', '深色主题', '跟随系统', 'Montserrat', 'Shiki']) assert.ok(dsh.themes.some(theme => theme.name === name), name);
+  assert.ok(!catalog.projects.some(project => project.name === 'DeepSeek Harness'));
+  const rendered = await read('../dist/credits.html');
+  assert.ok(rendered.includes('dsh-credits'));
+  assert.ok(rendered.indexOf('DeepSeek Harness') < rendered.indexOf('Open Source Projects'), 'DSH must render above the project directory');
+  for (const marker of ['@deepseek-ai/dsh-plugin-manager', 'Montserrat', 'Shiki', '条件启用', '置顶']) assert.ok(rendered.includes(marker), marker);
+  await fs.access(new URL(`../dist/${dsh.logo}`, import.meta.url));
+});
