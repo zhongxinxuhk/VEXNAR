@@ -19,4 +19,4 @@ app/spike/*/node_modules
 spike/*/node_modules
 
 # Workspace dependencies
-app/*/node_modules
+*/node_modules
