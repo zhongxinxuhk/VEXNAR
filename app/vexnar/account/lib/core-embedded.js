@@ -32626,7 +32626,10 @@ var routeModules = [
   { file: "./routes/market.ts", scope: "market" },
   { file: "./routes/tasks-companies.ts", scope: "tasks/companies" },
   { file: "./routes/notify-mcp.ts", scope: "notify/mcp/side-questions" },
-  { file: "./routes/agents.ts", scope: "agents" }
+  { file: "./routes/agents.ts", scope: "agents" },
+  { file: "./routes/workspace.ts", scope: "workspace" },
+  { file: "./routes/sync.ts", scope: "scopesentry sync" },
+  { file: "./routes/update.ts", scope: "update/self-update" }
 ];
 for (const { file: file2, scope } of routeModules) {
   try {
