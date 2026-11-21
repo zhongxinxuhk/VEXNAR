@@ -18,6 +18,18 @@ const TABLE_PENDING = 'intercept_pending'
 const TABLE_TOOL_CONFIG = 'intercept_tool_config'
 const TABLE_JUDGE_CONFIG = 'intercept_judge_config'
 
+/** 与 Go 的 intercept.defaultEnabledTools 同一份清单（没保存过设置时生效）。 */
+const DEFAULT_INTERCEPT_TOOLS = [
+  'Bash',
+  'WebFetch',
+  'web_search',
+  'shell_open',
+  'shell_send',
+  'Write',
+  'Edit',
+  'MultiEdit'
+]
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 function rfc3339(date: Date): string {
@@ -67,6 +79,26 @@ function isCidr(pattern: string): boolean {
 
 // ── validators（与 Go 等价）─────────────────────────────────────────────────
 
+/**
+ * 模式是否「看起来能编译」。
+ *
+ * 规则的真正编译器在 Go（regexp / RE2），TS core 只负责存。JS 的 RegExp 不认识
+ * RE2 的内联 flag（`(?i)`、`(?s:...)`、`(?-i)`），内建规则里到处都是这种写法；
+ * 直接拿 JS 语法当门禁会把合法规则全部拒掉。所以先把内联 flag 中和成 JS 认识的
+ * 形状(作用域版本换成 `(?:`)，再让 JS 挡真正的结构错误——括号不配对、孤立的反斜杠。
+ * 仍然无法解析的 RE2 特有写法（如 `[[:alpha:]]` 的语义差异）放行：Go 侧加载规则时
+ * 编译失败会跳过该条，行为与 Go 一致，不会把用户的合法规则挡在门外。
+ */
+function regexLooksParsable(pattern: string): boolean {
+  const neutral = pattern.replace(/\(\?[imsUx-]+\)/g, '').replace(/\(\?[imsUx-]+:/g, '(?:')
+  try {
+    new RegExp(neutral)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function validateInterceptRule(body: any) {
   const req = {
     name: String(body.name ?? '').trim(),
@@ -86,13 +118,7 @@ function validateInterceptRule(body: any) {
   if (req.match_type !== 'string' && req.match_type !== 'regex') fail(400, 'match_type 必须是 string 或 regex')
   if (!req.pattern) fail(400, 'pattern 不能为空')
   if (req.action !== 'allow' && req.action !== 'deny' && req.action !== 'ask') fail(400, 'action 必须是 allow、deny 或 ask')
-  if (req.match_type === 'regex') {
-    try {
-      new RegExp(req.pattern)
-    } catch {
-      fail(400, 'pattern 不是有效正则')
-    }
-  }
+  if (req.match_type === 'regex' && !regexLooksParsable(req.pattern)) fail(400, 'pattern 不是有效正则')
   return req
 }
 
@@ -514,10 +540,17 @@ export function register(api: Hono) {
   })
 
   // ── 全局工具拦截范围（tool-config）────────────────────────────────────────
+  //
+  // 未保存过设置时回 Go 的默认清单（intercept/intercept.go 的 defaultEnabledTools）：
+  // 空数组与"没配过"在语义上不同——前者是用户主动关掉全部工具，后者要走默认值，
+  // 页面据此显示"未启用任何工具"还是默认范围。
   api.get('/api/intercept/tool-config', async (c) => {
     try {
-      const tools = await meta.table<any[]>(TABLE_TOOL_CONFIG)
-      return c.json({ enabled_tools: Array.isArray(tools) ? tools : [] })
+      meta.reload()
+      const tables = (await meta.load()) as Record<string, unknown>
+      const stored = tables[TABLE_TOOL_CONFIG]
+      if (stored === undefined) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] })
+      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] })
     } catch (error: any) {
       return errResponse(c, error)
     }
@@ -526,7 +559,9 @@ export function register(api: Hono) {
   api.put('/api/intercept/tool-config', async (c) => {
     const body = await c.req.json().catch(() => ({}))
     try {
-      const tools = Array.isArray(body.enabled_tools) ? body.enabled_tools.map((t: any) => String(t)) : []
+      const tools = Array.isArray(body.enabled_tools)
+        ? [...new Set(body.enabled_tools.map((t: any) => String(t).trim()).filter(Boolean))]
+        : []
       const { tables } = await metaTable(TABLE_TOOL_CONFIG)
       tables[TABLE_TOOL_CONFIG] = tools
       await meta.save(tables)

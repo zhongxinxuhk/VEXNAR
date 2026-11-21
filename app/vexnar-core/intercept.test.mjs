@@ -57,6 +57,20 @@ check('toggle rule off', toggled.status === 200 && toggled.json.ok === true && t
 const badRegex = await req('POST', '/api/intercept/rules', { ...ruleBody, match_type: 'regex', pattern: '(' })
 check('invalid regex rejected', badRegex.status === 400, JSON.stringify(badRegex.json))
 
+// RE2 的内联 flag 是内建规则的主要写法；JS 的 RegExp 不认它，但不能因此拒掉合法规则。
+const inlineFlag = await req('POST', '/api/intercept/rules', {
+  ...ruleBody, match_type: 'regex', pattern: '(?i)\\brm\\b.{0,80}(-rf|--recursive)'
+})
+check('RE2 inline flag accepted', inlineFlag.status === 200 && inlineFlag.json.match_type === 'regex', JSON.stringify(inlineFlag.json))
+
+const scopedFlag = await req('POST', '/api/intercept/rules', { ...ruleBody, match_type: 'regex', pattern: '(?i:curl)\\s+http' })
+check('RE2 scoped flag accepted', scopedFlag.status === 200, JSON.stringify(scopedFlag.json))
+
+const namedGroup = await req('POST', '/api/intercept/rules', { ...ruleBody, match_type: 'regex', pattern: '(?<host>[a-z0-9.]+)' })
+check('named group accepted', namedGroup.status === 200, JSON.stringify(namedGroup.json))
+
+for (const id of [inlineFlag.json.id, scopedFlag.json.id, namedGroup.json.id]) await req('DELETE', `/api/intercept/rules/${id}`)
+
 const deleted = await req('DELETE', '/api/intercept/rules/1')
 check('delete rule', deleted.status === 200 && deleted.json.deleted === 1, JSON.stringify(deleted.json))
 
@@ -121,6 +135,58 @@ check('task rule delete', taskRuleDel.status === 200 && taskRuleDel.json.deleted
 
 const missingTask = await req('POST', '/api/tasks/999999/intercept-rules', { enabled: true, action: 'block', kind: 'exact_url', pattern: 'http://x' })
 check('task rule rejects unknown task', missingTask.status === 404, JSON.stringify(missingTask.json))
+
+// ── 拦截范围（tool-config）：未配置走 Go 默认清单 ──────────────────────────
+let scope = await json('GET', '/api/intercept/tool-config')
+check(
+  'scope defaults to Go tool list',
+  Array.isArray(scope.enabled_tools) && scope.enabled_tools.length === 8 && scope.enabled_tools[0] === 'Bash' && scope.enabled_tools.includes('MultiEdit'),
+  JSON.stringify(scope)
+)
+
+const scopeSaved = await req('PUT', '/api/intercept/tool-config', { enabled_tools: ['Bash', 'Bash', ' Write ', ''] })
+check('scope save', scopeSaved.status === 200 && scopeSaved.json.ok === true, JSON.stringify(scopeSaved.json))
+
+scope = await json('GET', '/api/intercept/tool-config')
+check('scope saved, trimmed and deduped', JSON.stringify(scope.enabled_tools) === JSON.stringify(['Bash', 'Write']), JSON.stringify(scope.enabled_tools))
+
+await req('PUT', '/api/intercept/tool-config', { enabled_tools: [] })
+scope = await json('GET', '/api/intercept/tool-config')
+check('saved empty scope stays empty', Array.isArray(scope.enabled_tools) && scope.enabled_tools.length === 0, JSON.stringify(scope.enabled_tools))
+
+// ── 模型兜底（judge）：默认值 / 回写 / 清空提示词恢复模板 ──────────────────
+let judge = await json('GET', '/api/intercept/judge')
+check(
+  'judge defaults',
+  judge.enabled === false && judge.profile_id === 0 && judge.timeout_seconds === 15 && judge.ask_timeout_seconds === 300 && String(judge.prompt).includes('JSON'),
+  JSON.stringify({ ...judge, prompt: `${String(judge.prompt).slice(0, 24)}…` })
+)
+
+const judgeSaved = await req('PUT', '/api/intercept/judge', {
+  enabled: true, profile_id: 3, prompt: '自定义裁判', timeout_seconds: 20, fail_action: 'deny', ask_timeout_seconds: 120, ask_timeout_action: 'allow'
+})
+check('judge save', judgeSaved.status === 200 && judgeSaved.json.ok === true, JSON.stringify(judgeSaved.json))
+
+judge = await json('GET', '/api/intercept/judge')
+check(
+  'judge round-trips',
+  judge.enabled === true && judge.profile_id === 3 && judge.prompt === '自定义裁判' && judge.fail_action === 'deny' && judge.ask_timeout_seconds === 120 && judge.ask_timeout_action === 'allow',
+  JSON.stringify(judge)
+)
+
+await req('PUT', '/api/intercept/judge', { ...judge, prompt: '' })
+judge = await json('GET', '/api/intercept/judge')
+check('empty prompt falls back to builtin template', String(judge.prompt).includes('JSON') && judge.prompt !== '', String(judge.prompt).slice(0, 24))
+
+const judgeBad = await req('PUT', '/api/intercept/judge', { ...judge, fail_action: 'explode' })
+check('judge rejects unknown fail_action', judgeBad.status === 400, JSON.stringify(judgeBad.json))
+
+const usage = await json('GET', '/api/intercept/judge/usage?days=30')
+check(
+  'judge usage shape',
+  usage.calls === 0 && usage.input_tokens === 0 && usage.output_tokens === 0 && Array.isArray(usage.daily),
+  JSON.stringify(usage)
+)
 
 // ── 汇总 ────────────────────────────────────────────────────────────────────
 let failed = false
