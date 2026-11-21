@@ -517,29 +517,6 @@ function fmtAgo(unix: unknown): string {
   return `${Math.floor(seconds / 86400)}d 前`
 }
 
-function AgentsPage() {
-  const { data, error, loading } = useApi('/api/agents')
-  const [version, setVersion] = useState(0)
-  if (loading) return h('div', null, '加载中…')
-  if (error) return h('div', { style: { color: '#dc2626' } }, error)
-  const rows = data?.agents ?? []
-  const edit = async (agent: any) => {
-    const name = window.prompt('Agent 名称', agent.name)
-    if (name == null) return
-    const description = window.prompt('描述', agent.description ?? '')
-    if (description == null) return
-    try { await callApi(`/api/agents/${agent.key}`, 'PATCH', { name, description }); setVersion(version + 1) } catch (e: any) { window.alert(String(e?.message ?? e)) }
-  }
-  return h('div', { key: version }, h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
-    h('thead', null, h('tr', null, ['Key', '名称', '角色', '启用', ''].map((t) => h('th', { key: t, style: { textAlign: 'left', padding: '6px 8px' } }, t)))),
-    h('tbody', null, rows.map((agent: any) => h('tr', { key: agent.key },
-      h('td', { style: { padding: '6px 8px' } }, agent.key),
-      h('td', { style: { padding: '6px 8px' } }, agent.name),
-      h('td', { style: { padding: '6px 8px' } }, agent.role),
-      h('td', { style: { padding: '6px 8px' } }, agent.enabled ? '是' : '否'),
-      h('td', { style: { padding: '6px 8px' } }, h('button', { type: 'button', onClick: () => edit(agent), style: { cursor: 'pointer' } }, '编辑')))))))
-}
-
 function McpPage() {
   const { data, error, loading } = useApi('/api/mcp')
   const [version, setVersion] = useState(0)
@@ -880,10 +857,6 @@ function ToolRunPanel() {
   return h(PanelShell, { title: '工具执行', desc: 'nmap / httpx / ffuf / sqlmap' }, h(ToolRunPage))
 }
 
-function AgentSettings() {
-  return h(PanelShell, { title: 'Agent 管理', desc: '名称、描述与触发配置' }, h(AgentsPage))
-}
-
 function McpSettings() {
   return h(PanelShell, { title: 'MCP', desc: 'MCP server 启停与删除' }, h(McpPage))
 }
@@ -915,7 +888,6 @@ const PANELS = [
 ]
 
 const SETTINGS = [
-  { id: 'vexnar-agents', label: 'Agent 管理', order: 40, component: AgentSettings },
   { id: 'vexnar-mcp', label: 'MCP', order: 41, component: McpSettings },
   { id: 'vexnar-tools', label: '工具', order: 42, component: ToolSettings },
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },

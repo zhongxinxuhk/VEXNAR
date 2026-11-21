@@ -29,7 +29,7 @@ dsh 侧边栏
 └─ 日志        → main: vexnar-logs
 
 dsh 设置页
-├─ Agent 管理  → settings.section: vexnar-agents
+├─ Agent       → dsh 原生 Agent presets（见下方「Agent 归属」）
 ├─ MCP         → settings.section: vexnar-mcp
 ├─ 工具        → settings.section: vexnar-tools
 ├─ 通知推送    → settings.section: vexnar-notify
@@ -37,6 +37,26 @@ dsh 设置页
 ├─ 资产同步    → settings.section: vexnar-asset-sync（JSON 导入，按标识去重）
 └─ 审批记录    → settings.section: vexnar-approvals
 ```
+
+## Agent 归属：全部在 dsh 里管理
+
+引擎自带的六个角色（goals / planner / mainagent / worker / auto / pentest）
+以 `@deepseek-ai/dsh-agent-preset` 行的形式注册在 `app/vexnar/cordis.patch.yml`
+里，成为 **dsh 内置 Agent**：
+
+| preset id | 名称 | 组成 |
+|---|---|---|
+| `vexnar-goals` | 目标拆解 | 只读文件 + 搜索 + 网页 + 待办 + 压缩 |
+| `vexnar-planner` | 规划 | 只读文件 + 搜索 + 网页 + 待办 + 交付 + 压缩 |
+| `vexnar-main` | 主 | 全量工具（shell / 文件 / 网页 / 待办） |
+| `vexnar-worker` | 执行 | 全量工具 |
+| `vexnar-auto` | 平台操作 | 全量工具 |
+| `vexnar-pentest` | 渗透测试 | 全量工具 + 交付 |
+
+角色约束写在 preset 的 `persona.prefix` 里；工具来自 preset 自己的插件行，领域
+工具（任务/发现/流量）来自全局挂载的 vexnar MCP。**管理只有一处**：dsh 的
+设置 → Agent（选择默认、查看 composition、Creator 改写）；VEXNAR 不再提供并行的
+Agent 管理面板，`/api/agents` 只用于概览里的计数。
 
 ## 哪些入口复用 dsh，哪些新建
 

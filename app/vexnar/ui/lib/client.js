@@ -19,7 +19,7 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// app/vexnar/ui/src/client.tsx
+// vexnar/ui/src/client.tsx
 var client_exports = {};
 __export(client_exports, {
   FindingCard: () => FindingCard,
@@ -30,7 +30,7 @@ __export(client_exports, {
 module.exports = __toCommonJS(client_exports);
 var import_react2 = require("react");
 
-// app/vexnar/ui/src/styles.ts
+// vexnar/ui/src/styles.ts
 var STYLE_ID = "vexnar-dsh-ui-styles";
 var VEXNAR_CSS = `
 /* \u2500\u2500 token bridge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1277,7 +1277,7 @@ function installStyles(doc = document) {
   return () => style.remove();
 }
 
-// app/vexnar/ui/src/overview.tsx
+// vexnar/ui/src/overview.tsx
 var import_react = require("react");
 var import_jsx_runtime = require("react/jsx-runtime");
 var CORE_PATH = "/vexnar-api";
@@ -2522,7 +2522,7 @@ function OverviewPanel() {
   ] });
 }
 
-// app/vexnar/ui/src/client.tsx
+// vexnar/ui/src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
@@ -2977,39 +2977,6 @@ function fmtAgo(unix) {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m \u524D`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h \u524D`;
   return `${Math.floor(seconds / 86400)}d \u524D`;
-}
-function AgentsPage() {
-  const { data, error, loading } = useApi("/api/agents");
-  const [version, setVersion] = (0, import_react2.useState)(0);
-  if (loading) return (0, import_react2.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
-  if (error) return (0, import_react2.createElement)("div", { style: { color: "#dc2626" } }, error);
-  const rows = data?.agents ?? [];
-  const edit = async (agent) => {
-    const name = window.prompt("Agent \u540D\u79F0", agent.name);
-    if (name == null) return;
-    const description = window.prompt("\u63CF\u8FF0", agent.description ?? "");
-    if (description == null) return;
-    try {
-      await callApi(`/api/agents/${agent.key}`, "PATCH", { name, description });
-      setVersion(version + 1);
-    } catch (e) {
-      window.alert(String(e?.message ?? e));
-    }
-  };
-  return (0, import_react2.createElement)("div", { key: version }, (0, import_react2.createElement)(
-    "table",
-    { style: { width: "100%", borderCollapse: "collapse", fontSize: 13 } },
-    (0, import_react2.createElement)("thead", null, (0, import_react2.createElement)("tr", null, ["Key", "\u540D\u79F0", "\u89D2\u8272", "\u542F\u7528", ""].map((t) => (0, import_react2.createElement)("th", { key: t, style: { textAlign: "left", padding: "6px 8px" } }, t)))),
-    (0, import_react2.createElement)("tbody", null, rows.map((agent) => (0, import_react2.createElement)(
-      "tr",
-      { key: agent.key },
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, agent.key),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, agent.name),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, agent.role),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, agent.enabled ? "\u662F" : "\u5426"),
-      (0, import_react2.createElement)("td", { style: { padding: "6px 8px" } }, (0, import_react2.createElement)("button", { type: "button", onClick: () => edit(agent), style: { cursor: "pointer" } }, "\u7F16\u8F91"))
-    )))
-  ));
 }
 function McpPage() {
   const { data, error, loading } = useApi("/api/mcp");
@@ -3539,9 +3506,6 @@ function TrafficPanel() {
 function ToolRunPanel() {
   return (0, import_react2.createElement)(PanelShell, { title: "\u5DE5\u5177\u6267\u884C", desc: "nmap / httpx / ffuf / sqlmap" }, (0, import_react2.createElement)(ToolRunPage));
 }
-function AgentSettings() {
-  return (0, import_react2.createElement)(PanelShell, { title: "Agent \u7BA1\u7406", desc: "\u540D\u79F0\u3001\u63CF\u8FF0\u4E0E\u89E6\u53D1\u914D\u7F6E" }, (0, import_react2.createElement)(AgentsPage));
-}
 function McpSettings() {
   return (0, import_react2.createElement)(PanelShell, { title: "MCP", desc: "MCP server \u542F\u505C\u4E0E\u5220\u9664" }, (0, import_react2.createElement)(McpPage));
 }
@@ -3567,7 +3531,6 @@ var PANELS = [
   { id: "vexnar-logs", label: "\u65E5\u5FD7", order: 105, component: LogsPanel }
 ];
 var SETTINGS = [
-  { id: "vexnar-agents", label: "Agent \u7BA1\u7406", order: 40, component: AgentSettings },
   { id: "vexnar-mcp", label: "MCP", order: 41, component: McpSettings },
   { id: "vexnar-tools", label: "\u5DE5\u5177", order: 42, component: ToolSettings },
   { id: "vexnar-notify", label: "\u901A\u77E5\u63A8\u9001", order: 43, component: NotifySettings },
