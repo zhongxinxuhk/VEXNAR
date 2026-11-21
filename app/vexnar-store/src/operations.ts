@@ -1237,6 +1237,25 @@ export function storeOperations(root: string) {
     return written
   }
 
+  async function recordDelivery(input: { channel_id?: number; event_kind: string; title: string; status: string; attempts: number; error?: string }) {
+    const rows = []
+    try {
+      for (const name of await readdir(join(root, 'notification_deliveries'))) {
+        if (!name.endsWith('.json')) continue
+        rows.push(JSON.parse(await readFile(join(root, 'notification_deliveries', name), 'utf8')).record)
+      }
+    } catch {
+      // none
+    }
+    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
+    const record = {
+      id, channel_id: input.channel_id ?? null, event_kind: input.event_kind, title: input.title,
+      status: input.status, attempts: input.attempts, error: input.error ?? '', created_at: rfc3339(new Date())
+    }
+    await writer.commit([{ table: 'notification_deliveries', key: String(id), record }])
+    return record
+  }
+
   async function markScheduleFired(id: string, nextIso: string) {
     const current = await writer.readRecord('schedules', id)
     if (!current) throw Object.assign(new Error('schedule 不存在'), { status: 404 })
@@ -1253,5 +1272,5 @@ export function storeOperations(root: string) {
     return { deleted: Number(id) }
   }
 
-  return { writer, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
+  return { writer, recordDelivery, createSchedule, updateSchedule, markScheduleFired, deleteSchedule, createTrigger, updateTrigger, deleteTrigger, addNode, setNodeState, claimIntent, reclaimExpired, appendActivity, graphOverview, addAsset, linkAssets, anchorAsset, addConstraint, editConstraint, deleteConstraint, sendIntentMessage, rerunIntent, rerunBlocked, controlIntent, addGoal, editGoal, deleteGoal, archiveTask, listArchives, restoreArchive, deleteArchive, createTask, patchFinding, reportFinding, updateTask, controlTask, deleteTask, createCategory, renameCategory, deleteCategory, setTaskCategory, createTemplate, updateTemplate, deleteTemplate, attachAssets, detachAsset, addScope, deleteScope, createChannel, updateChannel, deleteChannel, updateAgent, updateTool, createCustomTool, updateCustomTool, deleteCustomTool, saveMcpServer, setMcpEnabled, deleteMcpServer }
 }

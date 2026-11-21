@@ -11,21 +11,29 @@ export interface NotifyEvent {
 }
 
 export type Send = (channel: any, event: NotifyEvent) => Promise<{ ok: boolean; detail?: string }>
+export type RecordResult = (channel: any, event: NotifyEvent, result: { ok: boolean; attempts: number; detail?: string }) => Promise<void>
 
 /** Fan out one event to enabled notification channels. */
-export function createNotifier(channels: any[], send?: Send) {
+export function createNotifier(channels: any[], send?: Send, record?: RecordResult, maxAttempts = 3) {
   const dispatch = async (event: NotifyEvent) => {
     const results = []
     for (const channel of channels) {
       if (channel.enabled === false) continue
       const filter = channel.filter ?? {}
       if (Array.isArray(filter.events) && filter.events.length && !filter.events.includes(event.kind)) continue
-      try {
-        const result = send ? await send(channel, event) : await defaultSend(channel, event)
-        results.push({ id: channel.id, ok: result.ok, detail: result.detail })
-      } catch (error: any) {
-        results.push({ id: channel.id, ok: false, detail: String(error?.message ?? error) })
+      let result = { ok: false, detail: 'not attempted' }
+      let attempts = 0
+      for (; attempts < maxAttempts; attempts++) {
+        try {
+          result = send ? await send(channel, event) : await defaultSend(channel, event)
+        } catch (error: any) {
+          result = { ok: false, detail: String(error?.message ?? error) }
+        }
+        if (result.ok) break
       }
+      const final = { ok: result.ok, attempts: attempts + 1, detail: result.detail }
+      results.push({ id: channel.id, ok: final.ok, detail: final.detail })
+      if (record) await record(channel, event, final).catch(() => {})
     }
     return results
   }
