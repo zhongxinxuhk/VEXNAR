@@ -303,6 +303,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   let browserState: BrowserState = { state: 'idle', message: '' }
   let lastState: Account | undefined
   let channelInstalled = false
+  let channelLoading = false
   let browserTask: Promise<void> | undefined
   let chrome: Browser | undefined
   const life = new AbortController()
@@ -324,15 +325,19 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
    * 引擎与账号插件本来就在同一个 dsh 进程里，中间那条 loopback HTTP 只多了一
    * 个监听口和一份要传的令牌。每次调用现读目录，换号或加提供方都不用重启。
    */
-  const ensureModelChannel = async (): Promise<void> => {
-    if (channelInstalled) return
-    const core = await import('./core-embedded.js')
-    core.setModelCompletion(createModelCompletion(() => {
-      // 目录只在一次同步之后才存在；同步路径之外（理论上不会）读到的仍是错误。
-      if (lastState === undefined) throw new Error('账号状态尚未同步')
-      return catalog(lastState)
-    }, () => process.env.VEXNAR_MODEL))
-    channelInstalled = true
+  const ensureModelChannel = (): void => {
+    if (channelInstalled || channelLoading) return
+    channelLoading = true
+    void import('./core-embedded.js').then(core => {
+      if (life.signal.aborted || lastState === undefined || catalog(lastState).length === 0) return
+      core.setModelCompletion(createModelCompletion(() => lastState ? catalog(lastState) : [],
+        () => process.env.VEXNAR_MODEL))
+      channelInstalled = true
+    }).catch(() => {
+      console.warn('[vexnar] 内置模型通道初始化失败')
+    }).finally(() => {
+      channelLoading = false
+    })
   }
 
   /** 退出登录或停用插件时摘掉通道：引擎随后只会说「模型通道未就绪」。 */
@@ -376,8 +381,6 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     const first = Object.keys(providers)[0]
     const firstModel = first === undefined ? undefined : providers[first]?.models[0]
     if (firstModel !== undefined) process.env.VEXNAR_MODEL = firstModel.id
-    if (Object.keys(providers).length > 0) await ensureModelChannel()
-
     const current = ctx.agentDefaultModel.currentSelection()
     const selected = providers[current.provider]?.models.find((model) => model.id === current.model)
     if (!selected) {
@@ -388,6 +391,8 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       }
     }
     setReady(gateOpen(state))
+    // 加载内置 core 会等待存储初始化，账户校验只依赖本地身份和 dsh 设置。
+    if (firstModel !== undefined) ensureModelChannel()
     return publicView(state)
   }
 

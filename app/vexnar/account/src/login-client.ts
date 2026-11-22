@@ -30,14 +30,18 @@ const entry = document.getElementById('vexnar-sign-in')
 // 解析失败时给出人话错误，而不是把解析器的 "Unexpected ..." 原文显示到登录页。
 const read = async (path: string, method = 'GET', data?: unknown): Promise<Fields> => {
   let response: Response
+  let raw: string
+  const signal = method === 'GET' ? AbortSignal.timeout(15_000) : undefined
   try {
     const init: RequestInit = { method, headers: { 'Content-Type': 'application/json' } }
+    if (signal) init.signal = signal
     if (data !== undefined) init.body = JSON.stringify(data)
     response = await fetch(api + path, init)
+    raw = await response.text()
   } catch {
+    if (signal?.aborted) throw new Error('等待 VEXNAR 响应超时，请重试')
     throw new Error('无法连接 VEXNAR 服务，请确认客户端仍在运行')
   }
-  const raw = await response.text().catch(() => '')
   let body: unknown
   try {
     body = raw.trim() === '' ? {} : JSON.parse(raw)
@@ -84,10 +88,9 @@ if (entry) {
     notice.textContent = text
     notice.dataset.error = String(error)
   }
-  // 只要有身份就进工作区：模型不可用属于「设置 → 模型」里能修的问题，
-  // 不该把用户挡在登录页上反复登录。
+  // 有效的平台身份即可进入工作区，旧凭据按宿主门禁要求重新验证。
   const present = (account: Fields): boolean => {
-    if (account.signed_in) {
+    if (account.signed_in && !account.reauth_required) {
       location.replace('/')
       return true
     }
@@ -107,7 +110,6 @@ if (entry) {
       browser.hidden = false
       node('methods').textContent = listOf(methods.methods)
       if (account.reauth_required) message('请重新验证平台身份，以初始化 VEXNAR 的访问令牌。')
-      else if (account.signed_in) message('平台未能提供可用的模型凭据。请重新登录以重试。', true)
       else message('')
     } catch (error) {
       retry.hidden = false
