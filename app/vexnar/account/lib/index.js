@@ -109,7 +109,7 @@ button[aria-label*="\u5B8C\u5168\u6743\u9650"] svg * { color: #dc2626 !important
 [role="menuitem"][aria-label*="Acesso total"] { color: #dc2626 !important; font-weight: 600 !important; }
 `;
 function apply(ctx) {
-  registerYakHistoryTools(ctx);
+  if (process.env.VEXNAR_RUNTIME_MODE === "go") registerYakHistoryTools(ctx);
   if (process.env.VEXNAR_CORE_EMBEDDED !== "0") {
     let core;
     const starting = import("./core-embedded.js").then((result) => {

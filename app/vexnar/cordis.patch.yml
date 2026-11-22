@@ -52,17 +52,18 @@
         taskIdEnv: VEXNAR_TASK_ID
 
 # ── Domain tools (transitional) ────────────────────────────────────────────
-# Task/finding/traffic tools still live in the Go service while the TS
-# migration lands. Remove this row once those tools exist in TypeScript.
+# Keep the legacy service out of the SQLite client's default composition.
 - id: mcp-manager
   config:
-    servers:
-      vexnar:
-        transport: streamable-http
-        url: http://127.0.0.1:8787/mcp
-        headers:
-          Authorization: !!js "'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '')"
-        timeoutMs: 60000
+    servers: !!js >-
+      process.env.VEXNAR_RUNTIME_MODE === 'go' ? {
+        vexnar: {
+          transport: 'streamable-http',
+          url: 'http://127.0.0.1:8787/mcp',
+          headers: { Authorization: 'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '') },
+          timeoutMs: 60000
+        }
+      } : {}
 
 # ── Brand: VEXNAR replaces the official artwork ─────────────────────────────
 # @vexnar/dsh-ui occupies sidebar.brand.mark / sidebar.brand.name, so the

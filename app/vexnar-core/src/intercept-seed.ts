@@ -418,7 +418,9 @@ async function readTables(): Promise<Record<string, any[] | Record<string, unkno
  * 任何一步失败都抛给调用方，由入口决定是否只记日志（迁移不该阻断 API）。
  */
 export async function ensureInterceptRulesSeeded(
-  loadRows: () => Promise<SeedRuleRow[]> = loadRulesFromPostgres
+  loadRows: () => Promise<SeedRuleRow[]> = process.env.VEXNAR_CLIENT_SQLITE === '1'
+    ? async () => []
+    : loadRulesFromPostgres
 ): Promise<SeedOutcome> {
   const tables = await readTables()
   const seededAlready = Array.isArray(tables[TABLE_SEED]) && (tables[TABLE_SEED] as any[]).some((row) => row?.key === SEED_KEY)
