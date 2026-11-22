@@ -14,14 +14,18 @@ function listOf(value) {
 const entry = document.getElementById("vexnar-sign-in");
 const read = async (path, method = "GET", data) => {
   let response;
+  let raw;
+  const signal = method === "GET" ? AbortSignal.timeout(15e3) : void 0;
   try {
     const init = { method, headers: { "Content-Type": "application/json" } };
+    if (signal) init.signal = signal;
     if (data !== void 0) init.body = JSON.stringify(data);
     response = await fetch(api + path, init);
+    raw = await response.text();
   } catch {
+    if (signal?.aborted) throw new Error("\u7B49\u5F85 VEXNAR \u54CD\u5E94\u8D85\u65F6\uFF0C\u8BF7\u91CD\u8BD5");
     throw new Error("\u65E0\u6CD5\u8FDE\u63A5 VEXNAR \u670D\u52A1\uFF0C\u8BF7\u786E\u8BA4\u5BA2\u6237\u7AEF\u4ECD\u5728\u8FD0\u884C");
   }
-  const raw = await response.text().catch(() => "");
   let body;
   try {
     body = raw.trim() === "" ? {} : JSON.parse(raw);
@@ -64,7 +68,7 @@ if (entry) {
     notice.dataset.error = String(error);
   };
   const present = (account) => {
-    if (account.signed_in) {
+    if (account.signed_in && !account.reauth_required) {
       location.replace("/");
       return true;
     }
@@ -83,7 +87,6 @@ if (entry) {
       browser.hidden = false;
       node("methods").textContent = listOf(methods.methods);
       if (account.reauth_required) message("\u8BF7\u91CD\u65B0\u9A8C\u8BC1\u5E73\u53F0\u8EAB\u4EFD\uFF0C\u4EE5\u521D\u59CB\u5316 VEXNAR \u7684\u8BBF\u95EE\u4EE4\u724C\u3002");
-      else if (account.signed_in) message("\u5E73\u53F0\u672A\u80FD\u63D0\u4F9B\u53EF\u7528\u7684\u6A21\u578B\u51ED\u636E\u3002\u8BF7\u91CD\u65B0\u767B\u5F55\u4EE5\u91CD\u8BD5\u3002", true);
       else message("");
     } catch (error) {
       retry.hidden = false;

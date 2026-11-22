@@ -134,6 +134,7 @@ function installPlatform(ctx) {
   let browserState = { state: "idle", message: "" };
   let lastState;
   let channelInstalled = false;
+  let channelLoading = false;
   let browserTask;
   let chrome;
   const life = new AbortController();
@@ -145,14 +146,21 @@ function installPlatform(ctx) {
       activeSockets.clear();
     }
   };
-  const ensureModelChannel = async () => {
-    if (channelInstalled) return;
-    const core = await import("./core-embedded.js");
-    core.setModelCompletion(createModelCompletion(() => {
-      if (lastState === void 0) throw new Error("\u8D26\u53F7\u72B6\u6001\u5C1A\u672A\u540C\u6B65");
-      return catalog(lastState);
-    }, () => process.env.VEXNAR_MODEL));
-    channelInstalled = true;
+  const ensureModelChannel = () => {
+    if (channelInstalled || channelLoading) return;
+    channelLoading = true;
+    void import("./core-embedded.js").then((core) => {
+      if (life.signal.aborted || lastState === void 0 || catalog(lastState).length === 0) return;
+      core.setModelCompletion(createModelCompletion(
+        () => lastState ? catalog(lastState) : [],
+        () => process.env.VEXNAR_MODEL
+      ));
+      channelInstalled = true;
+    }).catch(() => {
+      console.warn("[vexnar] \u5185\u7F6E\u6A21\u578B\u901A\u9053\u521D\u59CB\u5316\u5931\u8D25");
+    }).finally(() => {
+      channelLoading = false;
+    });
   };
   const clearModelChannel = async () => {
     if (!channelInstalled) return;
@@ -192,7 +200,6 @@ function installPlatform(ctx) {
     const first = Object.keys(providers)[0];
     const firstModel = first === void 0 ? void 0 : providers[first]?.models[0];
     if (firstModel !== void 0) process.env.VEXNAR_MODEL = firstModel.id;
-    if (Object.keys(providers).length > 0) await ensureModelChannel();
     const current = ctx.agentDefaultModel.currentSelection();
     const selected = providers[current.provider]?.models.find((model) => model.id === current.model);
     if (!selected) {
@@ -203,6 +210,7 @@ function installPlatform(ctx) {
       }
     }
     setReady(gateOpen(state));
+    if (firstModel !== void 0) ensureModelChannel();
     return publicView(state);
   };
   const refresh = async () => syncCatalog(await account.read());
