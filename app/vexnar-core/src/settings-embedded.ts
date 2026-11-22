@@ -6,10 +6,12 @@ import { Hono } from 'hono'
 import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
 import { registerInterceptSettings } from './routes/intercept.ts'
 import { registerSettingsCatalog } from './routes/settings-catalog.ts'
+import { registerToolDocumentation } from './routes/tool-documentation.ts'
 
 const settings = new Hono()
 registerInterceptSettings(settings)
 registerSettingsCatalog(settings)
+registerToolDocumentation(settings)
 
 let migration: ReturnType<typeof ensureInterceptRulesSeeded> | undefined
 

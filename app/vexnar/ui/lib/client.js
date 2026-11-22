@@ -9617,9 +9617,9 @@ function parseJson(text, fallback) {
 function Pill({ on, onLabel = "\u5DF2\u542F\u7528", offLabel = "\u5DF2\u505C\u7528" }) {
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: on ? "vx-cat-pill vx-cat-pill--on" : "vx-cat-pill", children: on ? onLabel : offLabel });
 }
-function Switch({ on, onChange, label }) {
+function Switch({ on, onChange, label, disabled = false }) {
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "vx-cat-switch", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "checkbox", checked: on, onChange: (event) => {
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "checkbox", checked: on, disabled, onChange: (event) => {
       onChange(event.target.checked);
     } }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "vx-cat-switch-track", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "vx-cat-switch-thumb" }) }),
@@ -9690,7 +9690,7 @@ function withParam(schema, name, patch2) {
   }
   return root;
 }
-function ParamEditor({ schema, onChange }) {
+function ParamEditor({ schema, onChange, defaultsReadOnly }) {
   const rows = (0, import_react6.useMemo)(() => paramsOf(schema), [schema]);
   if (rows.length === 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-hint", children: "\u8BE5\u5DE5\u5177\u6CA1\u6709\u58F0\u660E\u53C2\u6570\u3002" });
@@ -9718,6 +9718,7 @@ function ParamEditor({ schema, onChange }) {
         className: "vx-cat-input",
         placeholder: "\u9ED8\u8BA4\u503C\uFF08JSON\uFF0C\u7559\u7A7A=\u65E0\u9ED8\u8BA4\uFF09",
         value: row.defaultValue,
+        readOnly: defaultsReadOnly,
         onChange: (event) => {
           onChange(withParam(schema, row.name, { defaultValue: event.target.value }));
         }
@@ -9752,12 +9753,21 @@ function ToolsTab() {
     }
   };
   if (view.kind === "edit") {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ToolDetail, { tool: view.tool, agents: agentRows, onBack: () => {
-      setView({ kind: "list" });
-    }, onSaved: () => {
-      refresh();
-      setView({ kind: "list" });
-    } });
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      ToolDetail,
+      {
+        tool: view.tool,
+        agents: agentRows,
+        onBack: () => {
+          setView({ kind: "list" });
+        },
+        onSaved: (message = "") => {
+          setNotice(message);
+          refresh();
+          setView({ kind: "list" });
+        }
+      }
+    );
   }
   if (view.kind === "new") {
     return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(NewTool, { agents: agentRows, onBack: () => {
@@ -9792,7 +9802,7 @@ function ToolsTab() {
     ] })
   ] }, row.key);
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u6765\u81EA TS core \u7684\u9ED8\u8BA4\u76EE\u5F55\uFF08\u7ED3\u6784\u56FA\u5B9A\uFF0C\u53EF\u6539\u63CF\u8FF0\u3001\u53C2\u6570\u8BF4\u660E\u4E0E\u9ED8\u8BA4\u503C\u3001\u7ED1\u5B9A Agent\u3001\u542F\u505C\uFF09\uFF0C \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002\u5220\u6389\u6216\u7528\u574F\u4E86\u7684\u9ED8\u8BA4\u9879\u53EF\u4EE5\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u8865\u56DE\u6765\uFF1Bagent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C \u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "vx-cat-lead", children: "\u5E73\u53F0\u6CE8\u518C\u7684\u5DE5\u5177\uFF1A\u7CFB\u7EDF\u5DE5\u5177\u6765\u81EA TS core \u7684\u9ED8\u8BA4\u76EE\u5F55\uFF0C\u53EF\u4EE5\u4FEE\u6539\u5DE5\u5177\u548C\u53C2\u6570\u8BF4\u660E\u3002 \u81EA\u5B9A\u4E49\u5DE5\u5177\u53EF\u6574\u6761\u589E\u5220\u6539\u3002\u5220\u6389\u6216\u7528\u574F\u4E86\u7684\u9ED8\u8BA4\u9879\u53EF\u4EE5\u300C\u91CD\u65B0\u6CE8\u518C\u9ED8\u8BA4\u300D\u8865\u56DE\u6765\uFF1Bagent \u80FD\u4E0D\u80FD\u771F\u6B63\u8C03\u7528\uFF0C \u4ECD\u7531 dsh \u7684\u63D2\u4EF6\u6302\u8F7D\u4E0E\u6743\u9650\u9884\u8BBE\u51B3\u5B9A\u3002" }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-toolbar", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { className: "vx-cat-input vx-cat-search", placeholder: "\u641C\u7D22 key / \u63CF\u8FF0", value: query2, onChange: (event) => {
         setQuery(event.target.value);
@@ -9830,14 +9840,14 @@ function ToolDetail({ tool, agents, onBack, onSaved }) {
   const [exec, setExec] = (0, import_react6.useState)(() => pretty(tool.exec ?? {}));
   const [busy, setBusy] = (0, import_react6.useState)(false);
   const [error, setError] = (0, import_react6.useState)("");
-  const [notice, setNotice] = (0, import_react6.useState)("");
+  const documentationPath = `/api/tools/${encodeURIComponent(tool.key)}/documentation`;
   const save = async () => {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       if (tool.system) {
-        await callApi(`/api/tools/${encodeURIComponent(tool.key)}`, "PUT", { description, schema, agents: bound, enabled: enabled2 });
+        const parameters = Object.fromEntries(paramsOf(schema).map((row) => [row.name, row.description]));
+        await callApi(documentationPath, "PUT", { description, parameters });
       } else {
         await callApi(`/api/tools/custom/${encodeURIComponent(tool.key)}`, "PUT", {
           description,
@@ -9849,8 +9859,7 @@ function ToolDetail({ tool, agents, onBack, onSaved }) {
           deferred: Boolean(tool.deferred)
         });
       }
-      setNotice("\u5DF2\u4FDD\u5B58");
-      onSaved();
+      onSaved(tool.system ? "\u5DF2\u4FDD\u5B58\u5DE5\u5177\u8BF4\u660E" : "\u5DF2\u4FDD\u5B58");
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -9860,11 +9869,9 @@ function ToolDetail({ tool, agents, onBack, onSaved }) {
   const reset = async () => {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
-      await callApi(`/api/tools/${encodeURIComponent(tool.key)}/reset`, "POST", {});
-      setNotice("\u5DF2\u6062\u590D\u9ED8\u8BA4");
-      onSaved();
+      await callApi(documentationPath + "/reset", "POST", {});
+      onSaved("\u5DF2\u6062\u590D\u9ED8\u8BA4\u8BF4\u660E");
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -9890,13 +9897,13 @@ function ToolDetail({ tool, agents, onBack, onSaved }) {
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("code", { className: "vx-cat-key", children: tool.key }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Pill, { on: Boolean(tool.system), onLabel: "\u7CFB\u7EDF\u5DE5\u5177", offLabel: "\u81EA\u5B9A\u4E49\u5DE5\u5177" }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "vx-cat-spacer" }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Switch, { on: enabled2, onChange: setEnabled, label: "\u542F\u7528" })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Switch, { on: enabled2, onChange: setEnabled, label: "\u542F\u7528", disabled: tool.system })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u7ED1\u5B9A Agent", hint: "\u52FE\u9009\u540E\u8BE5 agent \u7684\u4F1A\u8BDD\u91CC\u624D\u4F1A\u51FA\u73B0\u8FD9\u4E2A\u5DE5\u5177\uFF1B\u7A7A\u9009\u7B49\u4E8E\u53EA\u6CE8\u518C\u4E0D\u6295\u653E\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AgentPicker, { agents, value: bound, onChange: setBound }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u7ED1\u5B9A Agent", children: tool.system ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-hint", children: bound.join("\u3001") || "\u6682\u65E0\u7ED1\u5B9A" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AgentPicker, { agents, value: bound, onChange: setBound }) }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u5DE5\u5177\u63CF\u8FF0", hint: "\u53D1\u9001\u7ED9\u6A21\u578B\u7684\u8BF4\u660E\uFF0C\u6A21\u578B\u636E\u6B64\u5224\u65AD\u4F55\u65F6\u8C03\u7528\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("textarea", { className: "vx-cat-textarea", rows: 5, value: description, onChange: (event) => {
       setDescription(event.target.value);
     } }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u53C2\u6570", hint: "\u7ED3\u6784\u7531\u4EE3\u7801\u5B9A\u4E49\uFF0C\u8FD9\u91CC\u6539\u6BCF\u4E2A\u53C2\u6570\u7ED9\u6A21\u578B\u7684\u63CF\u8FF0\u4E0E\u9ED8\u8BA4\u503C\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ParamEditor, { schema, onChange: setSchema }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u53C2\u6570", hint: tool.system ? "\u53EF\u7F16\u8F91\u53C2\u6570\u8BF4\u660E\u3002\u9ED8\u8BA4\u503C\u3001\u542F\u505C\u548C Agent \u7ED1\u5B9A\u5728\u6B64\u9875\u53EA\u8BFB\u3002" : "\u53EF\u7F16\u8F91\u53C2\u6570\u63CF\u8FF0\u4E0E\u9ED8\u8BA4\u503C\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(ParamEditor, { schema, onChange: setSchema, defaultsReadOnly: tool.system }) }),
     tool.system ? null : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Field, { label: "\u6267\u884C\u5668", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("select", { className: "vx-cat-input", value: kind, onChange: (event) => {
         setKind(event.target.value);
@@ -9906,14 +9913,13 @@ function ToolDetail({ tool, agents, onBack, onSaved }) {
       } }) })
     ] }),
     error ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-error", children: error }) : null,
-    notice ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "vx-cat-notice", children: notice }) : null,
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "vx-cat-footer", children: [
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--primary", disabled: busy, onClick: () => {
         void save();
       }, children: "\u4FDD\u5B58" }),
       tool.system ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn", disabled: busy, onClick: () => {
         void reset();
-      }, children: "\u6062\u590D\u9ED8\u8BA4" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--danger", disabled: busy, onClick: () => {
+      }, children: "\u6062\u590D\u9ED8\u8BA4\u8BF4\u660E" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "vx-cat-btn vx-cat-btn--danger", disabled: busy, onClick: () => {
         void remove();
       }, children: "\u5220\u9664" })
     ] })

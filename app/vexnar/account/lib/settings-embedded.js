@@ -2365,11 +2365,11 @@ var require_messages = __commonJS({
     };
     exports.CommandCompleteMessage = CommandCompleteMessage;
     var DataRowMessage = class {
-      constructor(length, fields) {
+      constructor(length, fields2) {
         this.length = length;
-        this.fields = fields;
+        this.fields = fields2;
         this.name = "dataRow";
-        this.fieldCount = fields.length;
+        this.fieldCount = fields2.length;
       }
     };
     exports.DataRowMessage = DataRowMessage;
@@ -2983,12 +2983,12 @@ var require_parser = __commonJS({
     };
     var parseDataRowMessage = (reader) => {
       const fieldCount = reader.int16();
-      const fields = new Array(fieldCount);
+      const fields2 = new Array(fieldCount);
       for (let i = 0; i < fieldCount; i++) {
         const len = reader.int32();
-        fields[i] = len === -1 ? null : reader.string(len);
+        fields2[i] = len === -1 ? null : reader.string(len);
       }
-      return new messages_1.DataRowMessage(LATEINIT_LENGTH, fields);
+      return new messages_1.DataRowMessage(LATEINIT_LENGTH, fields2);
     };
     var parseParameterStatusMessage = (reader) => {
       const name = reader.cstring();
@@ -3048,30 +3048,30 @@ var require_parser = __commonJS({
       return message;
     };
     var parseErrorMessage = (reader, name) => {
-      const fields = {};
+      const fields2 = {};
       let fieldType = reader.string(1);
       while (fieldType !== "\0") {
-        fields[fieldType] = reader.cstring();
+        fields2[fieldType] = reader.cstring();
         fieldType = reader.string(1);
       }
-      const messageValue = fields.M;
+      const messageValue = fields2.M;
       const message = name === "notice" ? new messages_1.NoticeMessage(LATEINIT_LENGTH, messageValue) : new messages_1.DatabaseError(messageValue, LATEINIT_LENGTH, name);
-      message.severity = fields.S;
-      message.code = fields.C;
-      message.detail = fields.D;
-      message.hint = fields.H;
-      message.position = fields.P;
-      message.internalPosition = fields.p;
-      message.internalQuery = fields.q;
-      message.where = fields.W;
-      message.schema = fields.s;
-      message.table = fields.t;
-      message.column = fields.c;
-      message.dataType = fields.d;
-      message.constraint = fields.n;
-      message.file = fields.F;
-      message.line = fields.L;
-      message.routine = fields.R;
+      message.severity = fields2.S;
+      message.code = fields2.C;
+      message.detail = fields2.D;
+      message.hint = fields2.H;
+      message.position = fields2.P;
+      message.internalPosition = fields2.p;
+      message.internalQuery = fields2.q;
+      message.where = fields2.W;
+      message.schema = fields2.s;
+      message.table = fields2.t;
+      message.column = fields2.c;
+      message.dataType = fields2.d;
+      message.constraint = fields2.n;
+      message.file = fields2.F;
+      message.line = fields2.L;
+      message.routine = fields2.R;
       return message;
     };
   }
@@ -4837,11 +4837,11 @@ var require_query2 = __commonJS({
       sourceFunction: "routine"
     };
     NativeQuery.prototype.handleError = function(err) {
-      const fields = this.native && this.native.pq.resultErrorFields();
-      if (fields) {
-        for (const key in fields) {
+      const fields2 = this.native && this.native.pq.resultErrorFields();
+      if (fields2) {
+        for (const key in fields2) {
           const normalizedFieldName = errorFieldMap[key] || key;
-          err[normalizedFieldName] = fields[key];
+          err[normalizedFieldName] = fields2[key];
         }
       }
       if (this.callback) {
@@ -27589,6 +27589,14 @@ function storeWriter(root) {
 // ../vexnar-store/src/meta-store.ts
 import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, join as join2 } from "node:path";
+function editBuiltinToolRows(rows, key, edit) {
+  const row = Array.isArray(rows) ? rows.find((item) => item?.system === true && item.key === key) : void 0;
+  if (!row) return false;
+  const { description, schema } = edit({ description: row.description ?? "", schema: row.schema ?? {} });
+  row.description = description;
+  row.schema = schema;
+  return true;
+}
 function metaStore(root) {
   const file2 = join2(root, "meta.json");
   let cache = null;
@@ -27602,6 +27610,15 @@ function metaStore(root) {
     }
     return cache;
   }
+  async function save(next) {
+    await mkdir2(dirname(file2), { recursive: true, mode: 448 });
+    const temp = `${file2}.tmp`;
+    await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
+`, { mode: 384 });
+    await rename2(temp, file2);
+    cache = next;
+  }
+  let documentationWrite = Promise.resolve();
   return {
     backend: "json",
     load,
@@ -27612,13 +27629,19 @@ function metaStore(root) {
       const tables = await load();
       return tables[name] ?? [];
     },
-    async save(next) {
-      cache = next;
-      await mkdir2(dirname(file2), { recursive: true, mode: 448 });
-      const temp = `${file2}.tmp`;
-      await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
-`, { mode: 384 });
-      await rename2(temp, file2);
+    save,
+    editBuiltinToolDocumentation(key, edit) {
+      const next = documentationWrite.then(async () => {
+        cache = null;
+        const tables = structuredClone(await load());
+        if (!editBuiltinToolRows(tables.tools, key, edit)) return false;
+        await save(tables);
+        return true;
+      });
+      documentationWrite = next.then(() => {
+      }, () => {
+      });
+      return next;
     }
   };
 }
@@ -28082,6 +28105,20 @@ function sqliteMetaStore(path) {
       const row = getMeta.get(name);
       return row ? parse3(row.record) : [];
     },
+    async editBuiltinToolDocumentation(key, edit) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const record2 = getMeta.get("tools");
+        const rows = record2 ? parse3(record2.record) : [];
+        const changed = editBuiltinToolRows(rows, key, edit);
+        if (changed) setMeta.run("tools", JSON.stringify(rows));
+        db.exec("COMMIT");
+        return changed;
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
+    },
     async save(next) {
       db.exec("BEGIN IMMEDIATE");
       try {
@@ -28273,6 +28310,31 @@ function pgMetaStore(connection, fallback) {
   }
   return {
     backend: "postgres",
+    async editBuiltinToolDocumentation(key, edit) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const { rows: [row] } = await client.query(
+          "SELECT COALESCE(description, '') AS description, COALESCE(schema, '{}'::jsonb) AS schema FROM tools WHERE key = $1 AND system FOR UPDATE",
+          [key]
+        );
+        if (row) {
+          const next = edit(row);
+          await client.query(
+            "UPDATE tools SET description = $2, schema = $3::jsonb, updated_at = now() WHERE key = $1",
+            [key, next.description, JSON.stringify(next.schema)]
+          );
+        }
+        await client.query("COMMIT");
+        return row !== void 0;
+      } catch (error62) {
+        await client.query("ROLLBACK").catch(() => {
+        });
+        throw error62;
+      } finally {
+        client.release();
+      }
+    },
     async load() {
       const out = {};
       for (const name of Object.keys(LOADERS)) out[name] = await read(name);
@@ -32662,6 +32724,9 @@ async function registerCatalogDefaults(meta4, options = {}) {
     seeded
   };
 }
+function defaultTool(key) {
+  return DEFAULT_TOOLS.find((def) => def.key === key);
+}
 
 // src/context.ts
 var store = await openStore2();
@@ -33332,10 +33397,61 @@ function registerSettingsCatalog(api) {
   api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
 }
 
+// src/routes/tool-documentation.ts
+function fields(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+}
+function withDescriptions(schema, descriptions) {
+  const root = fields(schema);
+  const properties = fields(root?.properties);
+  if (!root || !properties) return schema;
+  const entries = Object.entries(properties).map(([key, value]) => {
+    const property = fields(value);
+    if (!property || !Object.hasOwn(descriptions, key)) return [key, value];
+    const next = { ...property };
+    const description = descriptions[key];
+    if (typeof description === "string" && description !== "") next.description = description;
+    else delete next.description;
+    return [key, next];
+  });
+  return { ...root, properties: Object.fromEntries(entries) };
+}
+function registerToolDocumentation(api) {
+  api.put("/api/tools/:key/documentation", async (c) => {
+    const input2 = fields(await c.req.json().catch(() => void 0));
+    const parameters = fields(input2?.parameters);
+    if (typeof input2?.description !== "string" || !parameters || Object.keys(input2).some((key) => key !== "description" && key !== "parameters") || Object.values(parameters).some((description2) => typeof description2 !== "string")) {
+      return c.json({ error: "\u5DE5\u5177\u548C\u53C2\u6570\u8BF4\u660E\u5FC5\u987B\u662F\u6587\u672C" }, 400);
+    }
+    const description = input2.description;
+    const found = await meta3.editBuiltinToolDocumentation(c.req.param("key"), (current) => ({
+      description,
+      schema: withDescriptions(current.schema, parameters)
+    }));
+    return found ? c.json({ ok: true }) : c.json({ error: "\u5185\u7F6E\u5DE5\u5177\u4E0D\u5B58\u5728" }, 404);
+  });
+  api.post("/api/tools/:key/documentation/reset", async (c) => {
+    const key = c.req.param("key");
+    const builtin = defaultTool(key);
+    if (!builtin) return c.json({ error: "\u6B64\u5DE5\u5177\u6CA1\u6709\u9884\u8BBE\u8BF4\u660E" }, 404);
+    const properties = fields(fields(builtin.schema)?.properties) ?? {};
+    const descriptions = Object.fromEntries(Object.entries(properties).map(([name, value]) => [
+      name,
+      fields(value)?.description
+    ]));
+    const found = await meta3.editBuiltinToolDocumentation(key, (current) => ({
+      description: builtin.description,
+      schema: withDescriptions(current.schema, descriptions)
+    }));
+    return found ? c.json({ ok: true }) : c.json({ error: "\u5185\u7F6E\u5DE5\u5177\u4E0D\u5B58\u5728" }, 404);
+  });
+}
+
 // src/settings-embedded.ts
 var settings = new Hono3();
 registerInterceptSettings(settings);
 registerSettingsCatalog(settings);
+registerToolDocumentation(settings);
 var migration;
 async function handleSettings(request) {
   if (new URL(request.url).pathname.startsWith("/api/intercept/")) {

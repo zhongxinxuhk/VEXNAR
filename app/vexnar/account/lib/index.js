@@ -126,7 +126,8 @@ function apply(ctx) {
           }
           const url = new URL(req.url || "/", "http://127.0.0.1");
           url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
-          const configRoute = !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles", "/api/mcp"].includes(url.pathname);
+          const toolDocumentation = req.method === "PUT" && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname) || req.method === "POST" && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname);
+          const configRoute = toolDocumentation || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles", "/api/mcp"].includes(url.pathname);
           const app = configRoute ? void 0 : await getCore();
           if (!configRoute && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -142,7 +143,7 @@ function apply(ctx) {
             }
           }
           const readingYakHistory = req.method === "POST" && url.pathname === "/api/yak/history";
-          const limit = readingYakHistory ? 8192 : url.pathname === "/api/traffic/import/yakit" ? 16 * 1024 * 1024 : Infinity;
+          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : url.pathname === "/api/traffic/import/yakit" ? 16 * 1024 * 1024 : Infinity;
           const chunks = [];
           let size = 0;
           for await (const chunk of req) {

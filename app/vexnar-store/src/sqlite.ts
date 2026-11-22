@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { createStore } from './json-store.js'
+import { editBuiltinToolRows, type EditToolDocumentation } from './meta-store.js'
 import { StoreConflict } from './writer.js'
 import type { Store } from './types.js'
 
@@ -136,6 +137,20 @@ export function sqliteMetaStore(path: string) {
     async table<T = any[]>(name: string): Promise<T> {
       const row = getMeta.get(name) as { record: string } | undefined
       return (row ? parse(row.record) : []) as T
+    },
+    async editBuiltinToolDocumentation(key: string, edit: EditToolDocumentation) {
+      db.exec('BEGIN IMMEDIATE')
+      try {
+        const record = getMeta.get('tools') as { record: string } | undefined
+        const rows = record ? parse(record.record) : []
+        const changed = editBuiltinToolRows(rows, key, edit)
+        if (changed) setMeta.run('tools', JSON.stringify(rows))
+        db.exec('COMMIT')
+        return changed
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
     },
     async save(next: Record<string, any[] | Record<string, unknown>>) {
       db.exec('BEGIN IMMEDIATE')

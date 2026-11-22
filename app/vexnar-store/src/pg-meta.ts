@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import pg from 'pg'
-import type { MetaStore } from './meta-store.ts'
+import type { MetaStore, ToolDocumentation } from './meta-store.ts'
 
 /**
  * PostgreSQL-backed meta domain.
@@ -221,6 +221,30 @@ export function pgMetaStore(connection: PgConnection, fallback: MetaStore): Meta
 
   return {
     backend: 'postgres',
+    async editBuiltinToolDocumentation(key, edit) {
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        const { rows: [row] } = await client.query<ToolDocumentation>(
+          "SELECT COALESCE(description, '') AS description, COALESCE(schema, '{}'::jsonb) AS schema FROM tools WHERE key = $1 AND system FOR UPDATE",
+          [key]
+        )
+        if (row) {
+          const next = edit(row)
+          await client.query(
+            'UPDATE tools SET description = $2, schema = $3::jsonb, updated_at = now() WHERE key = $1',
+            [key, next.description, JSON.stringify(next.schema)]
+          )
+        }
+        await client.query('COMMIT')
+        return row !== undefined
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {})
+        throw error
+      } finally {
+        client.release()
+      }
+    },
     async load() {
       const out: Record<string, any[] | Record<string, unknown>> = {}
       for (const name of Object.keys(LOADERS)) out[name] = await read(name)
