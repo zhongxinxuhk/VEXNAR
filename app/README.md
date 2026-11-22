@@ -12,9 +12,9 @@ Go 服务只是回退路径。
 | 方向 | 走哪条链路 | 说明 |
 |---|---|---|
 | 账户登录 | HXSEC AI Platform | 客户端启动时验证。密码和两步验证码可在 App 输入，第三方认证使用独立平台窗口 |
-| 模型目录与推理 | core 桌面网关（进程内） | 契约与 Go 的回环网关相同，引擎直接 `api.fetch` 调用，不开端口、不依赖 Go |
+| 模型目录与推理 | dsh 进程内的账号插件 | 设置 → 模型维护目录，账号插件通过 `setModelCompletion` 向 core 注册调用函数 |
 | 领域工具 | core 原生路由 | 任务/漏洞/流量/资产/拦截/用量全部读本地 SQLite store |
-| 回退 | Go 服务 | `VEXNAR_RUNTIME_MODE=go` 时数据面整段转发回 Go（含模型走 8787 网关） |
+| 回退 | Go 服务 | `VEXNAR_RUNTIME_MODE=go` 时数据面转发给配置的 Go 服务，dsh 的模型访问仍在自身进程内 |
 
 ## 目录
 
@@ -53,8 +53,8 @@ app/                          # WebStorm 工程根（项目名 app）
 | `vexnar/{ui,account}/src/*.ts`（宿主半边）、`vexnar-mcp/index.ts` | `pnpm run build` 生成 `lib/*.js` / `index.js` 后由 dsh 加载 | dsh 从 profile 的 `node_modules` 里 import 插件；Node 对 `node_modules` **不擦类型**（`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`），所以入口必须是真 JS |
 | `website/`（见 `website/`） | `vite` / `node --test` / `node scripts/prerender.ts` | vite 自己处理 TS；prerender 与测试用 Node 原生擦类型 |
 
-`pnpm run typecheck` 是统一闸门：`scripts/`、`spike/`、`vexnar-mcp/`、`@vexnar/core`、
-`@vexnar/store`、`@vexnar/dsh-ui`、`@vexnar/dsh-account` 各自一个 `tsconfig`，全部 `strict`。
+`pnpm run typecheck` 检查 `@vexnar/dsh-ui`、`@vexnar/dsh-account`、`@vexnar/dsh-egress` 和 `@vexnar/core`。
+启动脚本可单独运行 `pnpm exec tsc -p scripts/tsconfig.json` 检查。
 
 ## 包管理器：只用 pnpm
 
@@ -63,7 +63,7 @@ app/                          # WebStorm 工程根（项目名 app）
 ```sh
 cd app
 pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、core、store、spike
-pnpm run build               # @vexnar/dsh-ui + @vexnar/dsh-account 出 bundle
+pnpm run build               # 构建 UI、账号和出口插件
 pnpm run setup               # 初始化 VEXNAR profile
 pnpm run upstream:check      # 上游边界 + 包管理器边界
 pnpm --filter @vexnar/core start
