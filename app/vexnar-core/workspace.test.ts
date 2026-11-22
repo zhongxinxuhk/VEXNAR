@@ -16,7 +16,7 @@ const root = await mkdtemp(join(tmpdir(), 'vexnar-ws-test-'))
 process.env.VEXNAR_STORE_ROOT = root
 process.env.VEXNAR_STORE = 'sqlite'
 process.env.VEXNAR_VERSION = '0.1.0'
-process.env.VEXNAR_UPDATE_TIMEOUT_MS = '1500'
+process.env.VEXNAR_SQLITE_PATH = join(root, 'vexnar.sqlite')
 
 const { register: registerWorkspace } = await import('./src/routes/workspace.ts')
 const { register: registerSync } = await import('./src/routes/sync.ts')
@@ -62,7 +62,7 @@ assert.equal((await res.json()).content, 'trapped', 'neutralise 后的文件应�
 res = await get('/api/sync/scopesentry/status')
 assert.equal(res.status, 200, 'sync status 应返回 200')
 const statusBody = await res.json()
-assert.equal(statusBody.exists, false, '未配置时 exists 应为 false')
+assert.equal(statusBody.configured, false, '未配置时 configured 应为 false')
 
 res = await get('/api/sync/scopesentry/projects')
 assert.equal(res.status, 502, '无数据源时 projects 应返回 502')
@@ -73,7 +73,17 @@ assert.equal(res.status, 200, 'update check 应返回 200')
 const updateBody = await res.json()
 assert.equal(updateBody.current, '0.1.0')
 assert.equal(updateBody.repo, 'zhongxinxuhk/vexnar')
-assert.equal(typeof updateBody.has_backup, 'boolean')
+assert.equal(updateBody.mode, 'managed')
+assert.equal(updateBody.has_backup, false)
+assert.equal(updateBody.has_update, false)
+for (const route of ['apply', 'rollback']) {
+  res = await app.request(`/api/update/${route}`, { method: 'POST' })
+  assert.equal(res.status, 409)
+  assert.equal((await res.json()).error, updateBody.reason)
+}
+res = await get('/api/update/stream')
+assert.equal(res.status, 200)
+assert.match(await res.text(), /"phase":"idle"/)
 
 console.log('OK — routes:', routes.length)
 console.log('workspace write/read/list + path traversal guard: pass')
