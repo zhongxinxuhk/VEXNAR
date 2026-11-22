@@ -2,6 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { openWriter, openMeta } from './backend.js'
+import { resolveTaskStatus, taskStatusMeta } from './task-status.js'
 
 const STATUSES = new Set(['pending', 'in_progress', 'confirmed', 'resolved', 'fixed', 'false_positive', 'ignored', 'duplicate', 'risk_accepted'])
 const SEVERITIES = new Set(['critical', 'high', 'medium', 'low'])
@@ -183,6 +184,7 @@ export function storeOperations(_root?: string) {
   async function deleteTask(id: string) {
     const current = await writer.readRecord('tasks', id)
     if (!current || current.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
+    if (current.archived_at_text) throw Object.assign(new Error('请在归档列表中移除该任务'), { status: 409 })
     const now = new Date()
     const next = { ...current, status: 'deleted', deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1000) }
     delete next.rev
@@ -544,8 +546,14 @@ export function storeOperations(_root?: string) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error('task 不存在'), { status: 404 })
     if (task.archived_at_text) throw Object.assign(new Error('task 已归档'), { status: 409 })
     const now = new Date()
-    const existing = await writer.list('archives')
-    const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1
+    if (taskStatusMeta(resolveTaskStatus({
+      status: String(task.status ?? ''),
+      paused: task.paused === true,
+      queued: task.queued === true,
+    })).active) {
+      throw Object.assign(new Error('请先暂停正在运行或排队的任务'), { status: 409 })
+    }
+    const archiveId = (await writer.maxKey('archives')) + 1
     const archive = {
       id: archiveId,
       task_id: Number(task.id),
@@ -562,7 +570,7 @@ export function storeOperations(_root?: string) {
     const nextTask = { ...task, archived_at_text: archive.archived_at }
     delete nextTask.rev
     await writer.commit([
-      { table: 'archives', key: String(archiveId), record: archive },
+      { table: 'archives', key: String(archiveId), record: archive, expectedRev: 0 },
       { table: 'tasks', key: id, record: nextTask, expectedRev: Number(task.rev ?? 0) }
     ])
     return archive
@@ -570,35 +578,40 @@ export function storeOperations(_root?: string) {
 
   async function listArchives() {
     const rows = await writer.list('archives')
-    return rows.sort((a, b) => Number(b.id) - Number(a.id))
+    return rows.filter((row) => !row.retired_at).sort((a, b) => Number(b.id) - Number(a.id))
   }
 
-  async function restoreArchive(archiveId: string) {
+  async function finishArchive(archiveId: string, action: 'restore' | 'delete') {
     const archive = await writer.readRecord('archives', archiveId)
-    if (!archive) throw Object.assign(new Error('归档不存在'), { status: 404 })
-    const task = await writer.readRecord('tasks', String(archive.task_id))
-    if (task) {
-      const next = { ...task, archived_at_text: null }
-      delete next.rev
-      await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
+    if (!archive || archive.retired_at) throw Object.assign(new Error('归档不存在'), { status: 404 })
+
+    const taskId = String(archive.task_id)
+    const task = await writer.readRecord('tasks', taskId)
+    if (action === 'restore' && (!task || task.deleted_at_text || !task.archived_at_text)) {
+      throw Object.assign(new Error('归档任务缺失或已移除，无法恢复'), { status: 409 })
     }
-    await writer.remove('archives', `${archiveId}`)
+
+    const now = new Date()
+    const ops: Array<{ table: string; key: string; record: Record<string, unknown>; expectedRev: number }> = [{
+      table: 'archives', key: archiveId,
+      record: { id: archive.id, retired_at: rfc3339(now) },
+      expectedRev: Number(archive.rev ?? 0)
+    }]
+    if (task?.archived_at_text && !task.deleted_at_text) {
+      const next: Record<string, unknown> = { ...task, archived_at_text: null }
+      if (action === 'delete') {
+        next.status = 'deleted'
+        next.deleted_at_text = rfc3339(now)
+        next.deleted_unix = Math.floor(now.getTime() / 1000)
+      }
+      ops.push({ table: 'tasks', key: taskId, record: next, expectedRev: Number(task.rev ?? 0) })
+    }
+    await writer.commit(ops)
     return archive
   }
 
-  async function deleteArchive(archiveId: string) {
-    const archive = await writer.readRecord('archives', archiveId)
-    if (!archive) throw Object.assign(new Error('归档不存在'), { status: 404 })
-    const task = await writer.readRecord('tasks', String(archive.task_id))
-    if (task) {
-      const now = new Date()
-      const next = { ...task, status: 'deleted', deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1000) }
-      delete next.rev
-      await writer.commit([{ table: 'tasks', key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }])
-    }
-    await writer.remove('archives', `${archiveId}`)
-    return archive
-  }
+  const restoreArchive = (archiveId: string) => finishArchive(archiveId, 'restore')
+  const deleteArchive = (archiveId: string) => finishArchive(archiveId, 'delete')
 
   async function addGoal(taskId: string, input: { text?: string; vulnclass?: string }) {
     const task = await writer.readRecord('tasks', taskId)

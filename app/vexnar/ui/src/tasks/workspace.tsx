@@ -104,6 +104,7 @@ export function TasksWorkspace() {
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(20)
   const [open, setOpen] = useState('')
+  const [showArchives, setShowArchives] = useState(false)
   const [draft, setDraft] = useState({ description: '', goal: '' })
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
@@ -124,7 +125,9 @@ export function TasksWorkspace() {
       .filter((entry) => entry.value > 0)
   }, [lifecycle, summary.data])
 
-  if (open) return <TaskDetailPage id={open} onBack={() => setOpen('')} />
+  const reloadTasks = () => { list.reload(); summary.reload() }
+  if (showArchives) return <TaskArchives onBack={() => { setShowArchives(false); reloadTasks() }} />
+  if (open) return <TaskDetailPage id={open} onBack={() => { setOpen(''); reloadTasks() }} />
 
   const create = () => {
     if (!draft.description.trim()) return
@@ -148,7 +151,8 @@ export function TasksWorkspace() {
         <Field placeholder="搜索任务（名称 / 描述 / 目标）" value={query} onChange={(value) => { setQuery(value); setPage(1) }} ariaLabel="搜索任务" />
         <Select value={status} onChange={(value) => { setStatus(value); setPage(1) }} ariaLabel="状态" options={STATUS_FILTER} />
         <Select value={String(size)} onChange={(value) => setSize(Number(value))} ariaLabel="每页" options={[['10', '10 / 页'], ['20', '20 / 页'], ['50', '50 / 页']]} />
-        <Button onClick={() => { list.reload(); summary.reload() }}>刷新</Button>
+        <Button onClick={reloadTasks}>刷新</Button>
+        <Button onClick={() => setShowArchives(true)}>归档记录</Button>
         <span className="vx-task-spacer" />
         <span className="vx-task-hint">
           共 {total} 个任务 · 第 {page}/{pages} 页
@@ -205,6 +209,54 @@ export function TasksWorkspace() {
   )
 }
 
+function TaskArchives({ onBack }: { onBack: () => void }) {
+  const [page, setPage] = useState(1)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const archives = useResource(`archives:${page}`, () => tasksApi.archives(page))
+  const rows = archives.data?.items ?? []
+  const total = archives.data?.total ?? 0
+
+  async function change(id: number, action: 'restore' | 'delete') {
+    if (action === 'delete' && !window.confirm('移除这条归档？此操作无法从客户端撤销。')) return
+    setBusy(true)
+    setError('')
+    try {
+      await (action === 'restore' ? tasksApi.restoreArchive(id) : tasksApi.deleteArchive(id))
+      if (rows.length === 1 && page > 1) setPage(page - 1)
+      else archives.reload()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="vx-task-workspace">
+      <div className="vx-task-toolbar">
+        <Button onClick={onBack}>← 返回任务</Button>
+        <Button onClick={archives.reload} disabled={busy}>刷新</Button>
+        <span className="vx-task-hint">共 {total} 条归档</span>
+        <Button onClick={() => setPage(page - 1)} disabled={busy || page <= 1}>上一页</Button>
+        <Button onClick={() => setPage(page + 1)} disabled={busy || page * 20 >= total}>下一页</Button>
+      </div>
+      <Card title="归档记录">
+        <ErrorLine error={error || archives.error} />
+        {archives.loading ? <Empty text="读取归档…" /> : !archives.error && rows.length === 0 ? <Empty text="没有归档记录" /> : null}
+        {rows.map((row) => (
+          <div key={row.id} className="vx-task-inline vx-task-inline--wide">
+            <strong>{row.task_name || `任务 #${row.task_id}`}</strong>
+            <span className="vx-task-hint">{[row.archived_at, row.state].filter(Boolean).join(' · ')}</span>
+            <Button disabled={busy || !['done', 'ready', 'restore_failed'].includes(row.state)} onClick={() => void change(row.id, 'restore')}>恢复</Button>
+            <Button tone="danger" disabled={busy || !['done', 'ready', 'delete_failed'].includes(row.state)} onClick={() => void change(row.id, 'delete')}>移除归档</Button>
+          </div>
+        ))}
+      </Card>
+    </div>
+  )
+}
+
 function TaskDetailPage({ id, onBack }: { id: string; onBack: () => void }) {
   const [tab, setTab] = useState<TabID>('overview')
   const task = useResource(`task:${id}`, () => tasksApi.get(id))
@@ -242,14 +294,12 @@ function TaskDetailPage({ id, onBack }: { id: string; onBack: () => void }) {
           {value?.paused ? '继续' : '暂停'}
         </Button>
         <Button
+          disabled={!value || busy !== ''}
           onClick={() => {
-            tasksApi
-              .archive(id)
-              .then(() => {
-                task.reload()
-                onBack()
-              })
+            setBusy('archive')
+            tasksApi.archive(id).then(onBack)
               .catch((error: Error) => window.alert(error.message))
+              .finally(() => setBusy(''))
           }}
         >
           归档

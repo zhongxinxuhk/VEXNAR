@@ -127,12 +127,20 @@ const mcpDelete = await ops.deleteMcpServer(String(mcp.id))
 check('mcp lifecycle', mcp.id > 0 && mcpDisabled.ok && mcpDelete.deleted === mcp.id, JSON.stringify({ mcp, mcpDisabled, mcpDelete }))
 
 const archived = await ops.archiveTask(secondId)
+let archivedDelete: StoreError | null = null
+try { await ops.deleteTask(secondId) } catch (error) { archivedDelete = storeError(error) }
 const archives = await ops.listArchives()
 const hiddenByArchive = !(await (await freshRead()).tasks.list()).some((row) => row.id === secondId)
 const restored = await ops.restoreArchive(String(archived.id))
 const visibleAgain = (await (await freshRead()).tasks.list()).some((row) => row.id === secondId)
 const archived2 = await ops.archiveTask(secondId)
+let staleRestore: StoreError | null = null
+try { await ops.restoreArchive(String(archived.id)) } catch (error) { staleRestore = storeError(error) }
+check('inactive archive ID cannot affect a new archive', archivedDelete?.status === 409 && staleRestore?.status === 404 && archived2.id > archived.id)
 const removedArchive = await ops.deleteArchive(String(archived2.id))
+const removedTask = await ops.writer.readRecord('tasks', secondId)
+check('archive cleanup leaves a task tombstone and removes the archive from the list',
+  removedTask?.status === 'deleted' && removedTask.archived_at_text === null && (await ops.listArchives()).length === 0)
 check('archive lifecycle', archived.state === 'done' && archives.length === 1 && hiddenByArchive && restored.id === archived.id && visibleAgain && removedArchive.id === archived2.id, JSON.stringify({ archived: archived.id, hiddenByArchive, visibleAgain }))
 
 const goalTask = await ops.createTask({ description: 'goal host', goal: 'host goals' })
