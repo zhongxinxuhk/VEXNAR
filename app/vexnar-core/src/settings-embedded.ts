@@ -8,6 +8,8 @@ import { registerInterceptSettings } from './routes/intercept.ts'
 import { registerSettingsCatalog } from './routes/settings-catalog.ts'
 import { registerToolDocumentation } from './routes/tool-documentation.ts'
 import { registerNotificationSettings } from './routes/notification-settings.ts'
+import { registerLocalTrafficCleanup, registerTaskDataManagement } from './routes/data-management.ts'
+import { register as registerUpdate } from './routes/update.ts'
 import { registerReadViews } from './routes/read-views.ts'
 import { captureOverview, registerTrafficHistory } from './routes/traffic-history.ts'
 
@@ -18,6 +20,9 @@ registerToolDocumentation(settings)
 registerNotificationSettings(settings, true)
 registerReadViews(settings)
 registerTrafficHistory(settings)
+registerTaskDataManagement(settings)
+registerLocalTrafficCleanup(settings)
+registerUpdate(settings)
 settings.get('/api/traffic/capture', async (c) => c.json(await captureOverview()))
 
 let migration: ReturnType<typeof ensureInterceptRulesSeeded> | undefined

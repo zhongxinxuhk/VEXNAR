@@ -31,6 +31,17 @@ function isNotificationSetting(method: string | undefined, path: string): boolea
     (method === 'PATCH' || method === 'DELETE') && /^\/api\/notify\/channels\/\d+$/.test(path)
 }
 
+function isClientMaintenance(method: string | undefined, path: string, goMode: boolean): boolean {
+  if ((method === 'GET' || method === 'DELETE') && path === '/api/traffic/local-cleanup') return true
+  if (method === 'GET' && (path === '/api/update/check' || path === '/api/update/stream')) return true
+  if (method === 'POST' && (path === '/api/update/apply' || path === '/api/update/rollback')) return true
+  if (goMode) return false
+  if (method === 'GET') return path === '/api/task-archives' || /^\/api\/task-archives\/\d+$/.test(path)
+  if (method === 'DELETE') return /^\/api\/(?:tasks|task-archives)\/\d+$/.test(path)
+  return method === 'POST' && (/^\/api\/(?:task-archives\/\d+\/restore|tasks\/\d+\/archive)$/.test(path) ||
+    path === '/api/tasks/archive/batch')
+}
+
 export const name = '@vexnar/dsh-account'
 
 export const inject = ['webServer', 'credentials', 'settings', 'connection', 'sessions', 'tools', 'agentDefaultModel', 'typertGateway']
@@ -200,7 +211,7 @@ export function apply(ctx: AccountContext): void {
           }
           const toolDocumentation = (req.method === 'PUT' && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname)) ||
             (req.method === 'POST' && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname))
-          const configRoute = toolDocumentation || isNotificationSetting(req.method, url.pathname) ||
+          const configRoute = isClientMaintenance(req.method, url.pathname, goMode) || toolDocumentation || isNotificationSetting(req.method, url.pathname) ||
             (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
             (req.method === 'GET' && isStoredDataRead(url.pathname, goMode))
           const app = configRoute || nativeYakHistory ? undefined : await getCore()

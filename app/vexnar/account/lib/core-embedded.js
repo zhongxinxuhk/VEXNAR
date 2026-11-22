@@ -5133,7 +5133,7 @@ var require_dist = __commonJS({
     function parse5(stream2, callback) {
       const parser = new parser_1.Parser();
       stream2.on("data", (buffer) => parser.parse(buffer, callback));
-      return new Promise((resolve5) => stream2.on("end", () => resolve5()));
+      return new Promise((resolve4) => stream2.on("end", () => resolve4()));
     }
   }
 });
@@ -5902,12 +5902,12 @@ var require_client = __commonJS({
           this._connect(callback);
           return;
         }
-        return new this._Promise((resolve5, reject) => {
+        return new this._Promise((resolve4, reject) => {
           this._connect((error62) => {
             if (error62) {
               reject(error62);
             } else {
-              resolve5(this);
+              resolve4(this);
             }
           });
         });
@@ -6289,8 +6289,8 @@ var require_client = __commonJS({
         } else {
           query = new Query2(config2, values, callback);
           if (!query.callback) {
-            result = new this._Promise((resolve5, reject) => {
-              query.callback = (err4, res) => err4 ? reject(err4) : resolve5(res);
+            result = new this._Promise((resolve4, reject) => {
+              query.callback = (err4, res) => err4 ? reject(err4) : resolve4(res);
             }).catch((err4) => {
               Error.captureStackTrace(err4);
               throw err4;
@@ -6390,8 +6390,8 @@ var require_client = __commonJS({
         if (cb) {
           this.connection.once("end", cb);
         } else {
-          return new this._Promise((resolve5) => {
-            this.connection.once("end", resolve5);
+          return new this._Promise((resolve4) => {
+            this.connection.once("end", resolve4);
           });
         }
       }
@@ -6440,8 +6440,8 @@ var require_pg_pool = __commonJS({
       const cb = function(err4, client) {
         err4 ? rej(err4) : res(client);
       };
-      const result = new Promise2(function(resolve5, reject) {
-        res = resolve5;
+      const result = new Promise2(function(resolve4, reject) {
+        res = resolve4;
         rej = reject;
       }).catch((err4) => {
         Error.captureStackTrace(err4);
@@ -6502,7 +6502,7 @@ var require_pg_pool = __commonJS({
         if (typeof Promise2.try === "function") {
           return Promise2.try(f);
         }
-        return new Promise2((resolve5) => resolve5(f()));
+        return new Promise2((resolve4) => resolve4(f()));
       }
       _isFull() {
         return this._clients.length >= this.options.max;
@@ -6897,8 +6897,8 @@ var require_query2 = __commonJS({
     NativeQuery.prototype._getPromise = function() {
       if (this._promise) return this._promise;
       this._promise = new Promise(
-        function(resolve5, reject) {
-          this._once("end", resolve5);
+        function(resolve4, reject) {
+          this._once("end", resolve4);
           this._once("error", reject);
         }.bind(this)
       );
@@ -7077,12 +7077,12 @@ var require_client2 = __commonJS({
         this._connect(callback);
         return;
       }
-      return new this._Promise((resolve5, reject) => {
+      return new this._Promise((resolve4, reject) => {
         this._connect((error62) => {
           if (error62) {
             reject(error62);
           } else {
-            resolve5(this);
+            resolve4(this);
           }
         });
       });
@@ -7106,8 +7106,8 @@ var require_client2 = __commonJS({
         query = new NativeQuery(config2, values, callback);
         if (!query.callback) {
           let resolveOut, rejectOut;
-          result = new this._Promise((resolve5, reject) => {
-            resolveOut = resolve5;
+          result = new this._Promise((resolve4, reject) => {
+            resolveOut = resolve4;
             rejectOut = reject;
           }).catch((err4) => {
             Error.captureStackTrace(err4);
@@ -7170,8 +7170,8 @@ var require_client2 = __commonJS({
       }
       let result;
       if (!cb) {
-        result = new this._Promise(function(resolve5, reject) {
-          cb = (err4) => err4 ? reject(err4) : resolve5();
+        result = new this._Promise(function(resolve4, reject) {
+          cb = (err4) => err4 ? reject(err4) : resolve4();
         });
       }
       const doEnd = function() {
@@ -7422,6 +7422,9 @@ var init_esm = __esm({
 });
 
 // ../vexnar-store/src/task-status.ts
+function taskStatusMeta(status) {
+  return BY_KEY.get(status) ?? BY_KEY.get("created");
+}
 function isTerminalTaskStatus(status) {
   return BY_KEY.get(status)?.terminal === true;
 }
@@ -12063,7 +12066,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve5) {
+function isRecursive(inst, stack, resolve4) {
   const cached3 = recursive.get(inst);
   if (cached3 !== void 0)
     return cached3 ? PROVEN : NONE;
@@ -12073,7 +12076,7 @@ function isRecursive(inst, stack, resolve5) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve5);
+      const answer = isRecursive(child, stack, resolve4);
       if (answer > result)
         result = answer;
     }
@@ -12084,7 +12087,7 @@ function isRecursive(inst, stack, resolve5) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve5) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -12148,7 +12151,7 @@ function isRecursive(inst, stack, resolve5) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve5 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -28077,11 +28080,11 @@ function pgStore(connection) {
           filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
         }
         const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
-        const join20 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
+        const join19 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
         const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
         const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
           a.last_seen::text AS last_seen${linkSelect}
-          FROM assets a ${join20} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
+          FROM assets a ${join19} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
         const countValues = [];
         const countFilters = [];
         if (type) {
@@ -28547,6 +28550,14 @@ var init_writer = __esm({
 // ../vexnar-store/src/meta-store.ts
 import { mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile as writeFile2 } from "node:fs/promises";
 import { dirname, join as join2 } from "node:path";
+function editBuiltinToolRows(rows, key, edit) {
+  const row = Array.isArray(rows) ? rows.find((item) => item?.system === true && item.key === key) : void 0;
+  if (!row) return false;
+  const { description, schema } = edit({ description: row.description ?? "", schema: row.schema ?? {} });
+  row.description = description;
+  row.schema = schema;
+  return true;
+}
 function metaStore(root) {
   const file2 = join2(root, "meta.json");
   let cache = null;
@@ -28560,6 +28571,15 @@ function metaStore(root) {
     }
     return cache;
   }
+  async function save(next) {
+    await mkdir2(dirname(file2), { recursive: true, mode: 448 });
+    const temp = `${file2}.tmp`;
+    await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
+`, { mode: 384 });
+    await rename2(temp, file2);
+    cache = next;
+  }
+  let documentationWrite = Promise.resolve();
   return {
     backend: "json",
     load,
@@ -28570,13 +28590,19 @@ function metaStore(root) {
       const tables = await load();
       return tables[name] ?? [];
     },
-    async save(next) {
-      cache = next;
-      await mkdir2(dirname(file2), { recursive: true, mode: 448 });
-      const temp = `${file2}.tmp`;
-      await writeFile2(temp, `${JSON.stringify({ version: 1, tables: next }, null, 2)}
-`, { mode: 384 });
-      await rename2(temp, file2);
+    save,
+    editBuiltinToolDocumentation(key, edit) {
+      const next = documentationWrite.then(async () => {
+        cache = null;
+        const tables = structuredClone(await load());
+        if (!editBuiltinToolRows(tables.tools, key, edit)) return false;
+        await save(tables);
+        return true;
+      });
+      documentationWrite = next.then(() => {
+      }, () => {
+      });
+      return next;
     }
   };
 }
@@ -28954,6 +28980,7 @@ var init_json_store = __esm({
 });
 
 // ../vexnar-store/src/sqlite.ts
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
@@ -28973,6 +29000,22 @@ function sqliteWriter(path) {
   const setRec = db.prepare("INSERT INTO kv (tbl, key, record) VALUES (?, ?, ?) ON CONFLICT(tbl, key) DO UPDATE SET record = excluded.record");
   const delRec = db.prepare("DELETE FROM kv WHERE tbl = ? AND key = ?");
   const listRec = db.prepare("SELECT key, record FROM kv WHERE tbl = ?");
+  const oldTraffic = db.prepare(`
+    SELECT key, json_extract(record, '$.rev') AS rev, json_extract(record, '$.seq') AS seq,
+      json_extract(record, '$.ts') AS ts
+    FROM kv
+    WHERE tbl = 'traffic_exchanges'
+      AND json_type(record, '$.ts') IN ('integer', 'real')
+      AND json_extract(record, '$.ts') > 0 AND json_extract(record, '$.ts') < ?
+      AND (? = '' OR lower(json_extract(record, '$.host')) = ?)
+    ORDER BY key
+  `);
+  function trafficCleanupPlan(before, host) {
+    const rows = oldTraffic.all(before, host, host);
+    const hash2 = createHash("sha256").update(JSON.stringify([before, host]));
+    for (const row of rows) hash2.update(JSON.stringify([row.key, row.rev, row.seq, row.ts]));
+    return { rows, token: hash2.digest("hex") };
+  }
   function readSync(table, key) {
     const row = getRec.get(table, key);
     return row ? parse3(row.record) : null;
@@ -29029,6 +29072,25 @@ function sqliteWriter(path) {
     async remove(table, key) {
       delRec.run(table, key);
     },
+    previewTrafficCleanup(before, host) {
+      const { rows, token } = trafficCleanupPlan(before, host);
+      return { count: rows.length, token };
+    },
+    applyTrafficCleanup(before, host, expectedToken) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const { rows, token } = trafficCleanupPlan(before, host);
+        const matches = token === expectedToken;
+        if (matches) {
+          for (const row of rows) delRec.run("traffic_exchanges", row.key);
+        }
+        db.exec("COMMIT");
+        return matches ? rows.length : null;
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
+    },
     async recover() {
       return { replayed: 0 };
     },
@@ -29055,6 +29117,20 @@ function sqliteMetaStore(path) {
     async table(name) {
       const row = getMeta.get(name);
       return row ? parse3(row.record) : [];
+    },
+    async editBuiltinToolDocumentation(key, edit) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const record2 = getMeta.get("tools");
+        const rows = record2 ? parse3(record2.record) : [];
+        const changed = editBuiltinToolRows(rows, key, edit);
+        if (changed) setMeta.run("tools", JSON.stringify(rows));
+        db.exec("COMMIT");
+        return changed;
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
     },
     async save(next) {
       db.exec("BEGIN IMMEDIATE");
@@ -29089,6 +29165,7 @@ var init_sqlite = __esm({
   "../vexnar-store/src/sqlite.ts"() {
     "use strict";
     init_json_store();
+    init_meta_store();
     init_writer();
     parse3 = (json3) => JSON.parse(json3);
   }
@@ -29143,6 +29220,62 @@ function pgMetaStore(connection, fallback) {
   }
   return {
     backend: "postgres",
+    notificationChannels: {
+      async create(input2) {
+        const [row] = await q(
+          `INSERT INTO notification_channels(name,kind,enabled,config,mode,filter,rate_per_min)
+           VALUES($1,$2,$3,$4::jsonb,$5,$6::jsonb,$7) RETURNING id`,
+          [input2.name, input2.kind, input2.enabled, JSON.stringify(input2.config), input2.mode, JSON.stringify(input2.filter), input2.rate_per_min]
+        );
+        return Number(row.id);
+      },
+      async update(id, input2) {
+        const rows = await q(
+          `UPDATE notification_channels SET name=COALESCE($2,name), kind=COALESCE($3,kind),
+           enabled=COALESCE($4,enabled), config=COALESCE($5::jsonb,config), mode=COALESCE($6,mode),
+           filter=COALESCE($7::jsonb,filter), rate_per_min=COALESCE($8,rate_per_min) WHERE id=$1 RETURNING id`,
+          [
+            id,
+            input2.name,
+            input2.kind,
+            input2.enabled,
+            JSON.stringify(input2.config),
+            input2.mode,
+            JSON.stringify(input2.filter),
+            input2.rate_per_min
+          ]
+        );
+        return rows.length > 0;
+      },
+      async remove(id) {
+        return (await q("DELETE FROM notification_channels WHERE id=$1 RETURNING id", [id])).length > 0;
+      }
+    },
+    async editBuiltinToolDocumentation(key, edit) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const { rows: [row] } = await client.query(
+          "SELECT COALESCE(description, '') AS description, COALESCE(schema, '{}'::jsonb) AS schema FROM tools WHERE key = $1 AND system FOR UPDATE",
+          [key]
+        );
+        if (row) {
+          const next = edit(row);
+          await client.query(
+            "UPDATE tools SET description = $2, schema = $3::jsonb, updated_at = now() WHERE key = $1",
+            [key, next.description, JSON.stringify(next.schema)]
+          );
+        }
+        await client.query("COMMIT");
+        return row !== void 0;
+      } catch (error62) {
+        await client.query("ROLLBACK").catch(() => {
+        });
+        throw error62;
+      } finally {
+        client.release();
+      }
+    },
     async load() {
       const out = {};
       for (const name of Object.keys(LOADERS)) out[name] = await read(name);
@@ -29499,6 +29632,7 @@ function storeOperations(_root) {
   async function deleteTask(id) {
     const current = await writer4.readRecord("tasks", id);
     if (!current || current.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
+    if (current.archived_at_text) throw Object.assign(new Error("\u8BF7\u5728\u5F52\u6863\u5217\u8868\u4E2D\u79FB\u9664\u8BE5\u4EFB\u52A1"), { status: 409 });
     const now2 = /* @__PURE__ */ new Date();
     const next = { ...current, status: "deleted", deleted_at_text: rfc3339(now2), deleted_unix: Math.floor(now2.getTime() / 1e3) };
     delete next.rev;
@@ -29689,23 +29823,29 @@ function storeOperations(_root) {
     const kind = String(input2.kind ?? "").trim();
     if (!name) throw Object.assign(new Error("\u6E20\u9053\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     if (!kind) throw Object.assign(new Error("kind \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-    const { tables, rows } = await metaTable2("notify");
-    const id = Math.max(0, ...rows.map((row2) => Number(row2.id))) + 1;
     const row = {
-      id,
       name,
       kind,
       enabled: input2.enabled ?? true,
       config: input2.config ?? {},
-      mode: String(input2.mode ?? ""),
+      mode: String(input2.mode ?? "realtime"),
       filter: input2.filter ?? {},
       rate_per_min: Number(input2.rate_per_min ?? 0)
     };
-    rows.push(row);
+    if (meta4.notificationChannels) return { id: await meta4.notificationChannels.create(row) };
+    const { tables, rows } = await metaTable2("notify");
+    const id = Math.max(0, ...rows.map((entry) => Number(entry.id))) + 1;
+    rows.push({ id, ...row });
     await meta4.save(tables);
     return { id };
   }
   async function updateChannel(id, input2) {
+    if (meta4.notificationChannels) {
+      if (!await meta4.notificationChannels.update(id, input2)) {
+        throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
+      }
+      return { id: Number(id) };
+    }
     const { tables, rows } = await metaTable2("notify");
     const row = rows.find((item) => String(item.id) === String(id));
     if (!row) throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
@@ -29716,6 +29856,12 @@ function storeOperations(_root) {
     return { id: Number(id) };
   }
   async function deleteChannel(id) {
+    if (meta4.notificationChannels) {
+      if (!await meta4.notificationChannels.remove(id)) {
+        throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
+      }
+      return { ok: true };
+    }
     const { tables, rows } = await metaTable2("notify");
     const index = rows.findIndex((item) => String(item.id) === String(id));
     if (index < 0) throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
@@ -29837,8 +29983,14 @@ function storeOperations(_root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     if (task.archived_at_text) throw Object.assign(new Error("task \u5DF2\u5F52\u6863"), { status: 409 });
     const now2 = /* @__PURE__ */ new Date();
-    const existing = await writer4.list("archives");
-    const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1;
+    if (taskStatusMeta(resolveTaskStatus({
+      status: String(task.status ?? ""),
+      paused: task.paused === true,
+      queued: task.queued === true
+    })).active) {
+      throw Object.assign(new Error("\u8BF7\u5148\u6682\u505C\u6B63\u5728\u8FD0\u884C\u6216\u6392\u961F\u7684\u4EFB\u52A1"), { status: 409 });
+    }
+    const archiveId = await writer4.maxKey("archives") + 1;
     const archive = {
       id: archiveId,
       task_id: Number(task.id),
@@ -29864,40 +30016,44 @@ function storeOperations(_root) {
     const nextTask = { ...task, archived_at_text: archive.archived_at };
     delete nextTask.rev;
     await writer4.commit([
-      { table: "archives", key: String(archiveId), record: archive },
+      { table: "archives", key: String(archiveId), record: archive, expectedRev: 0 },
       { table: "tasks", key: id, record: nextTask, expectedRev: Number(task.rev ?? 0) }
     ]);
     return archive;
   }
   async function listArchives() {
     const rows = await writer4.list("archives");
-    return rows.sort((a, b) => Number(b.id) - Number(a.id));
+    return rows.filter((row) => !row.retired_at).sort((a, b) => Number(b.id) - Number(a.id));
   }
-  async function restoreArchive(archiveId) {
+  async function finishArchive(archiveId, action) {
     const archive = await writer4.readRecord("archives", archiveId);
-    if (!archive) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
-    const task = await writer4.readRecord("tasks", String(archive.task_id));
-    if (task) {
+    if (!archive || archive.retired_at) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
+    const taskId = String(archive.task_id);
+    const task = await writer4.readRecord("tasks", taskId);
+    if (action === "restore" && (!task || task.deleted_at_text || !task.archived_at_text)) {
+      throw Object.assign(new Error("\u5F52\u6863\u4EFB\u52A1\u7F3A\u5931\u6216\u5DF2\u79FB\u9664\uFF0C\u65E0\u6CD5\u6062\u590D"), { status: 409 });
+    }
+    const now2 = /* @__PURE__ */ new Date();
+    const ops = [{
+      table: "archives",
+      key: archiveId,
+      record: { id: archive.id, retired_at: rfc3339(now2) },
+      expectedRev: Number(archive.rev ?? 0)
+    }];
+    if (task?.archived_at_text && !task.deleted_at_text) {
       const next = { ...task, archived_at_text: null };
-      delete next.rev;
-      await writer4.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
+      if (action === "delete") {
+        next.status = "deleted";
+        next.deleted_at_text = rfc3339(now2);
+        next.deleted_unix = Math.floor(now2.getTime() / 1e3);
+      }
+      ops.push({ table: "tasks", key: taskId, record: next, expectedRev: Number(task.rev ?? 0) });
     }
-    await writer4.remove("archives", `${archiveId}`);
+    await writer4.commit(ops);
     return archive;
   }
-  async function deleteArchive(archiveId) {
-    const archive = await writer4.readRecord("archives", archiveId);
-    if (!archive) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
-    const task = await writer4.readRecord("tasks", String(archive.task_id));
-    if (task) {
-      const now2 = /* @__PURE__ */ new Date();
-      const next = { ...task, status: "deleted", deleted_at_text: rfc3339(now2), deleted_unix: Math.floor(now2.getTime() / 1e3) };
-      delete next.rev;
-      await writer4.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
-    }
-    await writer4.remove("archives", `${archiveId}`);
-    return archive;
-  }
+  const restoreArchive = (archiveId) => finishArchive(archiveId, "restore");
+  const deleteArchive = (archiveId) => finishArchive(archiveId, "delete");
   async function addGoal(taskId, input2) {
     const task = await writer4.readRecord("tasks", taskId);
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
@@ -29969,12 +30125,12 @@ function storeOperations(_root) {
       await writer4.commit([{ table: "nodes", key: intentId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
       return { id: Number(intentId), state: "open" };
     }
-    const reason = String(input2.reason ?? "").trim();
-    if (!reason) throw Object.assign(new Error("\u8BF7\u586B\u5199\u5220\u9664\u539F\u56E0"), { status: 409 });
+    const reason2 = String(input2.reason ?? "").trim();
+    if (!reason2) throw Object.assign(new Error("\u8BF7\u586B\u5199\u5220\u9664\u539F\u56E0"), { status: 409 });
     if (!["running", "paused", "open"].includes(node2.state)) throw Object.assign(new Error("\u4EC5\u5F85\u9886/\u8FD0\u884C\u4E2D/\u5DF2\u6682\u505C\u7684\u610F\u56FE\u53EF\u4EE5\u5220\u9664"), { status: 409 });
     const mode = input2.mode === "hard" ? "hard" : "soft";
     if (mode === "soft") {
-      const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, delete_reason: reason };
+      const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, delete_reason: reason2 };
       const next = { ...node2, state: "deleted", payload };
       delete next.rev;
       await writer4.commit([{ table: "nodes", key: intentId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
@@ -30453,6 +30609,7 @@ var init_operations = __esm({
   "../vexnar-store/src/operations.ts"() {
     "use strict";
     init_backend();
+    init_task_status();
     STATUSES = /* @__PURE__ */ new Set(["pending", "in_progress", "confirmed", "resolved", "fixed", "false_positive", "ignored", "duplicate", "risk_accepted"]);
     SEVERITIES = /* @__PURE__ */ new Set(["critical", "high", "medium", "low"]);
   }
@@ -31026,7 +31183,7 @@ function createRunner(options = {}) {
       active++;
       return;
     }
-    await new Promise((resolve5) => queue.push(resolve5));
+    await new Promise((resolve4) => queue.push(resolve4));
     active++;
   }
   function release() {
@@ -31039,7 +31196,7 @@ function createRunner(options = {}) {
     await acquire();
     const started = Date.now();
     try {
-      return await new Promise((resolve5, reject) => {
+      return await new Promise((resolve4, reject) => {
         const child = spawn(command, args, {
           cwd: runOptions.cwd,
           env: { PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin", HOME: process.env.HOME ?? "", ...runOptions.env },
@@ -31076,7 +31233,7 @@ function createRunner(options = {}) {
         });
         child.on("close", (code, signal) => {
           clearTimeout(timer);
-          resolve5({ command, args, code, signal, stdout, stderr, truncated, timed_out: timedOut, duration_ms: Date.now() - started });
+          resolve4({ command, args, code, signal, stdout, stderr, truncated, timed_out: timedOut, duration_ms: Date.now() - started });
         });
       });
     } finally {
@@ -31094,7 +31251,7 @@ var init_exec = __esm({
 });
 
 // ../vexnar-store/src/blobs.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile4, rename as rename4, stat, writeFile as writeFile4 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 function blobStore(root) {
@@ -31103,7 +31260,7 @@ function blobStore(root) {
   return {
     async put(body) {
       const buffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
-      const hash2 = createHash("sha256").update(buffer).digest("hex");
+      const hash2 = createHash2("sha256").update(buffer).digest("hex");
       const file2 = path(hash2);
       await mkdir5(join5(file2, ".."), { recursive: true, mode: 448 });
       const temp = `${file2}.tmp`;
@@ -31151,8 +31308,8 @@ function createScheduler(options = {}) {
   return {
     enqueue(job) {
       if (stopped) return Promise.reject(new Error("scheduler stopped"));
-      return new Promise((resolve5, reject) => {
-        queue.push({ job, resolve: resolve5, reject });
+      return new Promise((resolve4, reject) => {
+        queue.push({ job, resolve: resolve4, reject });
         pump();
       });
     },
@@ -31353,8 +31510,8 @@ function createTaskQueue(options = {}) {
   return {
     enqueue(taskId, job) {
       cancelled.delete(taskId);
-      return new Promise((resolve5, reject) => {
-        entries.push({ taskId, job, resolve: resolve5, reject, state: "queued" });
+      return new Promise((resolve4, reject) => {
+        entries.push({ taskId, job, resolve: resolve4, reject, state: "queued" });
         pump();
       });
     },
@@ -34257,1179 +34414,6 @@ var init_context2 = __esm({
     engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
     scheduler = createScheduler({ concurrency: 4 });
     taskQueue = createTaskQueue({ concurrency: Math.max(Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2, 1) });
-  }
-});
-
-// src/routes/exploration.ts
-import { crc32, deflateRawSync } from "node:zlib";
-function err(c, e) {
-  return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
-}
-function httpError(status, message) {
-  return Object.assign(new Error(message), { status });
-}
-function rfc33392(date5) {
-  const offset = -date5.getTimezoneOffset();
-  const sign = offset >= 0 ? "+" : "-";
-  const pad = (value) => String(Math.floor(Math.abs(value))).padStart(2, "0");
-  return `${date5.toISOString().slice(0, 23)}${sign}${pad(offset / 60)}:${pad(offset % 60)}`.replace("Z", "");
-}
-function stamp(date5) {
-  const pad = (value) => String(value).padStart(2, "0");
-  return `${date5.getFullYear()}${pad(date5.getMonth() + 1)}${pad(date5.getDate())}-${pad(date5.getHours())}${pad(date5.getMinutes())}${pad(date5.getSeconds())}`;
-}
-function runeCount(value) {
-  return [...value].length;
-}
-function paginationParam(raw2, fallback, upperBound) {
-  let value = Math.floor(Number(raw2 ?? fallback));
-  if (!Number.isFinite(value) || value <= 0) value = fallback;
-  if (upperBound > 0 && value > upperBound) value = upperBound;
-  return value;
-}
-function normFilter(value) {
-  const text4 = String(value ?? "").trim();
-  return text4 === "all" ? "" : text4;
-}
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-function sliceRunes(text4, max) {
-  const chars = [...text4];
-  return chars.length > max ? chars.slice(0, max).join("") : text4;
-}
-async function resolveTask(raw2) {
-  const key = String(raw2 ?? "").trim();
-  if (!key) return null;
-  const tasks = await operations.writer.list(TASKS);
-  const live = tasks.filter((row) => !row.deleted_at_text && !row.archived_at_text);
-  const byId = live.find((row) => String(row.id) === key);
-  if (byId) return byId;
-  return live.find((row) => String(row.name ?? "") === key) ?? null;
-}
-function nodeDto(row) {
-  return {
-    id: String(row.id),
-    type: String(row.kind),
-    payload: JSON.stringify(parseJson2(row.payload) ?? {}),
-    priority: Number(row.priority ?? 0),
-    state: String(row.state ?? ""),
-    origin: String(row.origin ?? ""),
-    ts: String(row.created_at ?? "")
-  };
-}
-function edgeDto(row) {
-  return { src: String(row.src), dst: String(row.dst), rel: String(row.rel) };
-}
-function compareEdges(a, b) {
-  const numeric = (value) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
-  };
-  return numeric(a.src) - numeric(b.src) || numeric(a.dst) - numeric(b.dst) || String(a.rel ?? "").localeCompare(String(b.rel ?? ""));
-}
-function activityDto(row) {
-  const out = {
-    seq: Number(row.id),
-    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
-    ...row.worker ? { worker: row.worker } : {},
-    ts: String(row.created_at ?? "").replace(/\.\d+/, ""),
-    ...row.kind ? { kind: row.kind } : {},
-    ...row.tool ? { tool: row.tool } : {},
-    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
-    is_error: Boolean(row.is_error),
-    summary: row.summary ?? "",
-    metadata: row.metadata ?? {},
-    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
-    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
-    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
-    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
-    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
-  };
-  return out;
-}
-function findingDto(row) {
-  return {
-    traffic_count: 0,
-    evidence_version: Number(row.evidence_version ?? 0),
-    report_evidence_version: Number(row.report_evidence_version ?? 0),
-    report_stale: Boolean(row.report) && Number(row.evidence_version ?? 0) !== Number(row.report_evidence_version ?? 0),
-    id: String(row.id),
-    finding_id: String(row.id),
-    vulnclass: row.vulnclass,
-    ...row.name ? { name: row.name } : {},
-    severity: row.severity,
-    status: row.status,
-    summary: row.summary,
-    evidence: row.evidence,
-    ...row.task_id == null ? {} : { task_id: String(row.task_id) },
-    ts: row.created_at_text
-  };
-}
-function filterFromQuery(q) {
-  return {
-    severity: normFilter(q("severity")).toLowerCase(),
-    status: normFilter(q("status")).toLowerCase(),
-    vulnclass: normFilter(q("vulnclass")),
-    taskId: normFilter(q("task_id")),
-    query: String(q("q") ?? "").trim(),
-    sort: String(q("sort") ?? "").trim(),
-    assetScope: String(q("asset_scope") ?? "").trim()
-  };
-}
-async function loadFindings() {
-  const rows = await operations.writer.list(FINDINGS);
-  return [...rows].sort((a, b) => String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? "")) || Number(b.id) - Number(a.id));
-}
-function matchesFilter(row, f) {
-  if (f.severity && String(row.severity ?? "").toLowerCase() !== f.severity) return false;
-  if (f.status && String(row.status ?? "").toLowerCase() !== f.status) return false;
-  if (f.vulnclass && String(row.vulnclass ?? "") !== f.vulnclass) return false;
-  if (f.taskId && String(row.task_id ?? "") !== f.taskId) return false;
-  if (f.query) {
-    const needle = f.query.toLowerCase();
-    const haystack = [row.name, row.vulnclass, row.summary, row.evidence, row.report];
-    if (!haystack.some((value) => String(value ?? "").toLowerCase().includes(needle))) return false;
-  }
-  return true;
-}
-function scopeFiltered(rows, f, tree) {
-  if (!f.assetScope) return rows;
-  const known = /* @__PURE__ */ new Set();
-  for (const node2 of tree.nodes) if (node2.asset_id) known.add(Number(node2.asset_id));
-  const assetIDsOf = (row) => asArray(row.asset_ids).map(Number).filter((id) => id > 0);
-  if (f.assetScope === UNASSIGNED_ASSET) {
-    return rows.filter((row) => !assetIDsOf(row).some((id) => known.has(id)));
-  }
-  if (!tree.byKey.has(f.assetScope)) return [];
-  const children = /* @__PURE__ */ new Map();
-  for (const node2 of tree.nodes) {
-    const list = children.get(node2.parent ?? "") ?? [];
-    list.push(node2);
-    children.set(node2.parent ?? "", list);
-  }
-  const seen = /* @__PURE__ */ new Set([f.assetScope]);
-  const ids = /* @__PURE__ */ new Set();
-  const queue = [f.assetScope];
-  while (queue.length) {
-    const key = queue.shift();
-    const node2 = tree.byKey.get(key);
-    if (node2?.asset_id) ids.add(Number(node2.asset_id));
-    for (const child of children.get(key) ?? []) {
-      if (seen.has(child.key)) continue;
-      seen.add(child.key);
-      queue.push(child.key);
-    }
-  }
-  if (!ids.size) return [];
-  return rows.filter((row) => assetIDsOf(row).some((id) => ids.has(id)));
-}
-function urlHostPort(raw2) {
-  if (!raw2) return { host: "", port: 0 };
-  try {
-    const url2 = new URL(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw2) ? raw2 : `http://${raw2}`);
-    return { host: url2.hostname, port: Number(url2.port || 0) };
-  } catch {
-    return { host: "", port: 0 };
-  }
-}
-function hostPortOf(row) {
-  let host = String(row.domain ?? "");
-  let port = Number(row.port ?? 0);
-  if (!host && row.url) {
-    const parsed = urlHostPort(String(row.url));
-    host = parsed.host;
-    if (!port) port = parsed.port;
-  }
-  if (!host) host = String(row.ip ?? "");
-  return { host, port };
-}
-function assetLabel(row) {
-  const kind = String(row.type ?? "");
-  const url2 = String(row.url ?? "");
-  const domain2 = String(row.domain ?? "");
-  const ip = String(row.ip ?? "");
-  const appName = String(row.app_name ?? "");
-  const rootDomain = String(row.root_domain ?? "");
-  if (kind === "service" && !url2) {
-    const { host, port } = hostPortOf(row);
-    if (host && port > 0) return `${host}:${port}`;
-  }
-  if ((kind === "endpoint" || kind === "service") && url2) return url2;
-  if (kind === "app" && appName) return appName;
-  for (const value of [url2, domain2, ip, appName, rootDomain]) if (value) return value;
-  return assetKey(Number(row.id));
-}
-function countFinding(node2, hit) {
-  if (!node2) return;
-  node2.total += 1;
-  if (hit.severity === "critical") node2.critical += 1;
-  else if (hit.severity === "high") node2.high += 1;
-  else if (hit.severity === "medium") node2.medium += 1;
-  else if (hit.severity === "low") node2.low += 1;
-  if (!node2.last_found_at || hit.ts > node2.last_found_at) node2.last_found_at = hit.ts;
-}
-async function buildFindingAssetTree(rows, maxNodes = ASSET_TREE_MAX_NODES) {
-  const hits = rows.map((row) => ({
-    severity: String(row.severity ?? ""),
-    ts: String(row.created_at_text ?? ""),
-    assetIDs: asArray(row.asset_ids).map(Number).filter((id) => id > 0)
-  }));
-  const wanted = /* @__PURE__ */ new Set();
-  for (const hit of hits) for (const id of hit.assetIDs) wanted.add(id);
-  const assets = await operations.writer.list(ASSETS);
-  const all = new Map(assets.map((row) => [Number(row.id), row]));
-  const byID = /* @__PURE__ */ new Map();
-  for (const id of wanted) {
-    const row = all.get(id);
-    if (row) byID.set(id, row);
-  }
-  const rootByDomain = /* @__PURE__ */ new Map();
-  const subByDomain = /* @__PURE__ */ new Map();
-  const ipByAddr = /* @__PURE__ */ new Map();
-  const svcByHost = /* @__PURE__ */ new Map();
-  const svcByHostPort = /* @__PURE__ */ new Map();
-  for (const row of assets) {
-    const id = Number(row.id);
-    const kind = String(row.type ?? "");
-    const domain2 = String(row.domain ?? "");
-    const ip = String(row.ip ?? "");
-    if (kind === "root_domain" && domain2) rootByDomain.set(domain2, id);
-    else if (kind === "subdomain" && domain2) subByDomain.set(domain2, id);
-    else if (kind === "ip" && ip) ipByAddr.set(ip, id);
-    else if (kind === "service") {
-      const { host, port } = hostPortOf(row);
-      if (host) {
-        if (!svcByHost.has(host)) svcByHost.set(host, id);
-        svcByHostPort.set(`${host}|${port}`, id);
-      }
-    }
-  }
-  const parentKeyCache = /* @__PURE__ */ new Map();
-  const parentKeyOf = (row) => {
-    const id = Number(row.id);
-    const cached3 = parentKeyCache.get(id);
-    if (cached3 !== void 0) return cached3;
-    const kind = String(row.type ?? "");
-    const domain2 = String(row.domain ?? "");
-    const ip = String(row.ip ?? "");
-    const rootDomain = String(row.root_domain ?? "");
-    const { host, port } = hostPortOf(row);
-    const pick2 = (...ids) => {
-      for (const candidate of ids) if (candidate && candidate !== id) return assetKey(candidate);
-      return "";
-    };
-    let parent = "";
-    if (kind === "subdomain") {
-      parent = pick2(rootByDomain.get(rootDomain));
-    } else if (kind === "service") {
-      parent = pick2(
-        subByDomain.get(domain2),
-        subByDomain.get(host),
-        ipByAddr.get(ip),
-        ipByAddr.get(host),
-        rootByDomain.get(rootDomain),
-        rootByDomain.get(host)
-      );
-    } else if (kind === "endpoint") {
-      parent = pick2(
-        svcByHostPort.get(`${host}|${port}`),
-        svcByHost.get(host),
-        subByDomain.get(host),
-        subByDomain.get(domain2),
-        ipByAddr.get(host),
-        ipByAddr.get(ip),
-        rootByDomain.get(rootDomain),
-        rootByDomain.get(host)
-      );
-    }
-    parentKeyCache.set(id, parent);
-    return parent;
-  };
-  for (let round = 0; round < 4; round++) {
-    let added = 0;
-    for (const row of [...byID.values()]) {
-      const parentKey = parentKeyOf(row);
-      if (!parentKey.startsWith("a:")) continue;
-      const parentId = Number(parentKey.slice(2));
-      if (byID.has(parentId)) continue;
-      const parentRow = all.get(parentId);
-      if (!parentRow) continue;
-      byID.set(parentId, parentRow);
-      added += 1;
-    }
-    if (!added) break;
-  }
-  const nodes = /* @__PURE__ */ new Map();
-  for (const row of byID.values()) {
-    const key = assetKey(Number(row.id));
-    const node2 = {
-      key,
-      kind: String(row.type ?? ""),
-      label: assetLabel(row),
-      asset_id: Number(row.id),
-      self: 0,
-      total: 0,
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-      last_found_at: ""
-    };
-    const companyId = Number(row.company_id ?? 0);
-    if (companyId > 0) node2.company_id = companyId;
-    nodes.set(key, node2);
-  }
-  const parentOf = /* @__PURE__ */ new Map();
-  for (const row of byID.values()) {
-    const key = assetKey(Number(row.id));
-    const parentKey = parentKeyOf(row);
-    if (!parentKey || parentKey === key || !nodes.has(parentKey)) continue;
-    parentOf.set(key, parentKey);
-    nodes.get(key).parent = parentKey;
-  }
-  const topLevel = [...nodes.values()].filter(
-    (node2) => !node2.parent && node2.company_id && ["root_domain", "ip", "app"].includes(node2.kind)
-  );
-  if (topLevel.length) {
-    const companies = await store.companies.list();
-    const names = new Map(companies.map((row) => [Number(row.id), String(row.name ?? "")]));
-    for (const node2 of topLevel) {
-      const companyId = Number(node2.company_id);
-      const key = companyKey(companyId);
-      if (!nodes.has(key)) {
-        nodes.set(key, {
-          key,
-          kind: "company",
-          label: names.get(companyId) || `\u4F01\u4E1A #${companyId}`,
-          company_id: companyId,
-          self: 0,
-          total: 0,
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0,
-          last_found_at: ""
-        });
-      }
-      node2.parent = key;
-      parentOf.set(node2.key, key);
-    }
-  }
-  const unassigned = {
-    key: UNASSIGNED_ASSET,
-    kind: "none",
-    label: "\u672A\u5173\u8054\u8D44\u4EA7",
-    self: 0,
-    total: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    last_found_at: ""
-  };
-  for (const hit of hits) {
-    const direct = [];
-    const touched = /* @__PURE__ */ new Set();
-    for (const id of hit.assetIDs) {
-      const node2 = nodes.get(assetKey(id));
-      if (!node2) continue;
-      direct.push(node2);
-      for (let key = node2.key; key; key = parentOf.get(key)) touched.add(key);
-    }
-    if (!direct.length) {
-      countFinding(unassigned, hit);
-      unassigned.self += 1;
-      continue;
-    }
-    for (const node2 of direct) node2.self += 1;
-    for (const key of touched) countFinding(nodes.get(key), hit);
-  }
-  const out = [...nodes.values()].filter((node2) => node2.total > 0);
-  if (unassigned.total > 0) out.push(unassigned);
-  out.sort((a, b) => {
-    if (a.kind === "none" !== (b.kind === "none")) return b.kind === "none" ? -1 : 1;
-    if (a.total !== b.total) return b.total - a.total;
-    return a.label.localeCompare(b.label);
-  });
-  const tree = {
-    nodes: out,
-    byKey: /* @__PURE__ */ new Map(),
-    finding_total: hits.length,
-    truncated: false,
-    dropped_kinds: []
-  };
-  for (const node2 of tree.nodes) tree.byKey.set(node2.key, node2);
-  if (maxNodes > 0 && tree.nodes.length > maxNodes) {
-    for (const kind of ["endpoint", "service"]) {
-      tree.nodes = tree.nodes.filter((node2) => node2.kind !== kind);
-      tree.truncated = true;
-      tree.dropped_kinds.push(kind);
-      if (tree.nodes.length <= maxNodes) break;
-    }
-  }
-  return tree;
-}
-function exportOrder(rows) {
-  return [...rows].sort((a, b) => {
-    const ra = EXPORT_SEVERITY_RANK[String(a.severity ?? "")] ?? 4;
-    const rb = EXPORT_SEVERITY_RANK[String(b.severity ?? "")] ?? 4;
-    if (ra !== rb) return ra - rb;
-    return String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? ""));
-  });
-}
-function findingTitle(row) {
-  return String(row.name ?? "").trim() || String(row.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B";
-}
-function findingsMarkdown(rows, taskNames, generatedAt) {
-  const items = exportOrder(rows);
-  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
-  for (const row of items) if (counts[String(row.severity ?? "")] != null) counts[String(row.severity)] += 1;
-  const pad = (value) => String(value).padStart(2, "0");
-  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
-  const lines = ["# \u6F0F\u6D1E\u53D1\u73B0\u6C47\u603B\u62A5\u544A", "", `- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, `- **\u53D1\u73B0\u603B\u6570**\uFF1A${items.length} \u4E2A`, "", "## \u6458\u8981", "", "| \u4E25\u91CD\u7B49\u7EA7 | \u6570\u91CF |", "| --- | --- |"];
-  for (const [key, label] of [["critical", "\u4E25\u91CD"], ["high", "\u9AD8\u5371"], ["medium", "\u4E2D\u5371"], ["low", "\u4F4E\u5371"]]) {
-    lines.push(`| ${label} | ${counts[key]} |`);
-  }
-  lines.push("");
-  if (!items.length) {
-    lines.push("_\u65E0\u5339\u914D\u7684\u6F0F\u6D1E\u3002_", "");
-    return lines.join("\n");
-  }
-  lines.push("## \u6F0F\u6D1E\u660E\u7EC6", "");
-  items.forEach((row, index) => {
-    lines.push(`### ${index + 1}. [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, "");
-    if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
-    lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
-    const description = taskNames.get(String(row.task_id ?? "")) ?? "";
-    if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
-    lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`, "");
-    if (String(row.summary ?? "").trim()) lines.push(`${String(row.summary).trim()}`, "");
-    if (String(row.evidence ?? "").trim()) lines.push("**\u8BC1\u636E\uFF1A**", "", "```", String(row.evidence).trim(), "```", "");
-    if (String(row.report ?? "").trim()) lines.push("**\u8BE6\u7EC6\u62A5\u544A\uFF1A**", "", String(row.report).trim(), "");
-    lines.push("---", "");
-  });
-  return lines.join("\n");
-}
-function singleFindingMarkdown(row, taskNames, generatedAt) {
-  const pad = (value) => String(value).padStart(2, "0");
-  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
-  const lines = [`# [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, ""];
-  if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
-  lines.push(`- **\u4E25\u91CD\u7B49\u7EA7**\uFF1A${String(row.severity || "info")}`);
-  lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
-  const description = taskNames.get(String(row.task_id ?? "")) ?? "";
-  if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
-  lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`);
-  lines.push(`- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, "");
-  if (String(row.summary ?? "").trim()) lines.push("## \u6982\u8FF0", "", String(row.summary).trim(), "");
-  if (String(row.evidence ?? "").trim()) lines.push("## \u8BC1\u636E", "", "```", String(row.evidence).trim(), "```", "");
-  if (String(row.report ?? "").trim()) lines.push("## \u8BE6\u7EC6\u62A5\u544A", "", String(row.report).trim(), "");
-  return lines.join("\n");
-}
-function csvCell(value) {
-  const text4 = String(value ?? "");
-  return /[",\r\n]/.test(text4) ? `"${text4.replace(/"/g, '""')}"` : text4;
-}
-function findingsCsv(rows, taskNames) {
-  const items = exportOrder(rows);
-  const lines = ["ID,\u540D\u79F0,\u7C7B\u522B,\u4E25\u91CD\u7B49\u7EA7,\u72B6\u6001,\u6240\u5C5E\u4EFB\u52A1,\u53D1\u73B0\u65F6\u95F4,\u6982\u8FF0,\u6D41\u91CF\u8BC1\u636E\u6570\u91CF,\u6D41\u91CF\u8BC1\u636EID"];
-  for (const row of items) {
-    lines.push([
-      row.id,
-      findingTitle(row),
-      row.vulnclass,
-      row.severity || "info",
-      row.status || "pending",
-      taskNames.get(String(row.task_id ?? "")) ?? "",
-      row.created_at_text,
-      String(row.summary ?? "").trim(),
-      0,
-      ""
-    ].map(csvCell).join(","));
-  }
-  return `\uFEFF${lines.join("\r\n")}\r
-`;
-}
-function buildZip(entries) {
-  const chunks = [];
-  const central = [];
-  let offset = 0;
-  for (const entry of entries) {
-    const nameBuf = Buffer.from(entry.name, "utf8");
-    const crc = crc32(entry.data) >>> 0;
-    const compressed = deflateRawSync(entry.data);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(67324752, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(2048, 6);
-    local.writeUInt16LE(8, 8);
-    local.writeUInt16LE(0, 10);
-    local.writeUInt16LE(33, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(compressed.length, 18);
-    local.writeUInt32LE(entry.data.length, 22);
-    local.writeUInt16LE(nameBuf.length, 26);
-    local.writeUInt16LE(0, 28);
-    chunks.push(local, nameBuf, compressed);
-    central.push({ name: entry.name, crc, size: entry.data.length, compressed, offset });
-    offset += 30 + nameBuf.length + compressed.length;
-  }
-  const centralStart = offset;
-  for (const item of central) {
-    const nameBuf = Buffer.from(item.name, "utf8");
-    const header = Buffer.alloc(46);
-    header.writeUInt32LE(33639248, 0);
-    header.writeUInt16LE(20, 4);
-    header.writeUInt16LE(20, 6);
-    header.writeUInt16LE(2048, 8);
-    header.writeUInt16LE(8, 10);
-    header.writeUInt16LE(0, 12);
-    header.writeUInt16LE(33, 14);
-    header.writeUInt32LE(item.crc, 16);
-    header.writeUInt32LE(item.compressed.length, 20);
-    header.writeUInt32LE(item.size, 24);
-    header.writeUInt16LE(nameBuf.length, 28);
-    header.writeUInt16LE(0, 30);
-    header.writeUInt16LE(0, 32);
-    header.writeUInt16LE(0, 34);
-    header.writeUInt16LE(0, 36);
-    header.writeUInt32LE(0, 38);
-    header.writeUInt32LE(item.offset, 42);
-    chunks.push(header, nameBuf);
-    offset += 46 + nameBuf.length;
-  }
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(101010256, 0);
-  end.writeUInt16LE(0, 4);
-  end.writeUInt16LE(0, 6);
-  end.writeUInt16LE(central.length, 8);
-  end.writeUInt16LE(central.length, 10);
-  end.writeUInt32LE(offset - centralStart, 12);
-  end.writeUInt32LE(centralStart, 16);
-  end.writeUInt16LE(0, 20);
-  return Buffer.concat([...chunks, end]);
-}
-async function taskNameMap() {
-  const tasks = await operations.writer.list(TASKS);
-  return new Map(tasks.map((row) => [String(row.id), String(row.description || row.name || "")]));
-}
-async function listMainSessions(explorationId) {
-  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(b.seq) - Number(a.seq));
-  const sessions = rows.map((row) => ({ seq: Number(row.seq), created_at: String(row.created_at ?? "") }));
-  sessions.push({ seq: 0, created_at: "0001-01-01T00:00:00Z" });
-  return sessions;
-}
-async function createMainSession(explorationId) {
-  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId);
-  const seq = rows.reduce((max, row) => Math.max(max, Number(row.seq ?? 0)), 0) + 1;
-  const id = await operations.writer.maxKey(MAIN_SESSIONS) + 1;
-  const record2 = { id: String(id), exploration_id: explorationId, seq, created_at: rfc33392(/* @__PURE__ */ new Date()) };
-  const [written] = await operations.writer.commit([{ table: MAIN_SESSIONS, key: String(id), record: record2 }]);
-  return written;
-}
-function retestDto(row) {
-  return {
-    id: Number(row.id),
-    finding_id: Number(row.finding_id),
-    conversation_id: row.conversation_id == null ? null : Number(row.conversation_id),
-    status: String(row.status ?? ""),
-    verdict: String(row.verdict ?? ""),
-    notes: String(row.notes ?? ""),
-    purpose: String(row.purpose ?? "retest"),
-    summary: String(row.summary ?? ""),
-    evidence: String(row.evidence ?? ""),
-    error: String(row.error ?? ""),
-    created_at: String(row.created_at ?? ""),
-    started_at: row.started_at ?? null,
-    finished_at: row.finished_at ?? null
-  };
-}
-async function retestAgentReady() {
-  const agents = await meta3.table("agents");
-  const agent = agents.find((row) => row.key === FINDING_RETEST_AGENT_KEY);
-  if (!agent || !agent.enabled) {
-    throw httpError(409, "\u6F0F\u6D1E\u590D\u6D4B Agent \u4E0D\u5B58\u5728\u6216\u672A\u542F\u7528\uFF1A\u8BF7\u786E\u8BA4 dsh \u8BBE\u7F6E \u2192 Agent \u9884\u8BBE \u4E2D\u7684 retester \u89D2\u8272\uFF0C\u4EE5\u53CA\u5F15\u64CE\u4FA7\u8BE5 agent \u5DF2\u542F\u7528");
-  }
-  const tools = await meta3.table("tools");
-  for (const key of FINDING_RETEST_TOOLS) {
-    const tool = tools.find((row) => row.key === key);
-    const bound = asArray(tool?.agents).includes(FINDING_RETEST_AGENT_KEY);
-    if (!tool || !tool.enabled || !bound) throw httpError(409, `\u8BF7\u4E3A\u590D\u6D4B Agent \u542F\u7528\u5E76\u7ED1\u5B9A\u5DE5\u5177\uFF1A${key}`);
-  }
-}
-async function enqueueFindingRetest(findingId, notes) {
-  const finding = await operations.writer.readRecord(FINDINGS, String(findingId));
-  if (!finding) throw httpError(404, "finding not found");
-  await retestAgentReady();
-  const rows = await operations.writer.list(FINDING_RETESTS);
-  const existing = rows.filter((row) => Number(row.finding_id) === findingId && RETEST_ACTIVE_STATUSES.includes(String(row.status))).sort((a, b) => Number(a.id) - Number(b.id))[0];
-  if (existing) return { retest: retestDto(existing), created: false };
-  const title = sliceRunes(String(finding.name ?? "").trim() || String(finding.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B", 100);
-  const convId = await operations.writer.maxKey(CONVERSATIONS) + 1;
-  const retestId = await operations.writer.maxKey(FINDING_RETESTS) + 1;
-  const activityId = await operations.writer.maxKey(CONVERSATION_ACTIVITIES) + 1;
-  const now2 = (/* @__PURE__ */ new Date()).toISOString();
-  const message = notes ? `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002
-
-\u672C\u6B21\u590D\u6D4B\u8865\u5145\u8BF4\u660E\uFF1A
-${notes}` : `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002`;
-  const conversation = {
-    id: String(convId),
-    agent_key: FINDING_RETEST_AGENT_KEY,
-    title: `\u590D\u6D4B #${findingId} \xB7 ${title}`,
-    llm_profile_id: null,
-    project_id: null,
-    workspace: "",
-    pinned_at: null,
-    created_at: now2,
-    updated_at: now2
-  };
-  const retest = {
-    id: String(retestId),
-    finding_id: Number(findingId),
-    conversation_id: Number(convId),
-    status: "pending",
-    verdict: "",
-    notes,
-    purpose: "retest",
-    summary: "",
-    evidence: "",
-    error: "",
-    created_at: rfc33392(new Date(now2)),
-    started_at: null,
-    finished_at: null
-  };
-  const [written] = await operations.writer.commit([
-    { table: CONVERSATIONS, key: String(convId), record: conversation },
-    {
-      table: CONVERSATION_ACTIVITIES,
-      key: String(activityId),
-      record: {
-        id: String(activityId),
-        conversation_id: String(convId),
-        worker: FINDING_RETEST_AGENT_KEY,
-        kind: "user",
-        tool: "",
-        tool_use_id: "",
-        is_error: false,
-        summary: `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}`,
-        detail: message,
-        input_tokens: null,
-        output_tokens: null,
-        cache_read_tokens: null,
-        cache_write_tokens: null,
-        outcome: "",
-        created_at: now2
-      }
-    },
-    { table: FINDING_RETESTS, key: String(retestId), record: retest }
-  ]);
-  void written;
-  store.invalidate?.(["conversations", "conversation_activities"]);
-  return { retest: retestDto(retest), created: true };
-}
-function register(api2) {
-  api2.get("/api/exploration/graph", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json({ nodes: [], edges: [] });
-      const explorationId = Number(task.exploration_id);
-      const nodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(a.id) - Number(b.id)).slice(0, GRAPH_NODE_LIMIT);
-      const edges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId).sort(compareEdges).slice(0, GRAPH_EDGE_LIMIT);
-      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/frontier", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json([]);
-      const raw2 = Number(c.req.query("limit") ?? 0);
-      const limit = Number.isFinite(raw2) && raw2 > 0 ? Math.floor(raw2) : 100;
-      const explorationId = Number(task.exploration_id);
-      const rows = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId && row.kind === "intent" && row.state === "open").sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0) || Number(a.id) - Number(b.id)).slice(0, limit);
-      return c.json(rows.map(nodeDto));
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/main-sessions", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json({ error: "task not found" }, 404);
-      const sessions = await listMainSessions(Number(task.exploration_id));
-      return c.json({ sessions, current: sessions.length ? sessions[0].seq : 0 });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.post("/api/exploration/main-session/new", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json({ error: "task not found" }, 404);
-      const record2 = await createMainSession(Number(task.exploration_id));
-      return c.json({ seq: Number(record2.seq), created_at: String(record2.created_at), current: Number(record2.seq) });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/groups", async (c) => {
-    try {
-      const page = paginationParam(c.req.query("page"), 1, 0);
-      const limit = paginationParam(c.req.query("limit"), 10, 100);
-      const filter = filterFromQuery((name) => c.req.query(name));
-      let rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
-      if (filter.assetScope) {
-        const tree = await buildFindingAssetTree(rows);
-        rows = scopeFiltered(rows, filter, tree);
-      }
-      const tasks = await operations.writer.list(TASKS);
-      const byId = new Map(tasks.map((row) => [String(row.id), row]));
-      const buckets = /* @__PURE__ */ new Map();
-      for (const row of rows) {
-        const key = row.task_id == null ? "" : String(row.task_id);
-        const bucket = buckets.get(key) ?? { row: key ? byId.get(key) ?? null : null, items: [] };
-        bucket.items.push(row);
-        buckets.set(key, bucket);
-      }
-      const groups = [...buckets.entries()].map(([key, bucket]) => {
-        const task = bucket.row;
-        let status = String(task?.status ?? "");
-        if (!["done", "failed", "timeout"].includes(status)) {
-          if (task?.queued) status = "queued";
-          else if (task?.paused) status = "paused";
-        }
-        const severity = { critical: 0, high: 0, medium: 0, low: 0 };
-        let last = "";
-        for (const row of bucket.items) {
-          const value = String(row.severity ?? "");
-          if (severity[value] != null) severity[value] += 1;
-          const ts = String(row.created_at_text ?? "");
-          if (ts > last) last = ts;
-        }
-        return {
-          task_id: key ? Number(key) : null,
-          task_name: String(task?.name ?? ""),
-          task_description: String(task?.description ?? ""),
-          task_status: status,
-          count: bucket.items.length,
-          critical: severity.critical,
-          high: severity.high,
-          medium: severity.medium,
-          low: severity.low,
-          last_found_at: last
-        };
-      });
-      const rank = (group) => Math.max(0, ...["critical", "high", "medium", "low"].map((key, index) => group[key] > 0 ? 4 - index : -1));
-      groups.sort((a, b) => {
-        if (filter.sort === "severity") {
-          const diff = rank(b) - rank(a);
-          if (diff) return diff;
-        }
-        const byTime = String(b.last_found_at).localeCompare(String(a.last_found_at));
-        if (byTime) return byTime;
-        return (b.task_id ?? -1) - (a.task_id ?? -1);
-      });
-      const items = groups.slice((page - 1) * limit, (page - 1) * limit + limit);
-      return c.json({ items, total: groups.length, finding_total: rows.length, page, page_size: limit });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/export", async (c) => {
-    try {
-      const scope = String(c.req.query("scope") ?? "").trim();
-      const format = String(c.req.query("format") ?? "").trim();
-      const filter = filterFromQuery((name) => c.req.query(name));
-      let rows;
-      if (scope === "selected") {
-        const ids = [];
-        for (const part of String(c.req.query("ids") ?? "").split(",")) {
-          const text4 = part.trim();
-          if (!text4) continue;
-          const id = Number(text4);
-          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text4}` }, 400);
-          ids.push(id);
-        }
-        if (!ids.length) return c.json({ error: "no findings selected" }, 400);
-        const all = await loadFindings();
-        const order2 = new Map(ids.map((id, index) => [String(id), index]));
-        rows = all.filter((row) => order2.has(String(row.id))).sort((a, b) => (order2.get(String(a.id)) ?? 0) - (order2.get(String(b.id)) ?? 0));
-      } else if (scope === "all") {
-        rows = await loadFindings();
-      } else if (scope === "filtered" || scope === "") {
-        rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
-        if (filter.assetScope) {
-          const tree = await buildFindingAssetTree(rows);
-          rows = scopeFiltered(rows, filter, tree);
-        }
-      } else {
-        return c.json({ error: `bad scope: ${scope}` }, 400);
-      }
-      const now2 = /* @__PURE__ */ new Date();
-      const names = await taskNameMap();
-      const base = `findings-${stamp(now2)}`;
-      const download2 = (contentType, filename, body) => {
-        const payload = typeof body === "string" ? Buffer.from(body, "utf8") : body;
-        return new Response(new Uint8Array(payload), {
-          headers: {
-            "content-type": contentType,
-            "content-disposition": `attachment; filename="${filename}"`,
-            "content-length": String(payload.length)
-          }
-        });
-      };
-      switch (format) {
-        case "md-single":
-          return download2("text/markdown; charset=utf-8", `${base}.md`, findingsMarkdown(rows, names, now2));
-        case "csv":
-          return download2("text/csv; charset=utf-8", `${base}.csv`, findingsCsv(rows, names));
-        case "json":
-          return download2("application/json; charset=utf-8", `${base}.json`, `${JSON.stringify(rows.map(findingDto), null, 2)}
-`);
-        case "md-zip": {
-          const entries = [
-            { name: "findings.md", data: Buffer.from(findingsMarkdown(rows, names, now2), "utf8") },
-            { name: "manifest.json", data: Buffer.from(`${JSON.stringify({ generated_at: now2.toISOString(), scope: scope || "filtered", format, count: rows.length, findings: rows.map(findingDto) }, null, 2)}
-`, "utf8") }
-          ];
-          for (const row of exportOrder(rows)) {
-            entries.push({ name: `findings/finding-${row.id}.md`, data: Buffer.from(singleFindingMarkdown(row, names, now2), "utf8") });
-          }
-          const zip = buildZip(entries);
-          return new Response(new Uint8Array(zip), {
-            headers: {
-              "content-type": "application/zip",
-              "content-disposition": `attachment; filename="${base}.zip"`,
-              "content-length": String(zip.length)
-            }
-          });
-        }
-        default:
-          return c.json({ error: `bad format: ${format}` }, 400);
-      }
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/asset-tree", async (c) => {
-    try {
-      const filter = filterFromQuery((name) => c.req.query(name));
-      const rows = (await loadFindings()).filter((row) => matchesFilter(row, { ...filter, assetScope: "" }));
-      const tree = await buildFindingAssetTree(rows);
-      return c.json({
-        nodes: tree.nodes,
-        finding_total: tree.finding_total,
-        truncated: tree.truncated,
-        ...tree.dropped_kinds.length ? { dropped_kinds: tree.dropped_kinds } : {}
-      });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/retests/active", async (c) => {
-    try {
-      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => RETEST_ACTIVE_STATUSES.includes(String(row.status)) && row.conversation_id != null).sort((a, b) => Number(a.id) - Number(b.id));
-      return c.json({
-        retests: rows.map((row) => ({
-          id: Number(row.id),
-          finding_id: String(row.finding_id),
-          conversation_id: Number(row.conversation_id),
-          status: String(row.status)
-        }))
-      });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/:id/lineage", async (c) => {
-    try {
-      const id = Number(c.req.param("id"));
-      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
-      const finding = await operations.writer.readRecord(FINDINGS, String(id));
-      if (!finding) return c.json({ error: "finding not found" }, 404);
-      const empty = { nodes: [], edges: [] };
-      if (finding.node_id == null || finding.task_id == null) return c.json(empty);
-      const task = await resolveTask(String(finding.task_id));
-      if (!task) return c.json(empty);
-      const explorationId = Number(task.exploration_id);
-      const allNodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId);
-      const allEdges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId);
-      const nodeId = String(finding.node_id);
-      const ancestors = /* @__PURE__ */ new Set();
-      const queue = [nodeId];
-      while (queue.length) {
-        const current = queue.shift();
-        if (ancestors.has(current)) continue;
-        ancestors.add(current);
-        for (const edge of allEdges) {
-          if (String(edge.dst) === current && !ancestors.has(String(edge.src))) queue.push(String(edge.src));
-        }
-      }
-      const nodes = allNodes.filter((row) => ancestors.has(String(row.id))).sort((a, b) => Number(a.id) - Number(b.id));
-      if (!nodes.length) return c.json(empty);
-      const edges = allEdges.filter((row) => ancestors.has(String(row.src)) && ancestors.has(String(row.dst))).sort(compareEdges);
-      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.post("/api/exploration/findings/:id/deepen", async (c) => {
-    try {
-      const id = Number(c.req.param("id"));
-      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
-      const body = await c.req.json().catch(() => ({}));
-      const description = String(body?.description ?? "").trim();
-      if (!description) return c.json({ error: "description is required" }, 400);
-      if (runeCount(description) > MAX_FOLLOW_UP_RUNES) {
-        return c.json({ error: `description must be at most ${MAX_FOLLOW_UP_RUNES} characters` }, 400);
-      }
-      const finding = await operations.writer.readRecord(FINDINGS, String(id));
-      if (!finding) return c.json({ error: "finding not found" }, 404);
-      if (finding.task_id == null || finding.node_id == null) {
-        return c.json({ error: "finding origin task or node is no longer available" }, 409);
-      }
-      const task = await operations.writer.readRecord(TASKS, String(finding.task_id));
-      if (!task || task.deleted_at_text) return c.json({ error: "finding origin task is no longer available" }, 409);
-      const findingNode = await operations.writer.readRecord(NODES, String(finding.node_id));
-      if (!findingNode || findingNode.kind !== "finding" || Number(findingNode.exploration_id) !== Number(task.exploration_id)) {
-        return c.json({ error: "finding origin task or node is no longer available" }, 409);
-      }
-      const explorationId = Number(task.exploration_id);
-      const nodes = await operations.writer.list(NODES);
-      const intentId = nodes.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
-      const anchors = (await operations.writer.list(ANCHORS)).filter((row) => String(row.node_id) === String(finding.node_id)).sort((a, b) => Number(a.asset_id) - Number(b.asset_id));
-      const activities = await operations.writer.list(ACTIVITY);
-      const activityId = activities.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
-      const now2 = /* @__PURE__ */ new Date();
-      const intent = {
-        id: String(intentId),
-        exploration_id: explorationId,
-        kind: "intent",
-        state: "open",
-        priority: 10,
-        origin: "human",
-        payload: {
-          text: description,
-          finding_id: String(id),
-          ...anchors.length ? { asset_ids: anchors.map((row) => Number(row.asset_id)) } : {}
-        },
-        created_at: rfc33392(now2)
-      };
-      const ops = [
-        { table: NODES, key: String(intentId), record: intent },
-        {
-          table: EDGES,
-          key: `${finding.node_id}-derived_from-${intentId}`,
-          record: { exploration_id: explorationId, src: String(finding.node_id), dst: String(intentId), rel: "derived_from" }
-        },
-        {
-          table: ACTIVITY,
-          key: String(activityId),
-          record: {
-            id: String(activityId),
-            exploration_id: explorationId,
-            node_id: Number(intentId),
-            worker: "system",
-            kind: "text",
-            is_error: false,
-            summary: "\u4EBA\u5DE5\u63D0\u4EA4\u6F0F\u6D1E\u6DF1\u5165\u5229\u7528\u610F\u56FE",
-            detail: description,
-            metadata: {},
-            created_at: rfc33392(now2),
-            created_unix: Math.floor(now2.getTime() / 1e3)
-          }
-        }
-      ];
-      for (const anchor2 of anchors) {
-        const key = `${intentId}-${Number(anchor2.asset_id)}`;
-        ops.push({ table: ANCHORS, key, record: { node_id: Number(intentId), asset_id: Number(anchor2.asset_id) } });
-      }
-      await operations.writer.commit(ops);
-      store.invalidate?.(["nodes", "edges", "activity"]);
-      let queued = Boolean(task.queued);
-      try {
-        const admitted = await operations.controlTask(String(task.id), "resume");
-        queued = Boolean(admitted?.queued);
-      } catch {
-      }
-      const current = await operations.writer.readRecord(NODES, String(intentId));
-      return c.json({
-        task_id: Number(task.id),
-        intent_id: Number(intentId),
-        state: String(current?.state ?? "open"),
-        queued
-      });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/findings/:id/retests", async (c) => {
-    try {
-      const id = Number(c.req.param("id"));
-      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
-      const finding = await operations.writer.readRecord(FINDINGS, String(id));
-      if (!finding) return c.json({ error: "finding not found" }, 404);
-      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => Number(row.finding_id) === id).sort((a, b) => Number(b.id) - Number(a.id));
-      return c.json({ retests: rows.map(retestDto) });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.post("/api/exploration/findings/:id/retests", async (c) => {
-    try {
-      const id = Number(c.req.param("id"));
-      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
-      const body = await c.req.json().catch(() => ({}));
-      const notes = String(body?.notes ?? "").trim();
-      if (runeCount(notes) > MAX_RETEST_NOTES_RUNES) {
-        return c.json({ error: `\u590D\u6D4B\u8865\u5145\u8BF4\u660E\u6700\u591A ${MAX_RETEST_NOTES_RUNES} \u4E2A\u5B57\u7B26` }, 400);
-      }
-      const result = await enqueueFindingRetest(id, notes);
-      return c.json(result, result.created ? 202 : 200);
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/activity/stream", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json({ error: "task not found" }, 404);
-      const explorationId = Number(task.exploration_id);
-      const intentRaw = String(c.req.query("intent") ?? "").trim();
-      const intentId = intentRaw && Number.isFinite(Number(intentRaw)) ? Number(intentRaw) : null;
-      let since = Math.max(0, Math.floor(Number(c.req.query("since") ?? 0) || 0));
-      const lastEventId = c.req.header("last-event-id");
-      if (lastEventId && Number.isFinite(Number(lastEventId))) since = Math.max(0, Math.floor(Number(lastEventId)));
-      const encoder = new TextEncoder();
-      const signal = c.req.raw.signal;
-      let timer;
-      let closed = false;
-      let lastPing = Date.now();
-      const stream2 = new ReadableStream({
-        start(controller) {
-          const stop = () => {
-            if (closed) return;
-            closed = true;
-            if (timer) clearInterval(timer);
-            timer = void 0;
-            try {
-              controller.close();
-            } catch {
-            }
-          };
-          const send = (chunk) => {
-            if (closed) return;
-            try {
-              controller.enqueue(encoder.encode(chunk));
-            } catch {
-              stop();
-            }
-          };
-          const emit = (row) => send(`id: ${Number(row.id)}
-data: ${JSON.stringify(activityDto(row))}
-
-`);
-          const pump = async () => {
-            const rows = (await operations.writer.list(ACTIVITY)).filter((row) => Number(row.exploration_id) === explorationId).filter((row) => Number(row.id) > since).filter((row) => intentId == null || Number(row.node_id) === intentId).sort((a, b) => Number(a.id) - Number(b.id));
-            for (const row of rows) {
-              if (closed) return;
-              if (Number(row.id) <= since) continue;
-              since = Number(row.id);
-              emit(row);
-            }
-          };
-          signal?.addEventListener?.("abort", stop, { once: true });
-          void (async () => {
-            try {
-              await pump();
-            } catch {
-              stop();
-              return;
-            }
-            if (closed) return;
-            timer = setInterval(() => {
-              void (async () => {
-                if (closed) return;
-                try {
-                  await pump();
-                } catch {
-                  stop();
-                  return;
-                }
-                if (Date.now() - lastPing >= STREAM_PING_MS) {
-                  lastPing = Date.now();
-                  send(": ping\n\n");
-                }
-              })();
-            }, STREAM_POLL_MS);
-            timer.unref?.();
-          })();
-        },
-        cancel() {
-          closed = true;
-          if (timer) clearInterval(timer);
-          timer = void 0;
-        }
-      });
-      return new Response(stream2, {
-        headers: {
-          "content-type": "text/event-stream; charset=utf-8",
-          "cache-control": "no-cache, no-transform",
-          connection: "keep-alive",
-          "x-accel-buffering": "no"
-        }
-      });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-  api2.get("/api/exploration/activity/:seq", async (c) => {
-    try {
-      const task = await resolveTask(c.req.query("task"));
-      if (!task) return c.json({ error: "no task" }, 404);
-      const seq = Number(c.req.param("seq"));
-      if (!Number.isFinite(seq) || seq <= 0) return c.json({ error: "bad seq" }, 400);
-      const row = await operations.writer.readRecord(ACTIVITY, String(seq));
-      if (!row || Number(row.exploration_id) !== Number(task.exploration_id)) return c.json({ detail: "" });
-      return c.json({ detail: String(row.detail ?? "") });
-    } catch (e) {
-      return err(c, e);
-    }
-  });
-}
-var MAX_FOLLOW_UP_RUNES, MAX_RETEST_NOTES_RUNES, FINDING_RETEST_AGENT_KEY, FINDING_RETEST_TOOLS, RETEST_ACTIVE_STATUSES, GRAPH_NODE_LIMIT, GRAPH_EDGE_LIMIT, ASSET_TREE_MAX_NODES, UNASSIGNED_ASSET, STREAM_POLL_MS, STREAM_PING_MS, EXPORT_SEVERITY_RANK, FINDINGS, NODES, EDGES, ACTIVITY, TASKS, ASSETS, ANCHORS, MAIN_SESSIONS, FINDING_RETESTS, CONVERSATIONS, CONVERSATION_ACTIVITIES, assetKey, companyKey;
-var init_exploration = __esm({
-  async "src/routes/exploration.ts"() {
-    "use strict";
-    await init_context2();
-    MAX_FOLLOW_UP_RUNES = 4e3;
-    MAX_RETEST_NOTES_RUNES = 4e3;
-    FINDING_RETEST_AGENT_KEY = "retester";
-    FINDING_RETEST_TOOLS = ["get_finding_retest_context", "record_finding_retest_result"];
-    RETEST_ACTIVE_STATUSES = ["pending", "running"];
-    GRAPH_NODE_LIMIT = 2e3;
-    GRAPH_EDGE_LIMIT = 5e3;
-    ASSET_TREE_MAX_NODES = 3e3;
-    UNASSIGNED_ASSET = "__none__";
-    STREAM_POLL_MS = 800;
-    STREAM_PING_MS = 15e3;
-    EXPORT_SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
-    FINDINGS = "findings";
-    NODES = "nodes";
-    EDGES = "edges";
-    ACTIVITY = "activity";
-    TASKS = "tasks";
-    ASSETS = "assets";
-    ANCHORS = "anchors";
-    MAIN_SESSIONS = "main_sessions";
-    FINDING_RETESTS = "finding_retests";
-    CONVERSATIONS = "conversations";
-    CONVERSATION_ACTIVITIES = "conversation_activities";
-    assetKey = (id) => `a:${id}`;
-    companyKey = (id) => `c:${id}`;
   }
 });
 
@@ -42763,6 +41747,303 @@ var require_dist2 = __commonJS({
   }
 });
 
+// src/routes/settings-catalog.ts
+function normalizeMcpTools(list) {
+  if (!Array.isArray(list)) return [];
+  const tools = [];
+  for (const entry of list) {
+    const name = (typeof entry === "string" ? entry : String(entry?.name ?? "")).trim();
+    if (name) tools.push({ name, description: String(entry?.description ?? "") });
+  }
+  return tools;
+}
+function registerSettingsCatalog(api2) {
+  api2.get("/api/llm/profiles", async (c) => {
+    const rows = await meta3.table("llmProfiles");
+    return c.json({
+      profiles: rows.map((row) => {
+        if (row.base_url != null) return row;
+        const { base_url, ...rest } = row;
+        return rest;
+      })
+    });
+  });
+  api2.get("/api/tools", async (c) => {
+    const rows = await meta3.table("tools");
+    return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
+  });
+  api2.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
+  api2.get("/api/mcp/:id/tools", async (c) => {
+    const id = Number(c.req.param("id"));
+    const row = (await meta3.table("mcp")).find((server) => Number(server.id) === id);
+    if (!row) return c.json({ error: "MCP Server \u4E0D\u5B58\u5728" }, 404);
+    return c.json({
+      id,
+      name: String(row.name ?? ""),
+      transport: String(row.transport ?? ""),
+      enabled: row.enabled !== false,
+      tools: normalizeMcpTools(row.tools)
+    });
+  });
+}
+var init_settings_catalog = __esm({
+  async "src/routes/settings-catalog.ts"() {
+    "use strict";
+    await init_context2();
+  }
+});
+
+// src/routes/data-management.ts
+function registerTaskDataManagement(api2) {
+  api2.delete("/api/tasks/:id", async (c) => {
+    try {
+      const result = await operations.deleteTask(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api2.post("/api/tasks/:id/archive", async (c) => {
+    try {
+      const result = await operations.archiveTask(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api2.post("/api/tasks/archive/batch", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const ids = Array.isArray(body.task_ids) ? body.task_ids : [];
+    const items = [];
+    for (const id of ids) {
+      try {
+        items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) });
+      } catch (error62) {
+        items.push({ task_id: id, ok: false, error: String(error62?.message ?? error62) });
+      }
+    }
+    store.invalidate?.(["tasks"]);
+    return c.json({ items });
+  });
+  api2.get("/api/task-archives", async (c) => {
+    const page = Math.max(Math.floor(Number(c.req.query("page"))) || 1, 1);
+    const size = Math.min(Math.max(Math.floor(Number(c.req.query("size"))) || 20, 1), 200);
+    const all = await operations.listArchives();
+    return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size });
+  });
+  api2.get("/api/task-archives/:id", async (c) => {
+    const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param("id"));
+    if (!one) return c.json({ error: "\u5F52\u6863\u4E0D\u5B58\u5728" }, 404);
+    return c.json(one);
+  });
+  api2.post("/api/task-archives/:id/restore", async (c) => {
+    try {
+      const result = await operations.restoreArchive(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api2.delete("/api/task-archives/:id", async (c) => {
+    try {
+      const result = await operations.deleteArchive(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+}
+function registerLocalTrafficCleanup(api2) {
+  api2.on(["GET", "DELETE"], "/api/traffic/local-cleanup", async (c) => {
+    c.header("Cache-Control", "no-store");
+    const rawBefore = c.req.query("before") ?? "";
+    const before = Number(rawBefore);
+    if (!/^[1-9]\d*$/.test(rawBefore) || !Number.isSafeInteger(before) || before > Math.floor(Date.now() / 1e3)) {
+      return c.json({ error: "\u8BF7\u9009\u62E9\u6709\u6548\u4E14\u4E0D\u665A\u4E8E\u5F53\u524D\u65F6\u95F4\u7684\u622A\u6B62\u65E5\u671F" }, 400);
+    }
+    const host = (c.req.query("host") ?? "").trim().toLowerCase();
+    const local = operations.writer;
+    if (!("previewTrafficCleanup" in local)) return c.json({ error: "\u6B64\u6E05\u7406\u5165\u53E3\u4F7F\u7528\u5BA2\u6237\u7AEF SQLite \u5B58\u50A8" }, 409);
+    try {
+      if (c.req.method === "GET") return c.json(local.previewTrafficCleanup(before, host));
+      const body = await c.req.json().catch(() => null);
+      const token = body?.token;
+      if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) {
+        return c.json({ error: "\u8BF7\u5148\u9884\u89C8\u8981\u6E05\u7406\u7684\u8BB0\u5F55" }, 400);
+      }
+      const deleted = local.applyTrafficCleanup(before, host, token);
+      if (deleted === null) return c.json({ error: "\u6D41\u91CF\u8BB0\u5F55\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9884\u89C8" }, 409);
+      store.invalidate?.(["traffic_exchanges"]);
+      return c.json({ deleted });
+    } catch (error62) {
+      console.error("[traffic] local cleanup failed", error62);
+      return c.json({ error: "\u672C\u5730\u6D41\u91CF\u6E05\u7406\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6570\u636E\u5B58\u50A8\u72B6\u6001" }, 500);
+    }
+  });
+}
+var init_data_management = __esm({
+  async "src/routes/data-management.ts"() {
+    "use strict";
+    await init_context2();
+  }
+});
+
+// src/mode.ts
+function runtimeMode() {
+  const raw2 = (process.env.VEXNAR_RUNTIME_MODE || "ts").trim().toLowerCase();
+  return raw2 === "go" ? "go" : "ts";
+}
+function storeBackend() {
+  const mode = (process.env.VEXNAR_STORE || "sqlite").trim().toLowerCase();
+  return mode === "json" || mode === "postgres" ? mode : "sqlite";
+}
+var init_mode = __esm({
+  "src/mode.ts"() {
+    "use strict";
+  }
+});
+
+// src/runtime.ts
+var runtime_exports = {};
+__export(runtime_exports, {
+  runtimeInfo: () => runtimeInfo,
+  runtimeMode: () => runtimeMode,
+  startRuntime: () => startRuntime,
+  stopRuntime: () => stopRuntime,
+  storeBackend: () => storeBackend
+});
+async function boot() {
+  for (const agent of await meta3.table("agents")) {
+    try {
+      const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
+        const task = await spawnTriggerTask(operations, agent.key, fire);
+        store.invalidate?.(["tasks"]);
+        if (modelCompletionReady()) {
+          const taskId = String(task.id);
+          await taskQueue.enqueue(taskId, async () => {
+            await engine.plan(taskId, gatewayComplete);
+            await engine.workMany(taskId, gatewayComplete, 1);
+          });
+        }
+        const channels = await meta3.table("notify");
+        if (!channels.length) return;
+        await createNotifier(channels, void 0, async (channel, event, result) => {
+          await operations.recordDelivery({
+            channel_id: channel.id,
+            event_kind: event.kind,
+            title: event.title,
+            status: result.ok ? "ok" : "failed",
+            attempts: result.attempts,
+            error: result.detail
+          });
+        }).dispatch({
+          kind: `trigger:${fire.event}`,
+          title: `agent ${agent.key} \xB7 ${fire.event}`,
+          text: fire.message || fire.event,
+          task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
+          finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
+        });
+      });
+      stops.push(stop);
+      state.triggers += 1;
+    } catch {
+    }
+  }
+  const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
+    const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
+    store.invalidate?.(["tasks"]);
+    if (modelCompletionReady()) {
+      const taskId = String(task.id);
+      await taskQueue.enqueue(taskId, async () => {
+        await engine.plan(taskId, gatewayComplete);
+        await engine.workMany(taskId, gatewayComplete, 1);
+      });
+    }
+  }, 3e4);
+  stops.push(stopSchedules);
+  state.schedules = true;
+  await operations.writer.recover().catch(() => {
+  });
+  releaseStoreLock = await operations.writer.lock();
+  state.storeLocked = true;
+  state.started = true;
+  state.startedAt = Date.now();
+}
+function startRuntime(options = {}) {
+  if (options.signals && !signalHooks) {
+    signalHooks = true;
+    for (const signal of ["SIGINT", "SIGTERM"]) {
+      process.once(signal, () => {
+        void stopRuntime().then(() => process.exit(0));
+      });
+    }
+  }
+  if (!booting) {
+    booting = boot().catch((error62) => {
+      booting = null;
+      throw error62;
+    });
+  }
+  return booting;
+}
+async function stopRuntime() {
+  if (state.released) return;
+  state.released = true;
+  for (const stop of stops.splice(0)) {
+    try {
+      stop();
+    } catch {
+    }
+  }
+  scheduler.stop();
+  if (releaseStoreLock) {
+    try {
+      releaseStoreLock();
+    } catch {
+    }
+  }
+  state.storeLocked = false;
+  state.started = false;
+}
+function runtimeInfo() {
+  return {
+    mode: runtimeMode(),
+    store: storeBackend(),
+    started: state.started,
+    started_at: state.startedAt,
+    triggers: state.triggers,
+    schedules: state.schedules,
+    store_locked: state.storeLocked,
+    engine: modelCompletionReady() ? "ready" : "idle",
+    task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2
+  };
+}
+var state, stops, releaseStoreLock, booting, signalHooks;
+var init_runtime = __esm({
+  async "src/runtime.ts"() {
+    "use strict";
+    init_src();
+    await init_context2();
+    init_mode();
+    state = {
+      started: false,
+      startedAt: 0,
+      triggers: 0,
+      schedules: false,
+      storeLocked: false,
+      released: false
+    };
+    stops = [];
+    releaseStoreLock = null;
+    booting = null;
+    signalHooks = false;
+  }
+});
+
 // src/routes/conversations.ts
 var conversations_exports = {};
 __export(conversations_exports, {
@@ -45101,7 +44382,8 @@ var init_llm = __esm({
 // src/routes/intercept.ts
 var intercept_exports = {};
 __export(intercept_exports, {
-  register: () => register6
+  register: () => register6,
+  registerInterceptSettings: () => registerInterceptSettings
 });
 import { isIP } from "node:net";
 function rfc33394(date5) {
@@ -45360,7 +44642,7 @@ function parsePage(query) {
   if (size > 100) size = 100;
   return { page, size };
 }
-function register6(api2) {
+function registerInterceptSettings(api2) {
   api2.get("/api/intercept/rules", async (c) => {
     const { rows } = await metaTable(TABLE_RULES);
     rows.sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0) || Number(a.id) - Number(b.id));
@@ -45434,6 +44716,55 @@ function register6(api2) {
       return errResponse2(c, error62);
     }
   });
+  api2.get("/api/intercept/tool-config", async (c) => {
+    try {
+      meta3.reload();
+      const tables = await meta3.load();
+      const stored = tables[TABLE_TOOL_CONFIG];
+      if (stored === void 0) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] });
+      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] });
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
+  api2.put("/api/intercept/tool-config", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const tools = Array.isArray(body.enabled_tools) ? [...new Set(body.enabled_tools.map((t) => String(t).trim()).filter(Boolean))] : [];
+      const { tables } = await metaTable(TABLE_TOOL_CONFIG);
+      tables[TABLE_TOOL_CONFIG] = tools;
+      await meta3.save(tables);
+      return c.json({ ok: true });
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
+  api2.get("/api/intercept/judge", async (c) => {
+    try {
+      const stored = await meta3.table(TABLE_JUDGE_CONFIG);
+      return c.json(resolveJudgeConfig(Array.isArray(stored) ? stored[0] : stored));
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
+  api2.put("/api/intercept/judge", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const cfg = validateJudgeConfig(body);
+      const { tables } = await metaTable(TABLE_JUDGE_CONFIG);
+      tables[TABLE_JUDGE_CONFIG] = cfg;
+      await meta3.save(tables);
+      return c.json({ ok: true });
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
+  api2.get("/api/intercept/judge/usage", async (c) => {
+    return c.json({ calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, daily: [] });
+  });
+}
+function register6(api2) {
+  registerInterceptSettings(api2);
   api2.get("/api/intercept/pending", async (c) => {
     try {
       return c.json({ pending: await listPendingRows() });
@@ -45532,52 +44863,6 @@ function register6(api2) {
     } catch (error62) {
       return errResponse2(c, error62);
     }
-  });
-  api2.get("/api/intercept/tool-config", async (c) => {
-    try {
-      meta3.reload();
-      const tables = await meta3.load();
-      const stored = tables[TABLE_TOOL_CONFIG];
-      if (stored === void 0) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] });
-      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] });
-    } catch (error62) {
-      return errResponse2(c, error62);
-    }
-  });
-  api2.put("/api/intercept/tool-config", async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    try {
-      const tools = Array.isArray(body.enabled_tools) ? [...new Set(body.enabled_tools.map((t) => String(t).trim()).filter(Boolean))] : [];
-      const { tables } = await metaTable(TABLE_TOOL_CONFIG);
-      tables[TABLE_TOOL_CONFIG] = tools;
-      await meta3.save(tables);
-      return c.json({ ok: true });
-    } catch (error62) {
-      return errResponse2(c, error62);
-    }
-  });
-  api2.get("/api/intercept/judge", async (c) => {
-    try {
-      const stored = await meta3.table(TABLE_JUDGE_CONFIG);
-      return c.json(resolveJudgeConfig(Array.isArray(stored) ? stored[0] : stored));
-    } catch (error62) {
-      return errResponse2(c, error62);
-    }
-  });
-  api2.put("/api/intercept/judge", async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    try {
-      const cfg = validateJudgeConfig(body);
-      const { tables } = await metaTable(TABLE_JUDGE_CONFIG);
-      tables[TABLE_JUDGE_CONFIG] = cfg;
-      await meta3.save(tables);
-      return c.json({ ok: true });
-    } catch (error62) {
-      return errResponse2(c, error62);
-    }
-  });
-  api2.get("/api/intercept/judge/usage", async (c) => {
-    return c.json({ calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, daily: [] });
   });
   api2.get("/api/intercept/task/:taskID", async (c) => {
     try {
@@ -45810,75 +45095,6 @@ var init_traffic_scope = __esm({
   }
 });
 
-// src/capture-state.ts
-function normalize(row) {
-  const scope = String(row?.scope ?? "").trim();
-  if (!/^(conv-\d+|session-[A-Za-z0-9][A-Za-z0-9_-]{0,127}|task-\d+(-i\d+)?)$/.test(scope)) return null;
-  const convId = scope.startsWith("conv-") ? Number(scope.slice(5)) : 0;
-  const sessionId = scope.startsWith("session-") ? scope.slice(8) : "";
-  return {
-    scope,
-    conv_id: Number(row?.conv_id ?? 0) || convId,
-    session_id: String(row?.session_id ?? "") || sessionId,
-    source: String(row?.source ?? "") || "yakit",
-    started_at: Number(row?.started_at ?? 0) || 0,
-    stopped_at: Number(row?.stopped_at ?? 0) || 0
-  };
-}
-async function readCaptures() {
-  const rows = await meta3.table("trafficCaptures") ?? [];
-  if (!Array.isArray(rows)) return [];
-  const out = [];
-  for (const row of rows) {
-    const capture = normalize(row);
-    if (capture !== null) out.push(capture);
-  }
-  return out.sort((left, right) => right.started_at - left.started_at);
-}
-async function writeCaptures(next) {
-  const tables = await meta3.load();
-  tables.trafficCaptures = next;
-  await meta3.save(tables);
-  meta3.reload();
-}
-async function captureOf(scope) {
-  const rows = await readCaptures();
-  return rows.find((row) => row.scope === String(scope)) ?? null;
-}
-function activeCaptures(rows) {
-  return rows.filter((row) => row.started_at > 0 && row.stopped_at === 0);
-}
-async function startCapture(scope, source = "yakit") {
-  const key = String(scope);
-  const rows = await readCaptures();
-  const next = normalize({
-    scope: key,
-    conv_id: key.startsWith("conv-") ? Number(key.slice(5)) : 0,
-    session_id: key.startsWith("session-") ? key.slice(8) : "",
-    source: String(source || "yakit"),
-    started_at: Math.floor(Date.now() / 1e3),
-    stopped_at: 0
-  });
-  if (next === null) throw Object.assign(new Error(`\u65E0\u6CD5\u8BC6\u522B\u7684 scope: ${key}`), { status: 400 });
-  await writeCaptures([next, ...rows.filter((row) => row.scope !== key)]);
-  return next;
-}
-async function stopCapture(scope) {
-  const key = String(scope);
-  const rows = await readCaptures();
-  const current = rows.find((row) => row.scope === key);
-  if (!current) return null;
-  const next = { ...current, stopped_at: Math.floor(Date.now() / 1e3) };
-  await writeCaptures([next, ...rows.filter((row) => row.scope !== key)]);
-  return next;
-}
-var init_capture_state = __esm({
-  async "src/capture-state.ts"() {
-    "use strict";
-    await init_context2();
-  }
-});
-
 // src/traffic-index.ts
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 import { existsSync as existsSync3, statSync } from "node:fs";
@@ -46022,6 +45238,219 @@ var init_traffic_index = __esm({
       "application/wasm",
       "application/x-shockwave-flash"
     ];
+  }
+});
+
+// src/capture-state.ts
+function normalize(row) {
+  const scope = String(row?.scope ?? "").trim();
+  if (!/^(conv-\d+|session-[A-Za-z0-9][A-Za-z0-9_-]{0,127}|task-\d+(-i\d+)?)$/.test(scope)) return null;
+  const convId = scope.startsWith("conv-") ? Number(scope.slice(5)) : 0;
+  const sessionId = scope.startsWith("session-") ? scope.slice(8) : "";
+  return {
+    scope,
+    conv_id: Number(row?.conv_id ?? 0) || convId,
+    session_id: String(row?.session_id ?? "") || sessionId,
+    source: String(row?.source ?? "") || "yakit",
+    started_at: Number(row?.started_at ?? 0) || 0,
+    stopped_at: Number(row?.stopped_at ?? 0) || 0
+  };
+}
+async function readCaptures() {
+  const rows = await meta3.table("trafficCaptures") ?? [];
+  if (!Array.isArray(rows)) return [];
+  const out = [];
+  for (const row of rows) {
+    const capture = normalize(row);
+    if (capture !== null) out.push(capture);
+  }
+  return out.sort((left, right) => right.started_at - left.started_at);
+}
+async function writeCaptures(next) {
+  const tables = await meta3.load();
+  tables.trafficCaptures = next;
+  await meta3.save(tables);
+  meta3.reload();
+}
+async function captureOf(scope) {
+  const rows = await readCaptures();
+  return rows.find((row) => row.scope === String(scope)) ?? null;
+}
+function activeCaptures(rows) {
+  return rows.filter((row) => row.started_at > 0 && row.stopped_at === 0);
+}
+async function startCapture(scope, source = "yakit") {
+  const key = String(scope);
+  const rows = await readCaptures();
+  const next = normalize({
+    scope: key,
+    conv_id: key.startsWith("conv-") ? Number(key.slice(5)) : 0,
+    session_id: key.startsWith("session-") ? key.slice(8) : "",
+    source: String(source || "yakit"),
+    started_at: Math.floor(Date.now() / 1e3),
+    stopped_at: 0
+  });
+  if (next === null) throw Object.assign(new Error(`\u65E0\u6CD5\u8BC6\u522B\u7684 scope: ${key}`), { status: 400 });
+  await writeCaptures([next, ...rows.filter((row) => row.scope !== key)]);
+  return next;
+}
+async function stopCapture(scope) {
+  const key = String(scope);
+  const rows = await readCaptures();
+  const current = rows.find((row) => row.scope === key);
+  if (!current) return null;
+  const next = { ...current, stopped_at: Math.floor(Date.now() / 1e3) };
+  await writeCaptures([next, ...rows.filter((row) => row.scope !== key)]);
+  return next;
+}
+var init_capture_state = __esm({
+  async "src/capture-state.ts"() {
+    "use strict";
+    await init_context2();
+  }
+});
+
+// src/routes/traffic-history.ts
+function rfc3339FromUnix(sec) {
+  const date5 = new Date(Number(sec) * 1e3);
+  if (!Number.isFinite(date5.getTime())) return "";
+  return date5.toISOString();
+}
+function statusMatches(status, token) {
+  const s = token.toLowerCase().trim();
+  if (!s) return true;
+  if (/^[1-5]xx$/.test(s)) {
+    const base = Number(s[0]) * 100;
+    return status >= base && status < base + 100;
+  }
+  const n = Number(s);
+  if (Number.isFinite(n)) return status === n;
+  return true;
+}
+async function allExchanges() {
+  const local = await operations.writer.list("traffic_exchanges");
+  const seen = new Set(local.map((row) => String(row.id)));
+  const archived = archivedExchanges().filter((row) => !seen.has(row.id));
+  return [...local, ...archived];
+}
+async function listExchanges(query) {
+  const all = await allExchanges();
+  const host = String(query.host ?? "").trim();
+  const method = String(query.method ?? "").trim().toUpperCase();
+  const keyword = String(query.q ?? "").trim().toLowerCase();
+  const status = String(query.status ?? "").trim();
+  const respMin = Number(query.resp_min ?? -1);
+  const respMax = Number(query.resp_max ?? -1);
+  let rows = all;
+  if (host) rows = rows.filter((row) => String(row.host ?? "").toLowerCase().includes(host.toLowerCase()));
+  if (method) rows = rows.filter((row) => String(row.method ?? "").toUpperCase() === method);
+  if (keyword) {
+    rows = rows.filter((row) => [row.host, row.url, row.url_template, row.method, row.content_type, String(row.status), row.req_body, row.resp_body].some((value) => String(value ?? "").toLowerCase().includes(keyword)));
+  }
+  if (status) rows = rows.filter((row) => statusMatches(Number(row.status ?? 0), status));
+  if (Number.isFinite(respMin) && respMin >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) >= respMin);
+  if (Number.isFinite(respMax) && respMax >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) <= respMax);
+  const col = query.sort === "status" ? "status" : query.sort === "resp_len" ? "resp_len" : "ts";
+  const dir = String(query.order ?? "desc").toLowerCase() === "asc" ? 1 : -1;
+  rows.sort((a, b) => dir * (Number(a[col] ?? 0) - Number(b[col] ?? 0)) || String(b.id).localeCompare(String(a.id)));
+  return { all, rows };
+}
+function exchangeDto(row) {
+  return {
+    id: String(row.id),
+    ts: rfc3339FromUnix(Number(row.ts ?? 0)),
+    host: String(row.host ?? ""),
+    method: String(row.method ?? ""),
+    url: String(row.url ?? ""),
+    status: Number(row.status ?? 0),
+    content_type: String(row.content_type ?? ""),
+    resp_len: Number(row.resp_len ?? 0)
+  };
+}
+async function listHosts() {
+  const all = await allExchanges();
+  const byHost = /* @__PURE__ */ new Map();
+  for (const row of all) {
+    const host = String(row.host ?? "");
+    const entry = byHost.get(host) ?? { host, count: 0, last: 0 };
+    entry.count += 1;
+    entry.last = Math.max(entry.last, Number(row.ts ?? 0));
+    byHost.set(host, entry);
+  }
+  return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest);
+}
+async function captureOverview(proxyFor) {
+  const rows = await allExchanges();
+  const byScope = /* @__PURE__ */ new Map();
+  let lastTs = 0;
+  for (const row of rows) {
+    const ts = Number(row.ts ?? 0);
+    lastTs = Math.max(lastTs, ts);
+    const scope = String(row.scope ?? "");
+    if (!scope) continue;
+    const entry = byScope.get(scope) ?? { items: 0, last_ts: 0 };
+    entry.items += 1;
+    entry.last_ts = Math.max(entry.last_ts, ts);
+    byScope.set(scope, entry);
+  }
+  const sessions = activeCaptures(await readCaptures()).map((row) => ({
+    scope: row.scope,
+    proxy: proxyFor?.(row.scope) ?? "",
+    conv_id: row.conv_id,
+    session_id: row.session_id,
+    source: row.source,
+    started_at: row.started_at,
+    items: byScope.get(row.scope)?.items ?? 0,
+    last_ts: byScope.get(row.scope)?.last_ts ?? 0
+  }));
+  const recent = [...rows].sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0)).slice(0, 60).map(exchangeDto);
+  return { active: sessions.length > 0, sessions, total: rows.length, last_ts: lastTs, recent };
+}
+function registerTrafficHistory(api2) {
+  api2.get("/api/traffic", async (c) => {
+    try {
+      const page = Math.max(Number(c.req.query("page") ?? 0) || 0, 0);
+      const size = Math.min(Math.max(Number(c.req.query("size") ?? 100) || 100, 1), 500);
+      const { all, rows } = await listExchanges({
+        host: c.req.query("host"),
+        method: c.req.query("method"),
+        q: c.req.query("q"),
+        status: c.req.query("status"),
+        resp_min: c.req.query("resp_min"),
+        resp_max: c.req.query("resp_max"),
+        sort: c.req.query("sort"),
+        order: c.req.query("order")
+      });
+      const pageRows = rows.slice(page * size, page * size + size);
+      const capturing2 = activeCaptures(await readCaptures()).length > 0;
+      return c.json({
+        enabled: capturing2,
+        proxy: "",
+        count: all.length,
+        archived: archivedExchanges().length,
+        total: rows.length,
+        page,
+        size,
+        exchanges: pageRows.map(exchangeDto)
+      });
+    } catch (e) {
+      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+    }
+  });
+  api2.get("/api/traffic/hosts", async (c) => {
+    try {
+      return c.json({ hosts: await listHosts() });
+    } catch (e) {
+      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+    }
+  });
+}
+var init_traffic_history = __esm({
+  async "src/routes/traffic-history.ts"() {
+    "use strict";
+    await init_context2();
+    await init_capture_state();
+    init_traffic_index();
   }
 });
 
@@ -64727,7 +64156,7 @@ var init_ca2 = __esm({
 // src/traffic-proxy/mitm.ts
 import { Agent as Agent2, createServer as createHttpServer2, request as httpRequest3 } from "node:http";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
-import { connect as netConnect, isIP as isIP3 } from "node:net";
+import { connect as netConnect2, isIP as isIP3 } from "node:net";
 import { createServer as createTlsServer, connect as tlsConnect2 } from "node:tls";
 function splitTarget2(value) {
   const index = value.lastIndexOf(":");
@@ -64801,7 +64230,7 @@ var init_mitm = __esm({
         const existing = this.scopes.get(key);
         if (existing) return { scope: key, proxy: `http://127.0.0.1:${existing.port}`, caPemUrl: this.caPemUrl };
         const runtime2 = this.createRuntime(key);
-        await new Promise((resolve5) => runtime2.server.listen(0, "127.0.0.1", () => resolve5()));
+        await new Promise((resolve4) => runtime2.server.listen(0, "127.0.0.1", () => resolve4()));
         const address = runtime2.server.address();
         runtime2.port = typeof address === "object" && address ? address.port : 0;
         this.scopes.set(key, runtime2);
@@ -65029,21 +64458,21 @@ var init_mitm = __esm({
         });
       }
       connectUpstream(target, scheme) {
-        return new Promise((resolve5) => {
+        return new Promise((resolve4) => {
           const socket = scheme === "https" ? tlsConnect2({
             host: target.host,
             port: target.port,
             servername: isIP3(target.host) ? void 0 : target.host,
             rejectUnauthorized: false,
             ALPNProtocols: ["http/1.1"]
-          }) : netConnect({ host: target.host, port: target.port });
+          }) : netConnect2({ host: target.host, port: target.port });
           socket.setTimeout(2e4, () => socket.destroy());
-          socket.once(scheme === "https" ? "secureConnect" : "connect", () => resolve5(socket));
-          socket.once("error", () => resolve5(null));
+          socket.once(scheme === "https" ? "secureConnect" : "connect", () => resolve4(socket));
+          socket.once("error", () => resolve4(null));
         });
       }
       tunnel(client, target) {
-        const upstream = netConnect({ host: target.host, port: target.port }, () => {
+        const upstream = netConnect2({ host: target.host, port: target.port }, () => {
           client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
           client.pipe(upstream);
           upstream.pipe(client);
@@ -65084,15 +64513,10 @@ __export(traffic_exports, {
   register: () => register7,
   trafficSnapshotId: () => trafficSnapshotId
 });
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import { crc32 as crc322, deflateRawSync as deflateRawSync2 } from "node:zlib";
 function sha256hex(data) {
-  return createHash4("sha256").update(data).digest("hex");
-}
-function rfc3339FromUnix(sec) {
-  const date5 = new Date(Number(sec) * 1e3);
-  if (!Number.isFinite(date5.getTime())) return "";
-  return date5.toISOString();
+  return createHash5("sha256").update(data).digest("hex");
 }
 function isBinaryBody(contentType, body) {
   const ct = String(contentType ?? "").toLowerCase().split(";")[0].trim();
@@ -65137,69 +64561,6 @@ ${inline}`;
   if (blob) out += `
 \u2026[truncated] @blob sha256:${blob} (len=${total})`;
   return out;
-}
-function statusMatches(status, token) {
-  const s = token.toLowerCase().trim();
-  if (!s) return true;
-  if (/^[1-5]xx$/.test(s)) {
-    const base = Number(s[0]) * 100;
-    return status >= base && status < base + 100;
-  }
-  const n = Number(s);
-  if (Number.isFinite(n)) return status === n;
-  return true;
-}
-async function allExchanges() {
-  const local = await writer2().list("traffic_exchanges");
-  const seen = new Set(local.map((row) => String(row.id)));
-  const archived = archivedExchanges().filter((row) => !seen.has(row.id));
-  return [...local, ...archived];
-}
-async function listExchanges(query) {
-  const all = await allExchanges();
-  const host = String(query.host ?? "").trim();
-  const method = String(query.method ?? "").trim().toUpperCase();
-  const keyword = String(query.q ?? "").trim().toLowerCase();
-  const status = String(query.status ?? "").trim();
-  const respMin = Number(query.resp_min ?? -1);
-  const respMax = Number(query.resp_max ?? -1);
-  let rows = all;
-  if (host) rows = rows.filter((row) => String(row.host ?? "").toLowerCase().includes(host.toLowerCase()));
-  if (method) rows = rows.filter((row) => String(row.method ?? "").toUpperCase() === method);
-  if (keyword) {
-    rows = rows.filter((row) => [row.host, row.url, row.url_template, row.method, row.content_type, String(row.status), row.req_body, row.resp_body].some((value) => String(value ?? "").toLowerCase().includes(keyword)));
-  }
-  if (status) rows = rows.filter((row) => statusMatches(Number(row.status ?? 0), status));
-  if (Number.isFinite(respMin) && respMin >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) >= respMin);
-  if (Number.isFinite(respMax) && respMax >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) <= respMax);
-  const col = status === "status" ? "status" : status === "resp_len" ? "resp_len" : "ts";
-  const dir = String(query.order ?? "desc").toLowerCase() === "asc" ? 1 : -1;
-  rows.sort((a, b) => dir * (Number(a[col] ?? 0) - Number(b[col] ?? 0)) || String(b.id).localeCompare(String(a.id)));
-  return { all, rows };
-}
-function exchangeDto(row) {
-  return {
-    id: String(row.id),
-    ts: rfc3339FromUnix(Number(row.ts ?? 0)),
-    host: String(row.host ?? ""),
-    method: String(row.method ?? ""),
-    url: String(row.url ?? ""),
-    status: Number(row.status ?? 0),
-    content_type: String(row.content_type ?? ""),
-    resp_len: Number(row.resp_len ?? 0)
-  };
-}
-async function listHosts() {
-  const all = await allExchanges();
-  const byHost = /* @__PURE__ */ new Map();
-  for (const row of all) {
-    const host = String(row.host ?? "");
-    const entry = byHost.get(host) ?? { host, count: 0, last: 0 };
-    entry.count += 1;
-    entry.last = Math.max(entry.last, Number(row.ts ?? 0));
-    byHost.set(host, entry);
-  }
-  return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest);
 }
 async function readExchangeRaw(id) {
   const row = (await allExchanges()).find((item) => String(item.id) === String(id));
@@ -65478,6 +64839,7 @@ function findingMarkdown(finding) {
   return lines.join("\n");
 }
 function register7(api2) {
+  registerTrafficHistory(api2);
   api2.get("/api/traffic/mitm", (c) => c.json(mitmProxy().status()));
   api2.get(
     "/api/traffic/mitm/ca.pem",
@@ -65489,43 +64851,6 @@ function register7(api2) {
       }
     })
   );
-  api2.get("/api/traffic", async (c) => {
-    try {
-      const page = Math.max(Number(c.req.query("page") ?? 0) || 0, 0);
-      const size = Math.min(Math.max(Number(c.req.query("size") ?? 100) || 100, 1), 500);
-      const { all, rows } = await listExchanges({
-        host: c.req.query("host"),
-        method: c.req.query("method"),
-        q: c.req.query("q"),
-        status: c.req.query("status"),
-        resp_min: c.req.query("resp_min"),
-        resp_max: c.req.query("resp_max"),
-        sort: c.req.query("sort"),
-        order: c.req.query("order")
-      });
-      const pageRows = rows.slice(page * size, page * size + size);
-      const capturing2 = activeCaptures(await readCaptures()).length > 0;
-      return c.json({
-        enabled: capturing2,
-        proxy: "",
-        count: all.length,
-        archived: archivedExchanges().length,
-        total: rows.length,
-        page,
-        size,
-        exchanges: pageRows.map(exchangeDto)
-      });
-    } catch (e) {
-      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
-    }
-  });
-  api2.get("/api/traffic/hosts", async (c) => {
-    try {
-      return c.json({ hosts: await listHosts() });
-    } catch (e) {
-      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
-    }
-  });
   api2.get("/api/traffic/exchange", async (c) => {
     try {
       const id = String(c.req.query("id") ?? "");
@@ -65554,6 +64879,7 @@ function register7(api2) {
       return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
     }
   });
+  registerLocalTrafficCleanup(api2);
   api2.delete("/api/traffic", async (c) => {
     try {
       const host = String(c.req.query("host") ?? "").trim();
@@ -65643,8 +64969,10 @@ var init_traffic = __esm({
     "use strict";
     await init_context2();
     init_traffic_scope();
-    await init_capture_state();
     init_traffic_index();
+    await init_data_management();
+    await init_traffic_history();
+    await init_traffic_history();
     await init_traffic_proxy();
     TRAFFIC_ROLES = /* @__PURE__ */ new Set(["baseline", "proof", "verification", "supporting"]);
     MAX_INLINE_BODY = 256 * 1024;
@@ -65996,10 +65324,10 @@ function capturePayload(capture, sample) {
     last_ts: sample.last_ts
   };
 }
-function mountScopeTraffic(api2, base, resolve5) {
+function mountScopeTraffic(api2, base, resolve4) {
   api2.get(`${base}/traffic`, async (c) => {
     try {
-      const scope = await resolve5(String(c.req.param("id")));
+      const scope = await resolve4(String(c.req.param("id")));
       const afterSeq = Math.max(Number(c.req.query("after_seq") ?? 0) || 0, 0);
       const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 200) || 200, 1), 500);
       const items = await listScopedExchanges(scope, afterSeq, limit);
@@ -66019,7 +65347,7 @@ function mountScopeTraffic(api2, base, resolve5) {
   api2.get(`${base}/traffic/stream`, async (c) => {
     let scope;
     try {
-      scope = await resolve5(String(c.req.param("id")));
+      scope = await resolve4(String(c.req.param("id")));
     } catch (e) {
       return err3(c, e);
     }
@@ -66057,13 +65385,13 @@ function mountScopeTraffic(api2, base, resolve5) {
           await stream2.writeSSE({ event: "ping", data: "" });
           lastPing = Date.now();
         }
-        await new Promise((resolve6) => setTimeout(resolve6, rows.length ? 50 : STREAM_POLL_MS2));
+        await new Promise((resolve5) => setTimeout(resolve5, rows.length ? 50 : STREAM_POLL_MS2));
       }
     });
   });
   api2.get(`${base}/traffic/exchange`, async (c) => {
     try {
-      const scope = await resolve5(String(c.req.param("id")));
+      const scope = await resolve4(String(c.req.param("id")));
       const exchangeId = String(c.req.query("id") ?? "").trim();
       if (!exchangeId) return c.json({ error: "missing id" }, 400);
       const rows = await operations.writer.list("traffic_exchanges");
@@ -66079,7 +65407,7 @@ function mountScopeTraffic(api2, base, resolve5) {
   });
   api2.get(`${base}/traffic/endpoint`, async (c) => {
     try {
-      const scope = await resolve5(String(c.req.param("id")));
+      const scope = await resolve4(String(c.req.param("id")));
       const capture = await captureOf(scope);
       const sample = await scopeSample(scope);
       const origin = originOf(c);
@@ -66098,7 +65426,7 @@ function mountScopeTraffic(api2, base, resolve5) {
   });
   api2.post(`${base}/traffic/capture`, async (c) => {
     try {
-      const scope = await resolve5(String(c.req.param("id")));
+      const scope = await resolve4(String(c.req.param("id")));
       const body = await c.req.json().catch(() => ({}));
       const action = String(body?.action ?? "start");
       if (action !== "start" && action !== "stop") return c.json({ error: "action \u53EA\u80FD\u662F start \u6216 stop" }, 400);
@@ -66142,41 +65470,9 @@ function register8(api2) {
   });
   api2.get("/api/traffic/capture", async (c) => {
     try {
-      const origin = originOf(c);
-      const rows = await allExchanges();
-      const byScope = /* @__PURE__ */ new Map();
-      let lastTs = 0;
-      for (const row of rows) {
-        lastTs = Math.max(lastTs, Number(row.ts ?? 0));
-        const scope = String(row.scope ?? "");
-        if (scope === "") continue;
-        const entry = byScope.get(scope) ?? { items: 0, last_ts: 0 };
-        entry.items += 1;
-        entry.last_ts = Math.max(entry.last_ts, Number(row.ts ?? 0));
-        byScope.set(scope, entry);
-      }
-      const captures = await readCaptures();
-      const mitm = mitmProxy().status();
-      const sessions = activeCaptures(captures).map((row) => ({
-        scope: row.scope,
-        proxy: mitmProxy().proxyFor(row.scope),
-        conv_id: row.conv_id,
-        session_id: row.session_id,
-        source: row.source,
-        started_at: row.started_at,
-        items: byScope.get(row.scope)?.items ?? 0,
-        last_ts: byScope.get(row.scope)?.last_ts ?? 0
-      }));
-      const recent = [...rows].sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0)).slice(0, RECENT_SAMPLE).map(exchangeDto);
-      return c.json({
-        active: sessions.length > 0,
-        sessions,
-        total: rows.length,
-        last_ts: lastTs,
-        mitm,
-        ingest_url: `${origin}/api/traffic/ingest`,
-        recent
-      });
+      const proxy2 = mitmProxy();
+      const summary = await captureOverview((scope) => proxy2.proxyFor(scope));
+      return c.json({ ...summary, mitm: proxy2.status(), ingest_url: `${originOf(c)}/api/traffic/ingest` });
     } catch (e) {
       return err3(c, e);
     }
@@ -66226,7 +65522,7 @@ function register8(api2) {
 function yakitHook(scope, origin) {
   return yakitMirrorHook.replaceAll("__VEXNAR_BASE__", origin).replaceAll("__VEXNAR_KEY__", trafficIngestKey).replaceAll("__VEXNAR_SCOPE__", String(scope ?? ""));
 }
-var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, RECENT_SAMPLE, SESSION_ID2, yakitMirrorHook;
+var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, SESSION_ID2, yakitMirrorHook;
 var init_session_traffic = __esm({
   async "src/routes/session-traffic.ts"() {
     "use strict";
@@ -66236,11 +65532,11 @@ var init_session_traffic = __esm({
     await init_traffic_proxy();
     init_traffic_key();
     init_traffic_scope();
+    await init_traffic_history();
     await init_traffic();
     MAX_INGEST_BODY = 16 << 20;
     STREAM_POLL_MS2 = 600;
     STREAM_PING_MS2 = 2e4;
-    RECENT_SAMPLE = 60;
     SESSION_ID2 = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
     yakitMirrorHook = `// VEXNAR \xD7 Yakit MITM \u6D41\u91CF\u955C\u50CF\uFF08\u70ED\u52A0\u8F7D\u811A\u672C\uFF09
 // \u7528\u6CD5\uFF1AYakit \u2192 MITM \u2192 \u70ED\u52A0\u8F7D \u2192 \u7C98\u8D34\u672C\u6587\u4EF6 \u2192 \u52A0\u8F7D\u3002
@@ -66477,9 +65773,9 @@ async function exists2(p) {
     return false;
   }
 }
-function validMarketRepo(repo) {
-  if (!marketRepoRe.test(repo) || repo.includes("..")) return false;
-  return repo.split("/").every((seg) => seg !== "." && seg !== "..");
+function validMarketRepo(repo2) {
+  if (!marketRepoRe.test(repo2) || repo2.includes("..")) return false;
+  return repo2.split("/").every((seg) => seg !== "." && seg !== "..");
 }
 function marketSafePath(p) {
   p = p.trim().replace(/^\/+|\/+$/g, "");
@@ -66502,17 +65798,17 @@ function parseMarketLink(raw2, ref, sub) {
   ref = (ref || "").trim();
   sub = (sub || "").trim().replace(/^\/+|\/+$/g, "");
   if (!raw2) throw Object.assign(new Error("\u8BF7\u586B\u5199 GitHub \u4ED3\u5E93\u6216\u94FE\u63A5"), { status: 400 });
-  let repo = "";
+  let repo2 = "";
   let outRef = ref;
   let outPath = sub;
   if (!raw2.includes("://")) {
     const parts = raw2.replace(/^\/+|\/+$/g, "").split("/");
     if (parts.length >= 2 && validMarketRepo(`${parts[0]}/${parts[1]}`)) {
-      repo = `${parts[0]}/${parts[1]}`;
+      repo2 = `${parts[0]}/${parts[1]}`;
       if (parts.length > 2 && !sub) outPath = parts.slice(2).join("/");
       const [clean2, msg2] = marketSafePath(outPath);
       if (msg2) throw Object.assign(new Error(`\u76EE\u5F55\u4E0D\u5408\u6CD5\uFF1A${msg2}`), { status: 400 });
-      return { repo, ref: outRef, path: clean2 };
+      return { repo: repo2, ref: outRef, path: clean2 };
     }
     throw Object.assign(new Error(`\u65E0\u6CD5\u8BC6\u522B\u7684\u4ED3\u5E93\u540D\uFF1A${raw2}\uFF08\u5E94\u4E3A owner/repo \u6216 GitHub \u94FE\u63A5\uFF09`), { status: 400 });
   }
@@ -66527,7 +65823,7 @@ function parseMarketLink(raw2, ref, sub) {
   switch (u.host.toLowerCase()) {
     case "github.com":
     case "www.github.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       {
         const kind = keep(2);
         if (kind === "tree" || kind === "blob") {
@@ -66542,7 +65838,7 @@ function parseMarketLink(raw2, ref, sub) {
       }
       break;
     case "raw.githubusercontent.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       if (keep(2)) outRef = keep(2);
       {
         let rest2 = segs.slice(3).join("/");
@@ -66554,17 +65850,17 @@ function parseMarketLink(raw2, ref, sub) {
       }
       break;
     case "codeload.github.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       if (!outRef && keep(2) && keep(2) !== "tar.gz" && keep(2) !== "zip") outRef = keep(2);
       break;
     default:
       throw Object.assign(new Error(`\u53EA\u652F\u6301 GitHub \u94FE\u63A5\uFF1A${u.host}`), { status: 400 });
   }
-  if (!validMarketRepo(repo)) throw Object.assign(new Error(`\u94FE\u63A5\u91CC\u6CA1\u6709\u5408\u6CD5\u7684 owner/repo\uFF1A${raw2}`), { status: 400 });
+  if (!validMarketRepo(repo2)) throw Object.assign(new Error(`\u94FE\u63A5\u91CC\u6CA1\u6709\u5408\u6CD5\u7684 owner/repo\uFF1A${raw2}`), { status: 400 });
   const [clean, msg] = marketSafePath(outPath);
   if (msg) throw Object.assign(new Error(`\u76EE\u5F55\u4E0D\u5408\u6CD5\uFF1A${msg}`), { status: 400 });
   if (outRef && !marketSafeRef(outRef)) throw Object.assign(new Error(`\u5206\u652F/\u6807\u7B7E\u4E0D\u5408\u6CD5\uFF1A${outRef}`), { status: 400 });
-  return { repo, ref: outRef, path: clean };
+  return { repo: repo2, ref: outRef, path: clean };
 }
 async function ensureSkillDir() {
   await mkdir8(skillsRoot(), { recursive: true, mode: 493 });
@@ -66841,16 +66137,16 @@ function register9(api2) {
     try {
       let link = String(body.link ?? "").trim();
       if (!link && String(body.repo ?? "").trim()) link = String(body.repo).trim();
-      const { repo, ref, path } = parseMarketLink(link, body.ref ?? "", body.path ?? "");
+      const { repo: repo2, ref, path } = parseMarketLink(link, body.ref ?? "", body.path ?? "");
       const branch = ref || "main";
-      const url2 = `https://codeload.github.com/${repo}/tar.gz/${branch}`;
+      const url2 = `https://codeload.github.com/${repo2}/tar.gz/${branch}`;
       const headers = { "User-Agent": "vexnar-skill-installer/1" };
       const tok = process.env.VEXNAR_GITHUB_TOKEN || process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
       if (tok) headers["Authorization"] = `Bearer ${tok}`;
       const res = await fetch(url2, { headers, signal: AbortSignal.timeout(15e4) });
-      if (res.status === 401 || res.status === 403) throw Object.assign(new Error(`\u65E0\u6743\u8BBF\u95EE ${repo}\uFF08\u79C1\u6709\u4ED3\u5E93\u8BF7\u914D\u7F6E GITHUB_TOKEN\uFF09`), { status: 502 });
-      if (res.status === 404) throw Object.assign(new Error(`\u4ED3\u5E93\u6216\u5206\u652F\u4E0D\u5B58\u5728\uFF1A${repo}@${branch}`), { status: 400 });
-      if (res.status !== 200) throw Object.assign(new Error(`\u4E0B\u8F7D ${repo}@${branch} \u5931\u8D25\uFF1AHTTP ${res.status}`), { status: 502 });
+      if (res.status === 401 || res.status === 403) throw Object.assign(new Error(`\u65E0\u6743\u8BBF\u95EE ${repo2}\uFF08\u79C1\u6709\u4ED3\u5E93\u8BF7\u914D\u7F6E GITHUB_TOKEN\uFF09`), { status: 502 });
+      if (res.status === 404) throw Object.assign(new Error(`\u4ED3\u5E93\u6216\u5206\u652F\u4E0D\u5B58\u5728\uFF1A${repo2}@${branch}`), { status: 400 });
+      if (res.status !== 200) throw Object.assign(new Error(`\u4E0B\u8F7D ${repo2}@${branch} \u5931\u8D25\uFF1AHTTP ${res.status}`), { status: 502 });
       const tarball = Buffer.from(await res.arrayBuffer());
       if (tarball.length > 80 << 20) throw Object.assign(new Error("\u4ED3\u5E93\u5305\u8FC7\u5927"), { status: 400 });
       let tar;
@@ -66866,9 +66162,9 @@ function register9(api2) {
         await extractTar(tar, tmp);
         const roots = await findSkillRoots(tmp);
         const target = pickSkillRoot(roots, path);
-        if (!target) throw Object.assign(new Error(path ? `\u4ED3\u5E93 ${repo} \u7684 ${JSON.stringify(path)} \u76EE\u5F55\u4E0B\u6CA1\u6709 SKILL.md` : `\u4ED3\u5E93 ${repo} \u91CC\u6CA1\u6709\u627E\u5230 SKILL.md`), { status: 400 });
+        if (!target) throw Object.assign(new Error(path ? `\u4ED3\u5E93 ${repo2} \u7684 ${JSON.stringify(path)} \u76EE\u5F55\u4E0B\u6CA1\u6709 SKILL.md` : `\u4ED3\u5E93 ${repo2} \u91CC\u6CA1\u6709\u627E\u5230 SKILL.md`), { status: 400 });
         const srcDir = join14(tmp, target);
-        const prov = { repo, ref: branch, ...path ? { path } : {}, installed_at: (/* @__PURE__ */ new Date()).toISOString() };
+        const prov = { repo: repo2, ref: branch, ...path ? { path } : {}, installed_at: (/* @__PURE__ */ new Date()).toISOString() };
         const { name, files } = await installSkillDir(srcDir, Boolean(body.overwrite), prov);
         const md = await readFile6(join14(skillDir(name), "SKILL.md"), "utf8");
         const m = skillMetaFromFile(md);
@@ -67179,9 +66475,9 @@ async function commitMeta2(tables) {
 function errResponse4(c, e) {
   return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
 }
-function validMarketRepo2(repo) {
-  if (!marketRepoRe2.test(repo) || repo.includes("..")) return false;
-  return repo.split("/").every((seg) => seg !== "." && seg !== "..");
+function validMarketRepo2(repo2) {
+  if (!marketRepoRe2.test(repo2) || repo2.includes("..")) return false;
+  return repo2.split("/").every((seg) => seg !== "." && seg !== "..");
 }
 function marketPathRune(r) {
   const cp = r.codePointAt(0);
@@ -67220,17 +66516,17 @@ function parseMarketLink2(raw2, ref, sub) {
   ref = (ref || "").trim();
   sub = (sub || "").trim().replace(/^\/+|\/+$/g, "");
   if (!raw2) throw Object.assign(new Error("\u8BF7\u586B\u5199 GitHub \u4ED3\u5E93\u6216\u94FE\u63A5"), { status: 400 });
-  let repo = "";
+  let repo2 = "";
   let outRef = ref;
   let outPath = sub;
   if (!raw2.includes("://")) {
     const parts = raw2.replace(/^\/+|\/+$/g, "").split("/");
     if (parts.length >= 2 && validMarketRepo2(`${parts[0]}/${parts[1]}`)) {
-      repo = `${parts[0]}/${parts[1]}`;
+      repo2 = `${parts[0]}/${parts[1]}`;
       if (parts.length > 2 && !sub) outPath = parts.slice(2).join("/");
       const [clean2, msg2] = marketSafePath2(outPath);
       if (msg2) throw Object.assign(new Error(`\u76EE\u5F55\u4E0D\u5408\u6CD5\uFF1A${msg2}`), { status: 400 });
-      return { repo, ref: outRef, path: clean2 };
+      return { repo: repo2, ref: outRef, path: clean2 };
     }
     throw Object.assign(new Error(`\u65E0\u6CD5\u8BC6\u522B\u7684\u4ED3\u5E93\u540D\uFF1A${raw2}\uFF08\u5E94\u4E3A owner/repo \u6216 GitHub \u94FE\u63A5\uFF09`), { status: 400 });
   }
@@ -67245,7 +66541,7 @@ function parseMarketLink2(raw2, ref, sub) {
   switch (u.host.toLowerCase()) {
     case "github.com":
     case "www.github.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       {
         const kind = keep(2);
         if (kind === "tree" || kind === "blob") {
@@ -67260,7 +66556,7 @@ function parseMarketLink2(raw2, ref, sub) {
       }
       break;
     case "raw.githubusercontent.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       if (keep(2)) outRef = keep(2);
       {
         let rest2 = segs.slice(3).join("/");
@@ -67272,17 +66568,17 @@ function parseMarketLink2(raw2, ref, sub) {
       }
       break;
     case "codeload.github.com":
-      repo = `${keep(0)}/${keep(1)}`;
+      repo2 = `${keep(0)}/${keep(1)}`;
       if (!outRef && keep(2) && keep(2) !== "tar.gz" && keep(2) !== "zip") outRef = keep(2);
       break;
     default:
       throw Object.assign(new Error(`\u53EA\u652F\u6301 GitHub \u94FE\u63A5\uFF1A${u.host}`), { status: 400 });
   }
-  if (!validMarketRepo2(repo)) throw Object.assign(new Error(`\u94FE\u63A5\u91CC\u6CA1\u6709\u5408\u6CD5\u7684 owner/repo\uFF1A${raw2}`), { status: 400 });
+  if (!validMarketRepo2(repo2)) throw Object.assign(new Error(`\u94FE\u63A5\u91CC\u6CA1\u6709\u5408\u6CD5\u7684 owner/repo\uFF1A${raw2}`), { status: 400 });
   const [clean, msg] = marketSafePath2(outPath);
   if (msg) throw Object.assign(new Error(`\u76EE\u5F55\u4E0D\u5408\u6CD5\uFF1A${msg}`), { status: 400 });
   if (outRef && !marketSafeRef2(outRef)) throw Object.assign(new Error(`\u5206\u652F/\u6807\u7B7E\u4E0D\u5408\u6CD5\uFF1A${outRef}`), { status: 400 });
-  return { repo, ref: outRef, path: clean };
+  return { repo: repo2, ref: outRef, path: clean };
 }
 function marketToken() {
   for (const k of ["VEXNAR_GITHUB_TOKEN", "GITHUB_TOKEN", "GH_TOKEN"]) {
@@ -67303,8 +66599,8 @@ async function marketGet(rawURL) {
 function escapeMarketPath(p) {
   return p.split("/").map((s) => encodeURIComponent(s)).join("/");
 }
-function marketRawURL(repo, ref, p) {
-  let base = `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(ref)}`;
+function marketRawURL(repo2, ref, p) {
+  let base = `https://raw.githubusercontent.com/${repo2}/${encodeURIComponent(ref)}`;
   if (p) base += "/" + escapeMarketPath(p);
   return base;
 }
@@ -67352,7 +66648,7 @@ function parseSkillFrontmatter2(md) {
   if (desc.length > 400) desc = desc.slice(0, 400) + "\u2026";
   return [name, desc];
 }
-function parseMarketIndex(raw2, repo) {
+function parseMarketIndex(raw2, repo2) {
   const trimmed = raw2.toString("utf8").trim();
   if (!trimmed) throw new Error("market.json \u4E3A\u7A7A");
   let doc = {};
@@ -67365,11 +66661,11 @@ function parseMarketIndex(raw2, repo) {
   const out = [];
   for (const it of doc.mcp ?? []) out.push({ ...it, kind: "mcp" });
   for (const it of doc.skills ?? []) {
-    if (!it.repo) it.repo = repo;
+    if (!it.repo) it.repo = repo2;
     out.push({ ...it, kind: "skills" });
   }
   out.push(...doc.items ?? []);
-  return normalizeMarketItems(out, repo);
+  return normalizeMarketItems(out, repo2);
 }
 function parseMCPConfig(raw2) {
   let doc = {};
@@ -67394,7 +66690,7 @@ function parseMCPConfig(raw2) {
   }
   return normalizeMarketItems(out, "");
 }
-function normalizeMarketItems(items, repo) {
+function normalizeMarketItems(items, repo2) {
   const seen = /* @__PURE__ */ new Set();
   const out = [];
   for (const it of items) {
@@ -67412,7 +66708,7 @@ function normalizeMarketItems(items, repo) {
       if (it.transport === "stdio" && !(it.command ?? "").trim()) continue;
       if (it.transport !== "stdio" && !(it.url ?? "").trim()) continue;
     } else {
-      if (!it.repo) it.repo = repo;
+      if (!it.repo) it.repo = repo2;
       if (!it.repo || !it.path) continue;
       it.ref = (it.ref ?? "").trim();
       const [clean, msg] = marketSafePath2(it.path);
@@ -67556,17 +66852,17 @@ function register10(api2) {
     try {
       const kind = String(body.kind ?? "").trim() || "all";
       if (kind !== "mcp" && kind !== "skills" && kind !== "all") throw Object.assign(new Error("kind \u53EA\u80FD\u662F mcp / skills / all"), { status: 400 });
-      const { repo, ref, path } = parseMarketLink2(body.link ?? "", body.ref ?? "", body.path ?? "");
+      const { repo: repo2, ref, path } = parseMarketLink2(body.link ?? "", body.ref ?? "", body.path ?? "");
       const branch = ref || "main";
-      const name = String(body.name ?? "").trim() || (path ? `${repo}/${path}` : repo);
+      const name = String(body.name ?? "").trim() || (path ? `${repo2}/${path}` : repo2);
       const { tables, rows } = await loadSourcesTable();
-      if (rows.some((r) => r.repo === repo && r.path === path && r.kind === kind)) throw Object.assign(new Error("\u4FDD\u5B58\u5E02\u573A\u6E90\u5931\u8D25\uFF08\u53EF\u80FD\u5DF2\u5B58\u5728\u540C\u4E00\u4ED3\u5E93/\u76EE\u5F55\uFF09"), { status: 409 });
+      if (rows.some((r) => r.repo === repo2 && r.path === path && r.kind === kind)) throw Object.assign(new Error("\u4FDD\u5B58\u5E02\u573A\u6E90\u5931\u8D25\uFF08\u53EF\u80FD\u5DF2\u5B58\u5728\u540C\u4E00\u4ED3\u5E93/\u76EE\u5F55\uFF09"), { status: 409 });
       const id = Math.max(0, ...rows.map((r) => Number(r.id))) + 1;
       const now2 = (/* @__PURE__ */ new Date()).toISOString();
-      const src = { id, kind, name, repo, ref: branch, path, official: false, items: [], synced_at: null, last_error: "", created_at: now2, updated_at: now2 };
+      const src = { id, kind, name, repo: repo2, ref: branch, path, official: false, items: [], synced_at: null, last_error: "", created_at: now2, updated_at: now2 };
       rows.push(src);
       await commitMeta2(tables);
-      return c.json({ id, repo, ref: branch, path, kind, name }, 201);
+      return c.json({ id, repo: repo2, ref: branch, path, kind, name }, 201);
     } catch (e) {
       return errResponse4(c, e);
     }
@@ -68081,7 +67377,7 @@ function scopeDedupeKey(companyId, rule) {
   if (rule.kind === "ip" || rule.kind === "cidr") return `${companyId}|net|${rule.net}`;
   return `${companyId}|${rule.kind}|${rule.value}`;
 }
-function scopeRecord(id, companyId, rule, reason) {
+function scopeRecord(id, companyId, rule, reason2) {
   return {
     id,
     company_id: companyId,
@@ -68090,7 +67386,7 @@ function scopeRecord(id, companyId, rule, reason) {
     ...rule.net ? { net: rule.net } : {},
     ...rule.value ? { value: rule.value } : {},
     raw: rule.raw,
-    reason
+    reason: reason2
   };
 }
 async function companyRows() {
@@ -68161,7 +67457,7 @@ async function recomputeAttribution() {
   }
   return { warning: malformedIPWarning(assets), changed: ops.length };
 }
-async function insertScopeRules(companyId, rules, reason) {
+async function insertScopeRules(companyId, rules, reason2) {
   const existing = await scopeRows();
   const keys = new Set(existing.map((row) => scopeDedupeKey(Number(row.company_id), {
     kind: String(row.kind ?? ""),
@@ -68182,7 +67478,7 @@ async function insertScopeRules(companyId, rules, reason) {
       continue;
     }
     keys.add(key);
-    ops.push({ table: "company_scope", key: String(nextId2), record: scopeRecord(nextId2, companyId, rule, reason) });
+    ops.push({ table: "company_scope", key: String(nextId2), record: scopeRecord(nextId2, companyId, rule, reason2) });
     nextId2 += 1;
     added += 1;
     if (rule.kind !== "keyword") needsAttribution = true;
@@ -68797,7 +68093,7 @@ function register11(api2) {
       const inputs = normalizeScopeInputs(payload.scope);
       validateScopeInputBounds(inputs);
       const parsed = parseScopeInputs(inputs);
-      const reason = text2(payload.reason);
+      const reason2 = text2(payload.reason);
       const reset = payload.reset === true;
       const company = (await companyRows()).find((row) => Number(row.id) === id);
       if (!company) return c.json({ error: "company not found" }, 404);
@@ -68809,11 +68105,11 @@ function register11(api2) {
         }
         const scopes = (await scopeRows()).filter((row) => Number(row.company_id) === id);
         for (const scope of scopes) await writer3().remove("company_scope", String(scope.id));
-        const inserted = await insertScopeRules(id, parsed.rules, reason);
+        const inserted = await insertScopeRules(id, parsed.rules, reason2);
         added = inserted.added;
         await recomputeAttribution();
       } else {
-        const inserted = await insertScopeRules(id, parsed.rules, reason);
+        const inserted = await insertScopeRules(id, parsed.rules, reason2);
         added = inserted.added;
         skipped = inserted.skipped;
         if (added && inserted.needsAttribution) await recomputeAttribution();
@@ -69220,16 +68516,6 @@ function mcpEnv(server) {
   for (const [key, value] of Object.entries(raw2)) out[key] = String(value);
   return out;
 }
-function normalizeTools(list) {
-  if (!Array.isArray(list)) return [];
-  const out = [];
-  for (const item of list) {
-    const name = String(item?.name ?? "").trim();
-    if (!name) continue;
-    out.push({ name, description: String(item?.description ?? "") });
-  }
-  return out;
-}
 async function discoverStdioTools(server, timeoutMs) {
   const command = String(server?.command ?? "").trim();
   if (!command) throw new Error("stdio \u4F20\u8F93\u7F3A\u5C11\u547D\u4EE4");
@@ -69292,13 +68578,13 @@ async function discoverStdioTools(server, timeoutMs) {
       else entry.resolve(message.result);
     }
   });
-  const request = (method, params) => new Promise((resolve5, reject) => {
+  const request = (method, params) => new Promise((resolve4, reject) => {
     if (closed) {
       reject(new Error("\u8FDE\u63A5\u5DF2\u5173\u95ED"));
       return;
     }
     const id = nextId2++;
-    pending.set(id, { resolve: resolve5, reject });
+    pending.set(id, { resolve: resolve4, reject });
     try {
       child.stdin?.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}
 `);
@@ -69323,7 +68609,7 @@ async function discoverStdioTools(server, timeoutMs) {
     });
     notify("notifications/initialized", {});
     const listed = await request("tools/list", {});
-    return normalizeTools(listed?.tools);
+    return normalizeMcpTools(listed?.tools);
   } finally {
     settleAll();
   }
@@ -69393,7 +68679,7 @@ async function discoverHttpTools(server, timeoutMs) {
   } catch {
   }
   const listed = await call("tools/list", {});
-  return normalizeTools(listed?.tools);
+  return normalizeMcpTools(listed?.tools);
 }
 async function discoverTools(server) {
   const transport = String(server?.transport ?? "stdio");
@@ -69611,21 +68897,6 @@ function register12(api2) {
       return errResponse5(c, e);
     }
   });
-  api2.get("/api/mcp/:id/tools", async (c) => {
-    try {
-      const { row } = await findMcpServer(c.req.param("id"));
-      const tools = normalizeTools(row.tools);
-      return c.json({
-        id: Number(row.id),
-        name: String(row.name ?? ""),
-        transport: String(row.transport ?? ""),
-        enabled: row.enabled !== false,
-        tools
-      });
-    } catch (e) {
-      return errResponse5(c, e);
-    }
-  });
   api2.post("/api/mcp/:id/refresh", async (c) => {
     try {
       const { rows, row } = await findMcpServer(c.req.param("id"));
@@ -69731,6 +69002,7 @@ var DELIVERY_TABLE, SIDE_TABLE, SIDE_SESSION_TABLE, META_CHANNELS, META_MCP, MET
 var init_notify_mcp = __esm({
   async "src/routes/notify-mcp.ts"() {
     "use strict";
+    await init_settings_catalog();
     await init_context2();
     DELIVERY_TABLE = "notification_deliveries";
     SIDE_TABLE = "side_questions";
@@ -70968,7 +70240,7 @@ function classifyScopeKind(value) {
   if (value.includes(".")) return "domain";
   return "keyword";
 }
-async function addCompanyScope(companyId, roots, reason) {
+async function addCompanyScope(companyId, roots, reason2) {
   const row = await operations.writer.readRecord("companies", String(companyId));
   if (!row) return;
   const scope = Array.isArray(row.scope) ? [...row.scope] : [];
@@ -70983,7 +70255,7 @@ async function addCompanyScope(companyId, roots, reason) {
       ...kind === "ip" || kind === "cidr" ? { net: root } : {},
       ...kind === "icp" || kind === "keyword" ? { value: root } : {},
       raw: root,
-      reason
+      reason: reason2
     });
   }
   await operations.writer.put({
@@ -71335,520 +70607,38 @@ var init_sync = __esm({
 // src/routes/update.ts
 var update_exports = {};
 __export(update_exports, {
-  register: () => register16,
-  restartRequestedForExit: () => restartRequestedForExit
+  register: () => register16
 });
-import { chmod, open as open5, readFile as readFile8, rename as rename7, rm as rm5, writeFile as writeFile9 } from "node:fs/promises";
-import { existsSync as existsSync5, readFileSync as readFileSync3 } from "node:fs";
-import { basename as basename5, extname as extname2, join as join16, resolve as resolve3 } from "node:path";
-import { createHash as createHash5 } from "node:crypto";
-import { inflateRawSync as inflateRawSync2 } from "node:zlib";
-import { spawn as spawn4 } from "node:child_process";
-function releaseTimeoutMs() {
-  const n = Number(process.env.VEXNAR_UPDATE_TIMEOUT_MS);
-  return Number.isFinite(n) && n > 0 ? n : releaseTimeoutDefault;
-}
-function goos() {
-  return process.platform === "win32" ? "windows" : process.platform;
-}
-function goarch() {
-  return process.arch === "x64" ? "amd64" : process.arch === "ia32" ? "386" : process.arch;
-}
-function assetName(tag, os, arch) {
-  return `vexnar-${String(tag).replace(/^v/, "")}-${os}-${arch}.zip`;
-}
-function parseVersion(s) {
-  s = String(s ?? "").trim().replace(/^v/, "");
-  if (!s) return null;
-  const parts = s.split(".");
-  if (parts.length !== 3) return null;
-  const out = [];
-  for (const p of parts) {
-    const n = Number(p);
-    if (!Number.isInteger(n) || n < 0) return null;
-    out.push(n);
-  }
-  return out;
-}
-function compareVersions(a, b) {
-  const av = parseVersion(a);
-  const bv = parseVersion(b);
-  if (!av || !bv) return { cmp: 0, comparable: false };
-  for (let i = 0; i < 3; i++) {
-    if (av[i] !== bv[i]) return { cmp: av[i] < bv[i] ? -1 : 1, comparable: true };
-  }
-  return { cmp: 0, comparable: true };
-}
-function inDocker() {
-  if (existsSync5("/.dockerenv")) return true;
-  try {
-    const s = readFileSync3("/proc/1/cgroup", "utf8");
-    return s.includes("docker") || s.includes("containerd");
-  } catch {
-    return false;
-  }
-}
-function assertAllowedUrl(rawURL) {
-  const u = new URL(rawURL);
-  if (u.protocol !== "https:") throw new Error(`\u62D2\u7EDD\u975E HTTPS \u5730\u5740: ${u.protocol}//${u.host}`);
-  if (!allowedHosts.has(u.hostname.toLowerCase())) throw new Error(`\u62D2\u7EDD\u975E GitHub \u57DF\u540D: ${u.hostname}`);
-}
-function humanSize(n) {
-  const unit = 1024;
-  if (n < unit) return `${n} B`;
-  let div = unit;
-  let exp = 0;
-  for (let v = Math.floor(n / unit); v >= unit; v = Math.floor(v / unit)) {
-    div *= unit;
-    exp++;
-  }
-  return `${(n / div).toFixed(1)} ${"KMGT"[exp]}B`;
-}
-function short(sum) {
-  return sum.length > 12 ? sum.slice(0, 12) + "\u2026" : sum;
-}
-function resolvePaths() {
-  const dir = resolve3(process.env.VEXNAR_SELFUPDATE_DIR || storeRoot());
-  const current = process.execPath;
-  const name = basename5(current);
-  const ext = extname2(name);
-  const stem = ext ? name.slice(0, -ext.length) : name;
-  return {
-    dir,
-    current,
-    new: join16(dir, `${stem}.new${ext}`),
-    sum: join16(dir, `${stem}.new${ext}.sha256`),
-    old: join16(dir, `${stem}.old${ext}`),
-    marker: join16(dir, `${stem}.upgrade.json`)
-  };
-}
-function hasBackup() {
-  try {
-    return existsSync5(resolvePaths().old);
-  } catch {
-    return false;
-  }
-}
-async function checkWritable(dir) {
-  const probe = join16(dir, `.vexnar-update-probe-${Date.now()}`);
-  try {
-    await writeFile9(probe, "");
-    await rm5(probe, { force: true });
-  } catch (e) {
-    throw new Error(`\u7A0B\u5E8F\u76EE\u5F55 ${dir} \u4E0D\u53EF\u5199\uFF0C\u65E0\u6CD5\u81EA\u52A8\u66F4\u65B0\uFF08\u8BF7\u68C0\u67E5\u6743\u9650\u6216\u6539\u7528\u624B\u52A8\u5347\u7EA7\uFF09: ${e?.message ?? e}`);
-  }
-}
-async function fileSHA256(path) {
-  const buf = await readFile8(path);
-  return createHash5("sha256").update(buf).digest("hex");
-}
-function parseSums(raw2) {
-  const out = {};
-  for (const line of raw2.split("\n")) {
-    const fields = line.trim().split(/\s+/);
-    if (fields.length !== 2 || !/^[0-9a-fA-F]{64}$/.test(fields[0])) continue;
-    const name = fields[1].replace(/^\*/, "");
-    if (name) out[name] = fields[0].toLowerCase();
-  }
-  return out;
-}
-async function fetchLatest(signal) {
-  assertAllowedUrl(latestURL);
-  const res = await fetch(latestURL, {
-    headers: { accept: "application/vnd.github+json", "user-agent": "vexnar-selfupdate" },
-    signal
-  });
-  if (res.status === 403 || res.status === 429) throw new Error("GitHub \u63A5\u53E3\u9650\u6D41\uFF08\u6BCF\u5C0F\u65F6 60 \u6B21\uFF09\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5");
-  if (res.status === 404) throw new Error(`\u4ED3\u5E93 ${REPO} \u5C1A\u672A\u53D1\u5E03\u4EFB\u4F55\u6B63\u5F0F\u7248\u672C`);
-  if (!res.ok) throw new Error(`GitHub \u8FD4\u56DE ${res.status}`);
-  const rel = await res.json();
-  if (!String(rel?.tag_name ?? "").trim()) throw new Error("Release \u7F3A\u5C11 tag");
-  return rel;
-}
-async function fetchSums(rel) {
-  const asset = (rel.assets ?? []).find((a) => a.name === "SHA256SUMS");
-  if (!asset) throw new Error("\u8BE5 Release \u6CA1\u6709 SHA256SUMS\uFF0C\u65E0\u6CD5\u6821\u9A8C\u5B8C\u6574\u6027\uFF0C\u62D2\u7EDD\u5347\u7EA7");
-  assertAllowedUrl(asset.url);
-  const res = await fetch(asset.url, { headers: { "user-agent": "vexnar-selfupdate" } });
-  if (!res.ok) throw new Error(`\u4E0B\u8F7D SHA256SUMS: HTTP ${res.status}`);
-  const raw2 = (await res.text()).slice(0, 1 << 20);
-  const out = parseSums(raw2);
-  if (!Object.keys(out).length) throw new Error("SHA256SUMS \u5185\u5BB9\u4E3A\u7A7A\u6216\u683C\u5F0F\u65E0\u6CD5\u8BC6\u522B");
-  return out;
-}
-async function download(url2, dst, total, prog) {
-  assertAllowedUrl(url2);
-  const res = await fetch(url2, { headers: { "user-agent": "vexnar-selfupdate" } });
-  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-  const h = createHash5("sha256");
-  const fh = await open5(dst, "w");
-  const reader = res.body.getReader();
-  let written = 0;
-  let last = 0;
-  try {
-    for (; ; ) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const buf = Buffer.from(value);
-      h.update(buf);
-      await fh.write(buf);
-      written += buf.length;
-      const now2 = Date.now();
-      if (now2 - last >= 300) {
-        last = now2;
-        const pct = total > 0 ? Math.min(100, Math.floor(written * 100 / total)) : -1;
-        prog("downloading", pct, `\u4E0B\u8F7D\u4E2D ${humanSize(written)} / ${humanSize(total)}`);
-      }
-    }
-  } finally {
-    await fh.close();
-  }
-  if (total > 0 && written !== total) throw new Error(`\u4E0B\u8F7D\u4E0D\u5B8C\u6574\uFF1A\u671F\u671B ${total} \u5B57\u8282\uFF0C\u5B9E\u9645 ${written} \u5B57\u8282`);
-  return h.digest("hex");
-}
-function extractZipFile(zip, want) {
-  let eocd = -1;
-  const tailStart = Math.max(0, zip.length - 22 - 65535);
-  for (let i = zip.length - 22; i >= tailStart; i--) {
-    if (zip.readUInt32LE(i) === 101010256) {
-      eocd = i;
-      break;
-    }
-  }
-  if (eocd < 0) throw new Error("\u4E0D\u662F\u5408\u6CD5\u7684 zip\uFF08\u7F3A\u5C11 EOCD\uFF09");
-  const count = zip.readUInt16LE(eocd + 10);
-  let p = zip.readUInt32LE(eocd + 16);
-  for (let n = 0; n < count; n++) {
-    if (zip.readUInt32LE(p) !== 33639248) break;
-    const method = zip.readUInt16LE(p + 10);
-    const nameLen = zip.readUInt16LE(p + 28);
-    const extraLen = zip.readUInt16LE(p + 30);
-    const commentLen = zip.readUInt16LE(p + 32);
-    const compSize = zip.readUInt32LE(p + 20);
-    const localOffset = zip.readUInt32LE(p + 42);
-    const name = zip.toString("utf8", p + 46, p + 46 + nameLen);
-    if (basename5(name).toLowerCase() === want.toLowerCase()) {
-      if (zip.readUInt32LE(localOffset) !== 67324752) throw new Error("\u672C\u5730\u6587\u4EF6\u5934\u635F\u574F");
-      const lNameLen = zip.readUInt16LE(localOffset + 26);
-      const lExtraLen = zip.readUInt16LE(localOffset + 28);
-      const dataStart = localOffset + 30 + lNameLen + lExtraLen;
-      const data = zip.subarray(dataStart, dataStart + compSize);
-      if (method === 0) return Buffer.from(data);
-      if (method === 8) return inflateRawSync2(data);
-      throw new Error(`\u4E0D\u652F\u6301\u7684 zip \u538B\u7F29\u65B9\u5F0F ${method}`);
-    }
-    p += 46 + nameLen + extraLen + commentLen;
-  }
-  throw new Error(`\u53D1\u5E03\u5305\u91CC\u6CA1\u6709\u627E\u5230 ${want}`);
-}
-async function smokeTest(bin) {
-  await chmod(bin, 493);
-  await new Promise((resolvePromise, reject) => {
-    const child = spawn4(bin, ["-h"], { env: { ...process.env, VEXNAR_SELFUPDATE_SMOKE: "1" } });
-    let out = "";
-    child.stdout?.on("data", (d) => out += d);
-    child.stderr?.on("data", (d) => out += d);
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(new Error("\u5192\u70DF\u6D4B\u8BD5\u8D85\u65F6\uFF08\u65B0\u4E8C\u8FDB\u5236\u65E0\u54CD\u5E94\uFF09"));
-    }, 3e4);
-    child.on("error", (e) => {
-      clearTimeout(timer);
-      reject(e);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolvePromise();
-      else reject(new Error(`\u5192\u70DF\u6D4B\u8BD5\u5931\u8D25: ${out.slice(0, 300)}`));
-    });
-  });
-}
-async function stage(rel, currentVersion, prog) {
-  const p = resolvePaths();
-  await checkWritable(p.dir);
-  const name = assetName(rel.tag_name, goos(), goarch());
-  const asset = (rel.assets ?? []).find((a) => String(a.name).toLowerCase() === name.toLowerCase());
-  if (!asset) throw new Error(`\u8BE5\u7248\u672C\u6CA1\u6709\u63D0\u4F9B ${goos()}/${goarch()} \u7684\u53D1\u5E03\u5305\uFF08\u7F3A\u5C11 ${name}\uFF09`);
-  prog("downloading", 0, "\u83B7\u53D6\u6821\u9A8C\u548C\u6E05\u5355\u2026");
-  const sums = await fetchSums(rel);
-  const want = sums[name];
-  if (!want) throw new Error(`SHA256SUMS \u672A\u6536\u5F55 ${name}\uFF0C\u62D2\u7EDD\u5B89\u88C5\u672A\u7ECF\u6821\u9A8C\u7684\u4E8C\u8FDB\u5236`);
-  const zipPath = `${p.new}.zip.part`;
-  const binPath = `${p.new}.part`;
-  try {
-    prog("downloading", 0, `\u4E0B\u8F7D ${name}\uFF08${humanSize(asset.size)}\uFF09\u2026`);
-    const got = await download(asset.url, zipPath, asset.size, prog);
-    prog("verifying", -1, "\u6821\u9A8C SHA256\u2026");
-    if (got.toLowerCase() !== want.toLowerCase()) {
-      throw new Error(`SHA256 \u4E0D\u5339\u914D\uFF1A\u671F\u671B ${short(want)}\uFF0C\u5B9E\u9645 ${short(got)}\uFF08\u4E0B\u8F7D\u635F\u574F\u6216\u88AB\u7BE1\u6539\uFF09`);
-    }
-    prog("extracting", -1, "\u89E3\u538B\u5E76\u5192\u70DF\u6D4B\u8BD5\u2026");
-    const zip = await readFile8(zipPath);
-    const bin = extractZipFile(zip, process.platform === "win32" ? "vexnar.exe" : "vexnar");
-    await writeFile9(binPath, bin, { mode: 493 });
-    await smokeTest(binPath);
-    const binSum = await fileSHA256(binPath);
-    await writeFile9(p.sum, binSum);
-    await rename7(binPath, p.new);
-    try {
-      await writeFile9(
-        p.marker,
-        `${JSON.stringify({ from: currentVersion, to: String(rel.tag_name).replace(/^v/, ""), staged_at: Math.floor(Date.now() / 1e3) }, null, 2)}
-`
-      );
-    } catch {
-      prog("staged", -1, "\u8B66\u544A\uFF1A\u5199\u5165\u5347\u7EA7\u6807\u8BB0\u5931\u8D25\uFF0C\u672C\u6B21\u5347\u7EA7\u5C06\u6CA1\u6709\u81EA\u52A8\u56DE\u6EDA\u4FDD\u62A4");
-    }
-    prog("staged", 100, "\u65B0\u7248\u672C\u5DF2\u5C31\u7EEA\uFF0C\u6B63\u5728\u91CD\u542F\u2026");
-  } finally {
-    await rm5(zipPath, { force: true }).catch(() => {
-    });
-    await rm5(binPath, { force: true }).catch(() => {
-    });
-  }
-}
-async function rollback() {
-  const p = resolvePaths();
-  if (!existsSync5(p.old)) throw new Error(`\u6CA1\u6709\u53EF\u56DE\u6EDA\u7684\u4E0A\u4E00\u7248\u672C\uFF08${p.old} \u4E0D\u5B58\u5728\uFF09`);
-  await rm5(p.new, { force: true }).catch(() => {
-  });
-  await rm5(p.sum, { force: true }).catch(() => {
-  });
-  await smokeTest(p.old);
-  const tmp = `${p.current}.swap`;
-  await rm5(tmp, { force: true }).catch(() => {
-  });
-  try {
-    await rename7(p.current, tmp);
-  } catch (e) {
-    throw new Error(`\u79FB\u8D70\u5F53\u524D\u7248\u672C: ${e?.message ?? e}`);
-  }
-  try {
-    await rename7(p.old, p.current);
-  } catch (e) {
-    await rename7(tmp, p.current).catch(() => {
-    });
-    throw new Error(`\u88C5\u5165\u4E0A\u4E00\u7248\u672C: ${e?.message ?? e}`);
-  }
-  try {
-    await rename7(tmp, p.old);
-  } catch (e) {
-    console.log(`[update] \u56DE\u6EDA\u540E\u6574\u7406\u5907\u4EFD\u5931\u8D25\uFF08\u4E0D\u5F71\u54CD\u8FD0\u884C\uFF09\uFF1A${e?.message ?? e}`);
-  }
-  await rm5(p.marker, { force: true }).catch(() => {
-  });
-}
-function requestRestart() {
-  restartRequested = true;
-  console.log("[update] \u8BF7\u6C42\u9000\u51FA\u4EE5\u5B8C\u6210\u6362\u88C5\uFF08exit 75\uFF09");
-}
 function register16(api2) {
-  api2.get("/api/update/check", async (c) => {
-    const current = BUILD_VERSION;
-    const mode = inDocker() ? "docker" : "binary";
-    const out = {
-      current,
-      mode,
-      os: goos(),
-      arch: goarch(),
-      has_backup: hasBackup(),
-      repo: REPO,
-      boot_notice: "",
-      rolled_back: false
-    };
-    const force = (c.req.query("force") ?? "") !== "";
-    try {
-      const rel = await relCache.get(AbortSignal.timeout(releaseTimeoutMs()), force);
-      const latest = rel.tag_name;
-      out.latest = latest;
-      out.notes = rel.body;
-      out.html_url = rel.html_url;
-      if (rel.published_at) out.published_at = rel.published_at;
-      const asset = assetName(latest, goos(), goarch());
-      out.asset = asset;
-      const found = (rel.assets ?? []).find((a) => String(a.name).toLowerCase() === asset.toLowerCase());
-      if (found) {
-        out.asset_available = true;
-        out.size = found.size;
-      } else {
-        out.asset_available = false;
-      }
-      const cmp = compareVersions(current, latest);
-      out.comparable = cmp.comparable;
-      out.has_update = cmp.comparable && cmp.cmp < 0;
-      if (!cmp.comparable) out.reason = `\u5F53\u524D\u7248\u672C "${current}" \u4E0D\u662F\u6B63\u5F0F\u53D1\u5E03\u7248\u672C\uFF0C\u5DF2\u7981\u7528\u4E00\u952E\u66F4\u65B0`;
-    } catch (e) {
-      out.error = String(e?.message ?? e);
-    }
-    return c.json(out);
-  });
-  api2.post("/api/update/apply", async (c) => {
-    const current = BUILD_VERSION;
-    let rel;
-    try {
-      rel = await relCache.get(AbortSignal.timeout(releaseTimeoutMs()), false);
-    } catch (e) {
-      return c.json({ error: String(e?.message ?? e) }, 502);
-    }
-    const cmp = compareVersions(current, rel.tag_name);
-    if (!cmp.comparable) return c.json({ error: `\u5F53\u524D\u7248\u672C "${current}" \u4E0D\u662F\u6B63\u5F0F\u53D1\u5E03\u7248\u672C\uFF0C\u5DF2\u7981\u7528\u4E00\u952E\u66F4\u65B0` }, 400);
-    if (cmp.cmp >= 0) return c.json({ error: `\u5F53\u524D\u5DF2\u662F\u6700\u65B0\u7248\u672C ${current}` }, 400);
-    if (!updHub.begin(rel.tag_name)) return c.json({ error: "\u5DF2\u6709\u4E00\u4E2A\u66F4\u65B0\u6B63\u5728\u8FDB\u884C\u4E2D" }, 409);
-    void (async () => {
-      let err4 = null;
-      try {
-        await stage(rel, current, (ph, pct, msg) => updHub.publish(ph, pct, msg));
-      } catch (e) {
-        err4 = e;
-      }
-      updHub.finish(err4);
-      if (err4) {
-        console.error("[update] \u66F4\u65B0\u5931\u8D25\uFF1A", err4?.message ?? err4);
-        return;
-      }
-      console.log(`[update] ${current} \u2192 ${rel.tag_name} \u5DF2\u6682\u5B58\uFF0C\u5373\u5C06\u9000\u51FA\u4EE5\u5B8C\u6210\u6362\u88C5`);
-      await new Promise((r) => setTimeout(r, 1500));
-      requestRestart();
-    })();
-    return c.json({ ok: true, target: rel.tag_name }, 202);
-  });
-  api2.post("/api/update/rollback", async (c) => {
-    if (updHub.snapshot().running) return c.json({ error: "\u66F4\u65B0\u6B63\u5728\u8FDB\u884C\u4E2D\uFF0C\u65E0\u6CD5\u56DE\u6EDA" }, 409);
-    try {
-      await rollback();
-    } catch (e) {
-      return c.json({ error: String(e?.message ?? e) }, 400);
-    }
-    console.log("[update] \u5DF2\u624B\u52A8\u56DE\u6EDA\u5230\u4E0A\u4E00\u7248\u672C\uFF0C\u5373\u5C06\u9000\u51FA\u4EE5\u5B8C\u6210\u5207\u6362");
-    void (async () => {
-      await new Promise((r) => setTimeout(r, 500));
-      requestRestart();
-    })();
-    return c.json({ ok: true }, 202);
-  });
-  api2.get("/api/update/stream", async (c) => {
-    const stream2 = new ReadableStream({
-      start(controller) {
-        const enc = new TextEncoder();
-        const send = (p) => {
-          try {
-            controller.enqueue(enc.encode(`data: ${JSON.stringify(p)}
+  api2.get("/api/update/check", (c) => c.json({
+    current: process.env.VEXNAR_VERSION ?? "dev",
+    mode: "managed",
+    os: process.platform === "win32" ? "windows" : process.platform,
+    arch: process.arch === "x64" ? "amd64" : process.arch === "ia32" ? "386" : process.arch,
+    has_backup: false,
+    has_update: false,
+    asset_available: false,
+    comparable: false,
+    repo,
+    boot_notice: "",
+    rolled_back: false,
+    reason
+  }));
+  api2.post("/api/update/apply", (c) => c.json({ error: reason }, 409));
+  api2.post("/api/update/rollback", (c) => c.json({ error: reason }, 409));
+  api2.get("/api/update/stream", () => new Response(`data: ${JSON.stringify(progress)}
 
-`));
-          } catch {
-          }
-        };
-        const unsub = updHub.subscribe(send);
-        send(updHub.snapshot().cur);
-        const ping = setInterval(() => {
-          try {
-            controller.enqueue(enc.encode(": ping\n\n"));
-          } catch {
-          }
-        }, 2e4);
-        const cleanup = () => {
-          clearInterval(ping);
-          unsub();
-        };
-        if (c.req.raw.signal?.aborted) cleanup();
-        else c.req.raw.signal?.addEventListener("abort", cleanup);
-      }
-    });
-    return new Response(stream2, {
-      headers: {
-        "content-type": "text/event-stream",
-        "cache-control": "no-cache",
-        connection: "keep-alive",
-        "x-accel-buffering": "no"
-      }
-    });
-  });
+`, {
+    headers: { "content-type": "text/event-stream", "cache-control": "no-store" }
+  }));
 }
-function restartRequestedForExit() {
-  return restartRequested;
-}
-var REPO, latestURL, allowedHosts, releaseTTL, releaseErrTTL, releaseTimeoutDefault, BUILD_VERSION, relCache, updHub, restartRequested;
+var repo, reason, progress;
 var init_update = __esm({
-  async "src/routes/update.ts"() {
+  "src/routes/update.ts"() {
     "use strict";
-    await init_context2();
-    REPO = "zhongxinxuhk/vexnar";
-    latestURL = `https://api.github.com/repos/${REPO}/releases/latest`;
-    allowedHosts = /* @__PURE__ */ new Set([
-      "api.github.com",
-      "github.com",
-      "objects.githubusercontent.com",
-      "release-assets.githubusercontent.com",
-      "raw.githubusercontent.com"
-    ]);
-    releaseTTL = 30 * 60 * 1e3;
-    releaseErrTTL = 2 * 60 * 1e3;
-    releaseTimeoutDefault = 2e4;
-    BUILD_VERSION = process.env.VEXNAR_VERSION ?? "dev";
-    relCache = {
-      rel: null,
-      err: null,
-      at: 0,
-      async get(signal, force) {
-        const now2 = Date.now();
-        const ttl = this.err ? releaseErrTTL : releaseTTL;
-        if (!force && this.at && now2 - this.at < ttl) {
-          if (this.err) throw this.err;
-          return this.rel;
-        }
-        try {
-          const rel = await fetchLatest(signal);
-          this.rel = rel;
-          this.err = null;
-          this.at = now2;
-          return rel;
-        } catch (e) {
-          if (e?.name === "AbortError" || e?.name === "TimeoutError") throw e;
-          this.err = e;
-          this.rel = null;
-          this.at = now2;
-          throw e;
-        }
-      }
-    };
-    updHub = {
-      running: false,
-      cur: { phase: "idle", percent: -1, message: "", version: "" },
-      subs: /* @__PURE__ */ new Set(),
-      begin(version2) {
-        if (this.running) return false;
-        this.running = true;
-        this.cur = { phase: "downloading", percent: 0, message: "\u51C6\u5907\u4E2D\u2026", version: version2 };
-        this.fanout(this.cur);
-        return true;
-      },
-      finish(err4) {
-        this.running = false;
-        if (err4) this.cur = { phase: "failed", percent: -1, message: "\u66F4\u65B0\u5931\u8D25", error: String(err4?.message ?? err4), version: this.cur.version };
-        else this.cur = { phase: "staged", percent: 100, message: "\u65B0\u7248\u672C\u5DF2\u5C31\u7EEA\uFF0C\u6B63\u5728\u91CD\u542F\u2026", version: this.cur.version };
-        this.fanout(this.cur);
-      },
-      publish(ph, pct, msg) {
-        this.cur = { phase: ph, percent: pct, message: msg, version: this.cur.version };
-        this.fanout(this.cur);
-      },
-      fanout(p) {
-        for (const cb of this.subs) {
-          try {
-            cb(p);
-          } catch {
-          }
-        }
-      },
-      snapshot() {
-        return { cur: this.cur, running: this.running };
-      },
-      subscribe(cb) {
-        this.subs.add(cb);
-        return () => this.subs.delete(cb);
-      }
-    };
-    restartRequested = false;
+    repo = "zhongxinxuhk/vexnar";
+    reason = "\u6B64\u5BA2\u6237\u7AEF\u968F dsh \u5DE5\u4F5C\u533A\u66F4\u65B0\uFF0C\u8BF7\u4F7F\u7528\u5B89\u88C5\u6765\u6E90\u63D0\u4F9B\u7684\u66F4\u65B0\u65B9\u5F0F";
+    progress = { phase: "idle", percent: -1, message: reason };
   }
 });
 
@@ -76012,8 +74802,8 @@ __export(auth_exports, {
   verifyToken: () => verifyToken
 });
 import { randomBytes as randomBytes4, randomInt, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
-import { readFileSync as readFileSync4, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join17 } from "node:path";
+import { readFileSync as readFileSync3, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join16 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 function apiError(status, message) {
   return Object.assign(new Error(message), { status });
@@ -76039,7 +74829,7 @@ function toLine(value) {
 function jwtSigningKey() {
   if (cachedKey) return cachedKey;
   try {
-    const text4 = readFileSync4(JWT_KEY_PATH, "utf8").trim();
+    const text4 = readFileSync3(JWT_KEY_PATH, "utf8").trim();
     if (text4.length >= 32) {
       cachedKey = Buffer.from(text4);
       return cachedKey;
@@ -76420,14 +75210,14 @@ function logQueue() {
     async take(ms) {
       if (items.length) return items.shift();
       if (closed) return null;
-      const timedOut = await new Promise((resolve5) => {
+      const timedOut = await new Promise((resolve4) => {
         const timer = setTimeout(() => {
           wake = null;
-          resolve5(true);
+          resolve4(true);
         }, ms);
         wake = () => {
           clearTimeout(timer);
-          resolve5(false);
+          resolve4(false);
         };
       });
       if (timedOut) return null;
@@ -76490,8 +75280,8 @@ function register17(api2) {
       if (existing) throw apiError(403, "\u5BC6\u7801\u5DF2\u8BBE\u7F6E");
       const password = String(body?.password ?? "");
       if (!password) throw apiError(400, "\u5BC6\u7801\u4E0D\u80FD\u4E3A\u7A7A");
-      const reason = validatePassword(password);
-      if (reason) throw apiError(400, reason);
+      const reason2 = validatePassword(password);
+      if (reason2) throw apiError(400, reason2);
       const hash2 = hashPassword(password);
       const inserted = await writeSetting(AUTH_PASS_KEY, hash2, true);
       if (!inserted) throw apiError(403, "\u5BC6\u7801\u5DF2\u8BBE\u7F6E");
@@ -76518,8 +75308,8 @@ function register17(api2) {
       if (!verifyToken(extractToken(c))) throw apiError(401, "\u672A\u6388\u6743");
       const next = String(body?.new_password ?? "");
       if (!next) throw apiError(400, "\u65B0\u5BC6\u7801\u4E0D\u80FD\u4E3A\u7A7A");
-      const reason = validatePassword(next);
-      if (reason) throw apiError(400, reason);
+      const reason2 = validatePassword(next);
+      if (reason2) throw apiError(400, reason2);
       const current = await readSetting(AUTH_PASS_KEY);
       if (!current) throw apiError(403, "\u5BC6\u7801\u672A\u521D\u59CB\u5316\uFF0C\u8BF7\u5148\u8BBE\u7F6E\u5BC6\u7801");
       if (!verifyPassword(String(body?.old_password ?? ""), current)) throw apiError(401, "\u5F53\u524D\u5BC6\u7801\u9519\u8BEF");
@@ -76765,7 +75555,7 @@ var init_auth = __esm({
     init_streaming();
     await init_context2();
     REPO_ROOT = fileURLToPath2(new URL("../../../../", import.meta.url));
-    JWT_KEY_PATH = join17(REPO_ROOT, "jwt.key");
+    JWT_KEY_PATH = join16(REPO_ROOT, "jwt.key");
     JWT_SUBJECT = "VEXNAR";
     JWT_TTL_SECONDS = 7 * 24 * 60 * 60;
     KEY_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -76955,9 +75745,9 @@ function register18(api2) {
         const cmd = String(exec.command ?? params.command ?? "");
         if (!cmd) return c.json({ error: "command \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
         const args = Array.isArray(exec.args) ? exec.args.map(String) : [];
-        const out = await new Promise((resolve5) => {
+        const out = await new Promise((resolve4) => {
           execFile(cmd, args, { cwd: storeRoot(), timeout: 6e4 }, (err4, stdout, stderr) => {
-            resolve5({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
+            resolve4({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
           });
         });
         return c.json({ output: `${out.stdout}${out.stderr}`.trim(), is_error: out.code !== 0 });
@@ -76965,9 +75755,9 @@ function register18(api2) {
       if (kind === "script") {
         const script = String(exec.script ?? exec.inline ?? "");
         const interp = String(exec.interpreter ?? "python3");
-        const out = await new Promise((resolve5) => {
+        const out = await new Promise((resolve4) => {
           const child = execFile(interp, ["-c", script], { cwd: storeRoot(), timeout: 6e4 }, (err4, stdout, stderr) => {
-            resolve5({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
+            resolve4({ code: err4 ? err4.code ?? 1 : 0, stdout: String(stdout), stderr: String(stderr) });
           });
           void child;
         });
@@ -77011,14 +75801,6 @@ function register18(api2) {
       return errResponse8(c, e);
     }
   });
-  api2.get("/api/exploration/activity", async (c) => {
-    const taskId = c.req.query("task") ?? "";
-    const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
-    const before = Number(c.req.query("before") ?? 0) || 0;
-    const page = taskId === "" ? await store.activity.recent({ limit, before }) : await store.activity.history({ taskId, limit, before });
-    const items = page.items.map(activityDto);
-    return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore });
-  });
 }
 function requestId(row) {
   return String(row?.client_request_id ?? "");
@@ -77028,7 +75810,6 @@ var init_gaps = __esm({
   async "src/routes/gaps.ts"() {
     "use strict";
     await init_context2();
-    await init_exploration();
     init_register();
     errResponse8 = (c, e) => c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
     rfc = (d) => d.toISOString();
@@ -77038,10 +75819,1422 @@ var init_gaps = __esm({
 // src/routes.ts
 init_dist();
 await init_context2();
-await init_exploration();
+import { readFile as readFile8 } from "node:fs/promises";
+import { join as join17 } from "node:path";
+
+// src/routes/exploration.ts
+import { crc32, deflateRawSync } from "node:zlib";
+
+// src/routes/read-views.ts
 init_task_status();
-import { readFile as readFile9 } from "node:fs/promises";
-import { join as join18 } from "node:path";
+await init_context2();
+var taskDto = (row, metrics) => ({
+  id: String(row.id),
+  exploration_id: Number(row.exploration_id),
+  name: row.name,
+  ...row.category_id == null ? {} : { category_id: row.category_id },
+  pinned: row.pinned_at != null,
+  ...row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) },
+  description: row.description,
+  goal: row.goal,
+  status: row.status,
+  created_at: row.created_at_text,
+  created_unix: Number(row.created_unix ?? 0),
+  completed_at: row.completed_at_text ?? "",
+  completed_unix: Number(row.completed_unix ?? 0),
+  last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
+  paused: row.paused,
+  queued: row.queued,
+  tokens: {
+    input_tokens: Number(metrics?.input_tokens ?? 0),
+    output_tokens: Number(metrics?.output_tokens ?? 0),
+    cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
+    cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
+  },
+  goals_total: Number(metrics?.goals_total ?? 0),
+  goals_met: Number(metrics?.goals_met ?? 0),
+  in_flight: Number(metrics?.in_flight ?? 0),
+  findings: {
+    critical: Number(metrics?.findings?.critical ?? 0),
+    high: Number(metrics?.findings?.high ?? 0),
+    medium: Number(metrics?.findings?.medium ?? 0),
+    low: Number(metrics?.findings?.low ?? 0)
+  },
+  ...row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id },
+  llm_profile_ids: [],
+  ...row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id },
+  llm_failover_state: "default",
+  source_task_ids: [],
+  company_ids: [],
+  coverage_enabled: row.coverage_enabled
+});
+var findingDto = (row) => ({
+  traffic_count: 0,
+  evidence_version: 0,
+  report_evidence_version: 0,
+  report_stale: false,
+  id: String(row.id),
+  finding_id: String(row.id),
+  vulnclass: row.vulnclass,
+  ...row.name ? { name: row.name } : {},
+  severity: row.severity,
+  status: row.status,
+  summary: row.summary,
+  evidence: row.evidence,
+  ...row.task_id == null ? {} : { task_id: String(row.task_id) },
+  ts: row.created_at_text
+});
+var goalDto = (row) => {
+  const payload = typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {};
+  return {
+    id: String(row.id),
+    text: String(payload.text ?? ""),
+    ...payload.vulnclass ? { vulnclass: payload.vulnclass } : {},
+    state: row.state,
+    ...row.origin == null ? {} : { origin: row.origin },
+    ts: String(row.created_at).replace(/\.\d+/, "")
+  };
+};
+function activityDto(row) {
+  const out = {
+    seq: Number(row.id),
+    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
+    ...row.worker ? { worker: row.worker } : {},
+    ts: String(row.created_at ?? "").replace(/\.\d+/, ""),
+    ...row.kind ? { kind: row.kind } : {},
+    ...row.tool ? { tool: row.tool } : {},
+    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
+    is_error: Boolean(row.is_error),
+    summary: row.summary ?? "",
+    metadata: row.metadata ?? {},
+    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
+    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
+    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
+    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
+    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
+  };
+  return out;
+}
+function registerReadViews(api2) {
+  api2.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
+  api2.get("/api/agents/:key", async (c) => {
+    const agents = await meta3.table("agents");
+    const row = agents.find((agent) => agent.key === c.req.param("key"));
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({ agent: row });
+  });
+  api2.get("/api/task-categories", async (c) => c.json({ categories: await meta3.table("taskCategories") }));
+  api2.get("/api/task-templates", async (c) => c.json({ templates: await meta3.table("taskTemplates") }));
+  api2.get("/api/companies", async (c) => c.json(await store.companies.list()));
+  const TASK_PAGE_MAX_SIZE = 200;
+  api2.get("/api/tasks", async (c) => {
+    const status = (c.req.query("status") ?? "").trim();
+    const needle = (c.req.query("q") ?? "").trim().toLowerCase();
+    const rows = await store.tasks.list();
+    const metrics = await store.taskMetrics();
+    const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
+    const paged = c.req.query("page") != null || c.req.query("size") != null;
+    if (!paged) return c.json({ tasks: all });
+    const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+    const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
+    return c.json({
+      tasks: all.slice((page - 1) * size, (page - 1) * size + size),
+      total: all.length,
+      page,
+      size
+    });
+  });
+  api2.get("/api/tasks/summary", async (c) => {
+    const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+    const rows = await store.tasks.list();
+    const metrics = await store.taskMetrics();
+    return c.json(summarizeTasks(rows, metrics, { days }));
+  });
+  api2.get("/api/tasks/:id", async (c) => {
+    const row = await store.tasks.get(c.req.param("id"));
+    if (!row) return c.json({ error: "not found" }, 404);
+    const metrics = await store.taskMetrics();
+    return c.json(taskDto(row, metrics.get(Number(row.exploration_id))));
+  });
+  api2.get("/api/tasks/:id/metrics", async (c) => {
+    const task = await store.tasks.get(c.req.param("id"));
+    if (!task) return c.json({ error: "not found" }, 404);
+    const metrics = (await store.taskMetrics()).get(Number(task.exploration_id));
+    return c.json({
+      task_id: Number(task.id),
+      exploration_id: Number(task.exploration_id),
+      mttd_seconds: null,
+      findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
+      findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
+      findings_by_vulnclass: {},
+      findings_by_status: {},
+      verify_sessions: 0,
+      verify_reproduced: 0,
+      verify_false_positive: 0,
+      verify_inconclusive: 0,
+      intents: {},
+      done_intents: 0,
+      no_yield_done: 0,
+      yield_rate: 0,
+      class_coverage: {}
+    });
+  });
+  api2.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
+  api2.get("/api/exploration/findings", async (c) => {
+    const page = c.req.query("page");
+    const limit = c.req.query("limit");
+    if (page == null && limit == null) {
+      const rows2 = await store.findings.list(500);
+      return c.json(rows2.map(findingDto));
+    }
+    const size = Math.min(Number(limit ?? 20) || 20, 200);
+    const current = Math.max(Number(page ?? 1) || 1, 1);
+    const severity = (c.req.query("severity") ?? "").trim().toLowerCase();
+    const status = (c.req.query("status") ?? "").trim().toLowerCase();
+    const vulnclass = (c.req.query("vulnclass") ?? "").trim();
+    const taskId = (c.req.query("task_id") ?? "").trim();
+    const query = (c.req.query("q") ?? "").trim().toLowerCase();
+    let rows = await store.findings.list(1e5);
+    if (severity) rows = rows.filter((row) => String(row.severity).toLowerCase() === severity);
+    if (status) rows = rows.filter((row) => String(row.status).toLowerCase() === status);
+    if (vulnclass) rows = rows.filter((row) => String(row.vulnclass) === vulnclass);
+    if (taskId) rows = rows.filter((row) => String(row.task_id ?? "") === taskId);
+    if (query) {
+      rows = rows.filter((row) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? "").toLowerCase().includes(query)));
+    }
+    const total = rows.length;
+    const pageRows = rows.slice((current - 1) * size, current * size);
+    return c.json({ items: pageRows.map(findingDto), total, page: current, page_size: size });
+  });
+  api2.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
+  api2.get("/api/exploration/findings/:id", async (c) => {
+    const id = c.req.param("id");
+    const row = await store.findings.get(id);
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({
+      ...findingDto(row),
+      ...row.report ? { report: row.report } : {}
+    });
+  });
+  api2.get("/api/tasks/:id/coverage", async (c) => {
+    const task = await store.tasks.get(c.req.param("id"));
+    if (!task) return c.json({ error: "task not found" }, 404);
+    if (task.coverage_enabled === false) {
+      return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] });
+    }
+    return c.json({ enabled: true, ...await store.coverage(c.req.param("id")) });
+  });
+  api2.get("/api/tasks/:id/goals", async (c) => {
+    const taskId = c.req.param("id");
+    const task = await store.tasks.get(taskId);
+    if (!task) return c.json({ error: "task not found" }, 404);
+    const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: "desc", kinds: ["goal"] });
+    const goals = items.map(goalDto);
+    return c.json({ goals });
+  });
+  api2.get("/api/tokens/daily", async (c) => {
+    const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+    return c.json(await store.activity.dailyTokens(days));
+  });
+  api2.get("/api/exploration/intents", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const limit = Math.min(Number(c.req.query("limit") ?? 300) || 300, 500);
+    const before = c.req.query("before") ?? "";
+    if (!taskId) return c.req.query("page") ? c.json({ items: [], has_more: false }) : c.json([]);
+    const result = await store.nodes.page({ taskId, page: 1, size: limit, order: "desc", kinds: ["intent"], before: before && before !== "0" ? before : void 0 });
+    const items = result.items.map((row) => ({
+      id: String(row.id),
+      type: row.kind,
+      payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+      priority: row.priority,
+      state: row.state,
+      ...row.origin == null ? {} : { origin: row.origin },
+      ts: row.created_at
+    }));
+    if (c.req.query("page")) return c.json({ items, has_more: result.total > items.length });
+    return c.json(items);
+  });
+  api2.get("/api/exploration/nodes", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+    const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
+    if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} });
+    const kinds = (c.req.query("kind") ?? "").split(",").filter(Boolean);
+    const states = (c.req.query("state") ?? "").split(",").filter(Boolean);
+    const order2 = c.req.query("order") === "asc" ? "asc" : "desc";
+    const { items, total, edges } = await store.nodes.page({ taskId, page, size, order: order2, kinds, states });
+    return c.json({
+      items: items.map((row) => ({
+        id: String(row.id),
+        type: row.kind,
+        payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+        priority: row.priority,
+        state: row.state,
+        ...row.origin == null ? {} : { origin: row.origin },
+        ts: row.created_at
+      })),
+      total,
+      page,
+      size,
+      edges: edges.map((edge) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
+      refs: {}
+    });
+  });
+  api2.get("/api/exploration/activity", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
+    const before = Number(c.req.query("before") ?? 0) || 0;
+    const page = taskId === "" ? await store.activity.recent({ limit, before }) : await store.activity.history({ taskId, limit, before });
+    const items = page.items.map(activityDto);
+    return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore });
+  });
+}
+
+// src/routes/exploration.ts
+await init_context2();
+var MAX_FOLLOW_UP_RUNES = 4e3;
+var MAX_RETEST_NOTES_RUNES = 4e3;
+var FINDING_RETEST_AGENT_KEY = "retester";
+var FINDING_RETEST_TOOLS = ["get_finding_retest_context", "record_finding_retest_result"];
+var RETEST_ACTIVE_STATUSES = ["pending", "running"];
+var GRAPH_NODE_LIMIT = 2e3;
+var GRAPH_EDGE_LIMIT = 5e3;
+var ASSET_TREE_MAX_NODES = 3e3;
+var UNASSIGNED_ASSET = "__none__";
+var STREAM_POLL_MS = 800;
+var STREAM_PING_MS = 15e3;
+var EXPORT_SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+var FINDINGS = "findings";
+var NODES = "nodes";
+var EDGES = "edges";
+var ACTIVITY = "activity";
+var TASKS = "tasks";
+var ASSETS = "assets";
+var ANCHORS = "anchors";
+var MAIN_SESSIONS = "main_sessions";
+var FINDING_RETESTS = "finding_retests";
+var CONVERSATIONS = "conversations";
+var CONVERSATION_ACTIVITIES = "conversation_activities";
+function err(c, e) {
+  return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+}
+function httpError(status, message) {
+  return Object.assign(new Error(message), { status });
+}
+function rfc33392(date5) {
+  const offset = -date5.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const pad = (value) => String(Math.floor(Math.abs(value))).padStart(2, "0");
+  return `${date5.toISOString().slice(0, 23)}${sign}${pad(offset / 60)}:${pad(offset % 60)}`.replace("Z", "");
+}
+function stamp(date5) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date5.getFullYear()}${pad(date5.getMonth() + 1)}${pad(date5.getDate())}-${pad(date5.getHours())}${pad(date5.getMinutes())}${pad(date5.getSeconds())}`;
+}
+function runeCount(value) {
+  return [...value].length;
+}
+function paginationParam(raw2, fallback, upperBound) {
+  let value = Math.floor(Number(raw2 ?? fallback));
+  if (!Number.isFinite(value) || value <= 0) value = fallback;
+  if (upperBound > 0 && value > upperBound) value = upperBound;
+  return value;
+}
+function normFilter(value) {
+  const text4 = String(value ?? "").trim();
+  return text4 === "all" ? "" : text4;
+}
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+function sliceRunes(text4, max) {
+  const chars = [...text4];
+  return chars.length > max ? chars.slice(0, max).join("") : text4;
+}
+async function resolveTask(raw2) {
+  const key = String(raw2 ?? "").trim();
+  if (!key) return null;
+  const tasks = await operations.writer.list(TASKS);
+  const live = tasks.filter((row) => !row.deleted_at_text && !row.archived_at_text);
+  const byId = live.find((row) => String(row.id) === key);
+  if (byId) return byId;
+  return live.find((row) => String(row.name ?? "") === key) ?? null;
+}
+function nodeDto(row) {
+  return {
+    id: String(row.id),
+    type: String(row.kind),
+    payload: JSON.stringify(parseJson2(row.payload) ?? {}),
+    priority: Number(row.priority ?? 0),
+    state: String(row.state ?? ""),
+    origin: String(row.origin ?? ""),
+    ts: String(row.created_at ?? "")
+  };
+}
+function edgeDto(row) {
+  return { src: String(row.src), dst: String(row.dst), rel: String(row.rel) };
+}
+function compareEdges(a, b) {
+  const numeric = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+  };
+  return numeric(a.src) - numeric(b.src) || numeric(a.dst) - numeric(b.dst) || String(a.rel ?? "").localeCompare(String(b.rel ?? ""));
+}
+function findingDto2(row) {
+  return {
+    traffic_count: 0,
+    evidence_version: Number(row.evidence_version ?? 0),
+    report_evidence_version: Number(row.report_evidence_version ?? 0),
+    report_stale: Boolean(row.report) && Number(row.evidence_version ?? 0) !== Number(row.report_evidence_version ?? 0),
+    id: String(row.id),
+    finding_id: String(row.id),
+    vulnclass: row.vulnclass,
+    ...row.name ? { name: row.name } : {},
+    severity: row.severity,
+    status: row.status,
+    summary: row.summary,
+    evidence: row.evidence,
+    ...row.task_id == null ? {} : { task_id: String(row.task_id) },
+    ts: row.created_at_text
+  };
+}
+function filterFromQuery(q) {
+  return {
+    severity: normFilter(q("severity")).toLowerCase(),
+    status: normFilter(q("status")).toLowerCase(),
+    vulnclass: normFilter(q("vulnclass")),
+    taskId: normFilter(q("task_id")),
+    query: String(q("q") ?? "").trim(),
+    sort: String(q("sort") ?? "").trim(),
+    assetScope: String(q("asset_scope") ?? "").trim()
+  };
+}
+async function loadFindings() {
+  const rows = await operations.writer.list(FINDINGS);
+  return [...rows].sort((a, b) => String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? "")) || Number(b.id) - Number(a.id));
+}
+function matchesFilter(row, f) {
+  if (f.severity && String(row.severity ?? "").toLowerCase() !== f.severity) return false;
+  if (f.status && String(row.status ?? "").toLowerCase() !== f.status) return false;
+  if (f.vulnclass && String(row.vulnclass ?? "") !== f.vulnclass) return false;
+  if (f.taskId && String(row.task_id ?? "") !== f.taskId) return false;
+  if (f.query) {
+    const needle = f.query.toLowerCase();
+    const haystack = [row.name, row.vulnclass, row.summary, row.evidence, row.report];
+    if (!haystack.some((value) => String(value ?? "").toLowerCase().includes(needle))) return false;
+  }
+  return true;
+}
+function scopeFiltered(rows, f, tree) {
+  if (!f.assetScope) return rows;
+  const known = /* @__PURE__ */ new Set();
+  for (const node2 of tree.nodes) if (node2.asset_id) known.add(Number(node2.asset_id));
+  const assetIDsOf = (row) => asArray(row.asset_ids).map(Number).filter((id) => id > 0);
+  if (f.assetScope === UNASSIGNED_ASSET) {
+    return rows.filter((row) => !assetIDsOf(row).some((id) => known.has(id)));
+  }
+  if (!tree.byKey.has(f.assetScope)) return [];
+  const children = /* @__PURE__ */ new Map();
+  for (const node2 of tree.nodes) {
+    const list = children.get(node2.parent ?? "") ?? [];
+    list.push(node2);
+    children.set(node2.parent ?? "", list);
+  }
+  const seen = /* @__PURE__ */ new Set([f.assetScope]);
+  const ids = /* @__PURE__ */ new Set();
+  const queue = [f.assetScope];
+  while (queue.length) {
+    const key = queue.shift();
+    const node2 = tree.byKey.get(key);
+    if (node2?.asset_id) ids.add(Number(node2.asset_id));
+    for (const child of children.get(key) ?? []) {
+      if (seen.has(child.key)) continue;
+      seen.add(child.key);
+      queue.push(child.key);
+    }
+  }
+  if (!ids.size) return [];
+  return rows.filter((row) => assetIDsOf(row).some((id) => ids.has(id)));
+}
+var assetKey = (id) => `a:${id}`;
+var companyKey = (id) => `c:${id}`;
+function urlHostPort(raw2) {
+  if (!raw2) return { host: "", port: 0 };
+  try {
+    const url2 = new URL(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw2) ? raw2 : `http://${raw2}`);
+    return { host: url2.hostname, port: Number(url2.port || 0) };
+  } catch {
+    return { host: "", port: 0 };
+  }
+}
+function hostPortOf(row) {
+  let host = String(row.domain ?? "");
+  let port = Number(row.port ?? 0);
+  if (!host && row.url) {
+    const parsed = urlHostPort(String(row.url));
+    host = parsed.host;
+    if (!port) port = parsed.port;
+  }
+  if (!host) host = String(row.ip ?? "");
+  return { host, port };
+}
+function assetLabel(row) {
+  const kind = String(row.type ?? "");
+  const url2 = String(row.url ?? "");
+  const domain2 = String(row.domain ?? "");
+  const ip = String(row.ip ?? "");
+  const appName = String(row.app_name ?? "");
+  const rootDomain = String(row.root_domain ?? "");
+  if (kind === "service" && !url2) {
+    const { host, port } = hostPortOf(row);
+    if (host && port > 0) return `${host}:${port}`;
+  }
+  if ((kind === "endpoint" || kind === "service") && url2) return url2;
+  if (kind === "app" && appName) return appName;
+  for (const value of [url2, domain2, ip, appName, rootDomain]) if (value) return value;
+  return assetKey(Number(row.id));
+}
+function countFinding(node2, hit) {
+  if (!node2) return;
+  node2.total += 1;
+  if (hit.severity === "critical") node2.critical += 1;
+  else if (hit.severity === "high") node2.high += 1;
+  else if (hit.severity === "medium") node2.medium += 1;
+  else if (hit.severity === "low") node2.low += 1;
+  if (!node2.last_found_at || hit.ts > node2.last_found_at) node2.last_found_at = hit.ts;
+}
+async function buildFindingAssetTree(rows, maxNodes = ASSET_TREE_MAX_NODES) {
+  const hits = rows.map((row) => ({
+    severity: String(row.severity ?? ""),
+    ts: String(row.created_at_text ?? ""),
+    assetIDs: asArray(row.asset_ids).map(Number).filter((id) => id > 0)
+  }));
+  const wanted = /* @__PURE__ */ new Set();
+  for (const hit of hits) for (const id of hit.assetIDs) wanted.add(id);
+  const assets = await operations.writer.list(ASSETS);
+  const all = new Map(assets.map((row) => [Number(row.id), row]));
+  const byID = /* @__PURE__ */ new Map();
+  for (const id of wanted) {
+    const row = all.get(id);
+    if (row) byID.set(id, row);
+  }
+  const rootByDomain = /* @__PURE__ */ new Map();
+  const subByDomain = /* @__PURE__ */ new Map();
+  const ipByAddr = /* @__PURE__ */ new Map();
+  const svcByHost = /* @__PURE__ */ new Map();
+  const svcByHostPort = /* @__PURE__ */ new Map();
+  for (const row of assets) {
+    const id = Number(row.id);
+    const kind = String(row.type ?? "");
+    const domain2 = String(row.domain ?? "");
+    const ip = String(row.ip ?? "");
+    if (kind === "root_domain" && domain2) rootByDomain.set(domain2, id);
+    else if (kind === "subdomain" && domain2) subByDomain.set(domain2, id);
+    else if (kind === "ip" && ip) ipByAddr.set(ip, id);
+    else if (kind === "service") {
+      const { host, port } = hostPortOf(row);
+      if (host) {
+        if (!svcByHost.has(host)) svcByHost.set(host, id);
+        svcByHostPort.set(`${host}|${port}`, id);
+      }
+    }
+  }
+  const parentKeyCache = /* @__PURE__ */ new Map();
+  const parentKeyOf = (row) => {
+    const id = Number(row.id);
+    const cached3 = parentKeyCache.get(id);
+    if (cached3 !== void 0) return cached3;
+    const kind = String(row.type ?? "");
+    const domain2 = String(row.domain ?? "");
+    const ip = String(row.ip ?? "");
+    const rootDomain = String(row.root_domain ?? "");
+    const { host, port } = hostPortOf(row);
+    const pick2 = (...ids) => {
+      for (const candidate of ids) if (candidate && candidate !== id) return assetKey(candidate);
+      return "";
+    };
+    let parent = "";
+    if (kind === "subdomain") {
+      parent = pick2(rootByDomain.get(rootDomain));
+    } else if (kind === "service") {
+      parent = pick2(
+        subByDomain.get(domain2),
+        subByDomain.get(host),
+        ipByAddr.get(ip),
+        ipByAddr.get(host),
+        rootByDomain.get(rootDomain),
+        rootByDomain.get(host)
+      );
+    } else if (kind === "endpoint") {
+      parent = pick2(
+        svcByHostPort.get(`${host}|${port}`),
+        svcByHost.get(host),
+        subByDomain.get(host),
+        subByDomain.get(domain2),
+        ipByAddr.get(host),
+        ipByAddr.get(ip),
+        rootByDomain.get(rootDomain),
+        rootByDomain.get(host)
+      );
+    }
+    parentKeyCache.set(id, parent);
+    return parent;
+  };
+  for (let round = 0; round < 4; round++) {
+    let added = 0;
+    for (const row of [...byID.values()]) {
+      const parentKey = parentKeyOf(row);
+      if (!parentKey.startsWith("a:")) continue;
+      const parentId = Number(parentKey.slice(2));
+      if (byID.has(parentId)) continue;
+      const parentRow = all.get(parentId);
+      if (!parentRow) continue;
+      byID.set(parentId, parentRow);
+      added += 1;
+    }
+    if (!added) break;
+  }
+  const nodes = /* @__PURE__ */ new Map();
+  for (const row of byID.values()) {
+    const key = assetKey(Number(row.id));
+    const node2 = {
+      key,
+      kind: String(row.type ?? ""),
+      label: assetLabel(row),
+      asset_id: Number(row.id),
+      self: 0,
+      total: 0,
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      last_found_at: ""
+    };
+    const companyId = Number(row.company_id ?? 0);
+    if (companyId > 0) node2.company_id = companyId;
+    nodes.set(key, node2);
+  }
+  const parentOf = /* @__PURE__ */ new Map();
+  for (const row of byID.values()) {
+    const key = assetKey(Number(row.id));
+    const parentKey = parentKeyOf(row);
+    if (!parentKey || parentKey === key || !nodes.has(parentKey)) continue;
+    parentOf.set(key, parentKey);
+    nodes.get(key).parent = parentKey;
+  }
+  const topLevel = [...nodes.values()].filter(
+    (node2) => !node2.parent && node2.company_id && ["root_domain", "ip", "app"].includes(node2.kind)
+  );
+  if (topLevel.length) {
+    const companies = await store.companies.list();
+    const names = new Map(companies.map((row) => [Number(row.id), String(row.name ?? "")]));
+    for (const node2 of topLevel) {
+      const companyId = Number(node2.company_id);
+      const key = companyKey(companyId);
+      if (!nodes.has(key)) {
+        nodes.set(key, {
+          key,
+          kind: "company",
+          label: names.get(companyId) || `\u4F01\u4E1A #${companyId}`,
+          company_id: companyId,
+          self: 0,
+          total: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+          last_found_at: ""
+        });
+      }
+      node2.parent = key;
+      parentOf.set(node2.key, key);
+    }
+  }
+  const unassigned = {
+    key: UNASSIGNED_ASSET,
+    kind: "none",
+    label: "\u672A\u5173\u8054\u8D44\u4EA7",
+    self: 0,
+    total: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    last_found_at: ""
+  };
+  for (const hit of hits) {
+    const direct = [];
+    const touched = /* @__PURE__ */ new Set();
+    for (const id of hit.assetIDs) {
+      const node2 = nodes.get(assetKey(id));
+      if (!node2) continue;
+      direct.push(node2);
+      for (let key = node2.key; key; key = parentOf.get(key)) touched.add(key);
+    }
+    if (!direct.length) {
+      countFinding(unassigned, hit);
+      unassigned.self += 1;
+      continue;
+    }
+    for (const node2 of direct) node2.self += 1;
+    for (const key of touched) countFinding(nodes.get(key), hit);
+  }
+  const out = [...nodes.values()].filter((node2) => node2.total > 0);
+  if (unassigned.total > 0) out.push(unassigned);
+  out.sort((a, b) => {
+    if (a.kind === "none" !== (b.kind === "none")) return b.kind === "none" ? -1 : 1;
+    if (a.total !== b.total) return b.total - a.total;
+    return a.label.localeCompare(b.label);
+  });
+  const tree = {
+    nodes: out,
+    byKey: /* @__PURE__ */ new Map(),
+    finding_total: hits.length,
+    truncated: false,
+    dropped_kinds: []
+  };
+  for (const node2 of tree.nodes) tree.byKey.set(node2.key, node2);
+  if (maxNodes > 0 && tree.nodes.length > maxNodes) {
+    for (const kind of ["endpoint", "service"]) {
+      tree.nodes = tree.nodes.filter((node2) => node2.kind !== kind);
+      tree.truncated = true;
+      tree.dropped_kinds.push(kind);
+      if (tree.nodes.length <= maxNodes) break;
+    }
+  }
+  return tree;
+}
+function exportOrder(rows) {
+  return [...rows].sort((a, b) => {
+    const ra = EXPORT_SEVERITY_RANK[String(a.severity ?? "")] ?? 4;
+    const rb = EXPORT_SEVERITY_RANK[String(b.severity ?? "")] ?? 4;
+    if (ra !== rb) return ra - rb;
+    return String(b.created_at_text ?? "").localeCompare(String(a.created_at_text ?? ""));
+  });
+}
+function findingTitle(row) {
+  return String(row.name ?? "").trim() || String(row.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B";
+}
+function findingsMarkdown(rows, taskNames, generatedAt) {
+  const items = exportOrder(rows);
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const row of items) if (counts[String(row.severity ?? "")] != null) counts[String(row.severity)] += 1;
+  const pad = (value) => String(value).padStart(2, "0");
+  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
+  const lines = ["# \u6F0F\u6D1E\u53D1\u73B0\u6C47\u603B\u62A5\u544A", "", `- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, `- **\u53D1\u73B0\u603B\u6570**\uFF1A${items.length} \u4E2A`, "", "## \u6458\u8981", "", "| \u4E25\u91CD\u7B49\u7EA7 | \u6570\u91CF |", "| --- | --- |"];
+  for (const [key, label] of [["critical", "\u4E25\u91CD"], ["high", "\u9AD8\u5371"], ["medium", "\u4E2D\u5371"], ["low", "\u4F4E\u5371"]]) {
+    lines.push(`| ${label} | ${counts[key]} |`);
+  }
+  lines.push("");
+  if (!items.length) {
+    lines.push("_\u65E0\u5339\u914D\u7684\u6F0F\u6D1E\u3002_", "");
+    return lines.join("\n");
+  }
+  lines.push("## \u6F0F\u6D1E\u660E\u7EC6", "");
+  items.forEach((row, index) => {
+    lines.push(`### ${index + 1}. [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, "");
+    if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
+    lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
+    const description = taskNames.get(String(row.task_id ?? "")) ?? "";
+    if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
+    lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`, "");
+    if (String(row.summary ?? "").trim()) lines.push(`${String(row.summary).trim()}`, "");
+    if (String(row.evidence ?? "").trim()) lines.push("**\u8BC1\u636E\uFF1A**", "", "```", String(row.evidence).trim(), "```", "");
+    if (String(row.report ?? "").trim()) lines.push("**\u8BE6\u7EC6\u62A5\u544A\uFF1A**", "", String(row.report).trim(), "");
+    lines.push("---", "");
+  });
+  return lines.join("\n");
+}
+function singleFindingMarkdown(row, taskNames, generatedAt) {
+  const pad = (value) => String(value).padStart(2, "0");
+  const at = `${generatedAt.getFullYear()}-${pad(generatedAt.getMonth() + 1)}-${pad(generatedAt.getDate())} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}:${pad(generatedAt.getSeconds())}`;
+  const lines = [`# [${String(row.severity || "info").toUpperCase()}] ${findingTitle(row)}`, ""];
+  if (row.vulnclass) lines.push(`- **\u7C7B\u522B**\uFF1A${row.vulnclass}`);
+  lines.push(`- **\u4E25\u91CD\u7B49\u7EA7**\uFF1A${String(row.severity || "info")}`);
+  lines.push(`- **\u72B6\u6001**\uFF1A${String(row.status || "pending")}`);
+  const description = taskNames.get(String(row.task_id ?? "")) ?? "";
+  if (description.trim()) lines.push(`- **\u6240\u5C5E\u4EFB\u52A1**\uFF1A${description}`);
+  lines.push(`- **\u53D1\u73B0\u65F6\u95F4**\uFF1A${String(row.created_at_text ?? "")}`);
+  lines.push(`- **\u751F\u6210\u65F6\u95F4**\uFF1A${at}`, "");
+  if (String(row.summary ?? "").trim()) lines.push("## \u6982\u8FF0", "", String(row.summary).trim(), "");
+  if (String(row.evidence ?? "").trim()) lines.push("## \u8BC1\u636E", "", "```", String(row.evidence).trim(), "```", "");
+  if (String(row.report ?? "").trim()) lines.push("## \u8BE6\u7EC6\u62A5\u544A", "", String(row.report).trim(), "");
+  return lines.join("\n");
+}
+function csvCell(value) {
+  const text4 = String(value ?? "");
+  return /[",\r\n]/.test(text4) ? `"${text4.replace(/"/g, '""')}"` : text4;
+}
+function findingsCsv(rows, taskNames) {
+  const items = exportOrder(rows);
+  const lines = ["ID,\u540D\u79F0,\u7C7B\u522B,\u4E25\u91CD\u7B49\u7EA7,\u72B6\u6001,\u6240\u5C5E\u4EFB\u52A1,\u53D1\u73B0\u65F6\u95F4,\u6982\u8FF0,\u6D41\u91CF\u8BC1\u636E\u6570\u91CF,\u6D41\u91CF\u8BC1\u636EID"];
+  for (const row of items) {
+    lines.push([
+      row.id,
+      findingTitle(row),
+      row.vulnclass,
+      row.severity || "info",
+      row.status || "pending",
+      taskNames.get(String(row.task_id ?? "")) ?? "",
+      row.created_at_text,
+      String(row.summary ?? "").trim(),
+      0,
+      ""
+    ].map(csvCell).join(","));
+  }
+  return `\uFEFF${lines.join("\r\n")}\r
+`;
+}
+function buildZip(entries) {
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const nameBuf = Buffer.from(entry.name, "utf8");
+    const crc = crc32(entry.data) >>> 0;
+    const compressed = deflateRawSync(entry.data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(67324752, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(2048, 6);
+    local.writeUInt16LE(8, 8);
+    local.writeUInt16LE(0, 10);
+    local.writeUInt16LE(33, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(compressed.length, 18);
+    local.writeUInt32LE(entry.data.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    local.writeUInt16LE(0, 28);
+    chunks.push(local, nameBuf, compressed);
+    central.push({ name: entry.name, crc, size: entry.data.length, compressed, offset });
+    offset += 30 + nameBuf.length + compressed.length;
+  }
+  const centralStart = offset;
+  for (const item of central) {
+    const nameBuf = Buffer.from(item.name, "utf8");
+    const header = Buffer.alloc(46);
+    header.writeUInt32LE(33639248, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(20, 6);
+    header.writeUInt16LE(2048, 8);
+    header.writeUInt16LE(8, 10);
+    header.writeUInt16LE(0, 12);
+    header.writeUInt16LE(33, 14);
+    header.writeUInt32LE(item.crc, 16);
+    header.writeUInt32LE(item.compressed.length, 20);
+    header.writeUInt32LE(item.size, 24);
+    header.writeUInt16LE(nameBuf.length, 28);
+    header.writeUInt16LE(0, 30);
+    header.writeUInt16LE(0, 32);
+    header.writeUInt16LE(0, 34);
+    header.writeUInt16LE(0, 36);
+    header.writeUInt32LE(0, 38);
+    header.writeUInt32LE(item.offset, 42);
+    chunks.push(header, nameBuf);
+    offset += 46 + nameBuf.length;
+  }
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(101010256, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(central.length, 8);
+  end.writeUInt16LE(central.length, 10);
+  end.writeUInt32LE(offset - centralStart, 12);
+  end.writeUInt32LE(centralStart, 16);
+  end.writeUInt16LE(0, 20);
+  return Buffer.concat([...chunks, end]);
+}
+async function taskNameMap() {
+  const tasks = await operations.writer.list(TASKS);
+  return new Map(tasks.map((row) => [String(row.id), String(row.description || row.name || "")]));
+}
+async function listMainSessions(explorationId) {
+  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(b.seq) - Number(a.seq));
+  const sessions = rows.map((row) => ({ seq: Number(row.seq), created_at: String(row.created_at ?? "") }));
+  sessions.push({ seq: 0, created_at: "0001-01-01T00:00:00Z" });
+  return sessions;
+}
+async function createMainSession(explorationId) {
+  const rows = (await operations.writer.list(MAIN_SESSIONS)).filter((row) => Number(row.exploration_id) === explorationId);
+  const seq = rows.reduce((max, row) => Math.max(max, Number(row.seq ?? 0)), 0) + 1;
+  const id = await operations.writer.maxKey(MAIN_SESSIONS) + 1;
+  const record2 = { id: String(id), exploration_id: explorationId, seq, created_at: rfc33392(/* @__PURE__ */ new Date()) };
+  const [written] = await operations.writer.commit([{ table: MAIN_SESSIONS, key: String(id), record: record2 }]);
+  return written;
+}
+function retestDto(row) {
+  return {
+    id: Number(row.id),
+    finding_id: Number(row.finding_id),
+    conversation_id: row.conversation_id == null ? null : Number(row.conversation_id),
+    status: String(row.status ?? ""),
+    verdict: String(row.verdict ?? ""),
+    notes: String(row.notes ?? ""),
+    purpose: String(row.purpose ?? "retest"),
+    summary: String(row.summary ?? ""),
+    evidence: String(row.evidence ?? ""),
+    error: String(row.error ?? ""),
+    created_at: String(row.created_at ?? ""),
+    started_at: row.started_at ?? null,
+    finished_at: row.finished_at ?? null
+  };
+}
+async function retestAgentReady() {
+  const agents = await meta3.table("agents");
+  const agent = agents.find((row) => row.key === FINDING_RETEST_AGENT_KEY);
+  if (!agent || !agent.enabled) {
+    throw httpError(409, "\u6F0F\u6D1E\u590D\u6D4B Agent \u4E0D\u5B58\u5728\u6216\u672A\u542F\u7528\uFF1A\u8BF7\u786E\u8BA4 dsh \u8BBE\u7F6E \u2192 Agent \u9884\u8BBE \u4E2D\u7684 retester \u89D2\u8272\uFF0C\u4EE5\u53CA\u5F15\u64CE\u4FA7\u8BE5 agent \u5DF2\u542F\u7528");
+  }
+  const tools = await meta3.table("tools");
+  for (const key of FINDING_RETEST_TOOLS) {
+    const tool = tools.find((row) => row.key === key);
+    const bound = asArray(tool?.agents).includes(FINDING_RETEST_AGENT_KEY);
+    if (!tool || !tool.enabled || !bound) throw httpError(409, `\u8BF7\u4E3A\u590D\u6D4B Agent \u542F\u7528\u5E76\u7ED1\u5B9A\u5DE5\u5177\uFF1A${key}`);
+  }
+}
+async function enqueueFindingRetest(findingId, notes) {
+  const finding = await operations.writer.readRecord(FINDINGS, String(findingId));
+  if (!finding) throw httpError(404, "finding not found");
+  await retestAgentReady();
+  const rows = await operations.writer.list(FINDING_RETESTS);
+  const existing = rows.filter((row) => Number(row.finding_id) === findingId && RETEST_ACTIVE_STATUSES.includes(String(row.status))).sort((a, b) => Number(a.id) - Number(b.id))[0];
+  if (existing) return { retest: retestDto(existing), created: false };
+  const title = sliceRunes(String(finding.name ?? "").trim() || String(finding.vulnclass ?? "").trim() || "\u672A\u5206\u7C7B", 100);
+  const convId = await operations.writer.maxKey(CONVERSATIONS) + 1;
+  const retestId = await operations.writer.maxKey(FINDING_RETESTS) + 1;
+  const activityId = await operations.writer.maxKey(CONVERSATION_ACTIVITIES) + 1;
+  const now2 = (/* @__PURE__ */ new Date()).toISOString();
+  const message = notes ? `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002
+
+\u672C\u6B21\u590D\u6D4B\u8865\u5145\u8BF4\u660E\uFF1A
+${notes}` : `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}\u3002\u5148\u8C03\u7528 get_finding_retest_context \u8BFB\u53D6\u672C\u4F1A\u8BDD\u5173\u8054\u7684\u539F\u59CB\u8BC1\u636E\u4E0E\u7EA6\u675F\uFF0C\u518D\u6267\u884C\u9488\u5BF9\u6027\u9A8C\u8BC1\uFF0C\u6700\u540E\u8C03\u7528 record_finding_retest_result \u4FDD\u5B58\u7ED3\u8BBA\u3002`;
+  const conversation = {
+    id: String(convId),
+    agent_key: FINDING_RETEST_AGENT_KEY,
+    title: `\u590D\u6D4B #${findingId} \xB7 ${title}`,
+    llm_profile_id: null,
+    project_id: null,
+    workspace: "",
+    pinned_at: null,
+    created_at: now2,
+    updated_at: now2
+  };
+  const retest = {
+    id: String(retestId),
+    finding_id: Number(findingId),
+    conversation_id: Number(convId),
+    status: "pending",
+    verdict: "",
+    notes,
+    purpose: "retest",
+    summary: "",
+    evidence: "",
+    error: "",
+    created_at: rfc33392(new Date(now2)),
+    started_at: null,
+    finished_at: null
+  };
+  const [written] = await operations.writer.commit([
+    { table: CONVERSATIONS, key: String(convId), record: conversation },
+    {
+      table: CONVERSATION_ACTIVITIES,
+      key: String(activityId),
+      record: {
+        id: String(activityId),
+        conversation_id: String(convId),
+        worker: FINDING_RETEST_AGENT_KEY,
+        kind: "user",
+        tool: "",
+        tool_use_id: "",
+        is_error: false,
+        summary: `\u8BF7\u590D\u6D4B\u6F0F\u6D1E #${findingId}`,
+        detail: message,
+        input_tokens: null,
+        output_tokens: null,
+        cache_read_tokens: null,
+        cache_write_tokens: null,
+        outcome: "",
+        created_at: now2
+      }
+    },
+    { table: FINDING_RETESTS, key: String(retestId), record: retest }
+  ]);
+  void written;
+  store.invalidate?.(["conversations", "conversation_activities"]);
+  return { retest: retestDto(retest), created: true };
+}
+function register(api2) {
+  api2.get("/api/exploration/graph", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ nodes: [], edges: [] });
+      const explorationId = Number(task.exploration_id);
+      const nodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId).sort((a, b) => Number(a.id) - Number(b.id)).slice(0, GRAPH_NODE_LIMIT);
+      const edges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId).sort(compareEdges).slice(0, GRAPH_EDGE_LIMIT);
+      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/frontier", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json([]);
+      const raw2 = Number(c.req.query("limit") ?? 0);
+      const limit = Number.isFinite(raw2) && raw2 > 0 ? Math.floor(raw2) : 100;
+      const explorationId = Number(task.exploration_id);
+      const rows = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId && row.kind === "intent" && row.state === "open").sort((a, b) => Number(b.priority ?? 0) - Number(a.priority ?? 0) || Number(a.id) - Number(b.id)).slice(0, limit);
+      return c.json(rows.map(nodeDto));
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/main-sessions", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const sessions = await listMainSessions(Number(task.exploration_id));
+      return c.json({ sessions, current: sessions.length ? sessions[0].seq : 0 });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/main-session/new", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const record2 = await createMainSession(Number(task.exploration_id));
+      return c.json({ seq: Number(record2.seq), created_at: String(record2.created_at), current: Number(record2.seq) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/groups", async (c) => {
+    try {
+      const page = paginationParam(c.req.query("page"), 1, 0);
+      const limit = paginationParam(c.req.query("limit"), 10, 100);
+      const filter = filterFromQuery((name) => c.req.query(name));
+      let rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
+      if (filter.assetScope) {
+        const tree = await buildFindingAssetTree(rows);
+        rows = scopeFiltered(rows, filter, tree);
+      }
+      const tasks = await operations.writer.list(TASKS);
+      const byId = new Map(tasks.map((row) => [String(row.id), row]));
+      const buckets = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        const key = row.task_id == null ? "" : String(row.task_id);
+        const bucket = buckets.get(key) ?? { row: key ? byId.get(key) ?? null : null, items: [] };
+        bucket.items.push(row);
+        buckets.set(key, bucket);
+      }
+      const groups = [...buckets.entries()].map(([key, bucket]) => {
+        const task = bucket.row;
+        let status = String(task?.status ?? "");
+        if (!["done", "failed", "timeout"].includes(status)) {
+          if (task?.queued) status = "queued";
+          else if (task?.paused) status = "paused";
+        }
+        const severity = { critical: 0, high: 0, medium: 0, low: 0 };
+        let last = "";
+        for (const row of bucket.items) {
+          const value = String(row.severity ?? "");
+          if (severity[value] != null) severity[value] += 1;
+          const ts = String(row.created_at_text ?? "");
+          if (ts > last) last = ts;
+        }
+        return {
+          task_id: key ? Number(key) : null,
+          task_name: String(task?.name ?? ""),
+          task_description: String(task?.description ?? ""),
+          task_status: status,
+          count: bucket.items.length,
+          critical: severity.critical,
+          high: severity.high,
+          medium: severity.medium,
+          low: severity.low,
+          last_found_at: last
+        };
+      });
+      const rank = (group) => Math.max(0, ...["critical", "high", "medium", "low"].map((key, index) => group[key] > 0 ? 4 - index : -1));
+      groups.sort((a, b) => {
+        if (filter.sort === "severity") {
+          const diff = rank(b) - rank(a);
+          if (diff) return diff;
+        }
+        const byTime = String(b.last_found_at).localeCompare(String(a.last_found_at));
+        if (byTime) return byTime;
+        return (b.task_id ?? -1) - (a.task_id ?? -1);
+      });
+      const items = groups.slice((page - 1) * limit, (page - 1) * limit + limit);
+      return c.json({ items, total: groups.length, finding_total: rows.length, page, page_size: limit });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/export", async (c) => {
+    try {
+      const scope = String(c.req.query("scope") ?? "").trim();
+      const format = String(c.req.query("format") ?? "").trim();
+      const filter = filterFromQuery((name) => c.req.query(name));
+      let rows;
+      if (scope === "selected") {
+        const ids = [];
+        for (const part of String(c.req.query("ids") ?? "").split(",")) {
+          const text4 = part.trim();
+          if (!text4) continue;
+          const id = Number(text4);
+          if (!Number.isFinite(id) || id <= 0) return c.json({ error: `bad finding id: ${text4}` }, 400);
+          ids.push(id);
+        }
+        if (!ids.length) return c.json({ error: "no findings selected" }, 400);
+        const all = await loadFindings();
+        const order2 = new Map(ids.map((id, index) => [String(id), index]));
+        rows = all.filter((row) => order2.has(String(row.id))).sort((a, b) => (order2.get(String(a.id)) ?? 0) - (order2.get(String(b.id)) ?? 0));
+      } else if (scope === "all") {
+        rows = await loadFindings();
+      } else if (scope === "filtered" || scope === "") {
+        rows = (await loadFindings()).filter((row) => matchesFilter(row, filter));
+        if (filter.assetScope) {
+          const tree = await buildFindingAssetTree(rows);
+          rows = scopeFiltered(rows, filter, tree);
+        }
+      } else {
+        return c.json({ error: `bad scope: ${scope}` }, 400);
+      }
+      const now2 = /* @__PURE__ */ new Date();
+      const names = await taskNameMap();
+      const base = `findings-${stamp(now2)}`;
+      const download = (contentType, filename, body) => {
+        const payload = typeof body === "string" ? Buffer.from(body, "utf8") : body;
+        return new Response(new Uint8Array(payload), {
+          headers: {
+            "content-type": contentType,
+            "content-disposition": `attachment; filename="${filename}"`,
+            "content-length": String(payload.length)
+          }
+        });
+      };
+      switch (format) {
+        case "md-single":
+          return download("text/markdown; charset=utf-8", `${base}.md`, findingsMarkdown(rows, names, now2));
+        case "csv":
+          return download("text/csv; charset=utf-8", `${base}.csv`, findingsCsv(rows, names));
+        case "json":
+          return download("application/json; charset=utf-8", `${base}.json`, `${JSON.stringify(rows.map(findingDto2), null, 2)}
+`);
+        case "md-zip": {
+          const entries = [
+            { name: "findings.md", data: Buffer.from(findingsMarkdown(rows, names, now2), "utf8") },
+            { name: "manifest.json", data: Buffer.from(`${JSON.stringify({ generated_at: now2.toISOString(), scope: scope || "filtered", format, count: rows.length, findings: rows.map(findingDto2) }, null, 2)}
+`, "utf8") }
+          ];
+          for (const row of exportOrder(rows)) {
+            entries.push({ name: `findings/finding-${row.id}.md`, data: Buffer.from(singleFindingMarkdown(row, names, now2), "utf8") });
+          }
+          const zip = buildZip(entries);
+          return new Response(new Uint8Array(zip), {
+            headers: {
+              "content-type": "application/zip",
+              "content-disposition": `attachment; filename="${base}.zip"`,
+              "content-length": String(zip.length)
+            }
+          });
+        }
+        default:
+          return c.json({ error: `bad format: ${format}` }, 400);
+      }
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/asset-tree", async (c) => {
+    try {
+      const filter = filterFromQuery((name) => c.req.query(name));
+      const rows = (await loadFindings()).filter((row) => matchesFilter(row, { ...filter, assetScope: "" }));
+      const tree = await buildFindingAssetTree(rows);
+      return c.json({
+        nodes: tree.nodes,
+        finding_total: tree.finding_total,
+        truncated: tree.truncated,
+        ...tree.dropped_kinds.length ? { dropped_kinds: tree.dropped_kinds } : {}
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/retests/active", async (c) => {
+    try {
+      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => RETEST_ACTIVE_STATUSES.includes(String(row.status)) && row.conversation_id != null).sort((a, b) => Number(a.id) - Number(b.id));
+      return c.json({
+        retests: rows.map((row) => ({
+          id: Number(row.id),
+          finding_id: String(row.finding_id),
+          conversation_id: Number(row.conversation_id),
+          status: String(row.status)
+        }))
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/:id/lineage", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      const empty = { nodes: [], edges: [] };
+      if (finding.node_id == null || finding.task_id == null) return c.json(empty);
+      const task = await resolveTask(String(finding.task_id));
+      if (!task) return c.json(empty);
+      const explorationId = Number(task.exploration_id);
+      const allNodes = (await operations.writer.list(NODES)).filter((row) => Number(row.exploration_id) === explorationId);
+      const allEdges = (await operations.writer.list(EDGES)).filter((row) => Number(row.exploration_id) === explorationId);
+      const nodeId = String(finding.node_id);
+      const ancestors = /* @__PURE__ */ new Set();
+      const queue = [nodeId];
+      while (queue.length) {
+        const current = queue.shift();
+        if (ancestors.has(current)) continue;
+        ancestors.add(current);
+        for (const edge of allEdges) {
+          if (String(edge.dst) === current && !ancestors.has(String(edge.src))) queue.push(String(edge.src));
+        }
+      }
+      const nodes = allNodes.filter((row) => ancestors.has(String(row.id))).sort((a, b) => Number(a.id) - Number(b.id));
+      if (!nodes.length) return c.json(empty);
+      const edges = allEdges.filter((row) => ancestors.has(String(row.src)) && ancestors.has(String(row.dst))).sort(compareEdges);
+      return c.json({ nodes: nodes.map(nodeDto), edges: edges.map(edgeDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/findings/:id/deepen", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const body = await c.req.json().catch(() => ({}));
+      const description = String(body?.description ?? "").trim();
+      if (!description) return c.json({ error: "description is required" }, 400);
+      if (runeCount(description) > MAX_FOLLOW_UP_RUNES) {
+        return c.json({ error: `description must be at most ${MAX_FOLLOW_UP_RUNES} characters` }, 400);
+      }
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      if (finding.task_id == null || finding.node_id == null) {
+        return c.json({ error: "finding origin task or node is no longer available" }, 409);
+      }
+      const task = await operations.writer.readRecord(TASKS, String(finding.task_id));
+      if (!task || task.deleted_at_text) return c.json({ error: "finding origin task is no longer available" }, 409);
+      const findingNode = await operations.writer.readRecord(NODES, String(finding.node_id));
+      if (!findingNode || findingNode.kind !== "finding" || Number(findingNode.exploration_id) !== Number(task.exploration_id)) {
+        return c.json({ error: "finding origin task or node is no longer available" }, 409);
+      }
+      const explorationId = Number(task.exploration_id);
+      const nodes = await operations.writer.list(NODES);
+      const intentId = nodes.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
+      const anchors = (await operations.writer.list(ANCHORS)).filter((row) => String(row.node_id) === String(finding.node_id)).sort((a, b) => Number(a.asset_id) - Number(b.asset_id));
+      const activities = await operations.writer.list(ACTIVITY);
+      const activityId = activities.reduce((max, row) => Math.max(max, Number(row.id ?? 0)), 0) + 1;
+      const now2 = /* @__PURE__ */ new Date();
+      const intent = {
+        id: String(intentId),
+        exploration_id: explorationId,
+        kind: "intent",
+        state: "open",
+        priority: 10,
+        origin: "human",
+        payload: {
+          text: description,
+          finding_id: String(id),
+          ...anchors.length ? { asset_ids: anchors.map((row) => Number(row.asset_id)) } : {}
+        },
+        created_at: rfc33392(now2)
+      };
+      const ops = [
+        { table: NODES, key: String(intentId), record: intent },
+        {
+          table: EDGES,
+          key: `${finding.node_id}-derived_from-${intentId}`,
+          record: { exploration_id: explorationId, src: String(finding.node_id), dst: String(intentId), rel: "derived_from" }
+        },
+        {
+          table: ACTIVITY,
+          key: String(activityId),
+          record: {
+            id: String(activityId),
+            exploration_id: explorationId,
+            node_id: Number(intentId),
+            worker: "system",
+            kind: "text",
+            is_error: false,
+            summary: "\u4EBA\u5DE5\u63D0\u4EA4\u6F0F\u6D1E\u6DF1\u5165\u5229\u7528\u610F\u56FE",
+            detail: description,
+            metadata: {},
+            created_at: rfc33392(now2),
+            created_unix: Math.floor(now2.getTime() / 1e3)
+          }
+        }
+      ];
+      for (const anchor2 of anchors) {
+        const key = `${intentId}-${Number(anchor2.asset_id)}`;
+        ops.push({ table: ANCHORS, key, record: { node_id: Number(intentId), asset_id: Number(anchor2.asset_id) } });
+      }
+      await operations.writer.commit(ops);
+      store.invalidate?.(["nodes", "edges", "activity"]);
+      let queued = Boolean(task.queued);
+      try {
+        const admitted = await operations.controlTask(String(task.id), "resume");
+        queued = Boolean(admitted?.queued);
+      } catch {
+      }
+      const current = await operations.writer.readRecord(NODES, String(intentId));
+      return c.json({
+        task_id: Number(task.id),
+        intent_id: Number(intentId),
+        state: String(current?.state ?? "open"),
+        queued
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/findings/:id/retests", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const finding = await operations.writer.readRecord(FINDINGS, String(id));
+      if (!finding) return c.json({ error: "finding not found" }, 404);
+      const rows = (await operations.writer.list(FINDING_RETESTS)).filter((row) => Number(row.finding_id) === id).sort((a, b) => Number(b.id) - Number(a.id));
+      return c.json({ retests: rows.map(retestDto) });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.post("/api/exploration/findings/:id/retests", async (c) => {
+    try {
+      const id = Number(c.req.param("id"));
+      if (!Number.isFinite(id) || id <= 0) return c.json({ error: "bad finding id" }, 400);
+      const body = await c.req.json().catch(() => ({}));
+      const notes = String(body?.notes ?? "").trim();
+      if (runeCount(notes) > MAX_RETEST_NOTES_RUNES) {
+        return c.json({ error: `\u590D\u6D4B\u8865\u5145\u8BF4\u660E\u6700\u591A ${MAX_RETEST_NOTES_RUNES} \u4E2A\u5B57\u7B26` }, 400);
+      }
+      const result = await enqueueFindingRetest(id, notes);
+      return c.json(result, result.created ? 202 : 200);
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/activity/stream", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "task not found" }, 404);
+      const explorationId = Number(task.exploration_id);
+      const intentRaw = String(c.req.query("intent") ?? "").trim();
+      const intentId = intentRaw && Number.isFinite(Number(intentRaw)) ? Number(intentRaw) : null;
+      let since = Math.max(0, Math.floor(Number(c.req.query("since") ?? 0) || 0));
+      const lastEventId = c.req.header("last-event-id");
+      if (lastEventId && Number.isFinite(Number(lastEventId))) since = Math.max(0, Math.floor(Number(lastEventId)));
+      const encoder = new TextEncoder();
+      const signal = c.req.raw.signal;
+      let timer;
+      let closed = false;
+      let lastPing = Date.now();
+      const stream2 = new ReadableStream({
+        start(controller) {
+          const stop = () => {
+            if (closed) return;
+            closed = true;
+            if (timer) clearInterval(timer);
+            timer = void 0;
+            try {
+              controller.close();
+            } catch {
+            }
+          };
+          const send = (chunk) => {
+            if (closed) return;
+            try {
+              controller.enqueue(encoder.encode(chunk));
+            } catch {
+              stop();
+            }
+          };
+          const emit = (row) => send(`id: ${Number(row.id)}
+data: ${JSON.stringify(activityDto(row))}
+
+`);
+          const pump = async () => {
+            const rows = (await operations.writer.list(ACTIVITY)).filter((row) => Number(row.exploration_id) === explorationId).filter((row) => Number(row.id) > since).filter((row) => intentId == null || Number(row.node_id) === intentId).sort((a, b) => Number(a.id) - Number(b.id));
+            for (const row of rows) {
+              if (closed) return;
+              if (Number(row.id) <= since) continue;
+              since = Number(row.id);
+              emit(row);
+            }
+          };
+          signal?.addEventListener?.("abort", stop, { once: true });
+          void (async () => {
+            try {
+              await pump();
+            } catch {
+              stop();
+              return;
+            }
+            if (closed) return;
+            timer = setInterval(() => {
+              void (async () => {
+                if (closed) return;
+                try {
+                  await pump();
+                } catch {
+                  stop();
+                  return;
+                }
+                if (Date.now() - lastPing >= STREAM_PING_MS) {
+                  lastPing = Date.now();
+                  send(": ping\n\n");
+                }
+              })();
+            }, STREAM_POLL_MS);
+            timer.unref?.();
+          })();
+        },
+        cancel() {
+          closed = true;
+          if (timer) clearInterval(timer);
+          timer = void 0;
+        }
+      });
+      return new Response(stream2, {
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-cache, no-transform",
+          connection: "keep-alive",
+          "x-accel-buffering": "no"
+        }
+      });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+  api2.get("/api/exploration/activity/:seq", async (c) => {
+    try {
+      const task = await resolveTask(c.req.query("task"));
+      if (!task) return c.json({ error: "no task" }, 404);
+      const seq = Number(c.req.param("seq"));
+      if (!Number.isFinite(seq) || seq <= 0) return c.json({ error: "bad seq" }, 400);
+      const row = await operations.writer.readRecord(ACTIVITY, String(seq));
+      if (!row || Number(row.exploration_id) !== Number(task.exploration_id)) return c.json({ detail: "" });
+      return c.json({ detail: String(row.detail ?? "") });
+    } catch (e) {
+      return err(c, e);
+    }
+  });
+}
 
 // src/egress/routes.ts
 await init_context2();
@@ -77051,48 +77244,27 @@ import { join as join9 } from "node:path";
 import { Agent, createServer as createHttpServer, request as httpRequest2 } from "node:http";
 import { createServer as createNetServer, createConnection as createConnection3 } from "node:net";
 
+// src/egress/manager.ts
+import { EventEmitter } from "node:events";
+import { randomBytes as randomBytes2, timingSafeEqual } from "node:crypto";
+import { connect as tlsConnect } from "node:tls";
+import { connect as netConnect } from "node:net";
+
 // src/egress/dialer.ts
 import { createConnection } from "node:net";
-import { connect as tlsConnect } from "node:tls";
 var CONNECT_TIMEOUT = 2e4;
-async function dialNode(node2, engine2, host, port, timeoutMs = CONNECT_TIMEOUT) {
-  const enginePort = node2.id !== void 0 ? engine2.portFor(node2.id) : void 0;
-  if (enginePort) {
-    return socks5Connect({ proxyHost: "127.0.0.1", proxyPort: enginePort, host, port, timeoutMs });
-  }
-  if (node2.protocol === "socks5" || node2.protocol === "http") {
-    const username = typeof node2.config.username === "string" ? node2.config.username : void 0;
-    const password = node2.secrets.password;
-    if (node2.protocol === "socks5") {
-      return socks5Connect({
-        proxyHost: node2.server,
-        proxyPort: node2.port,
-        host,
-        port,
-        username,
-        password,
-        timeoutMs
-      });
-    }
-    return httpConnect({
-      proxyHost: node2.server,
-      proxyPort: node2.port,
-      host,
-      port,
-      username,
-      password,
-      tls: node2.config.tls === true,
-      timeoutMs
-    });
-  }
-  throw new Error(
-    `\u534F\u8BAE ${node2.protocol} \u9700\u8981\u534F\u8BAE\u5F15\u64CE\uFF08mihomo\uFF09\uFF1B\u672A\u914D\u7F6E VEXNAR_MIHOMO_BIN \u65F6\u4EC5 socks5/http \u53EF\u7528`
-  );
-}
 function socks5Connect(options) {
-  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT;
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve4, reject) => {
     const socket = createConnection({ host: options.proxyHost, port: options.proxyPort });
+    socket.once("connect", () => {
+      socks5Over(socket, options).then(resolve4, reject);
+    });
+    socket.once("error", reject);
+  });
+}
+function socks5Over(socket, options) {
+  const timeout = options.timeoutMs ?? CONNECT_TIMEOUT;
+  return new Promise((resolve4, reject) => {
     const reader = new SocketReader(socket);
     let settled = false;
     const fail5 = (error62) => {
@@ -77102,48 +77274,46 @@ function socks5Connect(options) {
       socket.destroy();
       reject(error62);
     };
-    const timer = setTimeout(() => fail5(new Error(`\u8FDE\u63A5\u4EE3\u7406 ${options.proxyHost}:${options.proxyPort} \u8D85\u65F6`)), timeout);
+    const timer = setTimeout(() => fail5(new Error(`SOCKS5 \u63E1\u624B\u8D85\u65F6\uFF08${options.host}:${options.port}\uFF09`)), timeout);
     socket.once("error", (error62) => {
       clearTimeout(timer);
       fail5(error62);
     });
-    socket.once("connect", () => {
-      const wantsAuth = Boolean(options.username);
-      const methods = wantsAuth ? [0, 2] : [0];
-      socket.write(Buffer.from([5, methods.length, ...methods]));
-      void (async () => {
-        const greeting = await reader.read(2);
-        if (greeting[0] !== 5) throw new Error("SOCKS5 \u7248\u672C\u4E0D\u5339\u914D");
-        if (greeting[1] === 2) {
-          const user = Buffer.from(options.username ?? "", "utf8");
-          const pass = Buffer.from(options.password ?? "", "utf8");
-          socket.write(Buffer.concat([Buffer.from([1, user.length]), user, Buffer.from([pass.length]), pass]));
-          const auth = await reader.read(2);
-          if (auth[1] !== 0) throw new Error("SOCKS5 \u4EE3\u7406\u8BA4\u8BC1\u5931\u8D25");
-        } else if (greeting[1] !== 0) {
-          throw new Error(`SOCKS5 \u4EE3\u7406\u4E0D\u63A5\u53D7\u8BA4\u8BC1\u65B9\u5F0F\uFF1A${greeting[1]}`);
-        }
-        socket.write(buildSocks5Request(options.host, options.port));
-        const head = await reader.read(4);
-        if (head[1] !== 0) throw new Error(`SOCKS5 CONNECT \u5931\u8D25\uFF1Acode=${head[1]}`);
-        const atyp = head[3];
-        const addressLength = atyp === 1 ? 4 : atyp === 4 ? 16 : (await reader.read(1))[0];
-        await reader.read(addressLength + 2);
-        clearTimeout(timer);
-        if (settled) return;
-        settled = true;
-        const rest = reader.detach();
-        socket.removeAllListeners("error");
-        socket.removeAllListeners("close");
-        if (rest.length) {
-          socket.pause();
-          socket.unshift(rest);
-        }
-        resolve5(socket);
-      })().catch((error62) => {
-        clearTimeout(timer);
-        fail5(error62);
-      });
+    const wantsAuth = Boolean(options.username);
+    const methods = wantsAuth ? [0, 2] : [0];
+    socket.write(Buffer.from([5, methods.length, ...methods]));
+    void (async () => {
+      const greeting = await reader.read(2);
+      if (greeting[0] !== 5) throw new Error("SOCKS5 \u7248\u672C\u4E0D\u5339\u914D");
+      if (greeting[1] === 2) {
+        const user = Buffer.from(options.username ?? "", "utf8");
+        const pass = Buffer.from(options.password ?? "", "utf8");
+        socket.write(Buffer.concat([Buffer.from([1, user.length]), user, Buffer.from([pass.length]), pass]));
+        const auth = await reader.read(2);
+        if (auth[1] !== 0) throw new Error("SOCKS5 \u4EE3\u7406\u8BA4\u8BC1\u5931\u8D25");
+      } else if (greeting[1] !== 0) {
+        throw new Error(`SOCKS5 \u4EE3\u7406\u4E0D\u63A5\u53D7\u8BA4\u8BC1\u65B9\u5F0F\uFF1A${greeting[1]}`);
+      }
+      socket.write(buildSocks5Request(options.host, options.port));
+      const head = await reader.read(4);
+      if (head[1] !== 0) throw new Error(`SOCKS5 CONNECT \u5931\u8D25\uFF1Acode=${head[1]}`);
+      const atyp = head[3];
+      const addressLength = atyp === 1 ? 4 : atyp === 4 ? 16 : (await reader.read(1))[0];
+      await reader.read(addressLength + 2);
+      clearTimeout(timer);
+      if (settled) return;
+      settled = true;
+      const rest = reader.detach();
+      socket.removeAllListeners("error");
+      socket.removeAllListeners("close");
+      if (rest.length) {
+        socket.pause();
+        socket.unshift(rest);
+      }
+      resolve4(socket);
+    })().catch((error62) => {
+      clearTimeout(timer);
+      fail5(error62);
     });
   });
 }
@@ -77164,8 +77334,8 @@ var SocketReader = class {
     socket.on("close", this.onClose);
   }
   read(size) {
-    return new Promise((resolve5, reject) => {
-      this.waiter = { size, resolve: resolve5, reject };
+    return new Promise((resolve4, reject) => {
+      this.waiter = { size, resolve: resolve4, reject };
       this.flush();
     });
   }
@@ -77197,10 +77367,9 @@ function buildSocks5Request(host, port) {
   const name = Buffer.from(host, "utf8");
   return Buffer.concat([Buffer.from([5, 1, 0, 3, name.length]), name, portBuf]);
 }
-function httpConnect(options) {
+function httpOver(socket, options) {
   const timeout = options.timeoutMs ?? CONNECT_TIMEOUT;
-  return new Promise((resolve5, reject) => {
-    const socket = options.tls ? tlsConnect({ host: options.proxyHost, port: options.proxyPort, servername: options.proxyHost }) : createConnection({ host: options.proxyHost, port: options.proxyPort });
+  return new Promise((resolve4, reject) => {
     let settled = false;
     const fail5 = (error62) => {
       if (settled) return;
@@ -77208,46 +77377,40 @@ function httpConnect(options) {
       socket.destroy();
       reject(error62);
     };
-    const timer = setTimeout(() => fail5(new Error(`HTTP \u4EE3\u7406 ${options.proxyHost}:${options.proxyPort} \u8D85\u65F6`)), timeout);
-    socket.once("error", (error62) => {
+    const timer = setTimeout(() => fail5(new Error(`HTTP \u4EE3\u7406 CONNECT \u8D85\u65F6\uFF08${options.host}:${options.port}\uFF09`)), timeout);
+    const target = `${options.host}:${options.port}`;
+    const lines = [
+      `CONNECT ${target} HTTP/1.1`,
+      `Host: ${target}`,
+      "Proxy-Connection: keep-alive",
+      options.username ? `Proxy-Authorization: Basic ${Buffer.from(`${options.username}:${options.password ?? ""}`).toString("base64")}` : "",
+      "",
+      ""
+    ].filter(Boolean);
+    socket.write(lines.join("\r\n"));
+    let buffer = "";
+    const onData = (chunk) => {
+      buffer += chunk.toString("latin1");
+      const index = buffer.indexOf("\r\n\r\n");
+      if (index < 0) {
+        if (buffer.length > 16384) fail5(new Error("HTTP \u4EE3\u7406\u54CD\u5E94\u5934\u8FC7\u957F"));
+        return;
+      }
+      socket.off("data", onData);
+      const statusLine = buffer.slice(0, buffer.indexOf("\r\n"));
+      const status = Number(statusLine.split(" ")[1]);
+      if (status !== 200) {
+        fail5(new Error(`HTTP \u4EE3\u7406 CONNECT \u5931\u8D25\uFF1A${statusLine}`));
+        return;
+      }
       clearTimeout(timer);
-      fail5(error62);
-    });
-    socket.once(options.tls ? "secureConnect" : "connect", () => {
-      const target = `${options.host}:${options.port}`;
-      const lines = [
-        `CONNECT ${target} HTTP/1.1`,
-        `Host: ${target}`,
-        "Proxy-Connection: keep-alive",
-        options.username ? `Proxy-Authorization: Basic ${Buffer.from(`${options.username}:${options.password ?? ""}`).toString("base64")}` : "",
-        "",
-        ""
-      ].filter(Boolean);
-      socket.write(lines.join("\r\n"));
-      let buffer = "";
-      const onData = (chunk) => {
-        buffer += chunk.toString("latin1");
-        const index = buffer.indexOf("\r\n\r\n");
-        if (index < 0) {
-          if (buffer.length > 16384) fail5(new Error("HTTP \u4EE3\u7406\u54CD\u5E94\u5934\u8FC7\u957F"));
-          return;
-        }
-        socket.off("data", onData);
-        const statusLine = buffer.slice(0, buffer.indexOf("\r\n"));
-        const status = Number(statusLine.split(" ")[1]);
-        if (status !== 200) {
-          fail5(new Error(`HTTP \u4EE3\u7406 CONNECT \u5931\u8D25\uFF1A${statusLine}`));
-          return;
-        }
-        clearTimeout(timer);
-        settled = true;
-        socket.removeAllListeners("close");
-        const rest = Buffer.from(buffer.slice(index + 4), "latin1");
-        if (rest.length) socket.unshift(rest);
-        resolve5(socket);
-      };
-      socket.on("data", onData);
-    });
+      settled = true;
+      socket.removeAllListeners("close");
+      const rest = Buffer.from(buffer.slice(index + 4), "latin1");
+      if (rest.length) socket.unshift(rest);
+      resolve4(socket);
+    };
+    socket.on("data", onData);
   });
 }
 function isIPv4(host) {
@@ -77274,10 +77437,6 @@ function ipv6Bytes(host) {
   });
   return buf;
 }
-
-// src/egress/manager.ts
-import { EventEmitter } from "node:events";
-import { randomBytes as randomBytes2, timingSafeEqual } from "node:crypto";
 
 // src/egress/engine.ts
 import { spawn as spawn2 } from "node:child_process";
@@ -77343,7 +77502,7 @@ var ProtocolEngine = class {
       const proxyName = `vx-${node2.id}`;
       const listenerName = `n${node2.id}`;
       listeners.push({ name: listenerName, type: "socks", port, listen: "127.0.0.1", udp: false });
-      proxies.push(clashProxy(node2, proxyName));
+      proxies.push(clashProxy(node2, proxyName, node2.viaNodeId));
       rules.push(`IN-NAME,${listenerName},${proxyName}`);
       port++;
     }
@@ -77396,20 +77555,21 @@ var ProtocolEngine = class {
     this.child = void 0;
     if (!child || child.exitCode !== null) return;
     child.kill("SIGTERM");
-    const exited = new Promise((resolve5) => child.once("exit", () => resolve5()));
-    const timer = new Promise((resolve5) => setTimeout(resolve5, 3e3));
+    const exited = new Promise((resolve4) => child.once("exit", () => resolve4()));
+    const timer = new Promise((resolve4) => setTimeout(resolve4, 3e3));
     await Promise.race([exited, timer]);
     if (child.exitCode === null) child.kill("SIGKILL");
   }
 };
-function clashProxy(node2, name) {
+function clashProxy(node2, name, viaNodeId) {
   return {
     ...node2.config,
     ...node2.secrets,
     name,
     type: node2.protocol,
     server: node2.server,
-    port: node2.port
+    port: node2.port,
+    ...viaNodeId ? { "dialer-proxy": `vx-${viaNodeId}` } : {}
   };
 }
 function toYaml(value, indent = 0) {
@@ -77465,20 +77625,20 @@ function resolveEngineBinary(explicit) {
   return candidates[0] ?? "";
 }
 function portFree(port) {
-  return new Promise((resolve5) => {
+  return new Promise((resolve4) => {
     const server = createServer();
-    server.once("error", () => resolve5(false));
-    server.listen(port, "127.0.0.1", () => server.close(() => resolve5(true)));
+    server.once("error", () => resolve4(false));
+    server.listen(port, "127.0.0.1", () => server.close(() => resolve4(true)));
   });
 }
 function waitPort(host, port, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve4, reject) => {
     const tryOnce = () => {
       const socket = createConnection2({ host, port });
       socket.once("connect", () => {
         socket.destroy();
-        resolve5();
+        resolve4();
       });
       socket.once("error", () => {
         socket.destroy();
@@ -77492,7 +77652,7 @@ function waitPort(host, port, timeoutMs) {
 
 // src/egress/parse.ts
 var import_yaml = __toESM(require_dist2(), 1);
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 
 // src/egress/types.ts
 var SECRET_KEYS = /* @__PURE__ */ new Set(["password", "uuid", "psk", "private-key", "auth-str", "token"]);
@@ -77605,7 +77765,7 @@ function fingerprint(node2) {
   for (const [key, value] of Object.entries(node2.config)) flat.push([key, String(value)]);
   for (const [key, value] of Object.entries(node2.secrets)) flat.push([`,${key}`, value]);
   flat.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  const hash2 = createHash2("sha256");
+  const hash2 = createHash3("sha256");
   hash2.update(`${node2.protocol}|${node2.server}|${node2.port}|`);
   for (const [key, value] of flat) hash2.update(`${key}=${value}\0`);
   return hash2.digest("hex");
@@ -77968,6 +78128,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   note TEXT NOT NULL DEFAULT '',
   egress_ip TEXT NOT NULL DEFAULT '',
   source TEXT NOT NULL DEFAULT '',
+  via_node_id INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -78079,7 +78240,14 @@ var EgressStore = class _EgressStore {
     this.db.exec(SCHEMA);
   }
   static open(dir) {
-    return new _EgressStore(dir);
+    const store2 = new _EgressStore(dir);
+    store2.ensureColumn("nodes", "via_node_id", "INTEGER NOT NULL DEFAULT 0");
+    return store2;
+  }
+  ensureColumn(table, column, ddl) {
+    const rows = this.db.prepare(`PRAGMA table_info(${table})`).all();
+    if (rows.some((row) => row.name === column)) return;
+    this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
   }
   close() {
     this.db.close();
@@ -78102,10 +78270,10 @@ var EgressStore = class _EgressStore {
     const now2 = Math.floor(Date.now() / 1e3);
     const find = this.db.prepare("SELECT id FROM nodes WHERE fingerprint=?");
     const insert = this.db.prepare(`INSERT INTO nodes
-      (name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,source,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      (name,protocol,server,port,config,secrets,fingerprint,tags,weight,max_conns,enabled,note,egress_ip,source,via_node_id,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
     const update = this.db.prepare(`UPDATE nodes SET name=?,protocol=?,server=?,port=?,config=?,secrets=?,
-      source=CASE WHEN ?<>'' THEN ? ELSE source END, updated_at=? WHERE id=?`);
+      source=CASE WHEN ?<>'' THEN ? ELSE source END, via_node_id=?, updated_at=? WHERE id=?`);
     this.tx(() => {
       for (const node2 of nodes) {
         const existing = find.get(node2.fingerprint);
@@ -78126,6 +78294,7 @@ var EgressStore = class _EgressStore {
             node2.note,
             node2.egressIp,
             node2.source,
+            node2.viaNodeId ?? 0,
             now2,
             now2
           );
@@ -78140,6 +78309,7 @@ var EgressStore = class _EgressStore {
             sealed,
             node2.source,
             node2.source,
+            node2.viaNodeId ?? 0,
             now2,
             existing.id
           );
@@ -78151,7 +78321,7 @@ var EgressStore = class _EgressStore {
   }
   updateNode(node2) {
     this.db.prepare(`UPDATE nodes SET name=?,protocol=?,server=?,port=?,config=?,secrets=?,tags=?,weight=?,
-        max_conns=?,enabled=?,note=?,egress_ip=?,source=?,updated_at=? WHERE id=?`).run(
+        max_conns=?,enabled=?,note=?,egress_ip=?,source=?,via_node_id=?,updated_at=? WHERE id=?`).run(
       node2.name,
       node2.protocol,
       node2.server,
@@ -78165,6 +78335,7 @@ var EgressStore = class _EgressStore {
       node2.note,
       node2.egressIp,
       node2.source,
+      node2.viaNodeId ?? 0,
       Math.floor(Date.now() / 1e3),
       node2.id
     );
@@ -78409,6 +78580,7 @@ var EgressStore = class _EgressStore {
       note: row.note,
       egressIp: row.egress_ip,
       source: row.source,
+      viaNodeId: Number(row.via_node_id) || void 0,
       createdAt: Number(row.created_at),
       updatedAt: Number(row.updated_at)
     };
@@ -78522,7 +78694,7 @@ var Semaphore = class {
   }
   take() {
     if (this.tryTake()) return Promise.resolve();
-    return new Promise((resolve5) => this.queue.push(resolve5));
+    return new Promise((resolve4) => this.queue.push(resolve4));
   }
   give() {
     const next = this.queue.shift();
@@ -78585,6 +78757,13 @@ var EgressManager = class {
     const members2 = /* @__PURE__ */ new Map();
     for (const pool of pools) members2.set(pool.id, this.store.poolNodes(pool.id));
     this.nodes = /* @__PURE__ */ new Map();
+    const viaIds = /* @__PURE__ */ new Set();
+    for (const node2 of nodeList) {
+      if (node2.viaNodeId) viaIds.add(node2.viaNodeId);
+    }
+    for (const node2 of nodeList) {
+      if (node2.viaNodeId && viaIds.has(node2.id) && node2.viaNodeId) viaIds.add(node2.viaNodeId);
+    }
     const engineNodes = [];
     for (const node2 of nodeList) {
       const h = health.get(node2.id) ?? {
@@ -78607,7 +78786,9 @@ var EgressManager = class {
         sem: new Semaphore(Math.max(1, node2.maxConns))
       });
       const member = [...members2.values()].some((ids) => ids.includes(node2.id));
-      if (node2.enabled && member && node2.protocol !== "socks5" && node2.protocol !== "http") {
+      const native = node2.protocol === "socks5" || node2.protocol === "http";
+      const needsEngine = !native || Boolean(node2.viaNodeId) || viaIds.has(node2.id);
+      if (node2.enabled && needsEngine && (member || viaIds.has(node2.id))) {
         engineNodes.push({ id: node2.id, node: node2 });
       }
     }
@@ -78631,7 +78812,8 @@ var EgressManager = class {
           server: node2.server,
           port: node2.port,
           config: node2.config,
-          secrets: node2.secrets
+          secrets: node2.secrets,
+          viaNodeId: node2.viaNodeId
         }))
       );
     }
@@ -78703,6 +78885,13 @@ var EgressManager = class {
     }
     session.lastSeen = Date.now();
     return { session, mode, pin };
+  }
+  /** 固定端口监听（浏览器）用：凭 key 取路由，不校验密码。 */
+  fixedRoute(key) {
+    const session = this.sessions.get(sanitizeKey(key));
+    if (!session) throw new EgressError("EGRESS_SESSION_REVOKED", 407, "\u4F1A\u8BDD\u5DF2\u64A4\u9500");
+    session.lastSeen = Date.now();
+    return { session };
   }
   hasSession(key) {
     return this.sessions.has(sanitizeKey(key));
@@ -78792,6 +78981,35 @@ var EgressManager = class {
   nodeById(id) {
     return this.nodes.get(id);
   }
+  /**
+   * 经节点（含链式）拨到目标。引擎节点由 mihomo 负责（含 dialer-proxy 链），
+   * socks5/http 节点在 TS 侧做多跳握手。
+   */
+  async dialTarget(node2, host, port, depth = 0, timeoutMs = 2e4) {
+    if (depth > 5) throw new Error("\u4EE3\u7406\u94FE\u8D85\u8FC7 5 \u8DF3");
+    const enginePort = this.engine.portFor(node2.id);
+    if (enginePort) {
+      return socks5Connect({ proxyHost: "127.0.0.1", proxyPort: enginePort, host, port, timeoutMs });
+    }
+    let base;
+    if (node2.viaNodeId) {
+      const via = this.nodes.get(node2.viaNodeId)?.node;
+      if (!via) throw new Error(`\u94FE\u5F0F\u4EE3\u7406\u7684\u4E0A\u6E38\u8282\u70B9 ${node2.viaNodeId} \u4E0D\u5B58\u5728`);
+      base = await this.dialTarget(via, node2.server, node2.port, depth + 1, timeoutMs);
+    } else {
+      base = node2.protocol === "http" && node2.config.tls === true ? tlsConnect({ host: node2.server, port: node2.port, servername: node2.server, rejectUnauthorized: false }) : netConnect({ host: node2.server, port: node2.port });
+      await connectedSocket(base);
+    }
+    const username = typeof node2.config.username === "string" ? node2.config.username : void 0;
+    const password = node2.secrets.password;
+    if (node2.protocol === "socks5") {
+      return socks5Over(base, { host, port, username, password, timeoutMs });
+    }
+    if (node2.protocol === "http") {
+      return httpOver(base, { host, port, username, password, timeoutMs });
+    }
+    throw new Error(`\u534F\u8BAE ${node2.protocol} \u9700\u8981\u534F\u8BAE\u5F15\u64CE\uFF0C\u65E0\u6CD5\u5728 TS \u4FA7\u94FE\u5F0F\u62E8\u53F7`);
+  }
   poolState(id) {
     return this.pools.get(id);
   }
@@ -78822,7 +79040,7 @@ var EgressManager = class {
       lastError: ""
     };
     try {
-      const socket = await dialNode(state2.node, this.engine, target.hostname, Number(target.port || 80), 1e4);
+      const socket = await this.dialTarget(state2.node, target.hostname, Number(target.port || 80), 0, 1e4);
       const status = await httpProbe(socket, target);
       socket.destroy();
       health = {
@@ -78934,7 +79152,7 @@ var EgressManager = class {
     try {
       const acquired = await this.acquire({ session: this.internalSession(state2), pin: state2.node.id, poolId });
       if (acquired.direct) throw new Error("\u8282\u70B9\u4E0D\u53EF\u7528");
-      const socket = await dialNode(state2.node, this.engine, target.hostname, Number(target.port || 80), timeout);
+      const socket = await this.dialTarget(state2.node, target.hostname, Number(target.port || 80), 0, timeout);
       const response = await httpRequest(socket, target, method, options.headers ?? {}, options.body);
       socket.destroy();
       acquired.release(response.status, response.body.length, (options.body ?? "").length, void 0);
@@ -79055,6 +79273,7 @@ var EgressManager = class {
       egress_ip: state2.node.egressIp || void 0,
       note: state2.node.note || void 0,
       source: state2.node.source || void 0,
+      via_node_id: state2.node.viaNodeId ?? 0,
       config: state2.node.config,
       state: state2.health.state,
       latency_ms: state2.health.latencyMs,
@@ -79255,6 +79474,13 @@ var EgressError = class extends Error {
     this.status = status;
   }
 };
+function connectedSocket(socket) {
+  if (!("connecting" in socket) || !socket.connecting) return Promise.resolve();
+  return new Promise((resolve4, reject) => {
+    socket.once("connect", () => resolve4());
+    socket.once("error", reject);
+  });
+}
 function sanitizeKey(key) {
   return key.trim().replaceAll(":", "-").replaceAll("@", "-").replaceAll("/", "-").replaceAll(" ", "-");
 }
@@ -79307,7 +79533,7 @@ async function httpRequest(socket, target, method, headers, body) {
   lines.push("", "");
   socket.write(lines.join("\r\n") + (body ?? ""));
   const chunks = [];
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve4, reject) => {
     const timer = setTimeout(() => {
       socket.destroy();
       reject(new Error("\u54CD\u5E94\u8D85\u65F6"));
@@ -79327,7 +79553,7 @@ async function httpRequest(socket, target, method, headers, body) {
       }
       const payload = Buffer.from(split >= 0 ? raw2.slice(split + 4) : "", "latin1");
       const final = (header["transfer-encoding"] ?? "").toLowerCase().includes("chunked") ? dechunk(payload) : payload;
-      resolve5({ status, header, body: final.toString("utf8") });
+      resolve4({ status, header, body: final.toString("utf8") });
     });
     socket.once("error", (error62) => {
       clearTimeout(timer);
@@ -79390,6 +79616,7 @@ var EgressGateway = class {
   socks;
   addresses = { httpPort: 0, socksPort: 0 };
   manager;
+  fixed = /* @__PURE__ */ new Map();
   constructor(manager) {
     this.manager = manager;
   }
@@ -79398,7 +79625,7 @@ var EgressGateway = class {
       void this.forward(req, res);
     });
     this.http.on("connect", (req, client, head) => {
-      void this.connect(req, client, head);
+      void this.connect(req, client, head).catch((error62) => console.error("[egress] connect failed:", error62));
     });
     await listen(this.http, 0);
     this.addresses.httpPort = this.http.address().port;
@@ -79410,17 +79637,39 @@ var EgressGateway = class {
     this.manager.setGatewayPorts(this.addresses.httpPort, this.addresses.socksPort);
     return this.addresses;
   }
+  /** 无认证固定端口（浏览器/MCP 只能配置静态代理时使用）；按会话 key 复用。 */
+  async openFixed(key) {
+    const existing = this.fixed.get(key);
+    if (existing) return existing.port;
+    const server = createHttpServer((req, res) => {
+      void this.forward(req, res, key);
+    });
+    server.on("connect", (req, client, head) => {
+      void this.connect(req, client, head, key).catch((error62) => console.error("[egress] connect failed:", error62));
+    });
+    await listen(server, 0);
+    const port = server.address().port;
+    this.fixed.set(key, { server, port });
+    return port;
+  }
+  closeFixed(key) {
+    const entry = this.fixed.get(key);
+    if (!entry) return;
+    this.fixed.delete(key);
+    entry.server.close();
+  }
   async stop() {
+    for (const key of [...this.fixed.keys()]) this.closeFixed(key);
     await Promise.all([
-      new Promise((resolve5) => this.http ? this.http.close(() => resolve5()) : resolve5()),
-      new Promise((resolve5) => this.socks ? this.socks.close(() => resolve5()) : resolve5())
+      new Promise((resolve4) => this.http ? this.http.close(() => resolve4()) : resolve4()),
+      new Promise((resolve4) => this.socks ? this.socks.close(() => resolve4()) : resolve4())
     ]);
   }
-  async connect(req, client, head) {
+  async connect(req, client, head, fixedKey) {
     let route;
     try {
-      route = this.manager.route(...basicAuth(req.headers["proxy-authorization"]));
-    } catch {
+      route = fixedKey ? this.manager.fixedRoute(fixedKey) : this.manager.route(...basicAuth(req.headers["proxy-authorization"]));
+    } catch (error62) {
       client.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="vexnar-egress"\r\n\r\n');
       return;
     }
@@ -79434,7 +79683,7 @@ var EgressGateway = class {
       return;
     }
     try {
-      const upstream = acquired.direct ? createConnection3({ host, port }) : await dialNode(acquired.node.node, this.manager.engine, host, port);
+      const upstream = acquired.direct ? createConnection3({ host, port }) : await this.manager.dialTarget(acquired.node.node, host, port);
       await connected(upstream);
       client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
       if (head?.length) upstream.write(head);
@@ -79456,7 +79705,7 @@ var EgressGateway = class {
         finish();
       });
       upstream.once("close", () => {
-        client.destroy();
+        client.end();
         finish();
       });
       upstream.once("error", (error62) => {
@@ -79468,10 +79717,10 @@ var EgressGateway = class {
       respondProxyError(client, error62);
     }
   }
-  async forward(req, res) {
+  async forward(req, res, fixedKey) {
     let route;
     try {
-      route = this.manager.route(...basicAuth(req.headers["proxy-authorization"]));
+      route = fixedKey ? this.manager.fixedRoute(fixedKey) : this.manager.route(...basicAuth(req.headers["proxy-authorization"]));
     } catch {
       res.writeHead(407, {
         "proxy-authenticate": 'Basic realm="vexnar-egress"',
@@ -79499,7 +79748,7 @@ var EgressGateway = class {
     const port = Number(target.port || (target.protocol === "https:" ? 443 : 80));
     let upstream;
     try {
-      upstream = acquired.direct ? createConnection3({ host: target.hostname, port }) : await dialNode(acquired.node.node, this.manager.engine, target.hostname, port);
+      upstream = acquired.direct ? createConnection3({ host: target.hostname, port }) : await this.manager.dialTarget(acquired.node.node, target.hostname, port);
     } catch (error62) {
       acquired.release(0, 0, 0, error62);
       respondProxyError(res, error62);
@@ -79543,7 +79792,7 @@ var EgressGateway = class {
     req.pipe(upReq);
   }
   socks5(socket) {
-    let stage2 = 0;
+    let stage = 0;
     let buffer = Buffer.alloc(0);
     let route;
     const fail5 = (code) => {
@@ -79553,7 +79802,7 @@ var EgressGateway = class {
     socket.on("data", (chunk) => {
       buffer = Buffer.concat([buffer, chunk]);
       void (async () => {
-        if (stage2 === 0) {
+        if (stage === 0) {
           if (buffer.length < 2) return;
           const methods = buffer.subarray(2, 2 + buffer[1]);
           buffer = buffer.subarray(2 + buffer[1]);
@@ -79563,9 +79812,9 @@ var EgressGateway = class {
             return;
           }
           socket.write(Buffer.from([5, 2]));
-          stage2 = 1;
+          stage = 1;
         }
-        if (stage2 === 1) {
+        if (stage === 1) {
           if (buffer.length < 2) return;
           const ulen = buffer[1];
           if (buffer.length < 2 + ulen + 1) return;
@@ -79577,14 +79826,14 @@ var EgressGateway = class {
           try {
             route = this.manager.route(user, pass);
             socket.write(Buffer.from([1, 0]));
-            stage2 = 2;
+            stage = 2;
           } catch {
             socket.write(Buffer.from([1, 1]));
             socket.destroy();
             return;
           }
         }
-        if (stage2 === 2) {
+        if (stage === 2) {
           if (buffer.length < 4) return;
           if (buffer[0] !== 5 || buffer[1] !== 1) return fail5(7);
           const atyp = buffer[3];
@@ -79612,7 +79861,7 @@ var EgressGateway = class {
           }
           if (head.length < offset + 2) return;
           const port = head.readUInt16BE(offset);
-          stage2 = 3;
+          stage = 3;
           if (!route) return fail5(1);
           const resolvedRoute = route;
           socket.pause();
@@ -79624,7 +79873,7 @@ var EgressGateway = class {
             return fail5(error62 instanceof EgressError && error62.code === "EGRESS_NO_NODE" ? 2 : 1);
           }
           try {
-            const upstream = acquired.direct ? createConnection3({ host, port }) : await dialNode(acquired.node.node, this.manager.engine, host, port);
+            const upstream = acquired.direct ? createConnection3({ host, port }) : await this.manager.dialTarget(acquired.node.node, host, port);
             await connected(upstream);
             socket.write(Buffer.from([5, 0, 0, 1, 0, 0, 0, 0, 0, 0]));
             let up = 0;
@@ -79688,12 +79937,12 @@ ${JSON.stringify({ code, error: message })}`
   );
 }
 function listen(server, port) {
-  return new Promise((resolve5) => server.listen(port, "127.0.0.1", () => resolve5()));
+  return new Promise((resolve4) => server.listen(port, "127.0.0.1", () => resolve4()));
 }
 function connected(socket) {
   if (!socket.connecting) return Promise.resolve();
-  return new Promise((resolve5, reject) => {
-    socket.once("connect", () => resolve5());
+  return new Promise((resolve4, reject) => {
+    socket.once("connect", () => resolve4());
     socket.once("error", reject);
   });
 }
@@ -79730,6 +79979,99 @@ function registerEgress(api2) {
     wrap(async (c) => {
       const mgr = await manager();
       return c.json(mgr.state());
+    })
+  );
+  api2.post(
+    "/api/proxy/pivots",
+    wrap(async (c) => {
+      const mgr = await manager();
+      const body = await c.req.json();
+      const protocol = String(body.protocol ?? "socks5");
+      if (protocol !== "socks5" && protocol !== "http") return c.json({ error: "\u8DF3\u677F\u53EA\u652F\u6301 socks5/http" }, 400);
+      const server = String(body.server ?? "").trim();
+      const port = Number(body.port ?? 0);
+      if (!server || !Number.isInteger(port) || port <= 0) return c.json({ error: "server/port \u65E0\u6548" }, 400);
+      const username = body.username == null ? "" : String(body.username);
+      const password = body.password == null ? "" : String(body.password);
+      const auth = username ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : "";
+      let config2;
+      try {
+        config2 = parseUri(`${protocol}://${auth}${server}:${port}#${encodeURIComponent(String(body.name ?? `pivot-${server}:${port}`))}`);
+      } catch (error62) {
+        return c.json({ error: error62.message }, 400);
+      }
+      const viaNodeId = Number(body.via_node_id ?? body.viaNodeId ?? 0) || void 0;
+      if (viaNodeId && !mgr.nodeById(viaNodeId)) return c.json({ error: "\u4E0A\u6E38\u8282\u70B9\u4E0D\u5B58\u5728" }, 400);
+      const node2 = {
+        ...config2,
+        fingerprint: fingerprint(config2),
+        tags: Array.isArray(body.tags) ? body.tags.map(String) : ["pivot"],
+        weight: 1,
+        maxConns: Number(body.max_conns ?? 8) || 8,
+        enabled: true,
+        note: String(body.note ?? "\u6E17\u900F\u8DF3\u677F"),
+        egressIp: "",
+        source: "pivot",
+        viaNodeId,
+        createdAt: 0,
+        updatedAt: 0,
+        id: 0
+      };
+      mgr.store.upsertNodes([node2]);
+      await mgr.reload();
+      const stored = mgr.store.listNodes().find((item) => item.fingerprint === node2.fingerprint);
+      const created = stored ? mgr.state().nodes.find((item) => item.id === stored.id) : void 0;
+      const poolId = Number(body.pool_id ?? 0) || mgr.settings.defaultPool;
+      if (created && poolId) {
+        const pool = mgr.store.pool(poolId);
+        if (pool) mgr.store.setPoolNodes(poolId, [.../* @__PURE__ */ new Set([...mgr.store.poolNodes(poolId), created.id])]);
+      }
+      await mgr.reload();
+      return c.json({ node: created ?? null, pool_id: poolId });
+    })
+  );
+  api2.post(
+    "/api/proxy/session",
+    wrap(async (c) => {
+      const mgr = await manager();
+      const body = await c.req.json().catch(() => ({}));
+      const taskId = Number(body.task_id ?? 0) || 0;
+      const scope = String(body.scope ?? "").trim();
+      const key = sanitizeKey(scope || (taskId ? `task-${taskId}-worker` : `dsh-${crypto.randomUUID()}`));
+      const endpoint = mgr.endpoint({
+        key,
+        taskId: taskId || void 0,
+        poolId: Number(body.pool_id ?? 0) || void 0,
+        mode: body.mode ?? "sticky",
+        fallback: body.fallback,
+        maxConns: Number(body.max_conns ?? 8) || 8,
+        fanoutK: Number(body.fanout_k ?? 3) || 3
+      });
+      const state2 = mgr.state();
+      return c.json({ proxy: endpoint.url, socks: state2.socks ?? "", session: key, pool_id: endpoint.poolId });
+    })
+  );
+  api2.post(
+    "/api/proxy/fixed",
+    wrap(async (c) => {
+      const { gateway } = await egressRuntime();
+      const mgr = await manager();
+      const body = await c.req.json().catch(() => ({}));
+      const taskId = Number(body.task_id ?? 0) || 0;
+      const scope = String(body.scope ?? "").trim();
+      const key = sanitizeKey(scope || (taskId ? `task-${taskId}-worker` : `dsh-${crypto.randomUUID()}`));
+      mgr.endpoint({ key, taskId: taskId || void 0, poolId: Number(body.pool_id ?? 0) || void 0, mode: "rotate", maxConns: 16 });
+      const port = await gateway.openFixed(key);
+      return c.json({ proxy: `http://127.0.0.1:${port}`, session: key });
+    })
+  );
+  api2.delete(
+    "/api/proxy/fixed/:key",
+    wrap(async (c) => {
+      const { gateway } = await egressRuntime();
+      const key = sanitizeKey(c.req.param("key") ?? "");
+      gateway.closeFixed(key);
+      return c.json({ closed: key });
     })
   );
   api2.get(
@@ -80278,109 +80620,60 @@ function gatewayPorts(gateway) {
   return { http: ports.httpPort, socks: ports.socksPort };
 }
 
+// src/routes/notification-settings.ts
+await init_context2();
+function registerNotificationSettings(api2, redactConfig = false) {
+  api2.get("/api/notify/channels", async (c) => {
+    const channels = await meta3.table("notify");
+    return c.json({ channels: redactConfig ? channels.map(({ config: _config, ...row }) => row) : channels });
+  });
+  api2.post("/api/notify/channels", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const result = await operations.createChannel(body);
+      meta3.reload();
+      return c.json(result, 201);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+  api2.patch("/api/notify/channels/:id", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const result = await operations.updateChannel(c.req.param("id"), body);
+      meta3.reload();
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+  api2.delete("/api/notify/channels/:id", async (c) => {
+    try {
+      const result = await operations.deleteChannel(c.req.param("id"));
+      meta3.reload();
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+}
+
 // src/routes.ts
+await init_settings_catalog();
 init_register();
+await init_data_management();
 var api = new Hono3();
+registerSettingsCatalog(api);
+registerNotificationSettings(api);
 registerEgress(api);
 register(api);
+registerReadViews(api);
 api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
-api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
-api.get("/api/agents/:key", async (c) => {
-  const agents = await meta3.table("agents");
-  const row = agents.find((agent) => agent.key === c.req.param("key"));
-  if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({ agent: row });
+api.get("/api/_runtime", async (c) => {
+  const { runtimeInfo: runtimeInfo2 } = await init_runtime().then(() => runtime_exports);
+  return c.json(runtimeInfo2());
 });
-api.get("/api/llm/profiles", async (c) => {
-  const rows = await meta3.table("llmProfiles");
-  return c.json({
-    profiles: rows.map((row) => {
-      if (row.base_url != null) return row;
-      const { base_url, ...rest } = row;
-      return rest;
-    })
-  });
-});
-api.get("/api/task-categories", async (c) => c.json({ categories: await meta3.table("taskCategories") }));
-api.get("/api/task-templates", async (c) => c.json({ templates: await meta3.table("taskTemplates") }));
-api.get("/api/companies", async (c) => c.json(await store.companies.list()));
-api.get("/api/tools", async (c) => {
-  const rows = await meta3.table("tools");
-  return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
-});
-api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
-api.get("/api/notify/channels", async (c) => c.json({ channels: await meta3.table("notify") }));
 api.get("/api/settings", async (c) => c.json(await meta3.table("settings")));
-var taskDto = (row, metrics) => ({
-  id: String(row.id),
-  exploration_id: Number(row.exploration_id),
-  name: row.name,
-  ...row.category_id == null ? {} : { category_id: row.category_id },
-  pinned: row.pinned_at != null,
-  ...row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) },
-  description: row.description,
-  goal: row.goal,
-  status: row.status,
-  created_at: row.created_at_text,
-  created_unix: Number(row.created_unix ?? 0),
-  completed_at: row.completed_at_text ?? "",
-  completed_unix: Number(row.completed_unix ?? 0),
-  last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
-  paused: row.paused,
-  queued: row.queued,
-  tokens: {
-    input_tokens: Number(metrics?.input_tokens ?? 0),
-    output_tokens: Number(metrics?.output_tokens ?? 0),
-    cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
-    cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
-  },
-  goals_total: Number(metrics?.goals_total ?? 0),
-  goals_met: Number(metrics?.goals_met ?? 0),
-  in_flight: Number(metrics?.in_flight ?? 0),
-  findings: {
-    critical: Number(metrics?.findings?.critical ?? 0),
-    high: Number(metrics?.findings?.high ?? 0),
-    medium: Number(metrics?.findings?.medium ?? 0),
-    low: Number(metrics?.findings?.low ?? 0)
-  },
-  ...row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id },
-  llm_profile_ids: [],
-  ...row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id },
-  llm_failover_state: "default",
-  source_task_ids: [],
-  company_ids: [],
-  coverage_enabled: row.coverage_enabled
-});
-var TASK_PAGE_MAX_SIZE = 200;
-api.get("/api/tasks", async (c) => {
-  const status = (c.req.query("status") ?? "").trim();
-  const needle = (c.req.query("q") ?? "").trim().toLowerCase();
-  const rows = await store.tasks.list();
-  const metrics = await store.taskMetrics();
-  const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
-  const paged = c.req.query("page") != null || c.req.query("size") != null;
-  if (!paged) return c.json({ tasks: all });
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
-  return c.json({
-    tasks: all.slice((page - 1) * size, (page - 1) * size + size),
-    total: all.length,
-    page,
-    size
-  });
-});
-api.get("/api/tasks/summary", async (c) => {
-  const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
-  const rows = await store.tasks.list();
-  const metrics = await store.taskMetrics();
-  return c.json(summarizeTasks(rows, metrics, { days }));
-});
-api.get("/api/tasks/:id", async (c) => {
-  const row = await store.tasks.get(c.req.param("id"));
-  if (!row) return c.json({ error: "not found" }, 404);
-  const metrics = await store.taskMetrics();
-  return c.json(taskDto(row, metrics.get(Number(row.exploration_id))));
-});
 api.post("/api/tasks", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   try {
@@ -80532,67 +80825,7 @@ api.patch("/api/tasks/:id", async (c) => {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
   }
 });
-api.delete("/api/tasks/:id", async (c) => {
-  try {
-    const result = await operations.deleteTask(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/:id/archive", async (c) => {
-  try {
-    const result = await operations.archiveTask(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/tasks/archive/batch", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const ids = Array.isArray(body.task_ids) ? body.task_ids : [];
-  const items = [];
-  for (const id of ids) {
-    try {
-      items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) });
-    } catch (error62) {
-      items.push({ task_id: id, ok: false, error: String(error62?.message ?? error62) });
-    }
-  }
-  store.invalidate?.(["tasks"]);
-  return c.json({ items });
-});
-api.get("/api/task-archives", async (c) => {
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
-  const all = await operations.listArchives();
-  return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size });
-});
-api.get("/api/task-archives/:id", async (c) => {
-  const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param("id"));
-  if (!one) return c.json({ error: "\u5F52\u6863\u4E0D\u5B58\u5728" }, 404);
-  return c.json(one);
-});
-api.post("/api/task-archives/:id/restore", async (c) => {
-  try {
-    const result = await operations.restoreArchive(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/task-archives/:id", async (c) => {
-  try {
-    const result = await operations.deleteArchive(c.req.param("id"));
-    store.invalidate?.(["tasks"]);
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
+registerTaskDataManagement(api);
 api.post("/api/tasks/:id/control", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   try {
@@ -80601,35 +80834,6 @@ api.post("/api/tasks/:id/control", async (c) => {
     if (body.action === "resume") taskQueue.resume(c.req.param("id"));
     store.invalidate?.(["tasks"]);
     return c.json({ id: record2.id, paused: record2.paused, queued: record2.queued, status: record2.status });
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.post("/api/notify/channels", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.createChannel(body);
-    meta3.reload();
-    return c.json(result, 201);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.patch("/api/notify/channels/:id", async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  try {
-    const result = await operations.updateChannel(c.req.param("id"), body);
-    meta3.reload();
-    return c.json(result);
-  } catch (error62) {
-    return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
-  }
-});
-api.delete("/api/notify/channels/:id", async (c) => {
-  try {
-    const result = await operations.deleteChannel(c.req.param("id"));
-    meta3.reload();
-    return c.json(result);
   } catch (error62) {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
   }
@@ -80757,34 +80961,11 @@ api.patch("/api/exploration/findings/:id", async (c) => {
   try {
     const record2 = await operations.patchFinding(c.req.param("id"), { status: body.status, severity: body.severity });
     store.invalidate?.(["findings"]);
-    return c.json(findingDto2(record2));
+    return c.json(findingDto(record2));
   } catch (error62) {
     const status = error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400;
     return c.json({ error: String(error62?.message ?? error62) }, status);
   }
-});
-api.get("/api/tasks/:id/metrics", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "not found" }, 404);
-  const metrics = (await store.taskMetrics()).get(Number(task.exploration_id));
-  return c.json({
-    task_id: Number(task.id),
-    exploration_id: Number(task.exploration_id),
-    mttd_seconds: null,
-    findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
-    findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
-    findings_by_vulnclass: {},
-    findings_by_status: {},
-    verify_sessions: 0,
-    verify_reproduced: 0,
-    verify_false_positive: 0,
-    verify_inconclusive: 0,
-    intents: {},
-    done_intents: 0,
-    no_yield_done: 0,
-    yield_rate: 0,
-    class_coverage: {}
-  });
 });
 var ASSET_OPTIONAL = [
   "domain",
@@ -80864,70 +81045,6 @@ api.post("/api/assets/import", async (c) => {
     return c.json({ error: String(error62?.message ?? error62) }, 400);
   }
 });
-api.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
-var findingDto2 = (row) => ({
-  traffic_count: 0,
-  evidence_version: 0,
-  report_evidence_version: 0,
-  report_stale: false,
-  id: String(row.id),
-  finding_id: String(row.id),
-  vulnclass: row.vulnclass,
-  ...row.name ? { name: row.name } : {},
-  severity: row.severity,
-  status: row.status,
-  summary: row.summary,
-  evidence: row.evidence,
-  ...row.task_id == null ? {} : { task_id: String(row.task_id) },
-  ts: row.created_at_text
-});
-api.get("/api/exploration/findings", async (c) => {
-  const page = c.req.query("page");
-  const limit = c.req.query("limit");
-  if (page == null && limit == null) {
-    const rows2 = await store.findings.list(500);
-    return c.json(rows2.map(findingDto2));
-  }
-  const size = Math.min(Number(limit ?? 20) || 20, 200);
-  const current = Math.max(Number(page ?? 1) || 1, 1);
-  const severity = (c.req.query("severity") ?? "").trim().toLowerCase();
-  const status = (c.req.query("status") ?? "").trim().toLowerCase();
-  const vulnclass = (c.req.query("vulnclass") ?? "").trim();
-  const taskId = (c.req.query("task_id") ?? "").trim();
-  const query = (c.req.query("q") ?? "").trim().toLowerCase();
-  let rows = await store.findings.list(1e5);
-  if (severity) rows = rows.filter((row) => String(row.severity).toLowerCase() === severity);
-  if (status) rows = rows.filter((row) => String(row.status).toLowerCase() === status);
-  if (vulnclass) rows = rows.filter((row) => String(row.vulnclass) === vulnclass);
-  if (taskId) rows = rows.filter((row) => String(row.task_id ?? "") === taskId);
-  if (query) {
-    rows = rows.filter((row) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? "").toLowerCase().includes(query)));
-  }
-  const total = rows.length;
-  const pageRows = rows.slice((current - 1) * size, current * size);
-  return c.json({ items: pageRows.map(findingDto2), total, page: current, page_size: size });
-});
-api.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
-api.get("/api/exploration/findings/:id", async (c) => {
-  const id = c.req.param("id");
-  const row = await store.findings.get(id);
-  if (!row) return c.json({ error: "not found" }, 404);
-  return c.json({
-    ...findingDto2(row),
-    ...row.report ? { report: row.report } : {}
-  });
-});
-var goalDto = (row) => {
-  const payload = typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {};
-  return {
-    id: String(row.id),
-    text: String(payload.text ?? ""),
-    ...payload.vulnclass ? { vulnclass: payload.vulnclass } : {},
-    state: row.state,
-    ...row.origin == null ? {} : { origin: row.origin },
-    ts: String(row.created_at).replace(/\.\d+/, "")
-  };
-};
 api.post("/api/tasks/:id/goals", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   try {
@@ -81183,14 +81300,6 @@ api.delete("/api/schedules/:id", async (c) => {
     return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
   }
 });
-api.get("/api/tasks/:id/coverage", async (c) => {
-  const task = await store.tasks.get(c.req.param("id"));
-  if (!task) return c.json({ error: "task not found" }, 404);
-  if (task.coverage_enabled === false) {
-    return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] });
-  }
-  return c.json({ enabled: true, ...await store.coverage(c.req.param("id")) });
-});
 api.get("/api/tasks/:id/report", async (c) => {
   const task = await store.tasks.get(c.req.param("id"));
   if (!task) return c.json({ error: "task not found" }, 404);
@@ -81233,23 +81342,11 @@ api.get("/api/tasks/:id/reports/:reportId", async (c) => {
   const id = c.req.param("reportId");
   if (!/^[A-Za-z0-9-]+$/.test(id)) return c.json({ error: "bad report id" }, 400);
   try {
-    const content = await readFile9(join18(storeRoot(), "reports", `${id}.md`), "utf8");
+    const content = await readFile8(join17(storeRoot(), "reports", `${id}.md`), "utf8");
     return new Response(content, { headers: { "content-type": "text/markdown; charset=utf-8" } });
   } catch {
     return c.json({ error: "\u62A5\u544A\u4E0D\u5B58\u5728" }, 404);
   }
-});
-api.get("/api/tasks/:id/goals", async (c) => {
-  const taskId = c.req.param("id");
-  const task = await store.tasks.get(taskId);
-  if (!task) return c.json({ error: "task not found" }, 404);
-  const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: "desc", kinds: ["goal"] });
-  const goals = items.map(goalDto);
-  return c.json({ goals });
-});
-api.get("/api/tokens/daily", async (c) => {
-  const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
-  return c.json(await store.activity.dailyTokens(days));
 });
 api.get("/api/exploration/tokens", async (c) => {
   const taskId = c.req.query("task") ?? "";
@@ -81291,50 +81388,6 @@ api.get("/api/exploration/activity/history", async (c) => {
     has_more: result.hasMore
   });
 });
-api.get("/api/exploration/intents", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const limit = Math.min(Number(c.req.query("limit") ?? 300) || 300, 500);
-  const before = c.req.query("before") ?? "";
-  if (!taskId) return c.req.query("page") ? c.json({ items: [], has_more: false }) : c.json([]);
-  const result = await store.nodes.page({ taskId, page: 1, size: limit, order: "desc", kinds: ["intent"], before: before && before !== "0" ? before : void 0 });
-  const items = result.items.map((row) => ({
-    id: String(row.id),
-    type: row.kind,
-    payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
-    priority: row.priority,
-    state: row.state,
-    ...row.origin == null ? {} : { origin: row.origin },
-    ts: row.created_at
-  }));
-  if (c.req.query("page")) return c.json({ items, has_more: result.total > items.length });
-  return c.json(items);
-});
-api.get("/api/exploration/nodes", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
-  const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
-  if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} });
-  const kinds = (c.req.query("kind") ?? "").split(",").filter(Boolean);
-  const states = (c.req.query("state") ?? "").split(",").filter(Boolean);
-  const order2 = c.req.query("order") === "asc" ? "asc" : "desc";
-  const { items, total, edges } = await store.nodes.page({ taskId, page, size, order: order2, kinds, states });
-  return c.json({
-    items: items.map((row) => ({
-      id: String(row.id),
-      type: row.kind,
-      payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
-      priority: row.priority,
-      state: row.state,
-      ...row.origin == null ? {} : { origin: row.origin },
-      ts: row.created_at
-    })),
-    total,
-    page,
-    size,
-    edges: edges.map((edge) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
-    refs: {}
-  });
-});
 var routeModules = [
   { load: () => init_conversations().then(() => conversations_exports), scope: "conversations/chat" },
   { load: () => init_desktop().then(() => desktop_exports), scope: "desktop gateway" },
@@ -81350,7 +81403,7 @@ var routeModules = [
   { load: () => init_agents().then(() => agents_exports), scope: "agents" },
   { load: () => init_workspace().then(() => workspace_exports), scope: "workspace" },
   { load: () => init_sync().then(() => sync_exports), scope: "scopesentry sync" },
-  { load: () => init_update().then(() => update_exports), scope: "update/self-update" },
+  { load: () => Promise.resolve().then(() => (init_update(), update_exports)), scope: "update/self-update" },
   { load: () => init_auth().then(() => auth_exports), scope: "auth/logs/system" },
   { load: () => init_gaps().then(() => gaps_exports), scope: "misc gap fill" }
 ];
@@ -81572,16 +81625,12 @@ async function proxyBridge(request, localPeer) {
   }
 }
 
-// src/mode.ts
-function runtimeMode() {
-  const raw2 = (process.env.VEXNAR_RUNTIME_MODE || "ts").trim().toLowerCase();
-  return raw2 === "go" ? "go" : "ts";
-}
-
 // src/go-data.ts
+init_mode();
 var routes = /* @__PURE__ */ new Set(["POST /api/yak/history"]);
 var prefixes = [
   "/api/tasks",
+  "/api/task-archives",
   "/api/exploration",
   "/api/assets",
   "/api/traffic",
@@ -81608,7 +81657,7 @@ async function goData(request, localPeer) {
   if (isProxyPath(url2.pathname) && (process.env.VEXNAR_EGRESS || "").toLowerCase() === "go") {
     return proxyBridge(request, localPeer);
   }
-  if (runtimeMode() !== "go") return void 0;
+  if (runtimeMode() !== "go" || url2.pathname === "/api/traffic/local-cleanup") return void 0;
   if (!isDataPlaneRequest(request.method, url2.pathname)) return void 0;
   const host = request.headers.get("host") ?? "";
   const origin = request.headers.get("origin");
@@ -81652,9 +81701,9 @@ async function goData(request, localPeer) {
 
 // src/intercept-seed.ts
 await init_context2();
-import { readFile as readFile10 } from "node:fs/promises";
-import { existsSync as existsSync6 } from "node:fs";
-import { dirname as dirname7, join as join19, resolve as resolve4 } from "node:path";
+import { readFile as readFile9 } from "node:fs/promises";
+import { existsSync as existsSync5 } from "node:fs";
+import { dirname as dirname7, join as join18, resolve as resolve3 } from "node:path";
 var TABLE_RULES2 = "intercept_rules";
 var TABLE_SEED = "intercept_seed";
 var SEED_KEY = "intercept_rules";
@@ -81690,22 +81739,22 @@ function rowOf(source, id) {
 }
 function findConfig() {
   const explicit = process.env.VEXNAR_CONFIG;
-  if (explicit && existsSync6(explicit)) return resolve4(explicit);
+  if (explicit && existsSync5(explicit)) return resolve3(explicit);
   const candidates = [];
   let dir = process.cwd();
   for (let depth = 0; depth < 6; depth += 1) {
-    candidates.push(join19(dir, "config.json"));
+    candidates.push(join18(dir, "config.json"));
     const parent = dirname7(dir);
     if (parent === dir) break;
     dir = parent;
   }
-  candidates.push(join19(dirname7(new URL(import.meta.url).pathname), "..", "..", "..", "config.json"));
-  return candidates.find((path) => existsSync6(path)) ?? null;
+  candidates.push(join18(dirname7(new URL(import.meta.url).pathname), "..", "..", "..", "config.json"));
+  return candidates.find((path) => existsSync5(path)) ?? null;
 }
 async function loadRulesFromPostgres() {
   const configPath = findConfig();
   if (!configPath) throw new Error("\u627E\u4E0D\u5230 config.json\uFF0C\u65E0\u6CD5\u8FDE\u63A5 PostgreSQL");
-  const raw2 = JSON.parse(await readFile10(configPath, "utf8"));
+  const raw2 = JSON.parse(await readFile9(configPath, "utf8"));
   const cfg = raw2.database ?? {};
   const pg2 = await Promise.resolve().then(() => (init_esm(), esm_exports));
   const Client2 = pg2.Client ?? pg2.default?.Client;
@@ -82002,7 +82051,7 @@ async function readTables() {
   meta3.reload();
   return await meta3.load();
 }
-async function ensureInterceptRulesSeeded(loadRows = loadRulesFromPostgres) {
+async function ensureInterceptRulesSeeded(loadRows = process.env.VEXNAR_CLIENT_SQLITE === "1" ? async () => [] : loadRulesFromPostgres) {
   const tables = await readTables();
   const seededAlready = Array.isArray(tables[TABLE_SEED]) && tables[TABLE_SEED].some((row) => row?.key === SEED_KEY);
   if (seededAlready) return { seeded: 0, source: "done" };
@@ -82030,116 +82079,8 @@ async function ensureInterceptRulesSeeded(loadRows = loadRulesFromPostgres) {
   return { seeded: rows.length, source };
 }
 
-// src/runtime.ts
-init_src();
-await init_context2();
-var state = {
-  started: false,
-  startedAt: 0,
-  triggers: 0,
-  schedules: false,
-  storeLocked: false,
-  released: false
-};
-var stops = [];
-var releaseStoreLock = null;
-var booting = null;
-var signalHooks = false;
-async function boot() {
-  for (const agent of await meta3.table("agents")) {
-    try {
-      const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
-        const task = await spawnTriggerTask(operations, agent.key, fire);
-        store.invalidate?.(["tasks"]);
-        if (modelCompletionReady()) {
-          const taskId = String(task.id);
-          await taskQueue.enqueue(taskId, async () => {
-            await engine.plan(taskId, gatewayComplete);
-            await engine.workMany(taskId, gatewayComplete, 1);
-          });
-        }
-        const channels = await meta3.table("notify");
-        if (!channels.length) return;
-        await createNotifier(channels, void 0, async (channel, event, result) => {
-          await operations.recordDelivery({
-            channel_id: channel.id,
-            event_kind: event.kind,
-            title: event.title,
-            status: result.ok ? "ok" : "failed",
-            attempts: result.attempts,
-            error: result.detail
-          });
-        }).dispatch({
-          kind: `trigger:${fire.event}`,
-          title: `agent ${agent.key} \xB7 ${fire.event}`,
-          text: fire.message || fire.event,
-          task_id: fire.payload?.task_id ? String(fire.payload.task_id) : void 0,
-          finding_id: fire.payload?.finding_id ? String(fire.payload.finding_id) : void 0
-        });
-      });
-      stops.push(stop);
-      state.triggers += 1;
-    } catch {
-    }
-  }
-  const stopSchedules = startSchedules(store, scheduler, operations, async (schedule) => {
-    const task = await operations.createTask({ name: String(schedule.name), description: String(schedule.prompt), goal: String(schedule.prompt) });
-    store.invalidate?.(["tasks"]);
-    if (modelCompletionReady()) {
-      const taskId = String(task.id);
-      await taskQueue.enqueue(taskId, async () => {
-        await engine.plan(taskId, gatewayComplete);
-        await engine.workMany(taskId, gatewayComplete, 1);
-      });
-    }
-  }, 3e4);
-  stops.push(stopSchedules);
-  state.schedules = true;
-  await operations.writer.recover().catch(() => {
-  });
-  releaseStoreLock = await operations.writer.lock();
-  state.storeLocked = true;
-  state.started = true;
-  state.startedAt = Date.now();
-}
-function startRuntime(options = {}) {
-  if (options.signals && !signalHooks) {
-    signalHooks = true;
-    for (const signal of ["SIGINT", "SIGTERM"]) {
-      process.once(signal, () => {
-        void stopRuntime().then(() => process.exit(0));
-      });
-    }
-  }
-  if (!booting) {
-    booting = boot().catch((error62) => {
-      booting = null;
-      throw error62;
-    });
-  }
-  return booting;
-}
-async function stopRuntime() {
-  if (state.released) return;
-  state.released = true;
-  for (const stop of stops.splice(0)) {
-    try {
-      stop();
-    } catch {
-    }
-  }
-  scheduler.stop();
-  if (releaseStoreLock) {
-    try {
-      releaseStoreLock();
-    } catch {
-    }
-  }
-  state.storeLocked = false;
-  state.started = false;
-}
-
 // src/embedded.ts
+await init_runtime();
 init_gateway();
 var migration = null;
 function migrateOnce() {

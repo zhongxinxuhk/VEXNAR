@@ -1,6 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { createHash } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -50,6 +51,24 @@ export function sqliteWriter(path: string) {
   const setRec = db.prepare('INSERT INTO kv (tbl, key, record) VALUES (?, ?, ?) ON CONFLICT(tbl, key) DO UPDATE SET record = excluded.record')
   const delRec = db.prepare('DELETE FROM kv WHERE tbl = ? AND key = ?')
   const listRec = db.prepare('SELECT key, record FROM kv WHERE tbl = ?')
+  const oldTraffic = db.prepare(`
+    SELECT key, json_extract(record, '$.rev') AS rev, json_extract(record, '$.seq') AS seq,
+      json_extract(record, '$.ts') AS ts
+    FROM kv
+    WHERE tbl = 'traffic_exchanges'
+      AND json_type(record, '$.ts') IN ('integer', 'real')
+      AND json_extract(record, '$.ts') > 0 AND json_extract(record, '$.ts') < ?
+      AND (? = '' OR lower(json_extract(record, '$.host')) = ?)
+    ORDER BY key
+  `)
+
+  function trafficCleanupPlan(before: number, host: string) {
+    const rows = oldTraffic.all(before, host, host) as Array<{ key: string; rev: number | null; seq: number | null; ts: number }>
+    const hash = createHash('sha256').update(JSON.stringify([before, host]))
+    for (const row of rows) hash.update(JSON.stringify([row.key, row.rev, row.seq, row.ts]))
+    return { rows, token: hash.digest('hex') }
+  }
+
 
   function readSync(table: string, key: string): Record<string, unknown> | null {
     const row = getRec.get(table, key) as { record: string } | undefined
@@ -108,6 +127,25 @@ export function sqliteWriter(path: string) {
     },
     async remove(table: string, key: string) {
       delRec.run(table, key)
+    },
+    previewTrafficCleanup(before: number, host: string) {
+      const { rows, token } = trafficCleanupPlan(before, host)
+      return { count: rows.length, token }
+    },
+    applyTrafficCleanup(before: number, host: string, expectedToken: string) {
+      db.exec('BEGIN IMMEDIATE')
+      try {
+        const { rows, token } = trafficCleanupPlan(before, host)
+        const matches = token === expectedToken
+        if (matches) {
+          for (const row of rows) delRec.run('traffic_exchanges', row.key)
+        }
+        db.exec('COMMIT')
+        return matches ? rows.length : null
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
     },
     async recover() {
       return { replayed: 0 }

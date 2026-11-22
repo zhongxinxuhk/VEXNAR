@@ -94,6 +94,34 @@ check('delete by host', del.deleted === 1, JSON.stringify(del))
 const after = await (await app.request('/api/traffic')).json()
 check('list empty after delete', after.count === 0, JSON.stringify({ count: after.count }))
 
+// Local cleanup previews only older matching SQLite rows and refuses a stale plan.
+const cutoff = 1_700_000_100
+const cleanup = `/api/traffic/local-cleanup?before=${cutoff}&host=TARGET.TEST`
+for (const [id, ts, host] of [
+  ['older', cutoff - 1, 'target.test'],
+  ['boundary', cutoff, 'target.test'],
+  ['other-host', cutoff - 1, 'other.test'],
+] as const) {
+  await recordExchange({ id, ts, host, url: `https://${host}/`, method: 'GET', status: 200 })
+}
+const preview = await (await app.request(cleanup)).json()
+check('local cleanup preview uses an exclusive cutoff and exact case-insensitive host', preview.count === 1)
+const applyCleanup = (token: string) => app.request(cleanup, {
+  method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }),
+})
+await recordExchange({ id: 'late', ts: cutoff - 2, host: 'target.test', url: 'https://target.test/', method: 'GET', status: 200 })
+const stale = await applyCleanup(preview.token)
+check('changed cleanup plan deletes nothing', stale.status === 409 &&
+  (await operations.writer.list('traffic_exchanges')).length === 4)
+const fresh = await (await app.request(cleanup)).json()
+const applied = await applyCleanup(fresh.token)
+const remaining = (await operations.writer.list('traffic_exchanges')).map((row) => row.id).sort()
+check('cleanup preserves boundary rows, other hosts and evidence', applied.status === 200 &&
+  (await applied.json()).deleted === 2 && remaining.join(',') === 'boundary,other-host' &&
+  (await store.traffic('1'))?.bindings?.length === 1)
+check('cleanup rejects an already consumed preview', (await applyCleanup(fresh.token)).status === 409)
+check('cleanup requires a valid cutoff', (await app.request('/api/traffic/local-cleanup?before=0')).status === 400)
+
 let failed = false
 for (const item of results) {
   if (!item.ok) failed = true

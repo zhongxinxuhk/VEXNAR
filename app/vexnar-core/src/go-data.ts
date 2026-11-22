@@ -67,7 +67,7 @@ export async function goData(request: Request, localPeer: boolean): Promise<Resp
   if (isProxyPath(url.pathname) && (process.env.VEXNAR_EGRESS || '').toLowerCase() === 'go') {
     return proxyBridge(request, localPeer)
   }
-  if (runtimeMode() !== 'go') return undefined
+  if (runtimeMode() !== 'go' || url.pathname === '/api/traffic/local-cleanup') return undefined
   if (!isDataPlaneRequest(request.method, url.pathname)) return undefined
 
   const host = request.headers.get('host') ?? ''
