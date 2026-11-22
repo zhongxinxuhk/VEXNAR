@@ -170,7 +170,9 @@ export function apply(ctx: AccountContext): void {
           }
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
-          const configRoute = (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
+          const toolDocumentation = (req.method === 'PUT' && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname)) ||
+            (req.method === 'POST' && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname))
+          const configRoute = toolDocumentation || (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
             (req.method === 'GET' && ['/api/tools', '/api/llm/profiles', '/api/mcp'].includes(url.pathname))
           const app = configRoute ? undefined : await getCore()
           if (!configRoute && !app) {
@@ -187,7 +189,8 @@ export function apply(ctx: AccountContext): void {
             }
           }
           const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
-          const limit = readingYakHistory ? 8192 : url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
+          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 :
+            url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
           const chunks: Buffer[] = []
           let size = 0
           // node 把正文按 Buffer 块交出来；Readable 的迭代器类型是 any，这里收窄。

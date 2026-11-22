@@ -14,7 +14,7 @@ import { callApi, useApi } from './api.js'
  * 详情页（不再是覆盖式抽屉），保存/恢复默认/删除都在详情页底部。窄面板里抽屉
  * 会把列表压成一条缝，整页替换反而更接近 dsh 自己的插件详情。
  *
- * 数据仍然只来自 Go 服务（`/vexnar-api/api/...`），这里不缓存第二份；「Agent
+ * 数据来自宿主的同源接口（`/vexnar-api/api/...`），这里不缓存第二份；「Agent
  * 能否调用」由 dsh 的插件挂载与权限预设决定，本页只管注册面本身。
  */
 
@@ -68,10 +68,10 @@ function Pill({ on, onLabel = '已启用', offLabel = '已停用' }: { on: boole
 }
 
 /** 开关：原生 checkbox 承载语义，样式只画外壳。 */
-function Switch({ on, onChange, label }: { on: boolean; onChange: (next: boolean) => void; label: string }): ReactNode {
+function Switch({ on, onChange, label, disabled = false }: { on: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }): ReactNode {
   return (
     <label className="vx-cat-switch">
-      <input type="checkbox" checked={on} onChange={(event) => { onChange(event.target.checked) }} />
+      <input type="checkbox" checked={on} disabled={disabled} onChange={(event) => { onChange(event.target.checked) }} />
       <span className="vx-cat-switch-track" aria-hidden="true"><span className="vx-cat-switch-thumb" /></span>
       <span className="vx-cat-switch-label">{label}</span>
     </label>
@@ -154,7 +154,11 @@ function withParam(schema: unknown, name: string, patch: { description?: string;
   return root
 }
 
-function ParamEditor({ schema, onChange }: { schema: unknown; onChange: (next: unknown) => void }): ReactNode {
+function ParamEditor({ schema, onChange, defaultsReadOnly }: {
+  schema: unknown
+  onChange: (next: unknown) => void
+  defaultsReadOnly: boolean
+}): ReactNode {
   const rows = useMemo(() => paramsOf(schema), [schema])
   if (rows.length === 0) {
     return <div className="vx-cat-hint">该工具没有声明参数。</div>
@@ -178,6 +182,7 @@ function ParamEditor({ schema, onChange }: { schema: unknown; onChange: (next: u
             className="vx-cat-input"
             placeholder="默认值（JSON，留空=无默认）"
             value={row.defaultValue}
+            readOnly={defaultsReadOnly}
             onChange={(event) => { onChange(withParam(schema, row.name, { defaultValue: event.target.value })) }}
           />
         </div>
@@ -215,7 +220,8 @@ export function ToolsTab(): ReactNode {
   }
 
   if (view.kind === 'edit') {
-    return <ToolDetail tool={view.tool} agents={agentRows} onBack={() => { setView({ kind: 'list' }) }} onSaved={() => { refresh(); setView({ kind: 'list' }) }} />
+    return <ToolDetail tool={view.tool} agents={agentRows} onBack={() => { setView({ kind: 'list' }) }}
+      onSaved={(message = '') => { setNotice(message); refresh(); setView({ kind: 'list' }) }} />
   }
   if (view.kind === 'new') {
     return <NewTool agents={agentRows} onBack={() => { setView({ kind: 'list' }) }} onSaved={() => { refresh(); setView({ kind: 'list' }) }} />
@@ -250,7 +256,7 @@ export function ToolsTab(): ReactNode {
   return (
     <div className="vx-cat">
       <p className="vx-cat-lead">
-        平台注册的工具：系统工具来自 TS core 的默认目录（结构固定，可改描述、参数说明与默认值、绑定 Agent、启停），
+        平台注册的工具：系统工具来自 TS core 的默认目录，可以修改工具和参数说明。
         自定义工具可整条增删改。删掉或用坏了的默认项可以「重新注册默认」补回来；agent 能不能真正调用，
         仍由 dsh 的插件挂载与权限预设决定。
       </p>
@@ -276,7 +282,7 @@ export function ToolsTab(): ReactNode {
   )
 }
 
-function ToolDetail({ tool, agents, onBack, onSaved }: { tool: ToolRow; agents: AgentRow[]; onBack: () => void; onSaved: () => void }): ReactNode {
+function ToolDetail({ tool, agents, onBack, onSaved }: { tool: ToolRow; agents: AgentRow[]; onBack: () => void; onSaved: (message?: string) => void }): ReactNode {
   const [description, setDescription] = useState(tool.description ?? '')
   const [schema, setSchema] = useState<unknown>(tool.schema ?? {})
   const [bound, setBound] = useState<string[]>(tool.agents ?? [])
@@ -285,26 +291,26 @@ function ToolDetail({ tool, agents, onBack, onSaved }: { tool: ToolRow; agents: 
   const [exec, setExec] = useState(() => pretty(tool.exec ?? {}))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+  const documentationPath = `/api/tools/${encodeURIComponent(tool.key)}/documentation`
 
   const save = async (): Promise<void> => {
-    setBusy(true); setError(''); setNotice('')
+    setBusy(true); setError('')
     try {
       if (tool.system) {
-        await callApi(`/api/tools/${encodeURIComponent(tool.key)}`, 'PUT', { description, schema, agents: bound, enabled })
+        const parameters = Object.fromEntries(paramsOf(schema).map(row => [row.name, row.description]))
+        await callApi(documentationPath, 'PUT', { description, parameters })
       } else {
         await callApi(`/api/tools/custom/${encodeURIComponent(tool.key)}`, 'PUT', {
           description, schema, agents: bound, enabled, kind, exec: parseJson(exec, {}), deferred: Boolean(tool.deferred)
         })
       }
-      setNotice('已保存')
-      onSaved()
+      onSaved(tool.system ? '已保存工具说明' : '已保存')
     } catch (cause) { setError(errorText(cause)) } finally { setBusy(false) }
   }
 
   const reset = async (): Promise<void> => {
-    setBusy(true); setError(''); setNotice('')
-    try { await callApi(`/api/tools/${encodeURIComponent(tool.key)}/reset`, 'POST', {}); setNotice('已恢复默认'); onSaved() }
+    setBusy(true); setError('')
+    try { await callApi(documentationPath + '/reset', 'POST', {}); onSaved('已恢复默认说明') }
     catch (cause) { setError(errorText(cause)) } finally { setBusy(false) }
   }
 
@@ -322,16 +328,18 @@ function ToolDetail({ tool, agents, onBack, onSaved }: { tool: ToolRow; agents: 
         <code className="vx-cat-key">{tool.key}</code>
         <Pill on={Boolean(tool.system)} onLabel="系统工具" offLabel="自定义工具" />
         <span className="vx-cat-spacer" />
-        <Switch on={enabled} onChange={setEnabled} label="启用" />
+        <Switch on={enabled} onChange={setEnabled} label="启用" disabled={tool.system} />
       </div>
-      <Field label="绑定 Agent" hint="勾选后该 agent 的会话里才会出现这个工具；空选等于只注册不投放。">
-        <AgentPicker agents={agents} value={bound} onChange={setBound} />
+      <Field label="绑定 Agent">
+        {tool.system
+          ? <div className="vx-cat-hint">{bound.join('、') || '暂无绑定'}</div>
+          : <AgentPicker agents={agents} value={bound} onChange={setBound} />}
       </Field>
       <Field label="工具描述" hint="发送给模型的说明，模型据此判断何时调用。">
         <textarea className="vx-cat-textarea" rows={5} value={description} onChange={(event) => { setDescription(event.target.value) }} />
       </Field>
-      <Field label="参数" hint="结构由代码定义，这里改每个参数给模型的描述与默认值。">
-        <ParamEditor schema={schema} onChange={setSchema} />
+      <Field label="参数" hint={tool.system ? '可编辑参数说明。默认值、启停和 Agent 绑定在此页只读。' : '可编辑参数描述与默认值。'}>
+        <ParamEditor schema={schema} onChange={setSchema} defaultsReadOnly={tool.system} />
       </Field>
       {tool.system ? null : (
         <>
@@ -346,11 +354,10 @@ function ToolDetail({ tool, agents, onBack, onSaved }: { tool: ToolRow; agents: 
         </>
       )}
       {error ? <div className="vx-cat-error">{error}</div> : null}
-      {notice ? <div className="vx-cat-notice">{notice}</div> : null}
       <div className="vx-cat-footer">
         <button type="button" className="vx-cat-btn vx-cat-btn--primary" disabled={busy} onClick={() => { void save() }}>保存</button>
         {tool.system
-          ? <button type="button" className="vx-cat-btn" disabled={busy} onClick={() => { void reset() }}>恢复默认</button>
+          ? <button type="button" className="vx-cat-btn" disabled={busy} onClick={() => { void reset() }}>恢复默认说明</button>
           : <button type="button" className="vx-cat-btn vx-cat-btn--danger" disabled={busy} onClick={() => { void remove() }}>删除</button>}
       </div>
     </div>
