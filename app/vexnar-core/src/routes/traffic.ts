@@ -8,6 +8,7 @@ import type { Hono } from 'hono'
 import { blobStore, operations, store, storeRoot } from '../context.ts'
 import { parseScope } from '../traffic-scope.ts'
 import { archivedRaw } from '../traffic-index.ts'
+import { registerLocalTrafficCleanup } from './data-management.ts'
 import { allExchanges, registerTrafficHistory } from './traffic-history.ts'
 export { allExchanges, exchangeDto } from './traffic-history.ts'
 import { mitmProxy } from '../traffic-proxy/index.ts'
@@ -527,6 +528,8 @@ export function register(api: Hono) {
       return c.json({ error: String(e?.message ?? e) }, e?.name === 'StoreConflict' ? 409 : e?.status ?? 400)
     }
   })
+
+  registerLocalTrafficCleanup(api)
 
   // 删除 host 子串匹配的采集流量
   api.delete('/api/traffic', async (c) => {

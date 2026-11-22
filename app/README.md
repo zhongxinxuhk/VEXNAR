@@ -63,7 +63,7 @@ app/                          # WebStorm 工程根（项目名 app）
 ```sh
 cd app
 pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、core、store、spike
-pnpm run build               # 构建 UI、账号和出口插件
+pnpm run build               # 构建 UI、账号、出口插件及内嵌 core
 pnpm run setup               # 初始化 VEXNAR profile
 pnpm run upstream:check      # 上游边界 + 包管理器边界
 pnpm --filter @vexnar/core start
@@ -152,6 +152,12 @@ VEXNAR 使用 `app/.vexnar-home`（可用 `VEXNAR_HOME` 指定独立目录）和
 `profiles/vexnar`。默认工作区也建在该目录内，Electron 用户数据位于其下的 `electron/`。运行时由工作区的
 pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续保留。
 账户配置见 [账户和模型](./vexnar/account/README.md)。
+
+## 管理客户端数据
+
+- 在 **任务 → 归档记录** 查看、恢复或移除归档。运行中或排队的本地任务需先暂停才能归档。
+- 在 **流量 → 清理本地流量** 选择截止日期，可按主机精确筛选，然后预览并确认清理。
+  清理只删除客户端 SQLite 中日期零点之前的流量条目。Yak 历史、已绑定证据和共享正文仍可用。
 
 ## 更新客户端
 

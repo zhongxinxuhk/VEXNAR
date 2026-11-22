@@ -529,51 +529,51 @@ var require_textParsers = __commonJS({
       result.radius = parseFloat(radius);
       return result;
     };
-    var init = function(register) {
-      register(20, parseBigInteger);
-      register(21, parseInteger);
-      register(23, parseInteger);
-      register(26, parseInteger);
-      register(700, parseFloat);
-      register(701, parseFloat);
-      register(16, parseBool);
-      register(1082, parseDate);
-      register(1114, parseDate);
-      register(1184, parseDate);
-      register(600, parsePoint);
-      register(651, parseStringArray);
-      register(718, parseCircle);
-      register(1e3, parseBoolArray);
-      register(1001, parseByteAArray);
-      register(1005, parseIntegerArray);
-      register(1007, parseIntegerArray);
-      register(1028, parseIntegerArray);
-      register(1016, parseBigIntegerArray);
-      register(1017, parsePointArray);
-      register(1021, parseFloatArray);
-      register(1022, parseFloatArray);
-      register(1231, parseFloatArray);
-      register(1014, parseStringArray);
-      register(1015, parseStringArray);
-      register(1008, parseStringArray);
-      register(1009, parseStringArray);
-      register(1040, parseStringArray);
-      register(1041, parseStringArray);
-      register(1115, parseDateArray);
-      register(1182, parseDateArray);
-      register(1185, parseDateArray);
-      register(1186, parseInterval);
-      register(1187, parseIntervalArray);
-      register(17, parseByteA);
-      register(114, JSON.parse.bind(JSON));
-      register(3802, JSON.parse.bind(JSON));
-      register(199, parseJsonArray);
-      register(3807, parseJsonArray);
-      register(3907, parseStringArray);
-      register(2951, parseStringArray);
-      register(791, parseStringArray);
-      register(1183, parseStringArray);
-      register(1270, parseStringArray);
+    var init = function(register2) {
+      register2(20, parseBigInteger);
+      register2(21, parseInteger);
+      register2(23, parseInteger);
+      register2(26, parseInteger);
+      register2(700, parseFloat);
+      register2(701, parseFloat);
+      register2(16, parseBool);
+      register2(1082, parseDate);
+      register2(1114, parseDate);
+      register2(1184, parseDate);
+      register2(600, parsePoint);
+      register2(651, parseStringArray);
+      register2(718, parseCircle);
+      register2(1e3, parseBoolArray);
+      register2(1001, parseByteAArray);
+      register2(1005, parseIntegerArray);
+      register2(1007, parseIntegerArray);
+      register2(1028, parseIntegerArray);
+      register2(1016, parseBigIntegerArray);
+      register2(1017, parsePointArray);
+      register2(1021, parseFloatArray);
+      register2(1022, parseFloatArray);
+      register2(1231, parseFloatArray);
+      register2(1014, parseStringArray);
+      register2(1015, parseStringArray);
+      register2(1008, parseStringArray);
+      register2(1009, parseStringArray);
+      register2(1040, parseStringArray);
+      register2(1041, parseStringArray);
+      register2(1115, parseDateArray);
+      register2(1182, parseDateArray);
+      register2(1185, parseDateArray);
+      register2(1186, parseInterval);
+      register2(1187, parseIntervalArray);
+      register2(17, parseByteA);
+      register2(114, JSON.parse.bind(JSON));
+      register2(3802, JSON.parse.bind(JSON));
+      register2(199, parseJsonArray);
+      register2(3807, parseJsonArray);
+      register2(3907, parseStringArray);
+      register2(2951, parseStringArray);
+      register2(791, parseStringArray);
+      register2(1183, parseStringArray);
+      register2(1270, parseStringArray);
     };
     module.exports = {
       init
@@ -837,23 +837,23 @@ var require_binaryParsers = __commonJS({
       if (value === null) return null;
       return parseBits(value, 8) > 0;
     };
-    var init = function(register) {
-      register(20, parseInt64);
-      register(21, parseInt16);
-      register(23, parseInt32);
-      register(26, parseInt32);
-      register(1700, parseNumeric);
-      register(700, parseFloat32);
-      register(701, parseFloat64);
-      register(16, parseBool);
-      register(1114, parseDate.bind(null, false));
-      register(1184, parseDate.bind(null, true));
-      register(1e3, parseArray);
-      register(1007, parseArray);
-      register(1016, parseArray);
-      register(1008, parseArray);
-      register(1009, parseArray);
-      register(25, parseText);
+    var init = function(register2) {
+      register2(20, parseInt64);
+      register2(21, parseInt16);
+      register2(23, parseInt32);
+      register2(26, parseInt32);
+      register2(1700, parseNumeric);
+      register2(700, parseFloat32);
+      register2(701, parseFloat64);
+      register2(16, parseBool);
+      register2(1114, parseDate.bind(null, false));
+      register2(1184, parseDate.bind(null, true));
+      register2(1e3, parseArray);
+      register2(1007, parseArray);
+      register2(1016, parseArray);
+      register2(1008, parseArray);
+      register2(1009, parseArray);
+      register2(25, parseText);
     };
     module.exports = {
       init
@@ -7264,6 +7264,9 @@ var TASK_LIFECYCLE = [
 ];
 var TASK_STATUS_KEYS = TASK_LIFECYCLE.map((item) => item.key);
 var BY_KEY = new Map(TASK_LIFECYCLE.map((item) => [item.key, item]));
+function taskStatusMeta(status) {
+  return BY_KEY.get(status) ?? BY_KEY.get("created");
+}
 function isTerminalTaskStatus(status) {
   return BY_KEY.get(status)?.terminal === true;
 }
@@ -28077,6 +28080,7 @@ function jsonStore(root) {
 var resolveTaskRow = (row) => ({ ...row, stored_status: String(row.status ?? ""), status: resolveTaskStatus(row) });
 
 // ../vexnar-store/src/sqlite.ts
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname as dirname2 } from "node:path";
@@ -28097,6 +28101,22 @@ function sqliteWriter(path) {
   const setRec = db.prepare("INSERT INTO kv (tbl, key, record) VALUES (?, ?, ?) ON CONFLICT(tbl, key) DO UPDATE SET record = excluded.record");
   const delRec = db.prepare("DELETE FROM kv WHERE tbl = ? AND key = ?");
   const listRec = db.prepare("SELECT key, record FROM kv WHERE tbl = ?");
+  const oldTraffic = db.prepare(`
+    SELECT key, json_extract(record, '$.rev') AS rev, json_extract(record, '$.seq') AS seq,
+      json_extract(record, '$.ts') AS ts
+    FROM kv
+    WHERE tbl = 'traffic_exchanges'
+      AND json_type(record, '$.ts') IN ('integer', 'real')
+      AND json_extract(record, '$.ts') > 0 AND json_extract(record, '$.ts') < ?
+      AND (? = '' OR lower(json_extract(record, '$.host')) = ?)
+    ORDER BY key
+  `);
+  function trafficCleanupPlan(before, host) {
+    const rows = oldTraffic.all(before, host, host);
+    const hash2 = createHash("sha256").update(JSON.stringify([before, host]));
+    for (const row of rows) hash2.update(JSON.stringify([row.key, row.rev, row.seq, row.ts]));
+    return { rows, token: hash2.digest("hex") };
+  }
   function readSync(table, key) {
     const row = getRec.get(table, key);
     return row ? parse3(row.record) : null;
@@ -28152,6 +28172,25 @@ function sqliteWriter(path) {
     },
     async remove(table, key) {
       delRec.run(table, key);
+    },
+    previewTrafficCleanup(before, host) {
+      const { rows, token } = trafficCleanupPlan(before, host);
+      return { count: rows.length, token };
+    },
+    applyTrafficCleanup(before, host, expectedToken) {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const { rows, token } = trafficCleanupPlan(before, host);
+        const matches = token === expectedToken;
+        if (matches) {
+          for (const row of rows) delRec.run("traffic_exchanges", row.key);
+        }
+        db.exec("COMMIT");
+        return matches ? rows.length : null;
+      } catch (error62) {
+        db.exec("ROLLBACK");
+        throw error62;
+      }
     },
     async recover() {
       return { replayed: 0 };
@@ -28668,6 +28707,7 @@ function storeOperations(_root) {
   async function deleteTask(id) {
     const current = await writer.readRecord("tasks", id);
     if (!current || current.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
+    if (current.archived_at_text) throw Object.assign(new Error("\u8BF7\u5728\u5F52\u6863\u5217\u8868\u4E2D\u79FB\u9664\u8BE5\u4EFB\u52A1"), { status: 409 });
     const now = /* @__PURE__ */ new Date();
     const next = { ...current, status: "deleted", deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1e3) };
     delete next.rev;
@@ -29018,8 +29058,14 @@ function storeOperations(_root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     if (task.archived_at_text) throw Object.assign(new Error("task \u5DF2\u5F52\u6863"), { status: 409 });
     const now = /* @__PURE__ */ new Date();
-    const existing = await writer.list("archives");
-    const archiveId = Math.max(0, ...existing.map((row) => Number(row.id))) + 1;
+    if (taskStatusMeta(resolveTaskStatus({
+      status: String(task.status ?? ""),
+      paused: task.paused === true,
+      queued: task.queued === true
+    })).active) {
+      throw Object.assign(new Error("\u8BF7\u5148\u6682\u505C\u6B63\u5728\u8FD0\u884C\u6216\u6392\u961F\u7684\u4EFB\u52A1"), { status: 409 });
+    }
+    const archiveId = await writer.maxKey("archives") + 1;
     const archive = {
       id: archiveId,
       task_id: Number(task.id),
@@ -29045,40 +29091,44 @@ function storeOperations(_root) {
     const nextTask = { ...task, archived_at_text: archive.archived_at };
     delete nextTask.rev;
     await writer.commit([
-      { table: "archives", key: String(archiveId), record: archive },
+      { table: "archives", key: String(archiveId), record: archive, expectedRev: 0 },
       { table: "tasks", key: id, record: nextTask, expectedRev: Number(task.rev ?? 0) }
     ]);
     return archive;
   }
   async function listArchives() {
     const rows = await writer.list("archives");
-    return rows.sort((a, b) => Number(b.id) - Number(a.id));
+    return rows.filter((row) => !row.retired_at).sort((a, b) => Number(b.id) - Number(a.id));
   }
-  async function restoreArchive(archiveId) {
+  async function finishArchive(archiveId, action) {
     const archive = await writer.readRecord("archives", archiveId);
-    if (!archive) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
-    const task = await writer.readRecord("tasks", String(archive.task_id));
-    if (task) {
+    if (!archive || archive.retired_at) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
+    const taskId = String(archive.task_id);
+    const task = await writer.readRecord("tasks", taskId);
+    if (action === "restore" && (!task || task.deleted_at_text || !task.archived_at_text)) {
+      throw Object.assign(new Error("\u5F52\u6863\u4EFB\u52A1\u7F3A\u5931\u6216\u5DF2\u79FB\u9664\uFF0C\u65E0\u6CD5\u6062\u590D"), { status: 409 });
+    }
+    const now = /* @__PURE__ */ new Date();
+    const ops = [{
+      table: "archives",
+      key: archiveId,
+      record: { id: archive.id, retired_at: rfc3339(now) },
+      expectedRev: Number(archive.rev ?? 0)
+    }];
+    if (task?.archived_at_text && !task.deleted_at_text) {
       const next = { ...task, archived_at_text: null };
-      delete next.rev;
-      await writer.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
+      if (action === "delete") {
+        next.status = "deleted";
+        next.deleted_at_text = rfc3339(now);
+        next.deleted_unix = Math.floor(now.getTime() / 1e3);
+      }
+      ops.push({ table: "tasks", key: taskId, record: next, expectedRev: Number(task.rev ?? 0) });
     }
-    await writer.remove("archives", `${archiveId}`);
+    await writer.commit(ops);
     return archive;
   }
-  async function deleteArchive(archiveId) {
-    const archive = await writer.readRecord("archives", archiveId);
-    if (!archive) throw Object.assign(new Error("\u5F52\u6863\u4E0D\u5B58\u5728"), { status: 404 });
-    const task = await writer.readRecord("tasks", String(archive.task_id));
-    if (task) {
-      const now = /* @__PURE__ */ new Date();
-      const next = { ...task, status: "deleted", deleted_at_text: rfc3339(now), deleted_unix: Math.floor(now.getTime() / 1e3) };
-      delete next.rev;
-      await writer.commit([{ table: "tasks", key: String(task.id), record: next, expectedRev: Number(task.rev ?? 0) }]);
-    }
-    await writer.remove("archives", `${archiveId}`);
-    return archive;
-  }
+  const restoreArchive = (archiveId) => finishArchive(archiveId, "restore");
+  const deleteArchive = (archiveId) => finishArchive(archiveId, "delete");
   async function addGoal(taskId, input2) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
@@ -29150,12 +29200,12 @@ function storeOperations(_root) {
       await writer.commit([{ table: "nodes", key: intentId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
       return { id: Number(intentId), state: "open" };
     }
-    const reason = String(input2.reason ?? "").trim();
-    if (!reason) throw Object.assign(new Error("\u8BF7\u586B\u5199\u5220\u9664\u539F\u56E0"), { status: 409 });
+    const reason2 = String(input2.reason ?? "").trim();
+    if (!reason2) throw Object.assign(new Error("\u8BF7\u586B\u5199\u5220\u9664\u539F\u56E0"), { status: 409 });
     if (!["running", "paused", "open"].includes(node2.state)) throw Object.assign(new Error("\u4EC5\u5F85\u9886/\u8FD0\u884C\u4E2D/\u5DF2\u6682\u505C\u7684\u610F\u56FE\u53EF\u4EE5\u5220\u9664"), { status: 409 });
     const mode = input2.mode === "hard" ? "hard" : "soft";
     if (mode === "soft") {
-      const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, delete_reason: reason };
+      const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, delete_reason: reason2 };
       const next = { ...node2, state: "deleted", payload };
       delete next.rev;
       await writer.commit([{ table: "nodes", key: intentId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
@@ -33631,6 +33681,127 @@ function registerNotificationSettings(api, redactConfig = false) {
   });
 }
 
+// src/routes/data-management.ts
+function registerTaskDataManagement(api) {
+  api.delete("/api/tasks/:id", async (c) => {
+    try {
+      const result = await operations.deleteTask(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api.post("/api/tasks/:id/archive", async (c) => {
+    try {
+      const result = await operations.archiveTask(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api.post("/api/tasks/archive/batch", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const ids = Array.isArray(body.task_ids) ? body.task_ids : [];
+    const items = [];
+    for (const id of ids) {
+      try {
+        items.push({ task_id: id, ok: true, archive: await operations.archiveTask(String(id)) });
+      } catch (error62) {
+        items.push({ task_id: id, ok: false, error: String(error62?.message ?? error62) });
+      }
+    }
+    store.invalidate?.(["tasks"]);
+    return c.json({ items });
+  });
+  api.get("/api/task-archives", async (c) => {
+    const page = Math.max(Math.floor(Number(c.req.query("page"))) || 1, 1);
+    const size = Math.min(Math.max(Math.floor(Number(c.req.query("size"))) || 20, 1), 200);
+    const all = await operations.listArchives();
+    return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size });
+  });
+  api.get("/api/task-archives/:id", async (c) => {
+    const one = (await operations.listArchives()).find((row) => String(row.id) === c.req.param("id"));
+    if (!one) return c.json({ error: "\u5F52\u6863\u4E0D\u5B58\u5728" }, 404);
+    return c.json(one);
+  });
+  api.post("/api/task-archives/:id/restore", async (c) => {
+    try {
+      const result = await operations.restoreArchive(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+  api.delete("/api/task-archives/:id", async (c) => {
+    try {
+      const result = await operations.deleteArchive(c.req.param("id"));
+      store.invalidate?.(["tasks"]);
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.name === "StoreConflict" ? 409 : error62?.status ?? 400);
+    }
+  });
+}
+function registerLocalTrafficCleanup(api) {
+  api.on(["GET", "DELETE"], "/api/traffic/local-cleanup", async (c) => {
+    c.header("Cache-Control", "no-store");
+    const rawBefore = c.req.query("before") ?? "";
+    const before = Number(rawBefore);
+    if (!/^[1-9]\d*$/.test(rawBefore) || !Number.isSafeInteger(before) || before > Math.floor(Date.now() / 1e3)) {
+      return c.json({ error: "\u8BF7\u9009\u62E9\u6709\u6548\u4E14\u4E0D\u665A\u4E8E\u5F53\u524D\u65F6\u95F4\u7684\u622A\u6B62\u65E5\u671F" }, 400);
+    }
+    const host = (c.req.query("host") ?? "").trim().toLowerCase();
+    const local = operations.writer;
+    if (!("previewTrafficCleanup" in local)) return c.json({ error: "\u6B64\u6E05\u7406\u5165\u53E3\u4F7F\u7528\u5BA2\u6237\u7AEF SQLite \u5B58\u50A8" }, 409);
+    try {
+      if (c.req.method === "GET") return c.json(local.previewTrafficCleanup(before, host));
+      const body = await c.req.json().catch(() => null);
+      const token = body?.token;
+      if (typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) {
+        return c.json({ error: "\u8BF7\u5148\u9884\u89C8\u8981\u6E05\u7406\u7684\u8BB0\u5F55" }, 400);
+      }
+      const deleted = local.applyTrafficCleanup(before, host, token);
+      if (deleted === null) return c.json({ error: "\u6D41\u91CF\u8BB0\u5F55\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9884\u89C8" }, 409);
+      store.invalidate?.(["traffic_exchanges"]);
+      return c.json({ deleted });
+    } catch (error62) {
+      console.error("[traffic] local cleanup failed", error62);
+      return c.json({ error: "\u672C\u5730\u6D41\u91CF\u6E05\u7406\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6570\u636E\u5B58\u50A8\u72B6\u6001" }, 500);
+    }
+  });
+}
+
+// src/routes/update.ts
+var repo = "zhongxinxuhk/vexnar";
+var reason = "\u6B64\u5BA2\u6237\u7AEF\u968F dsh \u5DE5\u4F5C\u533A\u66F4\u65B0\uFF0C\u8BF7\u4F7F\u7528\u5B89\u88C5\u6765\u6E90\u63D0\u4F9B\u7684\u66F4\u65B0\u65B9\u5F0F";
+var progress = { phase: "idle", percent: -1, message: reason };
+function register(api) {
+  api.get("/api/update/check", (c) => c.json({
+    current: process.env.VEXNAR_VERSION ?? "dev",
+    mode: "managed",
+    os: process.platform === "win32" ? "windows" : process.platform,
+    arch: process.arch === "x64" ? "amd64" : process.arch === "ia32" ? "386" : process.arch,
+    has_backup: false,
+    has_update: false,
+    asset_available: false,
+    comparable: false,
+    repo,
+    boot_notice: "",
+    rolled_back: false,
+    reason
+  }));
+  api.post("/api/update/apply", (c) => c.json({ error: reason }, 409));
+  api.post("/api/update/rollback", (c) => c.json({ error: reason }, 409));
+  api.get("/api/update/stream", () => new Response(`data: ${JSON.stringify(progress)}
+
+`, {
+    headers: { "content-type": "text/event-stream", "cache-control": "no-store" }
+  }));
+}
+
 // src/routes/read-views.ts
 var taskDto = (row, metrics) => ({
   id: String(row.id),
@@ -34150,6 +34321,9 @@ registerToolDocumentation(settings);
 registerNotificationSettings(settings, true);
 registerReadViews(settings);
 registerTrafficHistory(settings);
+registerTaskDataManagement(settings);
+registerLocalTrafficCleanup(settings);
+register(settings);
 settings.get("/api/traffic/capture", async (c) => c.json(await captureOverview()));
 var migration;
 async function handleSettings(request) {

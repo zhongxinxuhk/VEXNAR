@@ -1055,8 +1055,75 @@ function TasksPanel() {
     body)
 }
 
+function LocalTrafficCleanup() {
+  const [date, setDate] = useState('')
+  const [host, setHost] = useState('')
+  const [preview, setPreview] = useState<{ path: string; count: number; token: string }>()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [deleted, setDeleted] = useState<number>()
+
+  async function review() {
+    if (!date) return
+    const before = Math.floor(new Date(`${date}T00:00:00`).getTime() / 1000)
+    const query = new URLSearchParams({ before: String(before), host: host.trim() })
+    const path = `/api/traffic/local-cleanup?${query}`
+    setBusy(true)
+    setError('')
+    setPreview(undefined)
+    setDeleted(undefined)
+    try {
+      const result = await callApi(path)
+      setPreview({ path, count: result.count, token: result.token })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function apply() {
+    if (!preview || !window.confirm(`清理 ${preview.count} 条本地流量记录？此操作无法撤销。`)) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await callApi(preview.path, 'DELETE', { token: preview.token })
+      setDeleted(result.deleted)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setPreview(undefined)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <details>
+      <summary>清理本地流量</summary>
+      <p>按所选日期当天零点筛选更早的客户端记录。Yak 历史和已绑定的证据会保留。</p>
+      <Toolbar>
+        <label>截止日期 <input type="date" value={date} disabled={busy} onChange={(event) => {
+          setDate(event.target.value)
+          setPreview(undefined)
+        }} /></label>
+        <label>主机 <input value={host} placeholder="留空为全部主机" disabled={busy} onChange={(event) => {
+          setHost(event.target.value)
+          setPreview(undefined)
+        }} /></label>
+        <button type="button" disabled={!date || busy} onClick={() => void review()}>预览清理</button>
+        {preview && <button type="button" disabled={preview.count === 0 || busy} onClick={() => void apply()}>
+          清理 {preview.count} 条
+        </button>}
+      </Toolbar>
+      {preview?.count === 0 && <p role="status">没有符合条件的本地流量。</p>}
+      {deleted !== undefined && <p role="status">已清理 {deleted} 条本地流量。</p>}
+      {error && <p role="alert">{error}</p>}
+    </details>
+  )
+}
+
 function TrafficPanel() {
-  return h(PanelShell, { title: '流量 History' }, h(YakHistory))
+  return h(PanelShell, { title: '流量 History' }, h(LocalTrafficCleanup), h(YakHistory))
 }
 
 function NotifySettings() {

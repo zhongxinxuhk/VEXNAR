@@ -10232,6 +10232,9 @@ var tasksApi = {
   create: (input) => post("/tasks", input),
   control: (id, action) => post(`/tasks/${encodeURIComponent(id)}/control`, { action }),
   archive: (id) => post(`/tasks/${encodeURIComponent(id)}/archive`),
+  archives: (page) => get(`/task-archives${query({ page, size: 20 })}`),
+  restoreArchive: (id) => post(`/task-archives/${id}/restore`),
+  deleteArchive: (id) => del(`/task-archives/${id}`),
   remove: (id) => del(`/tasks/${encodeURIComponent(id)}`),
   stats: (id) => get(`/stats${query({ task: id })}`),
   intents: (id) => get(`/exploration/intents${query({ task: id })}`).then((value) => listOf(value, "intents")),
@@ -11218,6 +11221,7 @@ function TasksWorkspace() {
   const [page, setPage] = (0, import_react9.useState)(1);
   const [size, setSize] = (0, import_react9.useState)(20);
   const [open, setOpen] = (0, import_react9.useState)("");
+  const [showArchives, setShowArchives] = (0, import_react9.useState)(false);
   const [draft, setDraft] = (0, import_react9.useState)({ description: "", goal: "" });
   const [creating, setCreating] = (0, import_react9.useState)(false);
   const [error, setError] = (0, import_react9.useState)("");
@@ -11232,7 +11236,18 @@ function TasksWorkspace() {
     const counts = summary.data?.by_status ?? {};
     return lifecycle.map((entry) => ({ ...entry, value: Number(counts[entry.key] ?? 0) })).filter((entry) => entry.value > 0);
   }, [lifecycle, summary.data]);
-  if (open) return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TaskDetailPage, { id: open, onBack: () => setOpen("") });
+  const reloadTasks = () => {
+    list.reload();
+    summary.reload();
+  };
+  if (showArchives) return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TaskArchives, { onBack: () => {
+    setShowArchives(false);
+    reloadTasks();
+  } });
+  if (open) return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TaskDetailPage, { id: open, onBack: () => {
+    setOpen("");
+    reloadTasks();
+  } });
   const create = () => {
     if (!draft.description.trim()) return;
     setCreating(true);
@@ -11255,10 +11270,8 @@ function TasksWorkspace() {
         setPage(1);
       }, ariaLabel: "\u72B6\u6001", options: STATUS_FILTER }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Select, { value: String(size), onChange: (value) => setSize(Number(value)), ariaLabel: "\u6BCF\u9875", options: [["10", "10 / \u9875"], ["20", "20 / \u9875"], ["50", "50 / \u9875"]] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: () => {
-        list.reload();
-        summary.reload();
-      }, children: "\u5237\u65B0" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: reloadTasks, children: "\u5237\u65B0" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: () => setShowArchives(true), children: "\u5F52\u6863\u8BB0\u5F55" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "vx-task-spacer" }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "vx-task-hint", children: [
         "\u5171 ",
@@ -11298,6 +11311,51 @@ function TasksWorkspace() {
     ] })
   ] });
 }
+function TaskArchives({ onBack }) {
+  const [page, setPage] = (0, import_react9.useState)(1);
+  const [busy, setBusy] = (0, import_react9.useState)(false);
+  const [error, setError] = (0, import_react9.useState)("");
+  const archives = useResource(`archives:${page}`, () => tasksApi.archives(page));
+  const rows = archives.data?.items ?? [];
+  const total = archives.data?.total ?? 0;
+  async function change(id, action) {
+    if (action === "delete" && !window.confirm("\u79FB\u9664\u8FD9\u6761\u5F52\u6863\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u4ECE\u5BA2\u6237\u7AEF\u64A4\u9500\u3002")) return;
+    setBusy(true);
+    setError("");
+    try {
+      await (action === "restore" ? tasksApi.restoreArchive(id) : tasksApi.deleteArchive(id));
+      if (rows.length === 1 && page > 1) setPage(page - 1);
+      else archives.reload();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "vx-task-workspace", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "vx-task-toolbar", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: onBack, children: "\u2190 \u8FD4\u56DE\u4EFB\u52A1" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: archives.reload, disabled: busy, children: "\u5237\u65B0" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("span", { className: "vx-task-hint", children: [
+        "\u5171 ",
+        total,
+        " \u6761\u5F52\u6863"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: () => setPage(page - 1), disabled: busy || page <= 1, children: "\u4E0A\u4E00\u9875" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { onClick: () => setPage(page + 1), disabled: busy || page * 20 >= total, children: "\u4E0B\u4E00\u9875" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(Card, { title: "\u5F52\u6863\u8BB0\u5F55", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(ErrorLine, { error: error || archives.error }),
+      archives.loading ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Empty2, { text: "\u8BFB\u53D6\u5F52\u6863\u2026" }) : !archives.error && rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Empty2, { text: "\u6CA1\u6709\u5F52\u6863\u8BB0\u5F55" }) : null,
+      rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "vx-task-inline vx-task-inline--wide", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("strong", { children: row.task_name || `\u4EFB\u52A1 #${row.task_id}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("span", { className: "vx-task-hint", children: [row.archived_at, row.state].filter(Boolean).join(" \xB7 ") }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { disabled: busy || !["done", "ready", "restore_failed"].includes(row.state), onClick: () => void change(row.id, "restore"), children: "\u6062\u590D" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(Button, { tone: "danger", disabled: busy || !["done", "ready", "delete_failed"].includes(row.state), onClick: () => void change(row.id, "delete"), children: "\u79FB\u9664\u5F52\u6863" })
+      ] }, row.id))
+    ] })
+  ] });
+}
 function TaskDetailPage({ id, onBack }) {
   const [tab, setTab] = (0, import_react9.useState)("overview");
   const task = useResource(`task:${id}`, () => tasksApi.get(id));
@@ -11333,11 +11391,10 @@ function TaskDetailPage({ id, onBack }) {
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         Button,
         {
+          disabled: !value || busy !== "",
           onClick: () => {
-            tasksApi.archive(id).then(() => {
-              task.reload();
-              onBack();
-            }).catch((error) => window.alert(error.message));
+            setBusy("archive");
+            tasksApi.archive(id).then(onBack).catch((error) => window.alert(error.message)).finally(() => setBusy(""));
           },
           children: "\u5F52\u6863"
         }
@@ -12361,6 +12418,7 @@ function InterceptSettings() {
 }
 
 // src/client.tsx
+var import_jsx_runtime9 = require("react/jsx-runtime");
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
 var TRAFFIC_TOOL = "mcp__vexnar__traffic_get";
@@ -13438,8 +13496,81 @@ function TasksPanel() {
     body
   );
 }
+function LocalTrafficCleanup() {
+  const [date, setDate] = (0, import_react11.useState)("");
+  const [host, setHost] = (0, import_react11.useState)("");
+  const [preview, setPreview] = (0, import_react11.useState)();
+  const [busy, setBusy] = (0, import_react11.useState)(false);
+  const [error, setError] = (0, import_react11.useState)("");
+  const [deleted, setDeleted] = (0, import_react11.useState)();
+  async function review() {
+    if (!date) return;
+    const before = Math.floor((/* @__PURE__ */ new Date(`${date}T00:00:00`)).getTime() / 1e3);
+    const query2 = new URLSearchParams({ before: String(before), host: host.trim() });
+    const path = `/api/traffic/local-cleanup?${query2}`;
+    setBusy(true);
+    setError("");
+    setPreview(void 0);
+    setDeleted(void 0);
+    try {
+      const result = await callApi(path);
+      setPreview({ path, count: result.count, token: result.token });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function apply2() {
+    if (!preview || !window.confirm(`\u6E05\u7406 ${preview.count} \u6761\u672C\u5730\u6D41\u91CF\u8BB0\u5F55\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await callApi(preview.path, "DELETE", { token: preview.token });
+      setDeleted(result.deleted);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setPreview(void 0);
+      setBusy(false);
+    }
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("details", { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("summary", { children: "\u6E05\u7406\u672C\u5730\u6D41\u91CF" }),
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: "\u6309\u6240\u9009\u65E5\u671F\u5F53\u5929\u96F6\u70B9\u7B5B\u9009\u66F4\u65E9\u7684\u5BA2\u6237\u7AEF\u8BB0\u5F55\u3002Yak \u5386\u53F2\u548C\u5DF2\u7ED1\u5B9A\u7684\u8BC1\u636E\u4F1A\u4FDD\u7559\u3002" }),
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(Toolbar, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { children: [
+        "\u622A\u6B62\u65E5\u671F ",
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { type: "date", value: date, disabled: busy, onChange: (event) => {
+          setDate(event.target.value);
+          setPreview(void 0);
+        } })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { children: [
+        "\u4E3B\u673A ",
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { value: host, placeholder: "\u7559\u7A7A\u4E3A\u5168\u90E8\u4E3B\u673A", disabled: busy, onChange: (event) => {
+          setHost(event.target.value);
+          setPreview(void 0);
+        } })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("button", { type: "button", disabled: !date || busy, onClick: () => void review(), children: "\u9884\u89C8\u6E05\u7406" }),
+      preview && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("button", { type: "button", disabled: preview.count === 0 || busy, onClick: () => void apply2(), children: [
+        "\u6E05\u7406 ",
+        preview.count,
+        " \u6761"
+      ] })
+    ] }),
+    preview?.count === 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { role: "status", children: "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u672C\u5730\u6D41\u91CF\u3002" }),
+    deleted !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { role: "status", children: [
+      "\u5DF2\u6E05\u7406 ",
+      deleted,
+      " \u6761\u672C\u5730\u6D41\u91CF\u3002"
+    ] }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { role: "alert", children: error })
+  ] });
+}
 function TrafficPanel() {
-  return (0, import_react11.createElement)(PanelShell, { title: "\u6D41\u91CF History" }, (0, import_react11.createElement)(YakHistory));
+  return (0, import_react11.createElement)(PanelShell, { title: "\u6D41\u91CF History" }, (0, import_react11.createElement)(LocalTrafficCleanup), (0, import_react11.createElement)(YakHistory));
 }
 function NotifySettings() {
   return (0, import_react11.createElement)(PanelShell, { title: "\u901A\u77E5\u63A8\u9001", desc: "\u6E20\u9053\u4E0E\u6295\u9012" }, (0, import_react11.createElement)(NotifyPage));

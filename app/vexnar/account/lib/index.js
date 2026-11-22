@@ -36,6 +36,15 @@ function isStoredDataRead(path, goMode) {
 function isNotificationSetting(method, path) {
   return path === "/api/notify/channels" ? method === "GET" || method === "POST" : (method === "PATCH" || method === "DELETE") && /^\/api\/notify\/channels\/\d+$/.test(path);
 }
+function isClientMaintenance(method, path, goMode) {
+  if ((method === "GET" || method === "DELETE") && path === "/api/traffic/local-cleanup") return true;
+  if (method === "GET" && (path === "/api/update/check" || path === "/api/update/stream")) return true;
+  if (method === "POST" && (path === "/api/update/apply" || path === "/api/update/rollback")) return true;
+  if (goMode) return false;
+  if (method === "GET") return path === "/api/task-archives" || /^\/api\/task-archives\/\d+$/.test(path);
+  if (method === "DELETE") return /^\/api\/(?:tasks|task-archives)\/\d+$/.test(path);
+  return method === "POST" && (/^\/api\/(?:task-archives\/\d+\/restore|tasks\/\d+\/archive)$/.test(path) || path === "/api/tasks/archive/batch");
+}
 const name = "@vexnar/dsh-account";
 const inject = ["webServer", "credentials", "settings", "connection", "sessions", "tools", "agentDefaultModel", "typertGateway"];
 const BRAND_SCRIPT = `
@@ -166,7 +175,7 @@ function apply(ctx) {
             return;
           }
           const toolDocumentation = req.method === "PUT" && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname) || req.method === "POST" && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname);
-          const configRoute = toolDocumentation || isNotificationSetting(req.method, url.pathname) || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && isStoredDataRead(url.pathname, goMode);
+          const configRoute = isClientMaintenance(req.method, url.pathname, goMode) || toolDocumentation || isNotificationSetting(req.method, url.pathname) || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && isStoredDataRead(url.pathname, goMode);
           const app = configRoute || nativeYakHistory ? void 0 : await getCore();
           if (!configRoute && !nativeYakHistory && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });

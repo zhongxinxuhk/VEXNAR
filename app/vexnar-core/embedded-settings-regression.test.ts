@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 
-test('embedded views and notification settings work without a running task engine', async () => {
+test('embedded views and client maintenance work without a running task engine', async () => {
   const root = await mkdtemp(join(tmpdir(), 'vexnar-embedded-views-'))
   process.env.VEXNAR_STORE = 'sqlite'
   process.env.VEXNAR_STORE_ROOT = root
@@ -45,6 +45,20 @@ test('embedded views and notification settings work without a running task engin
     assert.deepEqual((await request('/api/mcp/4/tools')).body.tools, [
       { name: 'cached_name', description: '' }, { name: 'cached_object', description: 'fixture' }
     ])
+
+    assert.equal((await request('/api/update/check')).body.mode, 'managed')
+    assert.equal((await request('/api/update/apply', 'POST')).status, 409)
+    const archive = await request(`/api/tasks/${task.id}/archive`, 'POST')
+    assert.equal(archive.status, 200)
+    assert.equal((await request('/api/task-archives')).body.total, 1)
+    assert.equal((await request(`/api/task-archives/${archive.body.id}/restore`, 'POST')).status, 200)
+    assert.equal((await request('/api/task-archives')).body.total, 0)
+
+    const cleanupPath = '/api/traffic/local-cleanup?before=20'
+    const preview = await request(cleanupPath)
+    assert.equal(preview.body.count, 1)
+    assert.deepEqual((await request(cleanupPath, 'DELETE', { token: preview.body.token })).body, { deleted: 1 })
+    assert.deepEqual((await request('/api/traffic')).body.exchanges.map((row: { id: string }) => row.id), ['newer'])
 
     const created = await request('/api/notify/channels', 'POST', {
       name: 'Fixture notification', kind: 'webhook', enabled: false, config: { url: 'https://fixture.invalid/' }

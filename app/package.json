@@ -17,7 +17,7 @@
     "desktop": "tsx scripts/vexnar.ts desktop",
     "go:build": "tsx scripts/vexnar-go.ts build",
     "go:stamp": "tsx scripts/vexnar-go.ts stamp",
-    "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress run build",
+    "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress run build && pnpm --filter @vexnar/core run build:embedded",
     "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress --filter @vexnar/core run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
