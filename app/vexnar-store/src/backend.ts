@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { storeWriter } from './writer.js'
 import { metaStore as jsonMetaStore } from './meta-store.js'
+import type { MetaStore } from './meta-store.js'
 import { jsonStore } from './json-store.js'
 import { sqliteWriter, sqliteMetaStore, sqliteStore } from './sqlite.js'
 import { pgMetaStore, type PgConnection } from './pg-meta.js'
@@ -62,7 +63,7 @@ export function openWriter(root = storeRoot()) {
  * decides. Tables PostgreSQL does not have (client-owned state such as
  * `trafficCaptures`) stay in the local SQLite meta store.
  */
-export function openMeta(root = storeRoot()) {
+export function openMeta(root = storeRoot()): MetaStore {
   const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase()
   const connection = pgConnection()
   const wantsPg = explicit === 'postgres' || (explicit !== 'json' && explicit !== 'sqlite' && connection !== undefined)

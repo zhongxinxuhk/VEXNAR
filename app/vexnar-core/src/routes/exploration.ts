@@ -22,6 +22,8 @@
 
 import { crc32, deflateRawSync } from 'node:zlib'
 import type { Hono } from 'hono'
+import { activityDto } from './read-views.ts'
+export { activityDto } from './read-views.ts'
 import { meta, operations, parseJson, store } from '../context.ts'
 
 // ── 常量（对齐 Go 侧上限）────────────────────────────────────────────────────
@@ -143,27 +145,6 @@ function compareEdges(a: any, b: any) {
     numeric(a.dst) - numeric(b.dst) ||
     String(a.rel ?? '').localeCompare(String(b.rel ?? ''))
   )
-}
-
-export function activityDto(row: any) {
-  const out: Record<string, unknown> = {
-    seq: Number(row.id),
-    ...(row.node_id == null ? {} : { node_id: Number(row.node_id) }),
-    ...(row.worker ? { worker: row.worker } : {}),
-    ts: String(row.created_at ?? '').replace(/\.\d+/, ''),
-    ...(row.kind ? { kind: row.kind } : {}),
-    ...(row.tool ? { tool: row.tool } : {}),
-    ...(row.tool_use_id ? { tool_use_id: row.tool_use_id } : {}),
-    is_error: Boolean(row.is_error),
-    summary: row.summary ?? '',
-    metadata: row.metadata ?? {},
-    ...(row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) }),
-    ...(row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) }),
-    ...(row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) }),
-    ...(row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) }),
-    ...(row.main_seg == null ? {} : { main_seg: Number(row.main_seg) })
-  }
-  return out
 }
 
 /** 与 routes.ts 的 findingDto 保持同一份字段集（导出 JSON 也用它）。 */

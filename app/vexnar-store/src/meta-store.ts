@@ -7,6 +7,16 @@ import { dirname, join } from 'node:path'
 export type ToolDocumentation = { description: string; schema: unknown }
 export type EditToolDocumentation = (current: ToolDocumentation) => ToolDocumentation
 
+export interface NotificationChannelValues {
+  name: string
+  kind: string
+  enabled: boolean
+  config: Record<string, unknown>
+  mode: string
+  filter: Record<string, unknown>
+  rate_per_min: number
+}
+
 export function editBuiltinToolRows(rows: unknown, key: string, edit: EditToolDocumentation): boolean {
   const row = Array.isArray(rows) ? rows.find(item => item?.system === true && item.key === key) : undefined
   if (!row) return false
@@ -29,6 +39,11 @@ export interface MetaStore {
   table<T = any[]>(name: string): Promise<T>
   save(next: Record<string, any[] | Record<string, unknown>>): Promise<void>
   editBuiltinToolDocumentation(key: string, edit: EditToolDocumentation): Promise<boolean>
+  notificationChannels?: {
+    create(input: NotificationChannelValues): Promise<number>
+    update(id: string, input: Partial<NotificationChannelValues>): Promise<boolean>
+    remove(id: string): Promise<boolean>
+  }
 }
 
 export function metaStore(root: string): MetaStore {

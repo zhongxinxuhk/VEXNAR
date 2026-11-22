@@ -186,7 +186,7 @@ check('设置构建产物读取存储中的 MCP Server', storedServers.length > 
   JSON.stringify(await settingsMcp.json()) === JSON.stringify({ servers: storedServers }))
 const settingsMcpWrite = await handleSettings(new Request('http://127.0.0.1/api/mcp', { method: 'POST' }))
 check('设置构建产物的 MCP Server 目录只读', settingsMcpWrite.status === 404)
-check('设置构建产物不挂载任务路由', (await settingsRequest('/api/tasks')).status === 404)
+check('设置构建产物不挂载任务创建', (await handleSettings(new Request('http://127.0.0.1/api/tasks', { method: 'POST' }))).status === 404)
 
 // ── 汇总 ───────────────────────────────────────────────────────────────────
 let failed = false

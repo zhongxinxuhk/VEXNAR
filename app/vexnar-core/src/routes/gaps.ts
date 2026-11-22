@@ -4,7 +4,6 @@
 import { Hono } from 'hono'
 import { execFile, spawnSync } from 'node:child_process'
 import { store, meta, operations, parseJson, storeRoot } from '../context.ts'
-import { activityDto } from './exploration.ts'
 import { defaultTool } from '../catalog/register.ts'
 
 /**
@@ -224,20 +223,6 @@ export function register(api: Hono) {
     } catch (e: any) { return errResponse(c, e) }
   })
 
-  // ── exploration activity list ───────────────────────────────────────────
-  // No `task` → the station-wide feed (dsh overview's activity card); with a
-  // `task` → that task's activity. Both answer the same DTO, so every surface
-  // reads `seq`/`ts` instead of the raw store columns.
-  api.get('/api/exploration/activity', async (c) => {
-    const taskId = c.req.query('task') ?? ''
-    const limit = Math.min(Number(c.req.query('limit') ?? 200) || 200, 500)
-    const before = Number(c.req.query('before') ?? 0) || 0
-    const page = taskId === ''
-      ? await store.activity.recent({ limit, before })
-      : await store.activity.history({ taskId, limit, before })
-    const items = page.items.map(activityDto)
-    return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore })
-  })
 }
 
 function requestId(row: any): string {

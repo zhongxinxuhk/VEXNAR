@@ -13003,8 +13003,8 @@ function fmtAgo(unix) {
   return `${Math.floor(seconds / 86400)}d \u524D`;
 }
 function NotifyPage() {
-  const { data, error, loading } = useApi("/api/notify/channels");
   const [version, setVersion] = (0, import_react11.useState)(0);
+  const { data, error, loading } = useApi("/api/notify/channels", [version]);
   if (loading) return (0, import_react11.createElement)("div", null, "\u52A0\u8F7D\u4E2D\u2026");
   if (error) return (0, import_react11.createElement)("div", { style: { color: "#dc2626" } }, error);
   const rows = data?.channels ?? [];

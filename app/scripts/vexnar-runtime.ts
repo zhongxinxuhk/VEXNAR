@@ -82,6 +82,7 @@ export function runtimeEnv(): Record<string, string> {
   return {
     ...inherited,
     VEXNAR_HOME: home,
+    VEXNAR_TRAFFIC_DIR: process.env.VEXNAR_TRAFFIC_DIR || join(appDir, '..', 'data', 'traffic'),
     VEXNAR_LOOPBACK_ADAPTER: 'vexnar-loopback',
     DSH_HOME: home,
     DSH_AGENTS_HOME: join(home, 'agents'),

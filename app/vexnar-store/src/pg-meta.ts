@@ -221,6 +221,29 @@ export function pgMetaStore(connection: PgConnection, fallback: MetaStore): Meta
 
   return {
     backend: 'postgres',
+    notificationChannels: {
+      async create(input) {
+        const [row] = await q(
+          `INSERT INTO notification_channels(name,kind,enabled,config,mode,filter,rate_per_min)
+           VALUES($1,$2,$3,$4::jsonb,$5,$6::jsonb,$7) RETURNING id`,
+          [input.name, input.kind, input.enabled, JSON.stringify(input.config), input.mode, JSON.stringify(input.filter), input.rate_per_min]
+        )
+        return Number(row.id)
+      },
+      async update(id, input) {
+        const rows = await q(
+          `UPDATE notification_channels SET name=COALESCE($2,name), kind=COALESCE($3,kind),
+           enabled=COALESCE($4,enabled), config=COALESCE($5::jsonb,config), mode=COALESCE($6,mode),
+           filter=COALESCE($7::jsonb,filter), rate_per_min=COALESCE($8,rate_per_min) WHERE id=$1 RETURNING id`,
+          [id, input.name, input.kind, input.enabled, JSON.stringify(input.config),
+            input.mode, JSON.stringify(input.filter), input.rate_per_min]
+        )
+        return rows.length > 0
+      },
+      async remove(id) {
+        return (await q('DELETE FROM notification_channels WHERE id=$1 RETURNING id', [id])).length > 0
+      }
+    },
     async editBuiltinToolDocumentation(key, edit) {
       const client = await pool.connect()
       try {

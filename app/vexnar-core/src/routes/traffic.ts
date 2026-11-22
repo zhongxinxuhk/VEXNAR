@@ -7,8 +7,9 @@ import { crc32, deflateRawSync } from 'node:zlib'
 import type { Hono } from 'hono'
 import { blobStore, operations, store, storeRoot } from '../context.ts'
 import { parseScope } from '../traffic-scope.ts'
-import { activeCaptures, readCaptures } from '../capture-state.ts'
-import { archivedExchanges, archivedRaw } from '../traffic-index.ts'
+import { archivedRaw } from '../traffic-index.ts'
+import { allExchanges, registerTrafficHistory } from './traffic-history.ts'
+export { allExchanges, exchangeDto } from './traffic-history.ts'
 import { mitmProxy } from '../traffic-proxy/index.ts'
 
 /**
@@ -43,12 +44,6 @@ const blobs = () => blobStore(storeRoot())
 
 function sha256hex(data: string | Buffer): string {
   return createHash('sha256').update(data).digest('hex')
-}
-
-function rfc3339FromUnix(sec: number): string {
-  const date = new Date(Number(sec) * 1000)
-  if (!Number.isFinite(date.getTime())) return ''
-  return date.toISOString()
 }
 
 function isBinaryBody(contentType: string, body: Buffer): boolean {
@@ -100,84 +95,6 @@ function assembleRaw(head: string, inline: string, blob: string, total: number):
   let out = `${head}\n${inline}`
   if (blob) out += `\n…[truncated] @blob sha256:${blob} (len=${total})`
   return out
-}
-
-function statusMatches(status: number, token: string): boolean {
-  const s = token.toLowerCase().trim()
-  if (!s) return true
-  if (/^[1-5]xx$/.test(s)) {
-    const base = Number(s[0]) * 100
-    return status >= base && status < base + 100
-  }
-  const n = Number(s)
-  if (Number.isFinite(n)) return status === n
-  return true // 未识别的 token 不过滤（对齐 Go statusFilter ok=false）
-}
-
-// ── 采集流量（traffic_exchanges + Go 索引） ────────────────────────────────
-/**
- * 站点级流量视图：客户端自己采集的 kv 行 + 采集面（Go）归档的索引行。
- *
- * 两条采集路径写不同的库：会话抓包的 ingest 落在 kv，go-mitmproxy 写
- * `data/traffic/_index`。概览和流量页要的是"这台机器抓到了什么"，只读其中一边
- * 就会把另一边已经抓到的流量显示成 0。同一条 id 以本地为准（两端都有的只有
- * 本地重放过的那条）。
- */
-export async function allExchanges(): Promise<any[]> {
-  const local = (await writer().list('traffic_exchanges')) as any[]
-  const seen = new Set(local.map((row) => String(row.id)))
-  const archived = archivedExchanges().filter((row) => !seen.has(row.id))
-  return [...local, ...archived]
-}
-
-async function listExchanges(query: Record<string, string | undefined>) {
-  const all = await allExchanges()
-  const host = String(query.host ?? '').trim()
-  const method = String(query.method ?? '').trim().toUpperCase()
-  const keyword = String(query.q ?? '').trim().toLowerCase()
-  const status = String(query.status ?? '').trim()
-  const respMin = Number(query.resp_min ?? -1)
-  const respMax = Number(query.resp_max ?? -1)
-  let rows = all
-  if (host) rows = rows.filter((row) => String(row.host ?? '').toLowerCase().includes(host.toLowerCase()))
-  if (method) rows = rows.filter((row) => String(row.method ?? '').toUpperCase() === method)
-  if (keyword) {
-    rows = rows.filter((row) => [row.host, row.url, row.url_template, row.method, row.content_type, String(row.status), row.req_body, row.resp_body]
-      .some((value) => String(value ?? '').toLowerCase().includes(keyword)))
-  }
-  if (status) rows = rows.filter((row) => statusMatches(Number(row.status ?? 0), status))
-  if (Number.isFinite(respMin) && respMin >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) >= respMin)
-  if (Number.isFinite(respMax) && respMax >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) <= respMax)
-  const col = status === 'status' ? 'status' : status === 'resp_len' ? 'resp_len' : 'ts'
-  const dir = String(query.order ?? 'desc').toLowerCase() === 'asc' ? 1 : -1
-  rows.sort((a, b) => dir * (Number(a[col] ?? 0) - Number(b[col] ?? 0)) || String(b.id).localeCompare(String(a.id)))
-  return { all, rows }
-}
-
-export function exchangeDto(row: any) {
-  return {
-    id: String(row.id),
-    ts: rfc3339FromUnix(Number(row.ts ?? 0)),
-    host: String(row.host ?? ''),
-    method: String(row.method ?? ''),
-    url: String(row.url ?? ''),
-    status: Number(row.status ?? 0),
-    content_type: String(row.content_type ?? ''),
-    resp_len: Number(row.resp_len ?? 0)
-  }
-}
-
-async function listHosts() {
-  const all = await allExchanges()
-  const byHost = new Map<string, { host: string; count: number; last: number }>()
-  for (const row of all) {
-    const host = String(row.host ?? '')
-    const entry = byHost.get(host) ?? { host, count: 0, last: 0 }
-    entry.count += 1
-    entry.last = Math.max(entry.last, Number(row.ts ?? 0))
-    byHost.set(host, entry)
-  }
-  return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest)
 }
 
 async function readExchangeRaw(id: string) {
@@ -566,6 +483,7 @@ function findingMarkdown(finding: any): string {
 
 // ── 路由注册 ───────────────────────────────────────────────────────────────
 export function register(api: Hono) {
+  registerTrafficHistory(api)
   // TS MITM 采集面状态与 CA 证书（工具需要信任这个 CA 才能解开 HTTPS）。
   api.get('/api/traffic/mitm', (c) => c.json(mitmProxy().status()))
   api.get('/api/traffic/mitm/ca.pem', (c) =>
@@ -577,44 +495,6 @@ export function register(api: Hono) {
       }
     })
   )
-
-  // 采集流量列表（过滤 host/method/keyword 等）
-  api.get('/api/traffic', async (c) => {
-    try {
-      const page = Math.max(Number(c.req.query('page') ?? 0) || 0, 0)
-      const size = Math.min(Math.max(Number(c.req.query('size') ?? 100) || 100, 1), 500)
-      const { all, rows } = await listExchanges({
-        host: c.req.query('host'), method: c.req.query('method'), q: c.req.query('q'),
-        status: c.req.query('status'), resp_min: c.req.query('resp_min'), resp_max: c.req.query('resp_max'),
-        sort: c.req.query('sort'), order: c.req.query('order')
-      })
-      const pageRows = rows.slice(page * size, page * size + size)
-      // `enabled` reports whether a conversation is capturing right now: capture
-      // is armed per chat session, so a station-wide settings flag would lie.
-      const capturing = activeCaptures(await readCaptures()).length > 0
-      return c.json({
-        enabled: capturing,
-        proxy: '',
-        count: all.length,
-        archived: archivedExchanges().length,
-        total: rows.length,
-        page,
-        size,
-        exchanges: pageRows.map(exchangeDto)
-      })
-    } catch (e: any) {
-      return c.json({ error: String(e?.message ?? e) }, e?.name === 'StoreConflict' ? 409 : e?.status ?? 400)
-    }
-  })
-
-  // 去重 host 列表（带计数，按最近活动排序）
-  api.get('/api/traffic/hosts', async (c) => {
-    try {
-      return c.json({ hosts: await listHosts() })
-    } catch (e: any) {
-      return c.json({ error: String(e?.message ?? e) }, e?.name === 'StoreConflict' ? 409 : e?.status ?? 400)
-    }
-  })
 
   // 单条 exchange 的完整请求/响应原文
   api.get('/api/traffic/exchange', async (c) => {

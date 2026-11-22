@@ -6,6 +6,36 @@ import { installPlatform, recordOf } from "./platform.js";
 import { registerYakHistoryTools } from "./yak-history-tools.js";
 const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "logo.png");
 let logoBytes = null;
+const settingsReads = /* @__PURE__ */ new Set([
+  "/api/tools",
+  "/api/llm/profiles",
+  "/api/mcp",
+  "/api/agents",
+  "/api/task-categories",
+  "/api/task-templates",
+  "/api/companies",
+  "/api/tokens/daily"
+]);
+const domainReads = /* @__PURE__ */ new Set([
+  "/api/tasks",
+  "/api/tasks/summary",
+  "/api/assets/counts",
+  "/api/exploration/findings",
+  "/api/exploration/findings/stats",
+  "/api/exploration/intents",
+  "/api/exploration/nodes",
+  "/api/exploration/activity",
+  "/api/traffic",
+  "/api/traffic/hosts",
+  "/api/traffic/capture"
+]);
+function isStoredDataRead(path, goMode) {
+  if (settingsReads.has(path) || /^\/api\/mcp\/\d+\/tools$/.test(path)) return true;
+  return !goMode && (domainReads.has(path) || /^\/api\/tasks\/\d+(?:\/(?:metrics|coverage|goals))?$/.test(path) || /^\/api\/exploration\/findings\/\d+$/.test(path));
+}
+function isNotificationSetting(method, path) {
+  return path === "/api/notify/channels" ? method === "GET" || method === "POST" : (method === "PATCH" || method === "DELETE") && /^\/api\/notify\/channels\/\d+$/.test(path);
+}
 const name = "@vexnar/dsh-account";
 const inject = ["webServer", "credentials", "settings", "connection", "sessions", "tools", "agentDefaultModel", "typertGateway"];
 const BRAND_SCRIPT = `
@@ -127,7 +157,7 @@ function apply(ctx) {
           const url = new URL(req.url || "/", "http://127.0.0.1");
           url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
           const toolDocumentation = req.method === "PUT" && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname) || req.method === "POST" && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname);
-          const configRoute = toolDocumentation || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles", "/api/mcp"].includes(url.pathname);
+          const configRoute = toolDocumentation || isNotificationSetting(req.method, url.pathname) || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && isStoredDataRead(url.pathname, goMode);
           const app = configRoute ? void 0 : await getCore();
           if (!configRoute && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });

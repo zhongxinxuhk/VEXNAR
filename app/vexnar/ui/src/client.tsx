@@ -699,8 +699,8 @@ function fmtAgo(unix: unknown): string {
 }
 
 function NotifyPage() {
-  const { data, error, loading } = useApi('/api/notify/channels')
   const [version, setVersion] = useState(0)
+  const { data, error, loading } = useApi('/api/notify/channels', [version])
   if (loading) return h('div', null, '加载中…')
   if (error) return h('div', { style: { color: '#dc2626' } }, error)
   const rows = data?.channels ?? []
