@@ -7,11 +7,18 @@ import { ensureInterceptRulesSeeded } from './intercept-seed.ts'
 import { registerInterceptSettings } from './routes/intercept.ts'
 import { registerSettingsCatalog } from './routes/settings-catalog.ts'
 import { registerToolDocumentation } from './routes/tool-documentation.ts'
+import { registerNotificationSettings } from './routes/notification-settings.ts'
+import { registerReadViews } from './routes/read-views.ts'
+import { captureOverview, registerTrafficHistory } from './routes/traffic-history.ts'
 
 const settings = new Hono()
 registerInterceptSettings(settings)
 registerSettingsCatalog(settings)
 registerToolDocumentation(settings)
+registerNotificationSettings(settings, true)
+registerReadViews(settings)
+registerTrafficHistory(settings)
+settings.get('/api/traffic/capture', async (c) => c.json(await captureOverview()))
 
 let migration: ReturnType<typeof ensureInterceptRulesSeeded> | undefined
 

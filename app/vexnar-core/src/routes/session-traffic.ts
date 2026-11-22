@@ -18,18 +18,18 @@
 import type { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { operations, store } from '../context.ts'
-import { activeCaptures, captureOf, readCaptures, startCapture, stopCapture } from '../capture-state.ts'
+import { captureOf, startCapture, stopCapture } from '../capture-state.ts'
 import { mitmProxy } from '../traffic-proxy/index.ts'
 import { trafficIngestAuthorized, trafficIngestKey } from '../traffic-key.ts'
 import { convScope, sessionScope } from '../traffic-scope.ts'
-import { exchangeDto, getExchangeRaw, listScopedExchanges, recordExchange, allExchanges } from './traffic.ts'
+import { captureOverview } from './traffic-history.ts'
+import { exchangeDto, getExchangeRaw, listScopedExchanges, recordExchange } from './traffic.ts'
 
 const MAX_INGEST_BODY = 16 << 20
 const STREAM_POLL_MS = 600
 const STREAM_PING_MS = 20_000
 // 概览的“流量健康度”按这批最近样本算状态码/方法分布，样本太小时 0 条 4xx 也会
 // 显示成成功率高得离谱；60 条足以让分布稳定，又不至于让响应变大。
-const RECENT_SAMPLE = 60
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 
 function err(c: any, e: any) {
@@ -332,44 +332,9 @@ export function register(api: Hono) {
   // 抓到的历史流量在概览里显示成 0。
   api.get('/api/traffic/capture', async (c) => {
     try {
-      const origin = originOf(c)
-      const rows = await allExchanges()
-      const byScope = new Map<string, { items: number; last_ts: number }>()
-      let lastTs = 0
-      for (const row of rows) {
-        lastTs = Math.max(lastTs, Number(row.ts ?? 0))
-        const scope = String(row.scope ?? '')
-        if (scope === '') continue
-        const entry = byScope.get(scope) ?? { items: 0, last_ts: 0 }
-        entry.items += 1
-        entry.last_ts = Math.max(entry.last_ts, Number(row.ts ?? 0))
-        byScope.set(scope, entry)
-      }
-      const captures = await readCaptures()
-      const mitm = mitmProxy().status()
-      const sessions = activeCaptures(captures).map((row) => ({
-        scope: row.scope,
-        proxy: mitmProxy().proxyFor(row.scope),
-        conv_id: row.conv_id,
-        session_id: row.session_id,
-        source: row.source,
-        started_at: row.started_at,
-        items: byScope.get(row.scope)?.items ?? 0,
-        last_ts: byScope.get(row.scope)?.last_ts ?? 0
-      }))
-      const recent = [...rows]
-        .sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0))
-        .slice(0, RECENT_SAMPLE)
-        .map(exchangeDto)
-      return c.json({
-        active: sessions.length > 0,
-        sessions,
-        total: rows.length,
-        last_ts: lastTs,
-        mitm,
-        ingest_url: `${origin}/api/traffic/ingest`,
-        recent
-      })
+      const proxy = mitmProxy()
+      const summary = await captureOverview(scope => proxy.proxyFor(scope))
+      return c.json({ ...summary, mitm: proxy.status(), ingest_url: `${originOf(c)}/api/traffic/ingest` })
     } catch (e: any) {
       return err(c, e)
     }

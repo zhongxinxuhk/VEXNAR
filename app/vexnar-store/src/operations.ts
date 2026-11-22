@@ -383,22 +383,29 @@ export function storeOperations(_root?: string) {
     const kind = String(input.kind ?? '').trim()
     if (!name) throw Object.assign(new Error('渠道名不能为空'), { status: 400 })
     if (!kind) throw Object.assign(new Error('kind 不能为空'), { status: 400 })
-    const { tables, rows } = await metaTable('notify')
-    const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1
     const row = {
-      id, name, kind,
+      name, kind,
       enabled: input.enabled ?? true,
       config: input.config ?? {},
-      mode: String(input.mode ?? ''),
+      mode: String(input.mode ?? 'realtime'),
       filter: input.filter ?? {},
       rate_per_min: Number(input.rate_per_min ?? 0)
     }
-    rows.push(row)
+    if (meta.notificationChannels) return { id: await meta.notificationChannels.create(row) }
+    const { tables, rows } = await metaTable('notify')
+    const id = Math.max(0, ...rows.map((entry) => Number(entry.id))) + 1
+    rows.push({ id, ...row })
     await meta.save(tables)
     return { id }
   }
 
   async function updateChannel(id: string, input: any) {
+    if (meta.notificationChannels) {
+      if (!await meta.notificationChannels.update(id, input)) {
+        throw Object.assign(new Error('渠道不存在'), { status: 404 })
+      }
+      return { id: Number(id) }
+    }
     const { tables, rows } = await metaTable('notify')
     const row = rows.find((item) => String(item.id) === String(id))
     if (!row) throw Object.assign(new Error('渠道不存在'), { status: 404 })
@@ -410,6 +417,12 @@ export function storeOperations(_root?: string) {
   }
 
   async function deleteChannel(id: string) {
+    if (meta.notificationChannels) {
+      if (!await meta.notificationChannels.remove(id)) {
+        throw Object.assign(new Error('渠道不存在'), { status: 404 })
+      }
+      return { ok: true }
+    }
     const { tables, rows } = await metaTable('notify')
     const index = rows.findIndex((item) => String(item.id) === String(id))
     if (index < 0) throw Object.assign(new Error('渠道不存在'), { status: 404 })

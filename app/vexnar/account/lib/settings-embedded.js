@@ -229,8 +229,8 @@ var require_postgres_date = __commonJS({
     function bcYearToNegativeYear(year) {
       return -(year - 1);
     }
-    function is0To99(num) {
-      return num >= 0 && num < 100;
+    function is0To99(num2) {
+      return num2 >= 0 && num2 < 100;
     }
   }
 });
@@ -1236,11 +1236,11 @@ var require_utils2 = __commonJS({
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
-    async function sha2562(text2) {
-      return await subtleCrypto.digest("SHA-256", text2);
+    async function sha2562(text3) {
+      return await subtleCrypto.digest("SHA-256", text3);
     }
-    async function hashByName(hashName, text2) {
-      return await subtleCrypto.digest(hashName, text2);
+    async function hashByName(hashName, text3) {
+      return await subtleCrypto.digest(hashName, text3);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -1461,21 +1461,21 @@ var require_sasl = __commonJS({
         throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature does not match");
       }
     }
-    function isPrintableChars(text2) {
-      if (typeof text2 !== "string") {
+    function isPrintableChars(text3) {
+      if (typeof text3 !== "string") {
         throw new TypeError("SASL: text must be a string");
       }
-      return text2.split("").map((_, i) => text2.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
+      return text3.split("").map((_, i) => text3.charCodeAt(i)).every((c) => c >= 33 && c <= 43 || c >= 45 && c <= 126);
     }
-    function isBase64(text2) {
-      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text2);
+    function isBase64(text3) {
+      return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(text3);
     }
-    function parseAttributePairs(text2) {
-      if (typeof text2 !== "string") {
+    function parseAttributePairs(text3) {
+      if (typeof text3 !== "string") {
         throw new TypeError("SASL: attribute pairs text must be a string");
       }
       return new Map(
-        text2.split(",").map((attrValue) => {
+        text3.split(",").map((attrValue) => {
           if (!/^.=/.test(attrValue)) {
             throw new Error("SASL: Invalid attribute pair entry");
           }
@@ -2357,9 +2357,9 @@ var require_messages = __commonJS({
     };
     exports.ReadyForQueryMessage = ReadyForQueryMessage;
     var CommandCompleteMessage = class {
-      constructor(length, text2) {
+      constructor(length, text3) {
         this.length = length;
-        this.text = text2;
+        this.text = text3;
         this.name = "commandComplete";
       }
     };
@@ -2406,18 +2406,18 @@ var require_buffer_writer = __commonJS({
           oldBuffer.copy(this.buffer, 0, 0, this.offset);
         }
       }
-      addInt32(num) {
+      addInt32(num2) {
         this.ensure(4);
-        this.buffer[this.offset++] = num >>> 24 & 255;
-        this.buffer[this.offset++] = num >>> 16 & 255;
-        this.buffer[this.offset++] = num >>> 8 & 255;
-        this.buffer[this.offset++] = num >>> 0 & 255;
+        this.buffer[this.offset++] = num2 >>> 24 & 255;
+        this.buffer[this.offset++] = num2 >>> 16 & 255;
+        this.buffer[this.offset++] = num2 >>> 8 & 255;
+        this.buffer[this.offset++] = num2 >>> 0 & 255;
         return this;
       }
-      addInt16(num) {
+      addInt16(num2) {
         this.ensure(2);
-        this.buffer[this.offset++] = num >>> 8 & 255;
-        this.buffer[this.offset++] = num >>> 0 & 255;
+        this.buffer[this.offset++] = num2 >>> 8 & 255;
+        this.buffer[this.offset++] = num2 >>> 0 & 255;
         return this;
       }
       addCString(string4) {
@@ -2540,8 +2540,8 @@ var require_serializer = __commonJS({
         /* code.startup */
       );
     };
-    var query = (text2) => {
-      return writer.addCString(text2).flush(
+    var query = (text3) => {
+      return writer.addCString(text3).flush(
         81
         /* code.query */
       );
@@ -2658,8 +2658,8 @@ var require_serializer = __commonJS({
       return msg.name ? cstringMessage(68, `${msg.type}${msg.name || ""}`) : msg.type === "P" ? emptyDescribePortal : emptyDescribeStatement;
     };
     var close = (msg) => {
-      const text2 = `${msg.type}${msg.name || ""}`;
-      return cstringMessage(67, text2);
+      const text3 = `${msg.type}${msg.name || ""}`;
+      return cstringMessage(67, text3);
     };
     var copyData = (chunk) => {
       return writer.add(chunk).flush(
@@ -2931,8 +2931,8 @@ var require_parser = __commonJS({
       return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
     };
     var parseCommandCompleteMessage = (reader) => {
-      const text2 = reader.cstring();
-      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text2);
+      const text3 = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text3);
     };
     var parseCopyData = (reader, length) => {
       const chunk = reader.bytes(length - 4);
@@ -3319,8 +3319,8 @@ var require_connection = __commonJS({
         }
         return this.stream.write(buffer);
       }
-      query(text2) {
-        this._send(serialize.query(text2));
+      query(text3) {
+        this._send(serialize.query(text3));
       }
       // send parse message
       parse(query) {
@@ -4715,9 +4715,9 @@ var require_pg_pool = __commonJS({
         this._idle.push(new IdleItem(client, idleListener, tid));
         this._pulseQueue();
       }
-      query(text2, values, cb) {
-        if (typeof text2 === "function") {
-          const response2 = promisify(this.Promise, text2);
+      query(text3, values, cb) {
+        if (typeof text3 === "function") {
+          const response2 = promisify(this.Promise, text3);
           setImmediate(function() {
             return response2.callback(new Error("Passing a function as the first parameter to pool.query is not supported"));
           });
@@ -4745,7 +4745,7 @@ var require_pg_pool = __commonJS({
           client.once("error", onError);
           this.log("dispatching query");
           try {
-            client.query(text2, values, (err2, res) => {
+            client.query(text3, values, (err2, res) => {
               this.log("query dispatched");
               client.removeListener("error", onError);
               if (clientReleased) {
@@ -5766,7 +5766,7 @@ var HonoRequest = class {
   * ```
   */
   json() {
-    return this.#cachedBody("text").then((text2) => JSON.parse(text2));
+    return this.#cachedBody("text").then((text3) => JSON.parse(text3));
   }
   /**
   * `.text()` can parse Request body of type `text/plain`
@@ -6284,8 +6284,8 @@ var Context = class {
   * })
   * ```
   */
-  text = (text2, arg, headers) => {
-    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text2) : this.#newResponse(text2, arg, setDefaultContentType(TEXT_PLAIN, headers));
+  text = (text3, arg, headers) => {
+    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text3) : this.#newResponse(text3, arg, setDefaultContentType(TEXT_PLAIN, headers));
   };
   /**
   * `.json()` can render JSON as `Content-Type:application/json`.
@@ -7274,6 +7274,81 @@ function resolveTaskStatus(row) {
   if (row?.paused === true || stored === "paused") return "paused";
   if (stored === "running") return "running";
   return "created";
+}
+var DAY_SECONDS = 86400;
+function summarizeTasks(rows, metrics, options = {}) {
+  const days = Math.max(Math.floor(Number(options.days ?? 30)) || 30, 1);
+  const nowSec = Number(options.now ?? Date.now()) / 1e3;
+  const cutoff = nowSec - days * DAY_SECONDS;
+  const prevCutoff = cutoff - days * DAY_SECONDS;
+  const by_status = Object.fromEntries(TASK_STATUS_KEYS.map((key) => [key, 0]));
+  const findings = { total: 0, critical: 0, high: 0, medium: 0, low: 0 };
+  const tokens = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, total: 0 };
+  const throughput = new Array(days).fill(0);
+  let goals_total = 0;
+  let goals_met = 0;
+  let in_flight = 0;
+  let created_window = 0;
+  let created_prev = 0;
+  for (const row of rows ?? []) {
+    const status = resolveTaskStatus(row);
+    by_status[status] += 1;
+    const metric = metrics?.get(Number(row.exploration_id ?? 0));
+    if (metric !== void 0) {
+      const critical = Number(metric.findings?.critical ?? 0);
+      const high = Number(metric.findings?.high ?? 0);
+      const medium = Number(metric.findings?.medium ?? 0);
+      const low = Number(metric.findings?.low ?? 0);
+      findings.critical += critical;
+      findings.high += high;
+      findings.medium += medium;
+      findings.low += low;
+      findings.total += critical + high + medium + low;
+      tokens.input_tokens += Number(metric.input_tokens ?? 0);
+      tokens.output_tokens += Number(metric.output_tokens ?? 0);
+      tokens.cache_read_tokens += Number(metric.cache_read_tokens ?? 0);
+      tokens.cache_write_tokens += Number(metric.cache_write_tokens ?? 0);
+      goals_total += Number(metric.goals_total ?? 0);
+      goals_met += Number(metric.goals_met ?? 0);
+      in_flight += Number(metric.in_flight ?? 0);
+    }
+    const createdUnix = Number(row.created_unix ?? 0);
+    if (createdUnix >= cutoff) {
+      created_window += 1;
+      const ago = Math.min(days - 1, Math.floor((nowSec - createdUnix) / DAY_SECONDS));
+      const index = days - 1 - ago;
+      throughput[index] = (throughput[index] ?? 0) + 1;
+    } else if (createdUnix >= prevCutoff) {
+      created_prev += 1;
+    }
+  }
+  tokens.total = tokens.input_tokens + tokens.output_tokens;
+  const total = (rows ?? []).length;
+  const active = by_status.queued + by_status.running;
+  const terminal = by_status.done + by_status.failed + by_status.timeout;
+  return {
+    total,
+    by_status,
+    active,
+    paused: by_status.paused,
+    terminal,
+    done: by_status.done,
+    failed: by_status.failed,
+    timeout: by_status.timeout,
+    completion_rate: total > 0 ? by_status.done / total * 100 : 0,
+    goals_total,
+    goals_met,
+    goal_rate: goals_total > 0 ? goals_met / goals_total * 100 : 0,
+    in_flight,
+    findings,
+    tokens,
+    window_days: days,
+    created_window,
+    created_prev,
+    throughput,
+    lifecycle: TASK_LIFECYCLE.map((item) => ({ ...item })),
+    generated_unix: Math.floor(nowSec)
+  };
 }
 
 // ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/external.js
@@ -12344,9 +12419,9 @@ var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
 function isRecursive(inst, stack, resolve2) {
-  const cached2 = recursive.get(inst);
-  if (cached2 !== void 0)
-    return cached2 ? PROVEN : NONE;
+  const cached3 = recursive.get(inst);
+  if (cached3 !== void 0)
+    return cached3 ? PROVEN : NONE;
   if (stack.has(inst))
     return PROVEN;
   stack.add(inst);
@@ -16626,8 +16701,8 @@ function ko_default() {
 }
 
 // ../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text2) => {
-  return text2.charAt(0).toUpperCase() + text2.slice(1);
+var capitalizeFirstCharacter = (text3) => {
+  return text3.charAt(0).toUpperCase() + text3.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -26780,15 +26855,15 @@ function visit(schema, fnOrHandlers) {
   };
   const cache = /* @__PURE__ */ new Map();
   function run(s) {
-    const cached2 = cache.get(s);
-    if (cached2 === RESOLVING) {
+    const cached3 = cache.get(s);
+    if (cached3 === RESOLVING) {
       return new $ZodLazy({
         type: "lazy",
         getter: () => cache.get(s)
       });
     }
-    if (cached2 !== void 0)
-      return cached2;
+    if (cached3 !== void 0)
+      return cached3;
     cache.set(s, RESOLVING);
     const inner = mapInner(s);
     const mapped = fn(inner, inner !== s);
@@ -27062,7 +27137,7 @@ var companyRow = external_exports.object({
 esm_default.types.setTypeParser(20, (value) => Number(value));
 function pgStore(connection) {
   const pool = new esm_default.Pool({ ...connection, ssl: connection.ssl === false ? false : { rejectUnauthorized: false }, max: 8 });
-  const q = async (text2, values = []) => (await pool.query(text2, values)).rows;
+  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
   const rfc = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(${column}, 'OF') || ':00'`;
   const ts = (column) => `to_char(${column}, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(${column}, 'OF') || ':00'`;
   const TASK_SELECT = `SELECT id::text AS id, exploration_id, name, description, goal, status, paused, queued,
@@ -27130,11 +27205,11 @@ function pgStore(connection) {
           filters.push(`$${linkIndex}::bigint = ANY(a.task_ids)`);
         }
         const linkSelect = taskId ? ", l.source AS task_source, l.source_summary AS task_source_summary, l.source_node_id AS task_source_node_id" : "";
-        const join6 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
+        const join7 = taskId ? `LEFT JOIN task_asset_links l ON l.asset_id = a.id AND l.task_id = $${linkIndex}` : "";
         const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
         const rows = await q(`SELECT a.id, a.type, a.company_id, a.task_ids, a.domain, a.root_domain, a.ip, a.port, a.url,
           a.last_seen::text AS last_seen${linkSelect}
-          FROM assets a ${join6} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
+          FROM assets a ${join7} ${where} ORDER BY a.last_seen DESC, a.id DESC LIMIT $1 OFFSET $2`, values);
         const countValues = [];
         const countFilters = [];
         if (type) {
@@ -28286,7 +28361,7 @@ function pgMetaStore(connection, fallback) {
     ssl: connection.ssl === false ? false : { rejectUnauthorized: false },
     max: 4
   });
-  const q = async (text2, values = []) => (await pool.query(text2, values)).rows;
+  const q = async (text3, values = []) => (await pool.query(text3, values)).rows;
   async function settings2() {
     const rows = await q("SELECT key, value FROM settings ORDER BY key");
     return Object.fromEntries(rows.filter((row) => !SENSITIVE_SETTING.test(row.key)).map(settingsRow));
@@ -28310,6 +28385,37 @@ function pgMetaStore(connection, fallback) {
   }
   return {
     backend: "postgres",
+    notificationChannels: {
+      async create(input2) {
+        const [row] = await q(
+          `INSERT INTO notification_channels(name,kind,enabled,config,mode,filter,rate_per_min)
+           VALUES($1,$2,$3,$4::jsonb,$5,$6::jsonb,$7) RETURNING id`,
+          [input2.name, input2.kind, input2.enabled, JSON.stringify(input2.config), input2.mode, JSON.stringify(input2.filter), input2.rate_per_min]
+        );
+        return Number(row.id);
+      },
+      async update(id, input2) {
+        const rows = await q(
+          `UPDATE notification_channels SET name=COALESCE($2,name), kind=COALESCE($3,kind),
+           enabled=COALESCE($4,enabled), config=COALESCE($5::jsonb,config), mode=COALESCE($6,mode),
+           filter=COALESCE($7::jsonb,filter), rate_per_min=COALESCE($8,rate_per_min) WHERE id=$1 RETURNING id`,
+          [
+            id,
+            input2.name,
+            input2.kind,
+            input2.enabled,
+            JSON.stringify(input2.config),
+            input2.mode,
+            JSON.stringify(input2.filter),
+            input2.rate_per_min
+          ]
+        );
+        return rows.length > 0;
+      },
+      async remove(id) {
+        return (await q("DELETE FROM notification_channels WHERE id=$1 RETURNING id", [id])).length > 0;
+      }
+    },
     async editBuiltinToolDocumentation(key, edit) {
       const client = await pool.connect();
       try {
@@ -28569,23 +28675,23 @@ function storeOperations(_root) {
     return { deleted: true, id: Number(id) };
   }
   async function createCategory(name) {
-    const text2 = String(name ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(name ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
-    if (rows.some((row2) => row2.name === text2)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
+    if (rows.some((row2) => row2.name === text3)) throw Object.assign(new Error("\u5206\u7C7B\u5DF2\u5B58\u5728"), { status: 409 });
     const now = rfc3339(/* @__PURE__ */ new Date());
-    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text2, task_count: 0, created_at: now, updated_at: now };
+    const row = { id: Math.max(0, ...rows.map((item) => Number(item.id))) + 1, name: text3, task_count: 0, created_at: now, updated_at: now };
     rows.push(row);
     await meta4.save(tables);
     return row;
   }
   async function renameCategory(id, name) {
-    const text2 = String(name ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(name ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u5206\u7C7B\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const { tables, rows } = await metaTable2("taskCategories");
     const row = rows.find((item) => String(item.id) === String(id));
     if (!row) throw Object.assign(new Error("\u5206\u7C7B\u4E0D\u5B58\u5728"), { status: 404 });
-    row.name = text2;
+    row.name = text3;
     row.updated_at = rfc3339(/* @__PURE__ */ new Date());
     await meta4.save(tables);
     return row;
@@ -28752,23 +28858,29 @@ function storeOperations(_root) {
     const kind = String(input2.kind ?? "").trim();
     if (!name) throw Object.assign(new Error("\u6E20\u9053\u540D\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     if (!kind) throw Object.assign(new Error("kind \u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-    const { tables, rows } = await metaTable2("notify");
-    const id = Math.max(0, ...rows.map((row2) => Number(row2.id))) + 1;
     const row = {
-      id,
       name,
       kind,
       enabled: input2.enabled ?? true,
       config: input2.config ?? {},
-      mode: String(input2.mode ?? ""),
+      mode: String(input2.mode ?? "realtime"),
       filter: input2.filter ?? {},
       rate_per_min: Number(input2.rate_per_min ?? 0)
     };
-    rows.push(row);
+    if (meta4.notificationChannels) return { id: await meta4.notificationChannels.create(row) };
+    const { tables, rows } = await metaTable2("notify");
+    const id = Math.max(0, ...rows.map((entry) => Number(entry.id))) + 1;
+    rows.push({ id, ...row });
     await meta4.save(tables);
     return { id };
   }
   async function updateChannel(id, input2) {
+    if (meta4.notificationChannels) {
+      if (!await meta4.notificationChannels.update(id, input2)) {
+        throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
+      }
+      return { id: Number(id) };
+    }
     const { tables, rows } = await metaTable2("notify");
     const row = rows.find((item) => String(item.id) === String(id));
     if (!row) throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
@@ -28779,6 +28891,12 @@ function storeOperations(_root) {
     return { id: Number(id) };
   }
   async function deleteChannel(id) {
+    if (meta4.notificationChannels) {
+      if (!await meta4.notificationChannels.remove(id)) {
+        throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
+      }
+      return { ok: true };
+    }
     const { tables, rows } = await metaTable2("notify");
     const index = rows.findIndex((item) => String(item.id) === String(id));
     if (index < 0) throw Object.assign(new Error("\u6E20\u9053\u4E0D\u5B58\u5728"), { status: 404 });
@@ -28964,12 +29082,12 @@ function storeOperations(_root) {
   async function addGoal(taskId, input2) {
     const task = await writer.readRecord("tasks", taskId);
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const explorationId = Number(task.exploration_id);
     const nodes = await writer.list("nodes");
     const nodeId = Math.max(0, ...nodes.map((node2) => Number(node2.id))) + 1;
-    const payload = { text: text2 };
+    const payload = { text: text3 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const record2 = {
       id: String(nodeId),
@@ -28988,11 +29106,11 @@ function storeOperations(_root) {
     return record2;
   }
   async function editGoal(taskId, goalId, input2) {
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u76EE\u6807\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const node2 = await writer.readRecord("nodes", goalId);
     if (!node2 || node2.kind !== "goal") throw Object.assign(new Error("\u76EE\u6807\u4E0D\u5B58\u5728"), { status: 404 });
-    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text2 };
+    const payload = { ...typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload, text: text3 };
     if (String(input2.vulnclass ?? "").trim()) payload.vulnclass = String(input2.vulnclass).trim();
     const next = { ...node2, payload };
     delete next.rev;
@@ -29119,11 +29237,11 @@ function storeOperations(_root) {
     if (!task || task.deleted_at_text) throw Object.assign(new Error("task \u4E0D\u5B58\u5728"), { status: 404 });
     const kind = String(input2.kind ?? "");
     if (kind !== "allow" && kind !== "deny") throw Object.assign(new Error("kind \u9700\u4E3A allow \u6216 deny"), { status: 400 });
-    const text2 = String(input2.text ?? "").trim();
-    if (!text2) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+    const text3 = String(input2.text ?? "").trim();
+    if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
     const rows = await writer.list("constraints");
     const id = Math.max(0, ...rows.map((row) => Number(row.id))) + 1;
-    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text2, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
+    const record2 = { id, exploration_id: Number(task.exploration_id), kind, text: text3, origin: "human", created_at: rfc3339(/* @__PURE__ */ new Date()) };
     await writer.commit([{ table: "constraints", key: String(id), record: record2 }]);
     return record2;
   }
@@ -29136,9 +29254,9 @@ function storeOperations(_root) {
       next.kind = input2.kind;
     }
     if (input2.text !== void 0) {
-      const text2 = String(input2.text).trim();
-      if (!text2) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
-      next.text = text2;
+      const text3 = String(input2.text).trim();
+      if (!text3) throw Object.assign(new Error("\u7EA6\u675F\u5185\u5BB9\u4E0D\u80FD\u4E3A\u7A7A"), { status: 400 });
+      next.text = text3;
     }
     delete next.rev;
     const [written] = await writer.commit([{ table: "constraints", key: constraintId, record: next, expectedRev: Number(node2.rev ?? 0) }]);
@@ -29549,10 +29667,10 @@ var templates = {
     parse(output2) {
       const urls = [];
       for (const line of output2.split("\n")) {
-        const text2 = line.trim();
-        if (!text2.startsWith("{")) continue;
+        const text3 = line.trim();
+        if (!text3.startsWith("{")) continue;
         try {
-          const row = JSON.parse(text2);
+          const row = JSON.parse(text3);
           urls.push({ url: row.url ?? row.input, status: Number(row.status_code ?? 0), title: row.title ?? "", tech: row.tech ?? row.technologies ?? [], host: row.host ?? "" });
         } catch {
         }
@@ -29609,10 +29727,10 @@ var templates = {
     parse(output2) {
       const findings = [];
       for (const line of output2.split("\n")) {
-        const text2 = line.replace(/^\+\s*/, "").trim();
-        if (!text2 || text2.startsWith("Target") || text2.startsWith("Start Time") || text2.startsWith("End Time")) continue;
-        const osvdb = text2.match(/OSVDB-(\d+)/);
-        if (text2.includes(":") || osvdb) findings.push({ text: text2, osvdb: osvdb?.[1] ?? "" });
+        const text3 = line.replace(/^\+\s*/, "").trim();
+        if (!text3 || text3.startsWith("Target") || text3.startsWith("Start Time") || text3.startsWith("End Time")) continue;
+        const osvdb = text3.match(/OSVDB-(\d+)/);
+        if (text3.includes(":") || osvdb) findings.push({ text: text3, osvdb: osvdb?.[1] ?? "" });
       }
       return { findings };
     }
@@ -29640,10 +29758,10 @@ var templates = {
     parse(output2) {
       const urls = [];
       for (const line of output2.split("\n")) {
-        const text2 = line.trim();
-        if (!text2.startsWith("{")) continue;
+        const text3 = line.trim();
+        if (!text3.startsWith("{")) continue;
         try {
-          const row = JSON.parse(text2);
+          const row = JSON.parse(text3);
           const url2 = row.request?.endpoint ?? row.url ?? "";
           if (url2) urls.push({ url: url2, status: Number(row.response?.status_code ?? 0) });
         } catch {
@@ -29661,17 +29779,17 @@ var templates = {
     parse(output2) {
       const hosts = [];
       for (const line of output2.split("\n")) {
-        const text2 = line.trim();
-        if (!text2) continue;
-        if (text2.startsWith("{")) {
+        const text3 = line.trim();
+        if (!text3) continue;
+        if (text3.startsWith("{")) {
           try {
-            const row = JSON.parse(text2);
+            const row = JSON.parse(text3);
             if (row.host) hosts.push({ host: row.host, source: row.source ?? "" });
             continue;
           } catch {
           }
         }
-        hosts.push({ host: text2, source: "subfinder" });
+        hosts.push({ host: text3, source: "subfinder" });
       }
       return { hosts };
     }
@@ -29688,10 +29806,10 @@ var templates = {
     parse(output2) {
       const findings = [];
       for (const line of output2.split("\n")) {
-        const text2 = line.trim();
-        if (!text2.startsWith("{")) continue;
+        const text3 = line.trim();
+        if (!text3.startsWith("{")) continue;
         try {
-          const row = JSON.parse(text2);
+          const row = JSON.parse(text3);
           findings.push({
             template: row["template-id"] ?? row.templateID ?? "",
             name: row.info?.name ?? "",
@@ -29839,8 +29957,8 @@ async function persistToolResult(ops, taskId, nodeId, name, parsed, raw2) {
 }
 
 // ../vexnar-store/src/engine.ts
-function parseJson(text2) {
-  const trimmed = text2.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
+function parseJson(text3) {
+  const trimmed = text3.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
   try {
     return JSON.parse(trimmed);
   } catch {
@@ -29875,8 +29993,8 @@ function createEngine(store2, ops, engineOptions = {}) {
     const root = page.items.find((node2) => node2.kind === "fact" && node2.state === "origin") ?? page.items.find((node2) => node2.kind === "fact");
     const existing = page.items.filter((node2) => node2.kind === "intent").map((node2) => (typeof node2.payload === "string" ? JSON.parse(node2.payload) : node2.payload)?.text).filter(Boolean);
     const created = [];
-    const normalize = (text2) => text2.toLowerCase().replace(/\s+/g, " ").trim();
-    const seen = new Set(existing.map((text2) => normalize(text2)));
+    const normalize2 = (text3) => text3.toLowerCase().replace(/\s+/g, " ").trim();
+    const seen = new Set(existing.map((text3) => normalize2(text3)));
     for (let round = 0; round < rounds; round++) {
       const reply = await complete([
         { role: "system", content: '\u4F60\u662F\u6E17\u900F\u6D4B\u8BD5\u4EFB\u52A1\u7684\u89C4\u5212\u8005\u3002\u628A\u76EE\u6807\u62C6\u6210\u53EF\u72EC\u7ACB\u9A8C\u8BC1\u7684\u610F\u56FE\uFF0C\u53EA\u8F93\u51FA JSON\uFF1A{"intents":[{"text":"...","priority":0}]}\u3002\u4E0D\u8981\u91CD\u590D\u5DF2\u6709\u610F\u56FE\u3002' },
@@ -29889,14 +30007,14 @@ function createEngine(store2, ops, engineOptions = {}) {
       const intents = Array.isArray(data.intents) ? data.intents.slice(0, maxIntents) : [];
       let added = 0;
       for (const intent of intents) {
-        const text2 = String(intent.text ?? "").trim();
-        if (!text2) continue;
-        const key = normalize(text2);
+        const text3 = String(intent.text ?? "").trim();
+        if (!text3) continue;
+        const key = normalize2(text3);
         if (seen.has(key)) continue;
         seen.add(key);
         created.push(await ops.addNode(taskId, {
           kind: "intent",
-          payload: { text: text2 },
+          payload: { text: text3 },
           state: "open",
           priority: Number(intent.priority ?? 0),
           origin: "planner",
@@ -29952,11 +30070,11 @@ function createEngine(store2, ops, engineOptions = {}) {
           return { intent: Number(claimed.id), state: "done", summary: String(action.args?.summary ?? "") };
         }
         if (action.tool === "add_fact") {
-          const text2 = String(action.args?.text ?? "").trim();
-          if (!text2) throw new Error("add_fact \u7F3A\u5C11 text");
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text2 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
-          facts.push(text2);
-          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text2 });
+          const text3 = String(action.args?.text ?? "").trim();
+          if (!text3) throw new Error("add_fact \u7F3A\u5C11 text");
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text3 }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          facts.push(text3);
+          await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "add_fact", node_id: String(claimed.id), summary: text3 });
           continue;
         }
         if (action.tool === "list_assets") {
@@ -29998,12 +30116,12 @@ function createEngine(store2, ops, engineOptions = {}) {
         if (action.tool === "run_command") {
           if (!engineOptions.runner) throw new Error("run_command \u672A\u542F\u7528");
           const result = await engineOptions.runner.run(String(action.args?.command ?? ""), Array.isArray(action.args?.args) ? action.args.args.map(String) : [], { timeoutMs: Number(action.args?.timeout_ms ?? 3e4) });
-          const text2 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
+          const text3 = `$ ${result.command} ${result.args.join(" ")} \u2192 code=${result.code} ${result.truncated ? "[truncated]" : ""}
 ${result.stdout.slice(0, 4e3)}${result.stderr ? `
 ${result.stderr.slice(0, 2e3)}` : ""}`;
-          await ops.addNode(taskId, { kind: "fact", payload: { text: text2, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
+          await ops.addNode(taskId, { kind: "fact", payload: { text: text3, command: result.command, code: result.code }, state: "confirmed", origin: worker, parent_id: String(claimed.id), rel: "yields" });
           await ops.appendActivity(taskId, { kind: "tool_result", worker, tool: "run_command", node_id: String(claimed.id), is_error: result.code !== 0, summary: `${result.command} code=${result.code}` });
-          facts.push(text2.slice(0, 500));
+          facts.push(text3.slice(0, 500));
           continue;
         }
         if (action.tool === "report_finding") {
@@ -30090,17 +30208,17 @@ function createRunner(options = {}) {
         let timedOut = false;
         const max = runOptions.maxOutput ?? defaultMaxOutput;
         const append = (target, chunk) => {
-          const text2 = chunk.toString("utf8");
+          const text3 = chunk.toString("utf8");
           if (target === "stdout") {
-            if (stdout.length + text2.length > max) {
-              stdout += text2.slice(0, Math.max(max - stdout.length, 0));
+            if (stdout.length + text3.length > max) {
+              stdout += text3.slice(0, Math.max(max - stdout.length, 0));
               truncated = true;
-            } else stdout += text2;
+            } else stdout += text3;
           } else {
-            if (stderr.length + text2.length > max) {
-              stderr += text2.slice(0, Math.max(max - stderr.length, 0));
+            if (stderr.length + text3.length > max) {
+              stderr += text3.slice(0, Math.max(max - stderr.length, 0));
               truncated = true;
-            } else stderr += text2;
+            } else stderr += text3;
           }
         };
         child.stdout.on("data", (chunk) => append("stdout", chunk));
@@ -32729,6 +32847,14 @@ function defaultTool(key) {
 }
 
 // src/context.ts
+function parseJson2(value) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
 var store = await openStore2();
 var meta3 = openMeta();
 try {
@@ -33379,6 +33505,15 @@ function registerInterceptSettings(api) {
 }
 
 // src/routes/settings-catalog.ts
+function normalizeMcpTools(list) {
+  if (!Array.isArray(list)) return [];
+  const tools = [];
+  for (const entry of list) {
+    const name = (typeof entry === "string" ? entry : String(entry?.name ?? "")).trim();
+    if (name) tools.push({ name, description: String(entry?.description ?? "") });
+  }
+  return tools;
+}
 function registerSettingsCatalog(api) {
   api.get("/api/llm/profiles", async (c) => {
     const rows = await meta3.table("llmProfiles");
@@ -33395,6 +33530,18 @@ function registerSettingsCatalog(api) {
     return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
   });
   api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
+  api.get("/api/mcp/:id/tools", async (c) => {
+    const id = Number(c.req.param("id"));
+    const row = (await meta3.table("mcp")).find((server) => Number(server.id) === id);
+    if (!row) return c.json({ error: "MCP Server \u4E0D\u5B58\u5728" }, 404);
+    return c.json({
+      id,
+      name: String(row.name ?? ""),
+      transport: String(row.transport ?? ""),
+      enabled: row.enabled !== false,
+      tools: normalizeMcpTools(row.tools)
+    });
+  });
 }
 
 // src/routes/tool-documentation.ts
@@ -33447,11 +33594,563 @@ function registerToolDocumentation(api) {
   });
 }
 
+// src/routes/notification-settings.ts
+function registerNotificationSettings(api, redactConfig = false) {
+  api.get("/api/notify/channels", async (c) => {
+    const channels = await meta3.table("notify");
+    return c.json({ channels: redactConfig ? channels.map(({ config: _config, ...row }) => row) : channels });
+  });
+  api.post("/api/notify/channels", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const result = await operations.createChannel(body);
+      meta3.reload();
+      return c.json(result, 201);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+  api.patch("/api/notify/channels/:id", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const result = await operations.updateChannel(c.req.param("id"), body);
+      meta3.reload();
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+  api.delete("/api/notify/channels/:id", async (c) => {
+    try {
+      const result = await operations.deleteChannel(c.req.param("id"));
+      meta3.reload();
+      return c.json(result);
+    } catch (error62) {
+      return c.json({ error: String(error62?.message ?? error62) }, error62?.status ?? 400);
+    }
+  });
+}
+
+// src/routes/read-views.ts
+var taskDto = (row, metrics) => ({
+  id: String(row.id),
+  exploration_id: Number(row.exploration_id),
+  name: row.name,
+  ...row.category_id == null ? {} : { category_id: row.category_id },
+  pinned: row.pinned_at != null,
+  ...row.pinned_at == null ? {} : { pinned_at: String(row.pinned_at) },
+  description: row.description,
+  goal: row.goal,
+  status: row.status,
+  created_at: row.created_at_text,
+  created_unix: Number(row.created_unix ?? 0),
+  completed_at: row.completed_at_text ?? "",
+  completed_unix: Number(row.completed_unix ?? 0),
+  last_activity_unix: Number(metrics?.last_activity_unix ?? 0),
+  paused: row.paused,
+  queued: row.queued,
+  tokens: {
+    input_tokens: Number(metrics?.input_tokens ?? 0),
+    output_tokens: Number(metrics?.output_tokens ?? 0),
+    cache_read_tokens: Number(metrics?.cache_read_tokens ?? 0),
+    cache_write_tokens: Number(metrics?.cache_write_tokens ?? 0)
+  },
+  goals_total: Number(metrics?.goals_total ?? 0),
+  goals_met: Number(metrics?.goals_met ?? 0),
+  in_flight: Number(metrics?.in_flight ?? 0),
+  findings: {
+    critical: Number(metrics?.findings?.critical ?? 0),
+    high: Number(metrics?.findings?.high ?? 0),
+    medium: Number(metrics?.findings?.medium ?? 0),
+    low: Number(metrics?.findings?.low ?? 0)
+  },
+  ...row.llm_profile_id == null ? {} : { llm_profile_id: row.llm_profile_id },
+  llm_profile_ids: [],
+  ...row.active_llm_profile_id == null ? {} : { active_llm_profile_id: row.active_llm_profile_id },
+  llm_failover_state: "default",
+  source_task_ids: [],
+  company_ids: [],
+  coverage_enabled: row.coverage_enabled
+});
+var findingDto = (row) => ({
+  traffic_count: 0,
+  evidence_version: 0,
+  report_evidence_version: 0,
+  report_stale: false,
+  id: String(row.id),
+  finding_id: String(row.id),
+  vulnclass: row.vulnclass,
+  ...row.name ? { name: row.name } : {},
+  severity: row.severity,
+  status: row.status,
+  summary: row.summary,
+  evidence: row.evidence,
+  ...row.task_id == null ? {} : { task_id: String(row.task_id) },
+  ts: row.created_at_text
+});
+var goalDto = (row) => {
+  const payload = typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {};
+  return {
+    id: String(row.id),
+    text: String(payload.text ?? ""),
+    ...payload.vulnclass ? { vulnclass: payload.vulnclass } : {},
+    state: row.state,
+    ...row.origin == null ? {} : { origin: row.origin },
+    ts: String(row.created_at).replace(/\.\d+/, "")
+  };
+};
+function activityDto(row) {
+  const out = {
+    seq: Number(row.id),
+    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
+    ...row.worker ? { worker: row.worker } : {},
+    ts: String(row.created_at ?? "").replace(/\.\d+/, ""),
+    ...row.kind ? { kind: row.kind } : {},
+    ...row.tool ? { tool: row.tool } : {},
+    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
+    is_error: Boolean(row.is_error),
+    summary: row.summary ?? "",
+    metadata: row.metadata ?? {},
+    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
+    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
+    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
+    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
+    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
+  };
+  return out;
+}
+function registerReadViews(api) {
+  api.get("/api/agents", async (c) => c.json({ agents: await meta3.table("agents") }));
+  api.get("/api/agents/:key", async (c) => {
+    const agents = await meta3.table("agents");
+    const row = agents.find((agent) => agent.key === c.req.param("key"));
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({ agent: row });
+  });
+  api.get("/api/task-categories", async (c) => c.json({ categories: await meta3.table("taskCategories") }));
+  api.get("/api/task-templates", async (c) => c.json({ templates: await meta3.table("taskTemplates") }));
+  api.get("/api/companies", async (c) => c.json(await store.companies.list()));
+  const TASK_PAGE_MAX_SIZE = 200;
+  api.get("/api/tasks", async (c) => {
+    const status = (c.req.query("status") ?? "").trim();
+    const needle = (c.req.query("q") ?? "").trim().toLowerCase();
+    const rows = await store.tasks.list();
+    const metrics = await store.taskMetrics();
+    const all = rows.map((row) => taskDto(row, metrics.get(Number(row.exploration_id)))).filter((task) => status === "" || String(task.status) === status).filter((task) => needle === "" || [task.id, task.name, task.description, task.goal].some((field) => String(field ?? "").toLowerCase().includes(needle)));
+    const paged = c.req.query("page") != null || c.req.query("size") != null;
+    if (!paged) return c.json({ tasks: all });
+    const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+    const size = Math.min(Math.max(Number(c.req.query("size") ?? 50) || 50, 1), TASK_PAGE_MAX_SIZE);
+    return c.json({
+      tasks: all.slice((page - 1) * size, (page - 1) * size + size),
+      total: all.length,
+      page,
+      size
+    });
+  });
+  api.get("/api/tasks/summary", async (c) => {
+    const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+    const rows = await store.tasks.list();
+    const metrics = await store.taskMetrics();
+    return c.json(summarizeTasks(rows, metrics, { days }));
+  });
+  api.get("/api/tasks/:id", async (c) => {
+    const row = await store.tasks.get(c.req.param("id"));
+    if (!row) return c.json({ error: "not found" }, 404);
+    const metrics = await store.taskMetrics();
+    return c.json(taskDto(row, metrics.get(Number(row.exploration_id))));
+  });
+  api.get("/api/tasks/:id/metrics", async (c) => {
+    const task = await store.tasks.get(c.req.param("id"));
+    if (!task) return c.json({ error: "not found" }, 404);
+    const metrics = (await store.taskMetrics()).get(Number(task.exploration_id));
+    return c.json({
+      task_id: Number(task.id),
+      exploration_id: Number(task.exploration_id),
+      mttd_seconds: null,
+      findings_total: metrics ? Object.values(metrics.findings).reduce((a, b) => a + b, 0) : 0,
+      findings_by_severity: metrics ? { critical: metrics.findings.critical, high: metrics.findings.high, medium: metrics.findings.medium, low: metrics.findings.low } : {},
+      findings_by_vulnclass: {},
+      findings_by_status: {},
+      verify_sessions: 0,
+      verify_reproduced: 0,
+      verify_false_positive: 0,
+      verify_inconclusive: 0,
+      intents: {},
+      done_intents: 0,
+      no_yield_done: 0,
+      yield_rate: 0,
+      class_coverage: {}
+    });
+  });
+  api.get("/api/assets/counts", async (c) => c.json(await store.assets.counts(c.req.query("task_id") || void 0)));
+  api.get("/api/exploration/findings", async (c) => {
+    const page = c.req.query("page");
+    const limit = c.req.query("limit");
+    if (page == null && limit == null) {
+      const rows2 = await store.findings.list(500);
+      return c.json(rows2.map(findingDto));
+    }
+    const size = Math.min(Number(limit ?? 20) || 20, 200);
+    const current = Math.max(Number(page ?? 1) || 1, 1);
+    const severity = (c.req.query("severity") ?? "").trim().toLowerCase();
+    const status = (c.req.query("status") ?? "").trim().toLowerCase();
+    const vulnclass = (c.req.query("vulnclass") ?? "").trim();
+    const taskId = (c.req.query("task_id") ?? "").trim();
+    const query = (c.req.query("q") ?? "").trim().toLowerCase();
+    let rows = await store.findings.list(1e5);
+    if (severity) rows = rows.filter((row) => String(row.severity).toLowerCase() === severity);
+    if (status) rows = rows.filter((row) => String(row.status).toLowerCase() === status);
+    if (vulnclass) rows = rows.filter((row) => String(row.vulnclass) === vulnclass);
+    if (taskId) rows = rows.filter((row) => String(row.task_id ?? "") === taskId);
+    if (query) {
+      rows = rows.filter((row) => [row.name, row.summary, row.evidence, row.vulnclass].some((value) => String(value ?? "").toLowerCase().includes(query)));
+    }
+    const total = rows.length;
+    const pageRows = rows.slice((current - 1) * size, current * size);
+    return c.json({ items: pageRows.map(findingDto), total, page: current, page_size: size });
+  });
+  api.get("/api/exploration/findings/stats", async (c) => c.json(await store.findings.stats()));
+  api.get("/api/exploration/findings/:id", async (c) => {
+    const id = c.req.param("id");
+    const row = await store.findings.get(id);
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({
+      ...findingDto(row),
+      ...row.report ? { report: row.report } : {}
+    });
+  });
+  api.get("/api/tasks/:id/coverage", async (c) => {
+    const task = await store.tasks.get(c.req.param("id"));
+    if (!task) return c.json({ error: "task not found" }, 404);
+    if (task.coverage_enabled === false) {
+      return c.json({ enabled: false, scope_rows: 0, denominator: 0, tested: 0, pct: null, by_type: [] });
+    }
+    return c.json({ enabled: true, ...await store.coverage(c.req.param("id")) });
+  });
+  api.get("/api/tasks/:id/goals", async (c) => {
+    const taskId = c.req.param("id");
+    const task = await store.tasks.get(taskId);
+    if (!task) return c.json({ error: "task not found" }, 404);
+    const { items } = await store.nodes.page({ taskId, page: 1, size: 200, order: "desc", kinds: ["goal"] });
+    const goals = items.map(goalDto);
+    return c.json({ goals });
+  });
+  api.get("/api/tokens/daily", async (c) => {
+    const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
+    return c.json(await store.activity.dailyTokens(days));
+  });
+  api.get("/api/exploration/intents", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const limit = Math.min(Number(c.req.query("limit") ?? 300) || 300, 500);
+    const before = c.req.query("before") ?? "";
+    if (!taskId) return c.req.query("page") ? c.json({ items: [], has_more: false }) : c.json([]);
+    const result = await store.nodes.page({ taskId, page: 1, size: limit, order: "desc", kinds: ["intent"], before: before && before !== "0" ? before : void 0 });
+    const items = result.items.map((row) => ({
+      id: String(row.id),
+      type: row.kind,
+      payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+      priority: row.priority,
+      state: row.state,
+      ...row.origin == null ? {} : { origin: row.origin },
+      ts: row.created_at
+    }));
+    if (c.req.query("page")) return c.json({ items, has_more: result.total > items.length });
+    return c.json(items);
+  });
+  api.get("/api/exploration/nodes", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const page = Math.max(Number(c.req.query("page") ?? 1) || 1, 1);
+    const size = Math.min(Number(c.req.query("size") ?? 20) || 20, 200);
+    if (!taskId) return c.json({ items: [], total: 0, page, size, edges: [], refs: {} });
+    const kinds = (c.req.query("kind") ?? "").split(",").filter(Boolean);
+    const states = (c.req.query("state") ?? "").split(",").filter(Boolean);
+    const order2 = c.req.query("order") === "asc" ? "asc" : "desc";
+    const { items, total, edges } = await store.nodes.page({ taskId, page, size, order: order2, kinds, states });
+    return c.json({
+      items: items.map((row) => ({
+        id: String(row.id),
+        type: row.kind,
+        payload: JSON.stringify(typeof row.payload === "string" ? parseJson2(row.payload) : row.payload ?? {}),
+        priority: row.priority,
+        state: row.state,
+        ...row.origin == null ? {} : { origin: row.origin },
+        ts: row.created_at
+      })),
+      total,
+      page,
+      size,
+      edges: edges.map((edge) => ({ src: String(edge.src), dst: String(edge.dst), rel: edge.rel })),
+      refs: {}
+    });
+  });
+  api.get("/api/exploration/activity", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
+    const before = Number(c.req.query("before") ?? 0) || 0;
+    const page = taskId === "" ? await store.activity.recent({ limit, before }) : await store.activity.history({ taskId, limit, before });
+    const items = page.items.map(activityDto);
+    return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore });
+  });
+}
+
+// src/capture-state.ts
+function normalize(row) {
+  const scope = String(row?.scope ?? "").trim();
+  if (!/^(conv-\d+|session-[A-Za-z0-9][A-Za-z0-9_-]{0,127}|task-\d+(-i\d+)?)$/.test(scope)) return null;
+  const convId = scope.startsWith("conv-") ? Number(scope.slice(5)) : 0;
+  const sessionId = scope.startsWith("session-") ? scope.slice(8) : "";
+  return {
+    scope,
+    conv_id: Number(row?.conv_id ?? 0) || convId,
+    session_id: String(row?.session_id ?? "") || sessionId,
+    source: String(row?.source ?? "") || "yakit",
+    started_at: Number(row?.started_at ?? 0) || 0,
+    stopped_at: Number(row?.stopped_at ?? 0) || 0
+  };
+}
+async function readCaptures() {
+  const rows = await meta3.table("trafficCaptures") ?? [];
+  if (!Array.isArray(rows)) return [];
+  const out = [];
+  for (const row of rows) {
+    const capture = normalize(row);
+    if (capture !== null) out.push(capture);
+  }
+  return out.sort((left, right) => right.started_at - left.started_at);
+}
+function activeCaptures(rows) {
+  return rows.filter((row) => row.started_at > 0 && row.stopped_at === 0);
+}
+
+// src/traffic-index.ts
+import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
+import { existsSync as existsSync2, statSync } from "node:fs";
+import { dirname as dirname4, join as join6 } from "node:path";
+import { fileURLToPath } from "node:url";
+var here = dirname4(fileURLToPath(import.meta.url));
+function trafficDir() {
+  return process.env.VEXNAR_TRAFFIC_DIR || join6(here, "..", "..", "..", "data", "traffic");
+}
+function indexPath() {
+  return join6(trafficDir(), "_index", "index.sqlite");
+}
+var cached2 = null;
+var TTL_MS = 2e3;
+function open4() {
+  const path = indexPath();
+  if (!existsSync2(path)) return null;
+  try {
+    return new DatabaseSync2(path, { readOnly: true });
+  } catch {
+    return null;
+  }
+}
+function columns(db, table) {
+  try {
+    const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+    return new Set(rows.map((row) => String(row.name)));
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
+function text2(value) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (value instanceof Uint8Array) return Buffer.from(value).toString("utf8");
+  return String(value);
+}
+function num(value) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+function archivedExchanges() {
+  const now = Date.now();
+  if (cached2 !== null && now - cached2.at < TTL_MS) return cached2.rows;
+  const db = open4();
+  if (db === null) {
+    cached2 = { at: now, rows: [] };
+    return [];
+  }
+  try {
+    const cols = columns(db, "exchanges");
+    const pick2 = (name, fallback) => cols.has(name) ? name : `${fallback} AS ${name}`;
+    const sql = `SELECT id, ts, host, method, url_template, url, status, content_type, req_len, resp_len, path,
+      ${pick2("scope", "''")}, ${pick2("session", "''")} FROM exchanges ORDER BY ts DESC`;
+    const rows = db.prepare(sql).all();
+    const mapped = rows.map((row) => ({
+      id: text2(row.id),
+      ts: num(row.ts),
+      host: text2(row.host),
+      method: text2(row.method),
+      url: text2(row.url),
+      url_template: text2(row.url_template),
+      status: num(row.status),
+      content_type: text2(row.content_type),
+      req_len: num(row.req_len),
+      resp_len: num(row.resp_len),
+      path: text2(row.path),
+      scope: text2(row.scope),
+      session: text2(row.session)
+    }));
+    cached2 = { at: now, rows: mapped };
+    return mapped;
+  } catch {
+    cached2 = { at: now, rows: [] };
+    return [];
+  } finally {
+    try {
+      db.close();
+    } catch {
+    }
+  }
+}
+
+// src/routes/traffic-history.ts
+function rfc3339FromUnix(sec) {
+  const date5 = new Date(Number(sec) * 1e3);
+  if (!Number.isFinite(date5.getTime())) return "";
+  return date5.toISOString();
+}
+function statusMatches(status, token) {
+  const s = token.toLowerCase().trim();
+  if (!s) return true;
+  if (/^[1-5]xx$/.test(s)) {
+    const base = Number(s[0]) * 100;
+    return status >= base && status < base + 100;
+  }
+  const n = Number(s);
+  if (Number.isFinite(n)) return status === n;
+  return true;
+}
+async function allExchanges() {
+  const local = await operations.writer.list("traffic_exchanges");
+  const seen = new Set(local.map((row) => String(row.id)));
+  const archived = archivedExchanges().filter((row) => !seen.has(row.id));
+  return [...local, ...archived];
+}
+async function listExchanges(query) {
+  const all = await allExchanges();
+  const host = String(query.host ?? "").trim();
+  const method = String(query.method ?? "").trim().toUpperCase();
+  const keyword = String(query.q ?? "").trim().toLowerCase();
+  const status = String(query.status ?? "").trim();
+  const respMin = Number(query.resp_min ?? -1);
+  const respMax = Number(query.resp_max ?? -1);
+  let rows = all;
+  if (host) rows = rows.filter((row) => String(row.host ?? "").toLowerCase().includes(host.toLowerCase()));
+  if (method) rows = rows.filter((row) => String(row.method ?? "").toUpperCase() === method);
+  if (keyword) {
+    rows = rows.filter((row) => [row.host, row.url, row.url_template, row.method, row.content_type, String(row.status), row.req_body, row.resp_body].some((value) => String(value ?? "").toLowerCase().includes(keyword)));
+  }
+  if (status) rows = rows.filter((row) => statusMatches(Number(row.status ?? 0), status));
+  if (Number.isFinite(respMin) && respMin >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) >= respMin);
+  if (Number.isFinite(respMax) && respMax >= 0) rows = rows.filter((row) => Number(row.resp_len ?? 0) <= respMax);
+  const col = query.sort === "status" ? "status" : query.sort === "resp_len" ? "resp_len" : "ts";
+  const dir = String(query.order ?? "desc").toLowerCase() === "asc" ? 1 : -1;
+  rows.sort((a, b) => dir * (Number(a[col] ?? 0) - Number(b[col] ?? 0)) || String(b.id).localeCompare(String(a.id)));
+  return { all, rows };
+}
+function exchangeDto(row) {
+  return {
+    id: String(row.id),
+    ts: rfc3339FromUnix(Number(row.ts ?? 0)),
+    host: String(row.host ?? ""),
+    method: String(row.method ?? ""),
+    url: String(row.url ?? ""),
+    status: Number(row.status ?? 0),
+    content_type: String(row.content_type ?? ""),
+    resp_len: Number(row.resp_len ?? 0)
+  };
+}
+async function listHosts() {
+  const all = await allExchanges();
+  const byHost = /* @__PURE__ */ new Map();
+  for (const row of all) {
+    const host = String(row.host ?? "");
+    const entry = byHost.get(host) ?? { host, count: 0, last: 0 };
+    entry.count += 1;
+    entry.last = Math.max(entry.last, Number(row.ts ?? 0));
+    byHost.set(host, entry);
+  }
+  return [...byHost.values()].sort((a, b) => b.last - a.last).map(({ last: _last, ...rest }) => rest);
+}
+async function captureOverview(proxyFor) {
+  const rows = await allExchanges();
+  const byScope = /* @__PURE__ */ new Map();
+  let lastTs = 0;
+  for (const row of rows) {
+    const ts = Number(row.ts ?? 0);
+    lastTs = Math.max(lastTs, ts);
+    const scope = String(row.scope ?? "");
+    if (!scope) continue;
+    const entry = byScope.get(scope) ?? { items: 0, last_ts: 0 };
+    entry.items += 1;
+    entry.last_ts = Math.max(entry.last_ts, ts);
+    byScope.set(scope, entry);
+  }
+  const sessions = activeCaptures(await readCaptures()).map((row) => ({
+    scope: row.scope,
+    proxy: proxyFor?.(row.scope) ?? "",
+    conv_id: row.conv_id,
+    session_id: row.session_id,
+    source: row.source,
+    started_at: row.started_at,
+    items: byScope.get(row.scope)?.items ?? 0,
+    last_ts: byScope.get(row.scope)?.last_ts ?? 0
+  }));
+  const recent = [...rows].sort((a, b) => Number(b.ts ?? 0) - Number(a.ts ?? 0)).slice(0, 60).map(exchangeDto);
+  return { active: sessions.length > 0, sessions, total: rows.length, last_ts: lastTs, recent };
+}
+function registerTrafficHistory(api) {
+  api.get("/api/traffic", async (c) => {
+    try {
+      const page = Math.max(Number(c.req.query("page") ?? 0) || 0, 0);
+      const size = Math.min(Math.max(Number(c.req.query("size") ?? 100) || 100, 1), 500);
+      const { all, rows } = await listExchanges({
+        host: c.req.query("host"),
+        method: c.req.query("method"),
+        q: c.req.query("q"),
+        status: c.req.query("status"),
+        resp_min: c.req.query("resp_min"),
+        resp_max: c.req.query("resp_max"),
+        sort: c.req.query("sort"),
+        order: c.req.query("order")
+      });
+      const pageRows = rows.slice(page * size, page * size + size);
+      const capturing = activeCaptures(await readCaptures()).length > 0;
+      return c.json({
+        enabled: capturing,
+        proxy: "",
+        count: all.length,
+        archived: archivedExchanges().length,
+        total: rows.length,
+        page,
+        size,
+        exchanges: pageRows.map(exchangeDto)
+      });
+    } catch (e) {
+      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+    }
+  });
+  api.get("/api/traffic/hosts", async (c) => {
+    try {
+      return c.json({ hosts: await listHosts() });
+    } catch (e) {
+      return c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
+    }
+  });
+}
+
 // src/settings-embedded.ts
 var settings = new Hono3();
 registerInterceptSettings(settings);
 registerSettingsCatalog(settings);
 registerToolDocumentation(settings);
+registerNotificationSettings(settings, true);
+registerReadViews(settings);
+registerTrafficHistory(settings);
+settings.get("/api/traffic/capture", async (c) => c.json(await captureOverview()));
 var migration;
 async function handleSettings(request) {
   if (new URL(request.url).pathname.startsWith("/api/intercept/")) {

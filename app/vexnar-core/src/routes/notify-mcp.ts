@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { createHmac } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
 import { Hono } from 'hono'
+import { normalizeMcpTools, type McpTool } from './settings-catalog.ts'
 import { meta, operations, parseJson, store } from '../context.ts'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -631,8 +632,6 @@ function mcpServerFromImport(name: string, raw: any, enabled: boolean): McpServe
 // MCP：工具发现（对应 Go connectMCP + discoverAndCacheMCP）
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface McpTool { name: string; description: string }
-
 function mcpArgs(server: any): string[] {
   return Array.isArray(server?.args) ? server.args.map((item: any) => String(item)) : []
 }
@@ -642,17 +641,6 @@ function mcpEnv(server: any): Record<string, string> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const out: Record<string, string> = {}
   for (const [key, value] of Object.entries(raw as Json)) out[key] = String(value)
-  return out
-}
-
-function normalizeTools(list: any): McpTool[] {
-  if (!Array.isArray(list)) return []
-  const out: McpTool[] = []
-  for (const item of list) {
-    const name = String(item?.name ?? '').trim()
-    if (!name) continue
-    out.push({ name, description: String(item?.description ?? '') })
-  }
   return out
 }
 
@@ -739,7 +727,7 @@ async function discoverStdioTools(server: any, timeoutMs: number): Promise<McpTo
     })
     notify('notifications/initialized', {})
     const listed = await request('tools/list', {})
-    return normalizeTools((listed as any)?.tools)
+    return normalizeMcpTools((listed as any)?.tools)
   } finally {
     settleAll()
   }
@@ -809,7 +797,7 @@ async function discoverHttpTools(server: any, timeoutMs: number): Promise<McpToo
   })
   try { await call('notifications/initialized', {}) } catch {}
   const listed = await call('tools/list', {})
-  return normalizeTools((listed as any)?.tools)
+  return normalizeMcpTools((listed as any)?.tools)
 }
 
 async function discoverTools(server: any): Promise<McpTool[]> {
@@ -1050,21 +1038,6 @@ export function register(api: Hono) {
       }
       meta.reload()
       return c.json({ imported, skipped, total: names.length })
-    } catch (e: any) { return errResponse(c, e) }
-  })
-
-  // ── MCP：读取已缓存的工具列表 ──────────────────────────────────────────────
-  api.get('/api/mcp/:id/tools', async (c) => {
-    try {
-      const { row } = await findMcpServer(c.req.param('id'))
-      const tools = normalizeTools(row.tools)
-      return c.json({
-        id: Number(row.id),
-        name: String(row.name ?? ''),
-        transport: String(row.transport ?? ''),
-        enabled: row.enabled !== false,
-        tools
-      })
     } catch (e: any) { return errResponse(c, e) }
   })
 
