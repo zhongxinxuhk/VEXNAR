@@ -5,6 +5,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { installPlatform, recordOf, type PlatformContext } from './platform.js'
 import { registerYakHistoryTools } from './yak-history-tools.js'
@@ -122,12 +123,21 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 export function apply(ctx: AccountContext): void {
   registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
-    const app = import('./core-embedded.js')
+    let core: typeof import('./core-embedded.js') | undefined
+    const starting = import('./core-embedded.js').then(result => {
+      core = result
+      return result
+    }, () => undefined)
+    const startup = Promise.race([starting, delay(4_000, undefined, { ref: false })])
+    const getCore = async () => core ?? await startup
+    const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === 'go'
     // 同一进程内的领域调用面：工具插件（如 @vexnar/dsh-egress）直接走这里，
     // 不经过 /vexnar-api 的登录闸门，也不需要复制一份端口/token。
     ctx.provide('vexnarCore', {
       request: async (path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) => {
-        const { handle } = await app
+        const app = await getCore()
+        if (!app) throw new Error('VEXNAR 领域服务尚未就绪')
+        const { handle } = app
         const requestInit: RequestInit = {
           method: init.method ?? 'GET',
           headers: { 'content-type': 'application/json', ...(init.headers ?? {}) }
@@ -160,8 +170,15 @@ export function apply(ctx: AccountContext): void {
           }
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
-          const { handle, isGoDataRequest } = await app
-          if (isGoDataRequest(req.method, url.pathname)) {
+          const configRoute = (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
+            (req.method === 'GET' && ['/api/tools', '/api/llm/profiles'].includes(url.pathname))
+          const app = configRoute ? undefined : await getCore()
+          if (!configRoute && !app) {
+            res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify({ error: 'VEXNAR 领域服务尚未就绪' }))
+            return
+          }
+          if (configRoute || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req)
             if (rejection) {
               res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
@@ -221,7 +238,9 @@ export function apply(ctx: AccountContext): void {
           const remoteAddress = req.socket.remoteAddress
           const localPeer = remoteAddress !== undefined &&
             ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remoteAddress)
-          const response = await handle(request, localPeer)
+          const response = configRoute
+            ? await (await import('./settings-embedded.js')).handleSettings(request)
+            : await app!.handle(request, localPeer)
           const responseHeaders: Record<string, string> = {}
           for (const [key, value] of response.headers.entries()) responseHeaders[key] = value
           res.writeHead(response.status, responseHeaders)

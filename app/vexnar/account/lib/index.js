@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { installPlatform, recordOf } from "./platform.js";
 import { registerYakHistoryTools } from "./yak-history-tools.js";
@@ -80,10 +81,19 @@ button[aria-label*="\u5B8C\u5168\u6743\u9650"] svg * { color: #dc2626 !important
 function apply(ctx) {
   registerYakHistoryTools(ctx);
   if (process.env.VEXNAR_CORE_EMBEDDED !== "0") {
-    const app = import("./core-embedded.js");
+    let core;
+    const starting = import("./core-embedded.js").then((result) => {
+      core = result;
+      return result;
+    }, () => void 0);
+    const startup = Promise.race([starting, delay(4e3, void 0, { ref: false })]);
+    const getCore = async () => core ?? await startup;
+    const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === "go";
     ctx.provide("vexnarCore", {
       request: async (path, init = {}) => {
-        const { handle } = await app;
+        const app = await getCore();
+        if (!app) throw new Error("VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA");
+        const { handle } = app;
         const requestInit = {
           method: init.method ?? "GET",
           headers: { "content-type": "application/json", ...init.headers ?? {} }
@@ -116,8 +126,14 @@ function apply(ctx) {
           }
           const url = new URL(req.url || "/", "http://127.0.0.1");
           url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
-          const { handle, isGoDataRequest } = await app;
-          if (isGoDataRequest(req.method, url.pathname)) {
+          const configRoute = !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles"].includes(url.pathname);
+          const app = configRoute ? void 0 : await getCore();
+          if (!configRoute && !app) {
+            res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+            res.end(JSON.stringify({ error: "VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA" }));
+            return;
+          }
+          if (configRoute || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req);
             if (rejection) {
               res.writeHead(rejection, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -171,7 +187,7 @@ function apply(ctx) {
           const request = new Request(url, init);
           const remoteAddress = req.socket.remoteAddress;
           const localPeer = remoteAddress !== void 0 && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remoteAddress);
-          const response = await handle(request, localPeer);
+          const response = configRoute ? await (await import("./settings-embedded.js")).handleSettings(request) : await app.handle(request, localPeer);
           const responseHeaders = {};
           for (const [key, value] of response.headers.entries()) responseHeaders[key] = value;
           res.writeHead(response.status, responseHeaders);

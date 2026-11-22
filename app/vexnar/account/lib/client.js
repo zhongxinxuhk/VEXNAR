@@ -675,6 +675,7 @@ async function request(path, method = "GET", body) {
   const response = await fetch(api + path, {
     method,
     headers: { "Content-Type": "application/json" },
+    ...method === "GET" ? { signal: AbortSignal.timeout(15e3) } : {},
     ...body === void 0 ? {} : { body: JSON.stringify(body) }
   });
   const result = await response.json().catch(() => ({}));
@@ -686,7 +687,10 @@ function useAccount() {
   const [account, setAccount] = (0, import_react.useState)();
   const [error, setError] = (0, import_react.useState)("");
   const onError = (reason) => setError(message(reason));
-  const refresh = () => void request("/account").then(setAccount, onError);
+  const refresh = () => void request("/account").then((next) => {
+    setAccount(next);
+    setError("");
+  }, onError);
   const update = (next) => {
     setAccount(next);
     setError("");

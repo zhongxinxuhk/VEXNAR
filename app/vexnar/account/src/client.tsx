@@ -59,6 +59,7 @@ async function request<T>(path: string, method = 'GET', body?: object): Promise<
   const response = await fetch(api + path, {
     method,
     headers: { 'Content-Type': 'application/json' },
+    ...(method === 'GET' ? { signal: AbortSignal.timeout(15_000) } : {}),
     ...(body === undefined ? {} : { body: JSON.stringify(body) })
   })
   const result = await response.json().catch(() => ({}))
@@ -72,7 +73,10 @@ function useAccount() {
   const [account, setAccount] = useState<Account>()
   const [error, setError] = useState('')
   const onError = (reason: unknown) => setError(message(reason))
-  const refresh = () => void request<Account>('/account').then(setAccount, onError)
+  const refresh = () => void request<Account>('/account').then(next => {
+    setAccount(next)
+    setError('')
+  }, onError)
   const update = (next: Account) => {
     setAccount(next)
     setError('')

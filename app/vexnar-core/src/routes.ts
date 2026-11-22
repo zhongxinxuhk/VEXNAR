@@ -8,9 +8,11 @@ import { blobStore, buildReport, buildReportHtml, createNotifier, createRunner, 
 import { register as registerExploration } from './routes/exploration.ts'
 import { summarizeTasks } from '../../vexnar-store/src/task-status.ts'
 import { registerEgress } from './egress/routes.ts'
+import { registerSettingsCatalog } from './routes/settings-catalog.ts'
 import { registerCatalogDefaults } from './catalog/register.ts'
 
 export const api = new Hono()
+registerSettingsCatalog(api)
 
 // 代理池在 TS 内完整实现（节点/池/订阅/网关/对抗），先于任务域注册，
 // 让 /api/tasks/:id/proxy 命中自己的处理器。
@@ -39,17 +41,6 @@ api.get('/api/agents/:key', async (c) => {
   return c.json({ agent: row })
 })
 
-api.get('/api/llm/profiles', async (c) => {
-  const rows = await meta.table<any[]>('llmProfiles')
-  return c.json({
-    profiles: rows.map((row) => {
-      if (row.base_url != null) return row
-      const { base_url, ...rest } = row
-      return rest
-    })
-  })
-})
-
 api.get('/api/task-categories', async (c) => c.json({ categories: await meta.table('taskCategories') }))
 
 api.get('/api/task-templates', async (c) => c.json({ templates: await meta.table('taskTemplates') }))
@@ -57,10 +48,6 @@ api.get('/api/task-templates', async (c) => c.json({ templates: await meta.table
 api.get('/api/companies', async (c) => c.json(await store.companies.list()))
 
 // ── tools / mcp / notify / settings (vexnar-meta) ────────────────────────
-api.get('/api/tools', async (c) => {
-  const rows = await meta.table<any[]>('tools')
-  return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) })
-})
 api.get('/api/mcp', async (c) => c.json({ servers: await meta.table('mcp') }))
 api.get('/api/notify/channels', async (c) => c.json({ channels: await meta.table('notify') }))
 api.get('/api/settings', async (c) => c.json(await meta.table('settings')))

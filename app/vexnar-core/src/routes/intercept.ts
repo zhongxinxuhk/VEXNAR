@@ -352,7 +352,7 @@ function parsePage(query: Record<string, string>) {
 
 // ── 路由注册 ────────────────────────────────────────────────────────────────
 
-export function register(api: Hono) {
+export function registerInterceptSettings(api: Hono) {
   // ── 拦截规则（intercept_rules）CRUD / toggle ──────────────────────────────
   api.get('/api/intercept/rules', async (c) => {
     const { rows } = await metaTable(TABLE_RULES)
@@ -432,6 +432,70 @@ export function register(api: Hono) {
       return errResponse(c, error)
     }
   })
+
+  // ── 全局工具拦截范围（tool-config）────────────────────────────────────────
+  //
+  // 未保存过设置时回 Go 的默认清单（intercept/intercept.go 的 defaultEnabledTools）：
+  // 空数组与"没配过"在语义上不同——前者是用户主动关掉全部工具，后者要走默认值，
+  // 页面据此显示"未启用任何工具"还是默认范围。
+  api.get('/api/intercept/tool-config', async (c) => {
+    try {
+      meta.reload()
+      const tables = (await meta.load()) as Record<string, unknown>
+      const stored = tables[TABLE_TOOL_CONFIG]
+      if (stored === undefined) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] })
+      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] })
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
+  api.put('/api/intercept/tool-config', async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    try {
+      const tools = Array.isArray(body.enabled_tools)
+        ? [...new Set(body.enabled_tools.map((t: any) => String(t).trim()).filter(Boolean))]
+        : []
+      const { tables } = await metaTable(TABLE_TOOL_CONFIG)
+      tables[TABLE_TOOL_CONFIG] = tools
+      await meta.save(tables)
+      return c.json({ ok: true })
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
+  // ── LLM 兜底裁判配置（judge）──────────────────────────────────────────────
+  api.get('/api/intercept/judge', async (c) => {
+    try {
+      const stored = await meta.table<Record<string, unknown>>(TABLE_JUDGE_CONFIG)
+      return c.json(resolveJudgeConfig(Array.isArray(stored) ? stored[0] : stored))
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
+  api.put('/api/intercept/judge', async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    try {
+      const cfg = validateJudgeConfig(body)
+      const { tables } = await metaTable(TABLE_JUDGE_CONFIG)
+      tables[TABLE_JUDGE_CONFIG] = cfg
+      await meta.save(tables)
+      return c.json({ ok: true })
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
+  api.get('/api/intercept/judge/usage', async (c) => {
+    // TS core 无 judge 通道的 LLM 用量台账；与 Go 在 pg 不可用时同形，返回空。
+    return c.json({ calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, daily: [] })
+  })
+}
+
+export function register(api: Hono) {
+  registerInterceptSettings(api)
 
   // ── 审批流：pending / history ─────────────────────────────────────────────
   api.get('/api/intercept/pending', async (c) => {
@@ -537,66 +601,6 @@ export function register(api: Hono) {
     } catch (error: any) {
       return errResponse(c, error)
     }
-  })
-
-  // ── 全局工具拦截范围（tool-config）────────────────────────────────────────
-  //
-  // 未保存过设置时回 Go 的默认清单（intercept/intercept.go 的 defaultEnabledTools）：
-  // 空数组与"没配过"在语义上不同——前者是用户主动关掉全部工具，后者要走默认值，
-  // 页面据此显示"未启用任何工具"还是默认范围。
-  api.get('/api/intercept/tool-config', async (c) => {
-    try {
-      meta.reload()
-      const tables = (await meta.load()) as Record<string, unknown>
-      const stored = tables[TABLE_TOOL_CONFIG]
-      if (stored === undefined) return c.json({ enabled_tools: [...DEFAULT_INTERCEPT_TOOLS] })
-      return c.json({ enabled_tools: Array.isArray(stored) ? stored.map((item) => String(item)) : [] })
-    } catch (error: any) {
-      return errResponse(c, error)
-    }
-  })
-
-  api.put('/api/intercept/tool-config', async (c) => {
-    const body = await c.req.json().catch(() => ({}))
-    try {
-      const tools = Array.isArray(body.enabled_tools)
-        ? [...new Set(body.enabled_tools.map((t: any) => String(t).trim()).filter(Boolean))]
-        : []
-      const { tables } = await metaTable(TABLE_TOOL_CONFIG)
-      tables[TABLE_TOOL_CONFIG] = tools
-      await meta.save(tables)
-      return c.json({ ok: true })
-    } catch (error: any) {
-      return errResponse(c, error)
-    }
-  })
-
-  // ── LLM 兜底裁判配置（judge）──────────────────────────────────────────────
-  api.get('/api/intercept/judge', async (c) => {
-    try {
-      const stored = await meta.table<Record<string, unknown>>(TABLE_JUDGE_CONFIG)
-      return c.json(resolveJudgeConfig(Array.isArray(stored) ? stored[0] : stored))
-    } catch (error: any) {
-      return errResponse(c, error)
-    }
-  })
-
-  api.put('/api/intercept/judge', async (c) => {
-    const body = await c.req.json().catch(() => ({}))
-    try {
-      const cfg = validateJudgeConfig(body)
-      const { tables } = await metaTable(TABLE_JUDGE_CONFIG)
-      tables[TABLE_JUDGE_CONFIG] = cfg
-      await meta.save(tables)
-      return c.json({ ok: true })
-    } catch (error: any) {
-      return errResponse(c, error)
-    }
-  })
-
-  api.get('/api/intercept/judge/usage', async (c) => {
-    // TS core 无 judge 通道的 LLM 用量台账；与 Go 在 pg 不可用时同形，返回空。
-    return c.json({ calls: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, daily: [] })
   })
 
   // ── 任务级审批记录（task intercept）───────────────────────────────────────

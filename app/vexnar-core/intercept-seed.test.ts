@@ -170,6 +170,18 @@ check('迁移后编辑可用', updated.name === '迁移后改名' && updated.act
 const removed = await (await api.request(`/api/intercept/rules/${ok.id}`, { method: 'DELETE' })).json() as MutationBody
 check('迁移后删除可用', removed.deleted === ok.id, JSON.stringify(removed))
 
+// 用 dsh 实际加载的构建产物验证独立启动路径和底层记录一致性。
+const settingsBundle = new URL('../vexnar/account/lib/settings-embedded.js', import.meta.url)
+const { handleSettings } = await import(settingsBundle.href) as typeof import('./src/settings-embedded.ts')
+const settingsRequest = (path: string) => handleSettings(new Request(new URL(path, 'http://127.0.0.1')))
+const settingsRules = await settingsRequest('/api/intercept/rules')
+check('设置构建产物读取同一份规则', settingsRules.status === 200 &&
+  JSON.stringify(await settingsRules.json()) === JSON.stringify(await getJson('/api/intercept/rules')))
+const settingsScope = await settingsRequest('/api/intercept/tool-config')
+check('设置构建产物加载范围', settingsScope.status === 200 &&
+  JSON.stringify(await settingsScope.json()) === JSON.stringify(await getJson('/api/intercept/tool-config')))
+check('设置构建产物不挂载任务路由', (await settingsRequest('/api/tasks')).status === 404)
+
 // ── 汇总 ───────────────────────────────────────────────────────────────────
 let failed = false
 for (const item of results) {

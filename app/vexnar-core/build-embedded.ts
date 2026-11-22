@@ -4,8 +4,8 @@
 
 /** esbuild 的构建入口只用到这几个选项；动态 import 的模块没有静态类型，这里给出本地形状。 */
 type BuildOptions = {
-  entryPoints: string[]
-  outfile: string
+  entryPoints: Record<string, string>
+  outdir: string
   bundle: boolean
   platform: 'node'
   format: 'esm'
@@ -23,10 +23,14 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const out = join(here, '..', 'vexnar', 'account', 'lib', 'core-embedded.js')
+const entryPoints: Record<string, string> = {
+  'settings-embedded': join(here, 'src', 'settings-embedded.ts')
+}
+if (!process.argv.includes('--settings-only')) entryPoints['core-embedded'] = join(here, 'src', 'embedded.ts')
+
 await build({
-  entryPoints: [join(here, 'src', 'embedded.ts')],
-  outfile: out,
+  entryPoints,
+  outdir: join(here, '..', 'vexnar', 'account', 'lib'),
   bundle: true,
   platform: 'node',
   format: 'esm',

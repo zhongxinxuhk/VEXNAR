@@ -554,7 +554,8 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   route('/ready', { GET: () => ({ ready }) })
   route('/methods', { GET: () => account.methods() })
   route('/account', {
-    GET: () => refresh(),
+    // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
+    GET: () => ready ? account.status() : refresh(),
     DELETE: async () => {
       if (browserTask) throw new PlatformError(409, '请关闭平台登录窗口后再试')
       await account.logout()
