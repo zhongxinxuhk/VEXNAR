@@ -33218,7 +33218,7 @@ async function readTables() {
   meta3.reload();
   return await meta3.load();
 }
-async function ensureInterceptRulesSeeded(loadRows = loadRulesFromPostgres) {
+async function ensureInterceptRulesSeeded(loadRows = process.env.VEXNAR_CLIENT_SQLITE === "1" ? async () => [] : loadRulesFromPostgres) {
   const tables = await readTables();
   const seededAlready = Array.isArray(tables[TABLE_SEED]) && tables[TABLE_SEED].some((row) => row?.key === SEED_KEY);
   if (seededAlready) return { seeded: 0, source: "done" };

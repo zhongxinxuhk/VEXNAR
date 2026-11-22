@@ -120,34 +120,26 @@ pnpm install && pnpm run build && pnpm run setup
 pnpm run web                 # 或 pnpm run desktop
 ```
 
-**默认不需要 Go。** 领域接口由内置的 TypeScript core（`vexnar-core`）回答，
-数据面走 `vexnar-store` 的 PostgreSQL 适配器，读的是 Go 服务与控制台用的同一个库。
-底座当前跑的是哪一套，看它的自述接口 `GET /vexnar-api/api/_runtime`
-（`{"mode":"ts","store":"sqlite","started":true,"triggers":10,...}`）。
+### 客户端数据目录
 
-`VEXNAR_RUNTIME_MODE=go` 回到旧路径：由 `app/` 自己编译和托管 Go 后端（不用另开终端）。
+Web 与桌面启动器使用 profile 下的 `vexnar/store/vexnar.sqlite`。可通过 `VEXNAR_HOME` 选择 profile，或通过 `VEXNAR_SQLITE_PATH` 指定 SQLite 文件。启动器不会把 PostgreSQL 连接串传给 dsh。账号、凭据和会话仍由 dsh profile 管理，归档流量仍使用本地索引和正文文件。
 
-1. `startWeb` 从仓库根 `config.json` 的 `database` 段落折出 `VEXNAR_PG_DSN` 传给客户端
-   （环境里已给了 DSN 就尊重环境）。只要给了 DSN，`openStore()` 默认走 PostgreSQL；
-   显式 `VEXNAR_STORE=sqlite` 可以退回单机 SQLite。
-2. 模型调用由账号插件在进程内起一个只监听 127.0.0.1 的 OpenAI 兼容网关
-   （`account/src/model-gateway.ts`，构建到 `lib/model-gateway.js`），用登录拿到的密钥转发 `/chat/completions`
-   与 `/responses`，`VEXNAR_GATEWAY_URL`/`VEXNAR_GATEWAY_TOKEN` 由插件自己注入。
-3. Go 只在对照验证时启用：`VEXNAR_GO=on` 会按源码指纹编译
-   （`app/.vexnar-bin/vexnar-<指纹>`）并拉起它；`VEXNAR_GO_DATA=on` 才把领域接口转发回 Go。
+首次接管旧 PostgreSQL 数据时，可从 `app/` 生成一个待验证的新文件。以下三个路径都使用绝对路径。
 
-| 变量 | 作用 |
-|---|---|
-| `VEXNAR_PG_DSN` / `VEXNAR_PG_URL` | PostgreSQL 连接串；没给就读 `config.json` |
-| `VEXNAR_STORE=sqlite` | 不用 PG，退回 `app/.vexnar-home/vexnar/store` 下的单机库 |
-| `VEXNAR_RUNTIME_MODE=go` | 数据面回到 Go：拉起内置后端，请求整段转发 |
-| `VEXNAR_GO=on` | 编译并启动 Go 后端（对照验证用；默认不启动） |
-| `VEXNAR_GO=off` | 不启动内置后端，改用 `VEXNAR_GO_URL` 指定的外部服务 |
-| `VEXNAR_GO_DATA=on` | 领域接口转给 Go（默认由 TS core 回答） |
-| `VEXNAR_GO_BIN` / `VEXNAR_GO_PORT` / `VEXNAR_GO_URL` | 指定二进制 / 端口 / 外部地址 |
+```sh
+pnpm --filter @vexnar/store run import:pg \
+  --config /path/to/config.json \
+  --base /path/to/existing/vexnar.sqlite \
+  --to /path/to/client-candidate.sqlite
+```
 
-当前 TS core 覆盖 248/301 条 Go 路由；未覆盖的会返回 501 加路径提示，不再回 HTML 404。
-已知 DTO 差异：`GET /api/tasks` 少了顶层 `active`（活跃探索 id），客户端 UI 不消费它。
+迁移在一个只读快照中导出业务表，逐表核对行数与 SHA-256，并检查 SQLite 完整性。原始行保存在 `legacy_pg_rows`，表结构摘要和校验记录保存在 `legacy_pg_tables`。任务、资产、发现及目录等历史数据另按客户端字段投影到 `kv` 和 `meta`。相同键保留 `--base` 中的本地值。执行配置和凭据留在原始归档中。这个文件包含私有数据，需和 profile 一样保护。
+
+迁移生成新文件之后，可以使用 `VEXNAR_SQLITE_PATH=/path/to/client-candidate.sqlite pnpm run web` 验收。正式替换前先停止客户端，并保留原文件及其 WAL。迁移不修改 PostgreSQL。
+
+独立 Go 服务保留自己的数据库配置。如果需要显式切回旧 API，可设置 `VEXNAR_RUNTIME_MODE=go`，配合 `VEXNAR_GO_URL` 或 `VEXNAR_GO=on` 使用。模型调用仍由账号插件在 dsh 进程内管理。
+
+旧 Go 服务的工具入口仅在显式 Go 模式中挂载。SQLite 客户端可以查询已迁移的历史记录和配置。
 
 ```sh
 pnpm run go:build            # 需要 Go 时：只编译，不启动

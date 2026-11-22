@@ -174,6 +174,17 @@ function settingsRow(row: { key: string; value: string | null }): [string, unkno
   }
 }
 
+/** Read the catalog projections through the caller's PostgreSQL snapshot. */
+export async function readPgCatalog(query: (sql: string) => Promise<Record<string, any>[]>): Promise<Record<string, unknown>> {
+  const catalog: Record<string, unknown> = {}
+  for (const [name, loader] of Object.entries(LOADERS)) {
+    catalog[name] = (await query(loader.sql)).map(loader.row)
+  }
+  const settings = await query('SELECT key, value FROM settings ORDER BY key') as { key: string; value: string | null }[]
+  catalog.settings = Object.fromEntries(settings.filter(row => !SENSITIVE_SETTING.test(row.key)).map(settingsRow))
+  return catalog
+}
+
 function settingsValue(value: unknown): string {
   if (typeof value === 'string') return value
   if (value === null || value === undefined) return ''

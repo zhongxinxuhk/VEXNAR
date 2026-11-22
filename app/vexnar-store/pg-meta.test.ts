@@ -75,6 +75,7 @@ const fallback: MetaStore = {
     return Object.fromEntries(local)
   },
   reload() {},
+  async editBuiltinToolDocumentation() { return false },
   async table<T = Row[]>(name: string): Promise<T> {
     return (local.get(name) ?? []) as T
   },

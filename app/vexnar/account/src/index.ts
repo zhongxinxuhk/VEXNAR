@@ -139,7 +139,7 @@ button[aria-label*="完全权限"] svg * { color: #dc2626 !important; stroke: #d
 
 // ── routes ─────────────────────────────────────────────────────────────────
 export function apply(ctx: AccountContext): void {
-  registerYakHistoryTools(ctx)
+  if (process.env.VEXNAR_RUNTIME_MODE === 'go') registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
     let core: typeof import('./core-embedded.js') | undefined
     const starting = import('./core-embedded.js').then(result => {

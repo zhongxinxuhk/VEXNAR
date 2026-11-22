@@ -1,79 +1,127 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { pgStore } from './src/pg-store.ts'
-import { openWriter, openMeta, dbPath } from './src/backend.ts'
 
-/**
- * Import an existing PostgreSQL deployment into the SQLite store.
- * One-time migration: read every domain table from PG and write it into the
- * single `vexnar.sqlite` kv/meta schema. PG is read-only here.
- */
-const here = dirname(fileURLToPath(import.meta.url))
-const repo = join(here, '..', '..')
-const cfg = JSON.parse(readFileSync(join(repo, 'config.json'), 'utf8')).database
+import { createHash } from 'node:crypto'
+import { chmodSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { backup, DatabaseSync } from 'node:sqlite'
+import { parseArgs } from 'node:util'
+import pg from 'pg'
+import { readPgCatalog } from './src/pg-meta.ts'
+import { projectClientData } from './src/client-snapshot.ts'
 
-const pg = pgStore({ host: cfg.host, port: cfg.port, user: cfg.user, password: cfg.password, database: cfg.dbname, ssl: false })
-await pg.init()
-const writer = openWriter()
-const meta = openMeta()
+const { values } = parseArgs({ options: {
+  config: { type: 'string' }, base: { type: 'string' }, to: { type: 'string' }, help: { type: 'boolean' }
+} })
+if (values.help) {
+  console.log('用法：pnpm run import:pg --to <新 SQLite> [--base <现有 SQLite>] [--config <config.json>]')
+  process.exit(0)
+}
+if (!values.to) throw new Error('需要 --to 指定新的 SQLite 文件')
+const target = resolve(values.to)
+if (existsSync(target)) throw new Error('目标已存在；迁移只生成新文件')
+if (values.base && !existsSync(values.base)) throw new Error('待保留的本地 SQLite 不存在')
 
-/** A row straight out of PostgreSQL: `pg` hands every column back untyped. */
-type PgRow = Record<string, unknown>
-const numericKey = (row: PgRow, field = 'id') => String(row[field])
-const putAll = async (table: string, rows: PgRow[], keyOf: (row: PgRow) => string = numericKey) => {
-  let n = 0
-  for (const row of rows) {
-    const key = keyOf(row)
-    if (!key) continue
-    await writer.put({ table, key, record: row })
-    n += 1
+const source = values.config ? resolve(values.config) : new URL('../../config.json', import.meta.url)
+const cfg = JSON.parse(readFileSync(source, 'utf8')).database
+if (!cfg?.host || !cfg?.dbname) throw new Error('config.json 缺少 PostgreSQL 连接配置')
+
+const pgClient = new pg.Client({
+  host: cfg.host, port: Number(cfg.port ?? 5432), user: cfg.user, password: cfg.password, database: cfg.dbname,
+  ssl: cfg.sslmode === 'disable' ? false : { rejectUnauthorized: true }, connectionTimeoutMillis: 8000
+})
+const quote = (identifier: string) => '"' + identifier.replaceAll('"', '""') + '"'
+type TableName = { schema_name: string; table_name: string }
+const countRow = (db: DatabaseSync, sql: string, ...params: string[]) => Number(db.prepare(sql).get(...params)?.n ?? 0)
+
+async function archiveTables(db: DatabaseSync) {
+  const query = await pgClient.query<TableName>(
+    "SELECT schemaname AS schema_name, tablename AS table_name FROM pg_catalog.pg_tables " +
+    "WHERE schemaname !~ '^pg_' AND schemaname <> 'information_schema' ORDER BY schemaname, tablename"
+  )
+  const putTable = db.prepare('INSERT INTO legacy_pg_tables VALUES (?, ?, ?, ?, ?)')
+  const putRow = db.prepare('INSERT INTO legacy_pg_rows VALUES (?, ?, ?, ?)')
+  const readRows = db.prepare('SELECT record FROM legacy_pg_rows WHERE schema_name=? AND table_name=? ORDER BY ordinal')
+  let total = 0
+
+  for (const table of query.rows) {
+    const { schema_name: schema, table_name: name } = table
+    const identifier = quote(schema) + '.' + quote(name)
+    const columns = await pgClient.query(
+      'SELECT column_name, data_type, udt_schema, udt_name, is_nullable, column_default FROM information_schema.columns ' +
+      'WHERE table_schema=$1 AND table_name=$2 ORDER BY ordinal_position', [schema, name]
+    )
+    const count = Number((await pgClient.query('SELECT count(*)::text AS n FROM ' + identifier)).rows[0]?.n)
+    const hash = createHash('sha256')
+    let ordinal = 0
+    await pgClient.query('DECLARE snapshot_rows NO SCROLL CURSOR FOR SELECT record FROM ' +
+      '(SELECT to_jsonb(t)::text AS record FROM ' + identifier + ' AS t) AS rows ORDER BY record COLLATE "C"')
+    for (;;) {
+      const { rows } = await pgClient.query<{ record: string }>('FETCH 256 FROM snapshot_rows')
+      if (rows.length === 0) break
+      for (const { record } of rows) {
+        putRow.run(schema, name, ++ordinal, record)
+        hash.update(record).update('\n')
+      }
+    }
+    await pgClient.query('CLOSE snapshot_rows')
+    const expected = hash.digest('hex')
+    const verification = createHash('sha256')
+    for (const row of readRows.iterate(schema, name)) verification.update(String(row.record)).update('\n')
+    const actual = countRow(db, 'SELECT count(*) AS n FROM legacy_pg_rows WHERE schema_name=? AND table_name=?', schema, name)
+    if (count !== ordinal || actual !== count || verification.digest('hex') !== expected) {
+      throw new Error('归档计数或摘要不一致：' + identifier)
+    }
+    putTable.run(schema, name, JSON.stringify(columns.rows), count, expected)
+    total += count
   }
-  console.log(`  ${table}: ${n}`)
+  return { tables: query.rowCount ?? 0, rows: total }
 }
 
-console.log(`importing into ${dbPath()}`)
-
-// Domain tables (keyed by id unless noted).
-const q = (sql: string) => pg.pool.query(sql)
-
-putAll('tasks', await pg.tasks.list())
-putAll('findings', await pg.findings.list(100000))
-putAll('assets', (await q(`SELECT id, type, company_id, task_ids, domain, root_domain, ip, c_segment, port, icp, bound_domains, open_ports, record_type, record_value, bundle_id, app_name, category, app_description, app_icp, url, service_type, service_name, favicon_mmh3, status_code, content_length, page_title, technologies, auth, method, params, extra, last_seen::text AS last_seen FROM assets`)).rows.map((r) => ({ ...r, task_ids: (r.task_ids ?? []).map(Number), company_id: r.company_id == null ? null : Number(r.company_id) })))
-putAll('companies', (await pg.companies.list()))
-putAll('task_scope', (await q("SELECT id, task_id, kind, company_id, COALESCE(domain,'') AS domain, COALESCE(net::text,'') AS net, COALESCE(value,'') AS value, COALESCE(source,'manual') AS source, COALESCE(reason,'') AS reason FROM task_scope")).rows)
-putAll('task_relations', (await q('SELECT task_id, source_task_id FROM task_relations')).rows, (r) => `${r.task_id}-${r.source_task_id}`)
-putAll('task_asset_links', (await q('SELECT task_id, asset_id, source, source_summary, source_node_id, created_at::text AS created_at FROM task_asset_links')).rows, (r) => `${r.task_id}-${r.asset_id}`)
-putAll('anchors', (await q('SELECT node_id, asset_id FROM exploration_anchors')).rows, (r) => `${r.node_id}-${r.asset_id}`)
-putAll('nodes', (await q(`SELECT id::text AS id, exploration_id, kind, state, payload, priority, origin, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') || ':00' AS created_at FROM exploration_nodes ORDER BY id`)).rows)
-putAll('edges', (await q('SELECT exploration_id, src_id::text AS src, dst_id::text AS dst, rel FROM exploration_edges')).rows, (r) => `${r.src}-${r.rel}-${r.dst}`)
-putAll('activity', (await q(`SELECT id::text AS id, exploration_id, node_id, worker, kind, tool, tool_use_id, is_error, summary, metadata, main_seg, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at, extract(epoch from created_at)::bigint AS created_unix FROM activity`)).rows)
-putAll('constraints', (await q(`SELECT id, exploration_id, kind, text, COALESCE(origin,'') AS origin, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') || to_char(created_at, 'OF') || ':00' AS created_at FROM task_constraints`)).rows)
-putAll('traffic_evidence_snapshots', (await q('SELECT id, to_jsonb(s) AS snapshot FROM traffic_evidence_snapshots s')).rows.map((r) => ({ id: r.id, snapshot: r.snapshot })))
-putAll('finding_traffic_bindings', (await q(`SELECT id, finding_id, snapshot_id, role, note, position, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.US') || to_char(created_at, 'OF') || ':00' AS created_at FROM finding_traffic_bindings`)).rows)
-putAll('schedules', (await q(`SELECT id, name, prompt, frequency, time_of_day, run_on_device, notify, new_chat_each_run, model, effort, agent_key, enabled, created_at::text AS created_at, COALESCE(last_fired_at::text,'') AS last_fired_at, COALESCE(next_fire_at::text,'') AS next_fire_at FROM schedules`)).rows)
-putAll('agent_triggers', (await q(`SELECT id, agent_key, enabled, interval_sec, on_finding, on_goal_met, on_task_timeout, on_tool_call, on_task_create, interval_message, finding_message, goal_message, task_timeout_message, tool_call_message, task_create_message, tool_names, COALESCE(last_fire::text,'') AS last_fire FROM agent_triggers`)).rows)
-
-// Meta domain (low-churn configuration).
-const metaTables: Record<string, string> = {
-  agents: 'SELECT * FROM agents',
-  tools: 'SELECT * FROM tools',
-  mcp: 'SELECT * FROM mcp_servers',
-  notify: 'SELECT * FROM notification_channels',
-  llmProfiles: 'SELECT * FROM llm_profiles',
-  taskCategories: 'SELECT * FROM task_categories',
-  taskTemplates: 'SELECT * FROM task_templates',
-  settings: `SELECT key, value FROM settings`
+mkdirSync(dirname(target), { recursive: true, mode: 0o700 })
+const stage = mkdtempSync(join(dirname(target), '.pg-snapshot-'))
+const file = join(stage, 'snapshot.sqlite')
+try {
+  if (values.base) {
+    const original = new DatabaseSync(resolve(values.base), { readOnly: true })
+    try { await backup(original, file) } finally { original.close() }
+  }
+  const db = new DatabaseSync(file)
+  chmodSync(file, 0o600)
+  try {
+    db.exec('PRAGMA journal_mode=DELETE')
+    db.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE IF NOT EXISTS kv(tbl TEXT NOT NULL, key TEXT NOT NULL, record TEXT NOT NULL, PRIMARY KEY(tbl,key));
+      CREATE TABLE IF NOT EXISTS meta(tbl TEXT PRIMARY KEY, record TEXT NOT NULL);
+      CREATE TABLE legacy_pg_tables(
+        schema_name TEXT NOT NULL, table_name TEXT NOT NULL, columns_json TEXT NOT NULL,
+        row_count INTEGER NOT NULL, sha256 TEXT NOT NULL, PRIMARY KEY(schema_name,table_name)
+      );
+      CREATE TABLE legacy_pg_rows(
+        schema_name TEXT NOT NULL, table_name TEXT NOT NULL, ordinal INTEGER NOT NULL,
+        record TEXT NOT NULL, PRIMARY KEY(schema_name,table_name,ordinal)
+      );
+    `)
+    await pgClient.connect()
+    await pgClient.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+    const schema = String((await pgClient.query('SELECT current_schema() AS name')).rows[0]?.name)
+    const snapshot = await archiveTables(db)
+    const catalog = await readPgCatalog(async sql => (await pgClient.query(sql)).rows)
+    const projection = projectClientData(db, schema, catalog)
+    await pgClient.query('COMMIT')
+    db.exec('COMMIT')
+    if (db.prepare('PRAGMA integrity_check').get()?.integrity_check !== 'ok') throw new Error('SQLite 完整性检查失败')
+    console.log(JSON.stringify({ ...snapshot, ...projection }))
+  } finally {
+    db.close()
+  }
+  // Linking beside the destination publishes a verified file and protects any
+  // existing database that appeared while the migration was running.
+  linkSync(file, target)
+  console.log('SQLite snapshot: ' + target)
+} finally {
+  await pgClient.end().catch(() => {})
+  rmSync(stage, { recursive: true, force: true })
 }
-const next: Record<string, PgRow[]> = {}
-for (const [name, sql] of Object.entries(metaTables)) {
-  next[name] = (await q(sql)).rows
-  console.log(`  meta:${name}: ${next[name].length}`)
-}
-await meta.save(next)
-
-await pg.pool.end()
-console.log('done')
