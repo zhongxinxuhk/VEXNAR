@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
-import { planLegacyBundles, type ProfileManifestLike } from './profile-migration.ts'
+import { planLegacyBundles, readLegacyManifests, type ProfileManifestLike } from './profile-migration.ts'
 
 const template = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
 
@@ -94,4 +97,30 @@ test('a local checkout specifier is never restored, even for a runtime-shipped n
     dsh: { profile: { bundles: ['legacy-local'] } },
   }
   assert.deepEqual(planLegacyBundles([manifest], { skip, installed: [], provided: () => true }), [])
+})
+
+test('skips malformed manifests and still restores bundles from valid profiles', t => {
+  const home = mkdtempSync(join(tmpdir(), 'vexnar-profile-migration-'))
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+
+  const manifests = {
+    'invalid-json': '{',
+    'invalid-root': 'null',
+    'invalid-bundles': JSON.stringify({ dsh: { profile: { bundles: {} } } }),
+    'invalid-dependency': JSON.stringify({
+      dependencies: { 'another-plugin': 123 },
+      dsh: { profile: { bundles: ['another-plugin'] } },
+    }),
+    valid: JSON.stringify(legacy),
+  }
+  for (const [profile, manifest] of Object.entries(manifests)) {
+    const directory = join(home, 'profiles', profile)
+    mkdirSync(directory, { recursive: true })
+    writeFileSync(join(directory, 'package.json'), manifest)
+  }
+
+  assert.deepEqual(planLegacyBundles(readLegacyManifests([home]), { skip, installed: [] }), [
+    { name: 'dsh-plugin-shop', version: '0.9.4' },
+    { name: 'dsh-craft-anything', version: '0.6.1' },
+  ])
 })
