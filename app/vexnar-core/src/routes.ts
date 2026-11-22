@@ -48,7 +48,6 @@ api.get('/api/task-templates', async (c) => c.json({ templates: await meta.table
 api.get('/api/companies', async (c) => c.json(await store.companies.list()))
 
 // ── tools / mcp / notify / settings (vexnar-meta) ────────────────────────
-api.get('/api/mcp', async (c) => c.json({ servers: await meta.table('mcp') }))
 api.get('/api/notify/channels', async (c) => c.json({ channels: await meta.table('notify') }))
 api.get('/api/settings', async (c) => c.json(await meta.table('settings')))
 
