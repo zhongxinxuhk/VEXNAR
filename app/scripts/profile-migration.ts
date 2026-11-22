@@ -22,12 +22,22 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { z } from 'zod'
 
 /** The part of a profile manifest the migration reads. */
 export interface ProfileManifestLike {
   readonly dependencies?: Readonly<Record<string, string>>
   readonly dsh?: { readonly profile?: { readonly bundles?: readonly string[] } }
 }
+
+const profileManifestSchema = z.object({
+  dependencies: z.record(z.string(), z.string()).optional(),
+  dsh: z.object({
+    profile: z.object({
+      bundles: z.array(z.string()).optional(),
+    }).optional(),
+  }).optional(),
+})
 
 /** One bundle to reinstall into the current profile. */
 export interface LegacyBundle {
@@ -89,9 +99,9 @@ export function readLegacyManifests(homes: readonly string[]): ProfileManifestLi
     for (const name of readdirSync(profiles, { withFileTypes: true })) {
       if (!name.isDirectory()) continue
       const file = join(profiles, name.name, 'package.json')
-      if (!existsSync(file)) continue
       try {
-        manifests.push(JSON.parse(readFileSync(file, 'utf8')) as ProfileManifestLike)
+        const manifest = profileManifestSchema.safeParse(JSON.parse(readFileSync(file, 'utf8')))
+        if (manifest.success) manifests.push(manifest.data)
       } catch {
         // A half-written manifest from an interrupted install is not a source of truth.
       }
