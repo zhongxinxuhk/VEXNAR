@@ -2878,7 +2878,8 @@ textarea.vx-int-prompt {
 .vx-int-overlay {
   position: fixed;
   inset: 0;
-  z-index: 900;
+  /* dsh 的设置弹窗为 1000，子对话框与设置同挂在 body。 */
+  z-index: 1020;
   display: flex;
   justify-content: flex-end;
   background: color-mix(in oklab, #000 34%, transparent);

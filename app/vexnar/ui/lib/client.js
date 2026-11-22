@@ -2900,7 +2900,8 @@ textarea.vx-int-prompt {
 .vx-int-overlay {
   position: fixed;
   inset: 0;
-  z-index: 900;
+  /* dsh \u7684\u8BBE\u7F6E\u5F39\u7A97\u4E3A 1000\uFF0C\u5B50\u5BF9\u8BDD\u6846\u4E0E\u8BBE\u7F6E\u540C\u6302\u5728 body\u3002 */
+  z-index: 1020;
   display: flex;
   justify-content: flex-end;
   background: color-mix(in oklab, #000 34%, transparent);
@@ -11355,7 +11356,8 @@ function TaskDetailPage({ id, onBack }) {
 
 // src/intercept/page.tsx
 var import_react10 = require("react");
-var reactDom = __toESM(require("react-dom"), 1);
+var import_react_dom2 = require("react-dom");
+var import_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 
 // src/intercept/api.ts
 var listOf2 = (value, key) => {
@@ -11463,7 +11465,6 @@ var errText = (error) => error instanceof Error ? error.message : String(error);
 
 // src/intercept/page.tsx
 var import_jsx_runtime8 = require("react/jsx-runtime");
-var createPortal2 = reactDom.createPortal;
 var TABS2 = [
   ["rules", "\u62E6\u622A\u89C4\u5219"],
   ["judge", "\u6A21\u578B\u914D\u7F6E"]
@@ -11500,19 +11501,6 @@ function useLoader(load, enabled2 = true) {
   }, [enabled2, tick]);
   return { ...state, loading, reload: () => setTick((value) => value + 1) };
 }
-function useEscape(active, close) {
-  (0, import_react10.useEffect)(() => {
-    if (!active) return;
-    const onKey = (event) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      close();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [active, close]);
-}
 var fmtTokens = (value) => {
   if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
   if (value >= 1e3) return `${(value / 1e3).toFixed(1)}k`;
@@ -11545,20 +11533,22 @@ function Field3({ label, hint, children }) {
     hint ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("small", { className: "vx-int-hint", children: hint }) : null
   ] });
 }
-function Overlay({ children, onClose }) {
-  const layer = /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
-    "div",
-    {
-      className: "vx-int-overlay",
-      role: "presentation",
-      onMouseDown: (event) => {
-        if (event.target === event.currentTarget) onClose();
-      },
-      children
-    }
+function Overlay({ children, onClose, dialog }) {
+  (0, import_dsh_client_ui_primitives.useModalLayer)(dialog, true, onClose);
+  return (0, import_react_dom2.createPortal)(
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      "div",
+      {
+        className: "vx-int-overlay",
+        role: "presentation",
+        onMouseDown: (event) => {
+          if (event.target === event.currentTarget) onClose();
+        },
+        children
+      }
+    ),
+    document.body
   );
-  const host = typeof document === "undefined" ? void 0 : document.body;
-  return host && typeof createPortal2 === "function" ? createPortal2(layer, host) : layer;
 }
 var PlusIcon = () => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M6 2.25v7.5M2.25 6h7.5", stroke: "currentColor", strokeWidth: "1.4", strokeLinecap: "round" }) });
 var PencilIcon = () => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("svg", { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
@@ -11612,7 +11602,7 @@ function ScopeBar({
         names.join("\u3001")
       ] })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "vx-int-bar-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { onClick: onEdit, children: "\u8C03\u6574\u8303\u56F4" }) })
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "vx-int-bar-actions", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { disabled: loading || !!error, onClick: onEdit, children: "\u8C03\u6574\u8303\u56F4" }) })
   ] });
 }
 function RulesTab() {
@@ -11667,21 +11657,21 @@ function RulesTab() {
   return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-stack", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "vx-int-hint", children: "\u6309\u4F18\u5148\u7EA7\uFF08\u6570\u5B57\u8D8A\u5927\u8D8A\u5148\uFF09\u9010\u6761\u5339\u914D\uFF0C\u9996\u6761\u547D\u4E2D\u7684\u89C4\u5219\u751F\u6548" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "vx-int-count", children: [
+      rules.data !== void 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "vx-int-count", children: [
         "\u5171 ",
         rows.length,
         " \u6761\u89C4\u5219 \xB7 ",
         enabledCount,
         " \u6761\u542F\u7528"
-      ] }),
+      ] }) : null,
       enabledCount < rows.length ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { tone: "ghost", disabled: bulk, onClick: () => void enableAll(), children: bulk ? "\u542F\u7528\u4E2D\u2026" : "\u5168\u90E8\u542F\u7528" }) : null,
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Button, { tone: "primary", onClick: () => setCreating(true), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Button, { tone: "primary", disabled: rules.data === void 0, onClick: () => setCreating(true), children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(PlusIcon, {}),
         "\u65B0\u5EFA\u89C4\u5219"
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ErrorLine, { error: error || rules.error }),
-    rules.loading && rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Empty2, { text: "\u8BFB\u53D6\u62E6\u622A\u89C4\u5219\u2026" }) : rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-empty", children: [
+    rules.loading && rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Empty2, { text: "\u8BFB\u53D6\u62E6\u622A\u89C4\u5219\u2026" }) : rules.data === void 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Button, { onClick: rules.reload, children: "\u91CD\u8BD5" }) : rows.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-empty", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Empty2, { text: "\u6682\u65E0\u62E6\u622A\u89C4\u5219", hint: "\u6CA1\u6709\u89C4\u5219\u547D\u4E2D\u65F6\uFF0C\u5DE5\u5177\u8C03\u7528\u53EA\u53D7\u62E6\u622A\u8303\u56F4\u4E0E\u6A21\u578B\u515C\u5E95\u7EA6\u675F\u3002" }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(Button, { onClick: () => setCreating(true), children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(PlusIcon, {}),
@@ -11774,10 +11764,8 @@ function ConfirmDelete({
   onCancel,
   onConfirm
 }) {
-  const close = (0, import_react10.useRef)(onCancel);
-  close.current = onCancel;
-  useEscape(true, () => close.current());
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose: onCancel, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-modal", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u89C4\u5219", children: [
+  const dialog = (0, import_react10.useRef)(null);
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose: onCancel, dialog, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { ref: dialog, tabIndex: -1, className: "vx-int-modal", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u89C4\u5219", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: "vx-int-sheet-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h2", { className: "vx-int-sheet-title", children: "\u5220\u9664\u89C4\u5219" }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("p", { className: "vx-int-sheet-sub", children: [
@@ -11818,9 +11806,7 @@ function RuleEditor({
   const [saving, setSaving] = (0, import_react10.useState)(false);
   const [error, setError] = (0, import_react10.useState)("");
   const [regexWarn, setRegexWarn] = (0, import_react10.useState)(false);
-  const close = (0, import_react10.useRef)(onClose);
-  close.current = onClose;
-  useEscape(true, () => close.current());
+  const dialog = (0, import_react10.useRef)(null);
   (0, import_react10.useEffect)(() => {
     if (draft.match_type !== "regex" || !draft.pattern) {
       setRegexWarn(false);
@@ -11863,7 +11849,7 @@ function RuleEditor({
       setSaving(false);
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("aside", { className: "vx-int-sheet", role: "dialog", "aria-modal": "true", "aria-label": rule ? "\u7F16\u8F91\u89C4\u5219" : "\u65B0\u5EFA\u89C4\u5219", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose, dialog, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("aside", { ref: dialog, tabIndex: -1, className: "vx-int-sheet", role: "dialog", "aria-modal": "true", "aria-label": rule ? "\u7F16\u8F91\u89C4\u5219" : "\u65B0\u5EFA\u89C4\u5219", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: "vx-int-sheet-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h2", { className: "vx-int-sheet-title", children: rule ? "\u7F16\u8F91\u89C4\u5219" : "\u65B0\u5EFA\u89C4\u5219" }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "vx-int-sheet-sub", children: "\u4F18\u5148\u7EA7\u8D8A\u5927\u8D8A\u5148\u5339\u914D\uFF1B\u9996\u6761\u547D\u4E2D\u751F\u6548\uFF0C\u540E\u7EED\u8DF3\u8FC7\u3002" })
@@ -11875,7 +11861,7 @@ function RuleEditor({
           className: "vx-int-control",
           placeholder: "\u7ED9\u89C4\u5219\u8D77\u4E2A\u540D\u5B57",
           value: draft.name,
-          autoFocus: true,
+          "data-modal-autofocus": true,
           onChange: (event) => patch2({ name: event.target.value })
         }
       ) }),
@@ -12052,9 +12038,7 @@ function ScopeDialog({
   const [picked, setPicked] = (0, import_react10.useState)(() => new Set(tools));
   const [saving, setSaving] = (0, import_react10.useState)(false);
   const [error, setError] = (0, import_react10.useState)("");
-  const close = (0, import_react10.useRef)(onClose);
-  close.current = onClose;
-  useEscape(true, () => close.current());
+  const dialog = (0, import_react10.useRef)(null);
   const groups = toolGroups(catalog.data ?? []);
   const toggle = (key) => {
     setPicked((current) => {
@@ -12076,7 +12060,7 @@ function ScopeDialog({
       setSaving(false);
     }
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "vx-int-modal", role: "dialog", "aria-modal": "true", "aria-label": "\u62E6\u622A\u8303\u56F4", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Overlay, { onClose, dialog, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { ref: dialog, tabIndex: -1, className: "vx-int-modal", role: "dialog", "aria-modal": "true", "aria-label": "\u62E6\u622A\u8303\u56F4", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: "vx-int-sheet-head", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("h2", { className: "vx-int-sheet-title", children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(FilterIcon, {}),

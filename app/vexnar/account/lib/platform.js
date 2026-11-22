@@ -355,7 +355,8 @@ function installPlatform(ctx) {
   route("/ready", { GET: () => ({ ready }) });
   route("/methods", { GET: () => account.methods() });
   route("/account", {
-    GET: () => refresh(),
+    // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
+    GET: () => ready ? account.status() : refresh(),
     DELETE: async () => {
       if (browserTask) throw new PlatformError(409, "\u8BF7\u5173\u95ED\u5E73\u53F0\u767B\u5F55\u7A97\u53E3\u540E\u518D\u8BD5");
       await account.logout();

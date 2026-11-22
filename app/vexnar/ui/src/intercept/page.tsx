@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
-import * as reactDom from 'react-dom'
+import type { ReactNode, RefObject } from 'react'
+import { createPortal } from 'react-dom'
+import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 
 import { Button, Card, Empty, ErrorLine } from '../tasks/ui.js'
 import { DEFAULT_SCOPE_TOOLS, errText, interceptApi } from './api.js'
@@ -28,9 +29,6 @@ import type {
  * 拦截范围（哪些工具进入匹配）、模型兜底审批的配置与用量。区别只在渲染层——这里
  * 用 dsh 的别名 token，跟着壳的主题、字号和深色模式走，不引入第二套组件库。
  */
-
-/** dsh 的客户端模块表提供 react-dom；取不到时抽屉退化成行内浮层，功能不受影响。 */
-const createPortal = (reactDom as { createPortal?: (node: ReactNode, host: Element) => ReactNode }).createPortal
 
 const TABS = [
   ['rules', '拦截规则'],
@@ -80,23 +78,6 @@ function useLoader<T>(load: () => Promise<T>, enabled = true): Loaded<T> {
   return { ...state, loading, reload: () => setTick((value) => value + 1) }
 }
 
-/** Esc 关闭浮层：抽屉和对话框都必须能被键盘关掉。 */
-function useEscape(active: boolean, close: () => void): void {
-  useEffect(() => {
-    if (!active) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      // 抽屉开在设置弹窗里：Esc 先关最上面这一层。不拦下来，宿主会顺手把
-      // 整个设置弹窗一起关掉（它也在 window 上监听 Esc）。
-      event.preventDefault()
-      event.stopPropagation()
-      close()
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [active, close])
-}
-
 const fmtTokens = (value: number): string => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
@@ -141,8 +122,13 @@ function Field({ label, hint, children }: { label: string; hint?: ReactNode; chi
   )
 }
 
-function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }): ReactNode {
-  const layer = (
+function Overlay({ children, onClose, dialog }: {
+  children: ReactNode
+  onClose: () => void
+  dialog: RefObject<HTMLElement | null>
+}): ReactNode {
+  useModalLayer(dialog, true, onClose)
+  return createPortal(
     <div
       className="vx-int-overlay"
       role="presentation"
@@ -151,13 +137,9 @@ function Overlay({ children, onClose }: { children: ReactNode; onClose: () => vo
       }}
     >
       {children}
-    </div>
+    </div>,
+    document.body
   )
-  // 挂到 body：设置弹窗（以及 Claude Style 皮肤）会在中间层放 transform，
-  // 那会把 position: fixed 的容器换成那一层，抽屉于是从弹窗左上角开始、
-  // 超出窗口右边缘并被裁掉。宿主自己的设置弹窗也是 createPortal 到 body 的。
-  const host = typeof document === 'undefined' ? undefined : document.body
-  return host && typeof createPortal === 'function' ? createPortal(layer, host) : layer
 }
 
 const PlusIcon = (): ReactNode => (
@@ -238,7 +220,7 @@ function ScopeBar({
         )}
       </div>
       <div className="vx-int-bar-actions">
-        <Button onClick={onEdit}>调整范围</Button>
+        <Button disabled={loading || !!error} onClick={onEdit}>调整范围</Button>
       </div>
     </div>
   )
@@ -305,15 +287,17 @@ function RulesTab(): ReactNode {
     <div className="vx-int-stack">
       <div className="vx-int-head">
         <span className="vx-int-hint">按优先级（数字越大越先）逐条匹配，首条命中的规则生效</span>
-        <span className="vx-int-count">
-          共 {rows.length} 条规则 · {enabledCount} 条启用
-        </span>
+        {rules.data !== undefined ? (
+          <span className="vx-int-count">
+            共 {rows.length} 条规则 · {enabledCount} 条启用
+          </span>
+        ) : null}
         {enabledCount < rows.length ? (
           <Button tone="ghost" disabled={bulk} onClick={() => void enableAll()}>
             {bulk ? '启用中…' : '全部启用'}
           </Button>
         ) : null}
-        <Button tone="primary" onClick={() => setCreating(true)}>
+        <Button tone="primary" disabled={rules.data === undefined} onClick={() => setCreating(true)}>
           <PlusIcon />
           新建规则
         </Button>
@@ -323,6 +307,8 @@ function RulesTab(): ReactNode {
 
       {rules.loading && rows.length === 0 ? (
         <Empty text="读取拦截规则…" />
+      ) : rules.data === undefined ? (
+        <Button onClick={rules.reload}>重试</Button>
       ) : rows.length === 0 ? (
         <div className="vx-int-empty">
           <Empty text="暂无拦截规则" hint="没有规则命中时，工具调用只受拦截范围与模型兜底约束。" />
@@ -441,12 +427,10 @@ function ConfirmDelete({
   onCancel: () => void
   onConfirm: () => void
 }): ReactNode {
-  const close = useRef(onCancel)
-  close.current = onCancel
-  useEscape(true, () => close.current())
+  const dialog = useRef<HTMLDivElement>(null)
   return (
-    <Overlay onClose={onCancel}>
-      <div className="vx-int-modal" role="dialog" aria-modal="true" aria-label="删除规则">
+    <Overlay onClose={onCancel} dialog={dialog}>
+      <div ref={dialog} tabIndex={-1} className="vx-int-modal" role="dialog" aria-modal="true" aria-label="删除规则">
         <header className="vx-int-sheet-head">
           <h2 className="vx-int-sheet-title">删除规则</h2>
           <p className="vx-int-sheet-sub">
@@ -499,9 +483,7 @@ function RuleEditor({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [regexWarn, setRegexWarn] = useState(false)
-  const close = useRef(onClose)
-  close.current = onClose
-  useEscape(true, () => close.current())
+  const dialog = useRef<HTMLElement>(null)
 
   // 浏览器只认识 JS RegExp，Go 的 RE2 还接受 (?i) 一类内联 flag：
   // 这里只在 JS 语法确实不合法时提示“服务端最终校验”，不拦提交。
@@ -551,8 +533,8 @@ function RuleEditor({
   }
 
   return (
-    <Overlay onClose={onClose}>
-      <aside className="vx-int-sheet" role="dialog" aria-modal="true" aria-label={rule ? '编辑规则' : '新建规则'}>
+    <Overlay onClose={onClose} dialog={dialog}>
+      <aside ref={dialog} tabIndex={-1} className="vx-int-sheet" role="dialog" aria-modal="true" aria-label={rule ? '编辑规则' : '新建规则'}>
         <header className="vx-int-sheet-head">
           <h2 className="vx-int-sheet-title">{rule ? '编辑规则' : '新建规则'}</h2>
           <p className="vx-int-sheet-sub">优先级越大越先匹配；首条命中生效，后续跳过。</p>
@@ -564,7 +546,7 @@ function RuleEditor({
               className="vx-int-control"
               placeholder="给规则起个名字"
               value={draft.name}
-              autoFocus
+              data-modal-autofocus
               onChange={(event) => patch({ name: event.target.value })}
             />
           </Field>
@@ -761,9 +743,7 @@ function ScopeDialog({
   const [picked, setPicked] = useState<Set<string>>(() => new Set(tools))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const close = useRef(onClose)
-  close.current = onClose
-  useEscape(true, () => close.current())
+  const dialog = useRef<HTMLDivElement>(null)
 
   const groups = toolGroups(catalog.data ?? [])
 
@@ -790,8 +770,8 @@ function ScopeDialog({
   }
 
   return (
-    <Overlay onClose={onClose}>
-      <div className="vx-int-modal" role="dialog" aria-modal="true" aria-label="拦截范围">
+    <Overlay onClose={onClose} dialog={dialog}>
+      <div ref={dialog} tabIndex={-1} className="vx-int-modal" role="dialog" aria-modal="true" aria-label="拦截范围">
         <header className="vx-int-sheet-head">
           <h2 className="vx-int-sheet-title">
             <FilterIcon />
