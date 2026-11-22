@@ -126,7 +126,7 @@ function apply(ctx) {
           }
           const url = new URL(req.url || "/", "http://127.0.0.1");
           url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
-          const configRoute = !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles"].includes(url.pathname);
+          const configRoute = !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && ["/api/tools", "/api/llm/profiles", "/api/mcp"].includes(url.pathname);
           const app = configRoute ? void 0 : await getCore();
           if (!configRoute && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });

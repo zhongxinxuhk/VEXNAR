@@ -33329,6 +33329,7 @@ function registerSettingsCatalog(api) {
     const rows = await meta3.table("tools");
     return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) });
   });
+  api.get("/api/mcp", async (c) => c.json({ servers: await meta3.table("mcp") }));
 }
 
 // src/settings-embedded.ts

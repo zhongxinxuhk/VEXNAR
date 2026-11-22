@@ -180,6 +180,12 @@ check('设置构建产物读取同一份规则', settingsRules.status === 200 &&
 const settingsScope = await settingsRequest('/api/intercept/tool-config')
 check('设置构建产物加载范围', settingsScope.status === 200 &&
   JSON.stringify(await settingsScope.json()) === JSON.stringify(await getJson('/api/intercept/tool-config')))
+const storedServers = await meta.table<unknown[]>('mcp')
+const settingsMcp = await settingsRequest('/api/mcp')
+check('设置构建产物读取存储中的 MCP Server', storedServers.length > 0 && settingsMcp.status === 200 &&
+  JSON.stringify(await settingsMcp.json()) === JSON.stringify({ servers: storedServers }))
+const settingsMcpWrite = await handleSettings(new Request('http://127.0.0.1/api/mcp', { method: 'POST' }))
+check('设置构建产物的 MCP Server 目录只读', settingsMcpWrite.status === 404)
 check('设置构建产物不挂载任务路由', (await settingsRequest('/api/tasks')).status === 404)
 
 // ── 汇总 ───────────────────────────────────────────────────────────────────

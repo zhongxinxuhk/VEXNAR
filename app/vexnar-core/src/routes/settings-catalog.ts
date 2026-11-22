@@ -21,4 +21,5 @@ export function registerSettingsCatalog(api: Hono): void {
     const rows = await meta.table<any[]>('tools')
     return c.json({ tools: rows.map((row) => ({ ...row, agents: row.agents ?? [] })) })
   })
+  api.get('/api/mcp', async (c) => c.json({ servers: await meta.table('mcp') }))
 }
