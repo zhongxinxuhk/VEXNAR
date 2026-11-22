@@ -158,13 +158,13 @@ api.delete('/api/tasks/:id', async (c) => {
     store.invalidate?.(['tasks'])
     return c.json(result)
   } catch (error: any) {
-    return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400)
+    return c.json({ error: String(error?.message ?? error) }, error?.name === 'StoreConflict' ? 409 : error?.status ?? 400)
   }
 })
 
 api.post('/api/tasks/:id/archive', async (c) => {
   try { const result = await operations.archiveTask(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
-  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.name === 'StoreConflict' ? 409 : error?.status ?? 400) }
 })
 
 api.post('/api/tasks/archive/batch', async (c) => {
@@ -180,8 +180,8 @@ api.post('/api/tasks/archive/batch', async (c) => {
 })
 
 api.get('/api/task-archives', async (c) => {
-  const page = Math.max(Number(c.req.query('page') ?? 1) || 1, 1)
-  const size = Math.min(Number(c.req.query('size') ?? 20) || 20, 200)
+  const page = Math.max(Math.floor(Number(c.req.query('page'))) || 1, 1)
+  const size = Math.min(Math.max(Math.floor(Number(c.req.query('size'))) || 20, 1), 200)
   const all = await operations.listArchives()
   return c.json({ items: all.slice((page - 1) * size, page * size), total: all.length, page, size })
 })
@@ -194,12 +194,12 @@ api.get('/api/task-archives/:id', async (c) => {
 
 api.post('/api/task-archives/:id/restore', async (c) => {
   try { const result = await operations.restoreArchive(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
-  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.name === 'StoreConflict' ? 409 : error?.status ?? 400) }
 })
 
 api.delete('/api/task-archives/:id', async (c) => {
   try { const result = await operations.deleteArchive(c.req.param('id')); store.invalidate?.(['tasks']); return c.json(result) }
-  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.status ?? 400) }
+  catch (error: any) { return c.json({ error: String(error?.message ?? error) }, error?.name === 'StoreConflict' ? 409 : error?.status ?? 400) }
 })
 
 api.post('/api/tasks/:id/control', async (c) => {

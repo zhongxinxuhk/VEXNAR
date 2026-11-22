@@ -199,6 +199,8 @@ export type ApprovalRow = {
 }
 export type MainSessions = { sessions: Array<{ seq: number; created_at: string }>; current: number }
 
+export type TaskArchive = { id: number; task_id: number; task_name?: string; state: string; archived_at?: string }
+
 export const tasksApi = {
   list: (params: { q?: string; status?: string; page?: number; size?: number }) =>
     get<TaskPage>(`/tasks${query({ q: params.q, status: params.status, page: params.page, size: params.size })}`),
@@ -208,6 +210,9 @@ export const tasksApi = {
   control: (id: string, action: 'start' | 'pause' | 'resume' | 'stop') =>
     post<{ status: string }>(`/tasks/${encodeURIComponent(id)}/control`, { action }),
   archive: (id: string) => post<unknown>(`/tasks/${encodeURIComponent(id)}/archive`),
+  archives: (page: number) => get<{ items: TaskArchive[] | null; total: number }>(`/task-archives${query({ page, size: 20 })}`),
+  restoreArchive: (id: number) => post<unknown>(`/task-archives/${id}/restore`),
+  deleteArchive: (id: number) => del<unknown>(`/task-archives/${id}`),
   remove: (id: string) => del<unknown>(`/tasks/${encodeURIComponent(id)}`),
 
   stats: (id: string) => get<Record<string, unknown>>(`/stats${query({ task: id })}`),

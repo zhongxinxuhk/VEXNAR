@@ -18,6 +18,7 @@ const routes = new Set(['POST /api/yak/history'])
  */
 const prefixes = [
   '/api/tasks',
+  '/api/task-archives',
   '/api/exploration',
   '/api/assets',
   '/api/traffic',
