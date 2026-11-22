@@ -23,8 +23,8 @@
  *     and keeps every platform module external.
  */
 import { build } from 'esbuild'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -58,6 +58,7 @@ const externals = [
 ]
 
 await mkdir(lib, { recursive: true })
+await copyFile(join(here, '../../../yakhistory/wire/history.proto'), join(lib, 'yak-history.proto'))
 await build({
   entryPoints: hostEntries,
   outdir: lib,
@@ -68,6 +69,40 @@ await build({
   legalComments: 'none',
   logLevel: 'warning'
 })
+
+// Keep the IPC reader self-contained so an existing dsh profile can load it
+// using its current package tree and build permissions.
+const yakBundle = await build({
+  entryPoints: [join(here, 'src/yak-history.ts')],
+  outfile: join(lib, 'yak-history.js'),
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: ['node22'],
+  metafile: true,
+  banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
+  legalComments: 'eof',
+  logLevel: 'warning'
+})
+const packageRoots = new Set<string>()
+const modules = sep + 'node_modules' + sep
+for (const input of Object.keys(yakBundle.metafile.inputs)) {
+  const path = resolve(input)
+  const index = path.lastIndexOf(modules)
+  if (index === -1) continue
+  const start = index + modules.length
+  const parts = path.slice(start).split(sep)
+  packageRoots.add(path.slice(0, start) + parts.slice(0, parts[0]?.startsWith('@') ? 2 : 1).join(sep))
+}
+const notices: string[] = []
+for (const root of [...packageRoots].sort()) {
+  const pack = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  const files = (await readdir(root)).filter(name => /^(licen[sc]e|notice|copying)(\.|$)/i.test(name)).sort()
+  const texts = await Promise.all(files.map(name => readFile(join(root, name), 'utf8')))
+  notices.push(`${pack.name} ${pack.version} (${pack.license})\n` +
+    texts.map(text => text.split(/\r?\n/).map(line => line.trimEnd()).join('\n').trimEnd()).join('\n'))
+}
+await writeFile(join(lib, 'yak-history.NOTICES.txt'), notices.join('\n\n') + '\n')
 
 const cjs = join(lib, 'client.cjs')
 await build({
@@ -95,4 +130,4 @@ const wrapped = [
   ''
 ].join('\n')
 await writeFile(join(lib, 'client.js'), wrapped)
-console.log(`built ${id} -> lib/*.js (${hostEntries.length} host modules) + lib/client.js (${wrapped.length} bytes)`)
+console.log(`built ${id} -> lib/*.js (${hostEntries.length + 1} host modules) + lib/client.js (${wrapped.length} bytes)`)

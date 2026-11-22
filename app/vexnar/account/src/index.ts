@@ -188,18 +188,28 @@ export function apply(ctx: AccountContext): void {
           }
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
+          const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
+          const nativeYakHistory = readingYakHistory && !goMode
+          const remoteAddress = req.socket.remoteAddress
+          const localPeer = remoteAddress !== undefined &&
+            ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remoteAddress)
+          if (nativeYakHistory && !localPeer) {
+            res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify({ error: 'Yak 流量接口仅供本机 VEXNAR 客户端' }))
+            return
+          }
           const toolDocumentation = (req.method === 'PUT' && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname)) ||
             (req.method === 'POST' && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname))
           const configRoute = toolDocumentation || isNotificationSetting(req.method, url.pathname) ||
             (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
             (req.method === 'GET' && isStoredDataRead(url.pathname, goMode))
-          const app = configRoute ? undefined : await getCore()
-          if (!configRoute && !app) {
+          const app = configRoute || nativeYakHistory ? undefined : await getCore()
+          if (!configRoute && !nativeYakHistory && !app) {
             res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
             res.end(JSON.stringify({ error: 'VEXNAR 领域服务尚未就绪' }))
             return
           }
-          if (configRoute || app?.isGoDataRequest(req.method, url.pathname)) {
+          if (configRoute || nativeYakHistory || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req)
             if (rejection) {
               res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
@@ -207,7 +217,6 @@ export function apply(ctx: AccountContext): void {
               return
             }
           }
-          const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
           const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 :
             url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
           const chunks: Buffer[] = []
@@ -257,12 +266,11 @@ export function apply(ctx: AccountContext): void {
           if (req.method !== undefined) init.method = req.method
           if (body !== undefined) init.body = body
           const request = new Request(url, init)
-          const remoteAddress = req.socket.remoteAddress
-          const localPeer = remoteAddress !== undefined &&
-            ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remoteAddress)
-          const response = configRoute
-            ? await (await import('./settings-embedded.js')).handleSettings(request)
-            : await app!.handle(request, localPeer)
+          const response = nativeYakHistory
+            ? await (await import('./yak-history.js')).handleYakHistory(request)
+            : configRoute
+              ? await (await import('./settings-embedded.js')).handleSettings(request)
+              : await app!.handle(request, localPeer)
           const responseHeaders: Record<string, string> = {}
           for (const [key, value] of response.headers.entries()) responseHeaders[key] = value
           res.writeHead(response.status, responseHeaders)

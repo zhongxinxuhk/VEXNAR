@@ -32,8 +32,10 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {
+    "@grpc/grpc-js": "^1.14.7",
     "@types/react": "^18.3.31",
     "esbuild": "^0.25.0",
+    "protobufjs": "7.6.6",
     "typescript": "^6.0.3",
     "@types/node": "^26.6.6"
   },
