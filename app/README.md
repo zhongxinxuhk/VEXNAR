@@ -153,6 +153,15 @@ VEXNAR 使用 `app/.vexnar-home`（可用 `VEXNAR_HOME` 指定独立目录）和
 pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续保留。
 账户配置见 [账户和模型](./vexnar/account/README.md)。
 
+## 更新客户端
+
+源码安装从已验证的仓库版本运行。升级前停止 dsh，备份当前 profile，以及通过
+`VEXNAR_SQLITE_PATH` 单独指定的数据库。切换到目标版本后，在 `app/` 依次运行
+`pnpm install --frozen-lockfile`、`pnpm run build`、`pnpm run setup`，然后用原来的
+`VEXNAR_HOME` 和数据路径启动。回退时用上一版本重新构建，并使用该版本对应的数据备份。
+
+dsh 的更新接口会返回工作区管理状态。Go 服务在自己的 Web 控制台中管理 Go 二进制更新。
+
 ## 皮肤：内嵌 dsh-claude-style
 
 Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-claude-style)
