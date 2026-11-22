@@ -59,7 +59,6 @@ export async function startWeb(
   const env: Record<string, string> = {
     ...runtimeEnv(), ...databaseEnv(), VEXNAR_RUNTIME_MODE: mode, ...(go.url ? { VEXNAR_GO_URL: go.url } : {})
   }
-  if (mode === 'ts') console.log('[vexnar] 运行时底座：TS core（不启动 Go）')
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {

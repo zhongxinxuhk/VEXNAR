@@ -37,6 +37,15 @@
 - insert:
     - id: vexnar-egress
       name: '@vexnar/dsh-egress'
+      # 旧 profile 的依赖清单可能没有这个可选插件。
+      disabled: !!js >-
+        (() => {
+          const profile = ctx.get('profileContext')
+          if (!profile) return true
+          const { existsSync } = process.getBuiltinModule('node:fs')
+          const { join } = process.getBuiltinModule('node:path')
+          return !existsSync(join(profile.dir, 'node_modules', '@vexnar', 'dsh-egress', 'index.js'))
+        })()
       config:
         coreUrl: http://127.0.0.1:8790
         tokenEnv: VEXNAR_API_TOKEN

@@ -89,8 +89,8 @@ const accountInject = accountPkg.dsh?.client?.inject ?? []
 ok('account client injects settings', accountInject.includes('@deepseek-ai/dsh-client-ui-settings'))
 
 const accountHost = readFileSync(join(app, 'vexnar/account/lib/platform.js'), 'utf8')
-ok('VEXNAR host uses the branded Go gateway', accountHost.includes('/api/desktop/vexnar'))
-ok('VEXNAR host synchronizes only the loopback model catalog', accountHost.includes("ctx.settings.replace('llm-pi-ai'"))
+ok('VEXNAR host installs in-process model completion', accountHost.includes('core.setModelCompletion(createModelCompletion('))
+ok('VEXNAR host synchronizes the llm-pi-ai model catalog', /ctx\.settings\.replace\(['"]llm-pi-ai['"],\s*\{ providers \}\)/.test(accountHost))
 ok('VEXNAR disables upstream model settings', /id: ui-settings-models\s+disabled: true/.test(patch))
 
 const accountBundle = join(app, 'vexnar/account/lib/client.js')

@@ -226,7 +226,6 @@ export async function startGoService(options: { log?: Log } = {}): Promise<GoSer
   // 客户端默认不再需要 Go：领域接口由 TS core 回答，数据面走 PG（见 go-data.ts）。
   // 只有显式 VEXNAR_GO=on 才编译/启动它，用于对照验证。
   if (!/^(1|on|true|yes)$/i.test((process.env.VEXNAR_GO ?? '').trim())) {
-    log('[vexnar] 使用内置 TS core，不启动 Go（需要时设 VEXNAR_GO=on）')
     return { url: explicit || '', version: '', stop: () => {} }
   }
   if (explicit) {
