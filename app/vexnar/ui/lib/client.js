@@ -14521,8 +14521,8 @@ function RuleEditor({
 }
 var sdkTool = (key, description) => ({ key, description, system: true });
 var SDK_EXEC = [
-  sdkTool("Bash", "\u5728 shell \u4E2D\u6267\u884C\u547D\u4EE4\uFF08dsh \u8FD0\u884C\u65F6\u5DE5\u5177\u540D bash\uFF09"),
-  sdkTool("WebFetch", "\u53D1\u8D77 HTTP/HTTPS \u8BF7\u6C42\uFF08\u542B\u4EE3\u7406\u652F\u6301\uFF1Bdsh \u4E3A web_fetch\uFF09"),
+  sdkTool("Bash", "\u5728 shell \u4E2D\u6267\u884C\u547D\u4EE4"),
+  sdkTool("WebFetch", "\u53D1\u8D77 HTTP/HTTPS \u8BF7\u6C42\uFF08\u542B\u4EE3\u7406\u652F\u6301\uFF09"),
   sdkTool("web_search", "\u7F51\u7EDC\u641C\u7D22"),
   sdkTool("shell_open", "\u5F00\u542F\u6301\u4E45 PTY \u4EA4\u4E92\u4F1A\u8BDD"),
   sdkTool("shell_send", "\u5411\u4EA4\u4E92\u4F1A\u8BDD\u53D1\u9001\u8F93\u5165"),
@@ -14531,9 +14531,9 @@ var SDK_EXEC = [
   sdkTool("shell_list", "\u5217\u51FA\u6240\u6709\u4EA4\u4E92\u4F1A\u8BDD")
 ];
 var SDK_WRITE = [
-  sdkTool("Write", "\u5199\u5165\u6587\u4EF6\uFF08dsh \u4E3A write\uFF09"),
-  sdkTool("Edit", "\u7F16\u8F91\u6587\u4EF6\uFF08\u7CBE\u786E\u66FF\u6362\uFF1Bdsh \u4E3A edit / str_replace_editor\uFF09"),
-  sdkTool("MultiEdit", "\u6279\u91CF\u7F16\u8F91\u6587\u4EF6\uFF08dsh \u4E3A edit / apply_patch\uFF09")
+  sdkTool("Write", "\u5199\u5165\u6587\u4EF6"),
+  sdkTool("Edit", "\u7F16\u8F91\u6587\u4EF6\uFF08\u7CBE\u786E\u66FF\u6362\uFF09"),
+  sdkTool("MultiEdit", "\u6279\u91CF\u7F16\u8F91\u6587\u4EF6")
 ];
 var SDK_KEYS = new Set([...SDK_EXEC, ...SDK_WRITE].map((tool) => tool.key));
 function toolGroups(catalog) {
@@ -14591,7 +14591,7 @@ function ScopeDialog({
       /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { className: "vx-int-sheet-sub", children: [
         "\u53EA\u6709\u542F\u7528\u7684\u5DE5\u5177\u624D\u8FDB\u5165\u89C4\u5219\u5339\u914D\uFF1B\u5176\u4F59\u5DE5\u5177\u76F4\u63A5\u653E\u884C\u3002\u5DF2\u9009 ",
         picked.size,
-        " \u4E2A\u3002 \u540D\u79F0\u6309\u4E24\u5957\u8FD0\u884C\u65F6\u5BF9\u9F50\uFF1AClaude \u98CE\u683C\u7684 Bash / Write \u4E0E dsh \u7684 bash / write \u4E92\u76F8\u7B49\u4EF7\u3002"
+        " \u4E2A\u3002"
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "vx-int-sheet-body", children: [
