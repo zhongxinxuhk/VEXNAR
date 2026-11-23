@@ -122,9 +122,8 @@ test('apply registers every surface it owns', () => {
   const expected = [
     'tool.call.toolview:mcp__vexnar__report_finding',
     'tool.call.toolview:mcp__vexnar__traffic_get',
+    // 会话头部只挂一个入口：宿主只渲染这一个占位，采集开关在弹窗里。
     'conversation.session.header.actions:vexnar-yak-history',
-    // 抓包开关也挂在会话头部：它作用的是当前会话的抓包范围，与流量入口并列。
-    'conversation.session.header.actions:vexnar-session-capture',
     'conversation.hero.options:vexnar-yak-history',
     // 四个领域页，按 PANELS 的注册顺序；代理池也是主面板，漏了它侧边栏就少一个入口。
     ...['overview', 'tasks', 'traffic', 'egress']

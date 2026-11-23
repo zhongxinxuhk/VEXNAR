@@ -67,7 +67,17 @@ export function fmtTime(value: number | string | undefined): string {
   const sameDay = date.toDateString() === now.toDateString()
   const time = date.toLocaleTimeString('zh-CN', { hour12: false })
   if (sameDay) return time
-  return `${date.toLocaleDateString('zh-CN')} ${time}`
+  // 密集表格里「2026/11/21 15:30:12」宽过时间列，整列都被截成省略号；
+  // 非当天省掉年份与秒，悬停再给完整值（列上带 title）。
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/** 完整时间戳：表格列被截断时挂在 title 上，悬停可读原文。 */
+export function fmtTimeFull(value: number | string | undefined): string {
+  const ms = toMillis(value)
+  if (!ms) return '—'
+  return new Date(ms).toLocaleString('zh-CN', { hour12: false })
 }
 
 /** 相对时间：给「最近活动」这类列用。 */
