@@ -20,6 +20,7 @@ import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { planLegacyBundles, readLegacyManifests } from './profile-migration.ts'
+import { extrasSpecs, mergeBundleLayer, readExtras } from './vexnar-extras.ts'
 import { appDir, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
@@ -53,7 +54,26 @@ await writeFile(manifestPath, JSON.stringify(first, null, 2) + '\n')
 const bundleRoot = process.env.VEXNAR_BUNDLES || process.env.VEXNAR_DSH_BUNDLES
 const vxDir = bundleRoot ? resolve(bundleRoot, 'app', 'vexnar') : join(appDir, 'vexnar')
 const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account'), join(appDir, 'vexnar-egress')].map(dir => `file:${dir}`)
-const installed = spawnSync('pnpm', ['add', '--force', ...addons, ...theme], {
+
+// ── Extras preset ───────────────────────────────────────────────────────────
+// `app/vexnar/extras.json` 是安装时固化的插件预设：插件商店装的 bundle 只写当前
+// profile，换机器重跑 setup 不会自动回来。清单里的 spec 进 profile 依赖，包名进
+// bundle 层（排在皮肤与 @vexnar/app-bundle 之前）。VEXNAR_EXTRAS=off 可整体跳过。
+// 清单缺失时只跳过 extras，不阻断已经可用的安装；清单本身写坏则直接报错。
+const extrasFile = process.env.VEXNAR_EXTRAS_MANIFEST || join(vxDir, 'extras.json')
+const extras = process.env.VEXNAR_EXTRAS === 'off'
+  ? []
+  : await readExtras(extrasFile).catch((error) => {
+    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
+      console.warn(`[vexnar] 未找到预置插件清单 ${extrasFile}，跳过 extras`)
+      return []
+    }
+    throw error
+  })
+const extraNames = extras.map(item => item.name)
+if (extras.length) console.log(`[vexnar] 预置插件 ${extras.length} 个：${extraNames.join(', ')}`)
+
+const installed = spawnSync('pnpm', ['add', '--force', ...addons, ...theme, ...extrasSpecs(extras)], {
   cwd: profile, env: runtimeEnv(), stdio: 'inherit'
 })
 if (installed.error) throw installed.error
@@ -65,7 +85,7 @@ if (installed.status !== 0) process.exit(installed.status ?? 1)
 // adds a source; VEXNAR_MIGRATE_PROFILE=off skips the step.
 const legacyHomes: string[] = [process.env.VEXNAR_LEGACY_HOME, join(appDir, '.dsh-home')]
   .filter((home): home is string => home !== undefined && home !== '' && existsSync(home))
-const skip = (name: string): boolean => template.includes(name) || themeNames.includes(name) || name === bundle || name.startsWith('@vexnar/')
+const skip = (name: string): boolean => template.includes(name) || themeNames.includes(name) || extraNames.includes(name) || name === bundle || name.startsWith('@vexnar/')
 /** Whether the runtime itself ships a package, in which case only its bundle layer entry is missing. */
 const provided = (name: string): boolean => {
   try {
@@ -100,9 +120,13 @@ for (const { name, version } of plan) {
 // ── Bundle layer ────────────────────────────────────────────────────────────
 // One entry per bundle, VEXNAR's own rows last: re-running setup reorders but
 // never drops a bundle the user installed.
-const mine = new Set([...themeNames, bundle])
 const last = await readManifest()
-const ordered = (last.dsh.profile.bundles ?? []).filter(name => !mine.has(name))
-last.dsh.profile.bundles = [...new Set([...ordered, ...carried, ...themeNames, bundle])]
+last.dsh.profile.bundles = mergeBundleLayer({
+  existing: last.dsh.profile.bundles ?? [],
+  carried,
+  extras: extraNames,
+  theme: themeNames,
+  bundle
+})
 await writeFile(manifestPath, JSON.stringify(last, null, 2) + '\n')
 console.log('[vexnar] 隔离配置已就绪')

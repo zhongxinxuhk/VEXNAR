@@ -17,6 +17,7 @@
     "@deepseek-ai/dsh-mcp-manager": "0.2.2-rc.5"
   },
   "files": [
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "extras.json"
   ]
 }

@@ -197,6 +197,30 @@ Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-cla
 - **许可**：主题本体 MIT；`packages/client/src/features/sodium/` 与 `packages/engine/src/sheet-rewrite.ts`
   是 Sodium 引擎，采用 PolyForm Shield 1.0.0。本项目只把它作为依赖使用，不复制进仓库、不改许可头。
 
+## 预置插件包（extras preset）
+
+插件商店里装的 bundle 只写当前 profile 的 `package.json`；换一台机器重跑
+`pnpm run setup` 不会自动装回。`app/vexnar/extras.json` 把选定的 bundle 固化成
+安装时预设：
+
+- **清单**：每行 `{ name, spec, note }`。`name` 是写进 `dsh.profile.bundles` 的包名，
+  `spec` 是 `pnpm add` 参数。registry 包用 `name@version`；GitHub 包用
+  `github:owner/repo#40位commit`（必须锁 commit，上游重写历史才不至于装出另一个版本）。
+- **安装**：`setup-app-profile.ts` 读清单 → 一次性 `pnpm add` → 把包名写进 profile
+  的 bundle 层，位置在皮肤与 `@vexnar/app-bundle` 之前。
+- **顺序**：用户自己装的 bundle → 旧 home 迁回的 → 预置包 → 皮肤 → `@vexnar/app-bundle`。
+  重跑 setup 只稳定顺序，不丢用户装的 bundle。
+- **当前清单**：9 个 —— `dsh-agent-efficiency`、`@zhuifengqug/dsh-ant`、
+  `@zilliz/memsearch-dsh`、`dsh-purge-community`、`dsh-craft-anything`、
+  `dsh-infinite-gen-5`、`@linfengqaqtat/dsh-scriptor-retrieval`、
+  `@furongjun1999/dsh-memory`、`dsh-planning-with-files`。
+- **关闭/替换**：`VEXNAR_EXTRAS=off pnpm run setup` 整体跳过；
+  `VEXNAR_EXTRAS_MANIFEST=/path/extras.json` 换清单。清单缺失只跳过 extras，
+  清单写坏（缺字段、重名）直接报错，避免装半套。
+- **网络**：GitHub 包需要能访问 GitHub；离线安装要么预先把包放进 pnpm store，
+  要么用 `VEXNAR_EXTRAS=off`。
+- **不含 skills**：`app/dsh/.claude` 是 skills 符号链接，不是 bundle，不进清单。
+
 ## 运行与调试（WebStorm，全部用运行配置选项）
 
 WebStorm 工程根是 `app/`，配置在 `app/.idea/runConfigurations/`，用 WebStorm 的

@@ -1,0 +1,51 @@
+{
+  "preset": "vexnar-extras",
+  "$comment": "安装时固化的插件预设。setup-app-profile.ts 会 pnpm add 这里的每个 spec，并把 name 写进 profile 的 dsh.profile.bundles（排在皮肤与 @vexnar/app-bundle 之前）。新增/升级只改 spec；GitHub 包必须锁 commit。VEXNAR_EXTRAS=off 可整体跳过。",
+  "bundles": [
+    {
+      "name": "dsh-agent-efficiency",
+      "spec": "dsh-agent-efficiency@0.1.4",
+      "note": "代理效率面板：会话/工具耗时与重复调用分析"
+    },
+    {
+      "name": "@zhuifengqug/dsh-ant",
+      "spec": "@zhuifengqug/dsh-ant@0.2.0",
+      "note": "ANT 客户端增强"
+    },
+    {
+      "name": "@zilliz/memsearch-dsh",
+      "spec": "@zilliz/memsearch-dsh@0.1.9",
+      "note": "跨会话记忆检索（memory-recall / memory-config / memory-to-skill）"
+    },
+    {
+      "name": "dsh-purge-community",
+      "spec": "github:kingcharleslzy-ai/dsh-purge#003ae687b54d1da756a20de6b6cd77d0828768c0",
+      "note": "会话与缓存清理；锁 commit，避免上游重写历史导致不可复现"
+    },
+    {
+      "name": "dsh-craft-anything",
+      "spec": "dsh-craft-anything@0.6.1",
+      "note": "Craft Anything：把站点/应用还原成可分析工程"
+    },
+    {
+      "name": "dsh-infinite-gen-5",
+      "spec": "github:Minglink/dsh-infinite-gen-5#8604739aab14e23233c0a2b3783e26a701e9e6bd",
+      "note": "无限生成第 5 代；锁 commit"
+    },
+    {
+      "name": "@linfengqaqtat/dsh-scriptor-retrieval",
+      "spec": "@linfengqaqtat/dsh-scriptor-retrieval@8.4.1",
+      "note": "脚本/片段检索"
+    },
+    {
+      "name": "@furongjun1999/dsh-memory",
+      "spec": "@furongjun1999/dsh-memory@0.10.4",
+      "note": "长期记忆"
+    },
+    {
+      "name": "dsh-planning-with-files",
+      "spec": "dsh-planning-with-files@1.0.1",
+      "note": "文件形式的多步计划"
+    }
+  ]
+}
