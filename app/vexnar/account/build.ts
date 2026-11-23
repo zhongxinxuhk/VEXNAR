@@ -33,6 +33,7 @@ const lib = join(here, 'lib')
 
 /** 宿主半边：被 dsh / 登录页按路径加载的模块，全部要落成 .js。 */
 const hostEntries = [
+  'billing',
   'index',
   'platform',
   'platform-account',

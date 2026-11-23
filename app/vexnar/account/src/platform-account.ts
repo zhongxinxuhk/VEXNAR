@@ -478,7 +478,7 @@ function cookieHeader(response: Response): string {
  * 返回值里 `data` 只在响应确实是 JSON 时存在：调用方据此给出人话错误，而不是把
  * `Unexpected token` / `Unexpected non-whitespace character` 之类的解析异常抛给页面。
  */
-async function exchange(method: string, endpoint: string, options: ExchangeOptions = {}): Promise<ExchangeResult> {
+export async function exchange(method: string, endpoint: string, options: ExchangeOptions = {}): Promise<ExchangeResult> {
   const headers: Record<string, string> = { Accept: 'application/json', ...(options.headers || {}) }
   let body: string | undefined
   if (options.body !== undefined) {

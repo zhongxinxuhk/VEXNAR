@@ -5,11 +5,11 @@
 import { createElement as h, Fragment, useEffect, useRef, useState } from 'react'
 import type { DragEvent, FormEvent, ReactNode } from 'react'
 import type { AccountWallet } from './wallet-types.js'
+import { AppDialog, RechargeDialog } from './billing-client.js'
 import { installAccountStyles } from './styles.js'
 
 const api = '/vexnar-api/platform'
 const platform = 'https://platform.sec.hn.cn'
-const docs = 'https://docs.sec.hn.cn/'
 const accountEvent = 'vexnar:platform-account'
 
 /** 平台自己的提供方 id：它的地址与密钥由平台签发，不参与编辑。 */
@@ -153,8 +153,13 @@ function Avatar({ account }: { account: Account | undefined }): ReactNode {
   </span>
 }
 
-function Wallet({ compact = false }: { compact?: boolean }): ReactNode {
+function notifyWallet(): void {
+  window.dispatchEvent(new Event(accountEvent))
+}
+
+function Wallet(): ReactNode {
   const [wallet, setWallet] = useState<AccountWallet>()
+  const [recharge, setRecharge] = useState<'xilin' | 'deepseek'>()
   const [error, setError] = useState('')
   useEffect(() => {
     let generation = 0
@@ -182,12 +187,11 @@ function Wallet({ compact = false }: { compact?: boolean }): ReactNode {
   const balance = main?.amount != null
     ? `${main.amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${main.currency}`
     : main?.quota != null ? `${statValue(main.quota)} 额度` : '—'
-  const billing = main?.url || platform + '/wallet'
 
   return <div className="vxa-wallet">
     <div className="vxa-wallet-row">
       <div><strong>希灵 AI 余额</strong><div className="vxa-wallet-value">{wallet || error ? balance : '读取中…'}</div></div>
-      <a className="vxa-btn" href={billing} target="_blank" rel="noopener noreferrer">希灵 AI 充值</a>
+      <button type="button" className="vxa-btn" onClick={() => setRecharge('xilin')}>希灵 AI 充值</button>
     </div>
     {main?.error && <p className="vxa-hint" role="status">{main.error}</p>}
     <div className="vxa-wallet-row">
@@ -196,24 +200,10 @@ function Wallet({ compact = false }: { compact?: boolean }): ReactNode {
           : deepseek.status === 'ready' ? deepseek.balances.map(item => `${item.total} ${item.currency}`).join(' / ')
           : deepseek.status === 'unconfigured' ? '请先添加 DeepSeek 官方模型' : '暂时无法读取'}</div>
       </div>
-      <a className="vxa-btn" href="https://platform.deepseek.com/top_up" target="_blank" rel="noopener noreferrer">DeepSeek 充值</a>
+      <button type="button" className="vxa-btn" onClick={() => setRecharge('deepseek')}>DeepSeek 充值</button>
     </div>
-    <div className="vxa-wallet-row">
-      <strong>希灵 AI 订阅</strong>
-      <a className="vxa-btn" href={billing} target="_blank" rel="noopener noreferrer">购买订阅</a>
-    </div>
-    {!compact && main && <div>
-      {main.methods.length > 0 && <p className="vxa-hint">平台充值方式 {main.methods.join('、')}</p>}
-      {main.plans.length > 0 && <ul className="vxa-wallet-plans">{main.plans.map((plan) =>
-        <li key={plan.id}>
-          <span>{plan.title}</span><span>{plan.price} {plan.currency}{plan.duration && ` / ${plan.duration}`}</span>
-        </li>)}</ul>}
-      {main.subscriptions.map((subscription, index) => <p className="vxa-hint" key={`${subscription.id}-${index}`}>
-        {main.plans.find(plan => plan.id === subscription.id)?.title || '当前订阅'} ·
-        {subscription.remaining === null ? ' 不限额' : ` 剩余 ${statValue(subscription.remaining)} 额度`} ·
-        {new Date(subscription.ends * 1000).toLocaleDateString('zh-CN')} 到期
-      </p>)}
-    </div>}
+    {recharge && <RechargeDialog provider={recharge} request={request} onPaid={notifyWallet}
+      onClose={() => setRecharge(undefined)} />}
     {error && <p className="vxa-error" role="alert">{error}</p>}
   </div>
 }
@@ -231,7 +221,7 @@ function AccountLauncher({ wide, openSettings }: { wide: boolean; openSettings: 
       if (event.target instanceof Node && !root.current?.contains(event.target)) close()
     }
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || document.querySelector('.vxa-payment-dialog[open]')) return
       close()
       trigger.current?.focus()
     }
@@ -257,7 +247,7 @@ function AccountLauncher({ wide, openSettings }: { wide: boolean; openSettings: 
       {wide && <><span className="vxa-launcher-name">{label}</span><span aria-hidden="true">⌄</span></>}
     </button>
     {position && <div className="vxa-launcher-popover" style={position} aria-label="账户余额" role="region">
-      <Wallet compact />
+      <Wallet />
       <div className="vxa-launcher-actions">
         <button type="button" className="vxa-btn" onClick={() => {
           setPosition(undefined)
@@ -280,6 +270,7 @@ function AccountLauncher({ wide, openSettings }: { wide: boolean; openSettings: 
 export function AccountSection(): ReactNode {
   const { account, error, onError, update } = useAccount()
   const [busy, setBusy] = useState(false)
+  const [renewalOpen, setRenewalOpen] = useState(false)
   const [renewal, setRenewal] = useState('')
 
   const renew = async (event: FormEvent<HTMLFormElement>) => {
@@ -332,9 +323,14 @@ export function AccountSection(): ReactNode {
         <h2 className="vxa-profile-name">{displayName}</h2>
         <span className="vxa-profile-handle">@{account.username}</span>
       </div>
-      <a className="vxa-btn vxa-btn-ghost" href={platform + '/profile'} target="_blank" rel="noreferrer">
-        管理平台账户
-      </a>
+      <div className="vxa-profile-actions">
+        <a className="vxa-btn vxa-btn-ghost" href={platform + '/profile'} target="_blank" rel="noreferrer">管理平台账户</a>
+        <button type="button" className="vxa-btn vxa-btn-ghost" onClick={() => {
+          setRenewal('')
+          onError('')
+          setRenewalOpen(true)
+        }}>更新访问令牌</button>
+      </div>
     </div>
     <dl className="vxa-stats">
       {stats.map(({ name, value }) => <div className="vxa-stat" key={name}>
@@ -343,8 +339,8 @@ export function AccountSection(): ReactNode {
       </div>)}
     </dl>
     <Wallet />
-    <details className="vxa-fold">
-      <summary className="vxa-fold-summary">更新平台访问令牌</summary>
+    {renewalOpen && <AppDialog title="更新平台访问令牌" busy={busy} narrow
+      onClose={() => { setRenewalOpen(false); onError('') }}>
       <form className="vxa-fold-body" onSubmit={event => { void renew(event) }}>
         <label className="vxa-field">
           <span className="vxa-label">当前账户的访问令牌</span>
@@ -353,16 +349,10 @@ export function AccountSection(): ReactNode {
         </label>
         <button type="submit" className="vxa-btn" disabled={busy}>验证并更新</button>
         {renewal && <p className="vxa-hint" role="status">{renewal}</p>}
+        {error && <p className="vxa-error" role="alert">{error}</p>}
       </form>
-    </details>
-    {error && <p className="vxa-error" role="alert">{error}</p>}
-    <div className="vxa-panel">
-      <span className="vxa-panel-title">HXSEC AI Platform</span>
-      <div className="vxa-panel-meta">
-        <code>{provider?.base ?? 'https://api.sec.hn.cn/v1'}</code>
-        <a href={docs} target="_blank" rel="noreferrer">API 文档</a>
-      </div>
-    </div>
+    </AppDialog>}
+    {!renewalOpen && error && <p className="vxa-error" role="alert">{error}</p>}
     <div>
       <button type="button" className="vxa-btn" disabled={busy} onClick={() => void logout()}>退出登录</button>
     </div>

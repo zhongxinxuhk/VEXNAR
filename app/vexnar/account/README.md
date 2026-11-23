@@ -15,15 +15,16 @@
 
 本地 dsh 使用访问令牌校验身份，读取可用的 `VERNAX-<UUID>` 模型 API Key，没有时创建，
 并从 `https://api.sec.hn.cn/v1/models` 读取模型目录。平台模型使用 Responses，DeepSeek 与自定义
-OpenAI 兼容提供方使用 Chat Completions。访问令牌授权需要覆盖个人资料、模型密钥管理以及余额和订阅读取。
+OpenAI 兼容提供方使用 Chat Completions。访问令牌需要个人资料及模型密钥权限，使用支付时还需对应的账单权限。
 
 模型提供方直接写进 dsh 的 `llm-pi-ai`：`baseURL` 指向真实上游，`apiKeyEnv` 指向本插件
 写进 dsh 凭据库的键，模型请求由 dsh 自己发往上游。因此用户可以用自己的
 DeepSeek API Key（一键填入）或任意 OpenAI 兼容接口，不必经过平台。
 
 「设置 → 个人资料」显示平台身份、模型目录、协议、访问令牌状态和平台返回的请求计数。
-左下角账户菜单显示希灵 AI 和 DeepSeek 余额，并打开各自的官方充值页。个人资料页显示
-希灵 AI 的充值方式与订阅套餐。订阅购买在希灵 AI 钱包中确认。
+左下角账户菜单与个人资料页显示希灵 AI 和 DeepSeek 余额。希灵 AI 的充值弹窗读取平台
+配置的金额、渠道、套餐与实付报价。确认后用现有访问令牌创建订单，在独立的应用内收银台窗口付款。
+支持查单的渠道在到账后自动刷新余额。DeepSeek 的公开 API 支持余额查询。
 当前希灵 AI 账户的访问令牌可以在个人资料页更新，原有模型配置继续可用。
 「设置 → 模型」提供 DeepSeek API Key 预设与自定义 OpenAI 兼容接口导入，并可移除已添加的提供方。
 
@@ -34,6 +35,10 @@ DeepSeek API Key（一键填入）或任意 OpenAI 兼容接口，不必经过�
 | `GET /vexnar-api/platform/methods` | 读取平台启用的登录方式 |
 | `POST /vexnar-api/platform/login/token` | 校验平台访问令牌并同步模型 |
 | `GET /vexnar-api/platform/wallet` | 读取两边余额、平台充值方式和订阅 |
+| `GET /vexnar-api/platform/billing/options` | 读取启用的充值方式、预设金额和套餐 |
+| `POST /vexnar-api/platform/billing/quote` | 获取支付报价 |
+| `POST /vexnar-api/platform/billing/order` | 复核报价并创建支付订单 |
+| `POST /vexnar-api/platform/billing/status` | 查询当前用户订单的到账状态 |
 | `DELETE /vexnar-api/platform/account` | 退出 VEXNAR |
 | `POST /vexnar-api/platform/providers` | 验证并保存自定义或 DeepSeek 模型提供方 |
 | `DELETE /vexnar-api/platform/providers` | 移除指定提供方 |

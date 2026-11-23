@@ -766,6 +766,7 @@ export {
   PlatformError,
   catalog,
   createPlatformAccount,
+  exchange,
   gateOpen,
   modelsBase,
   needsReauth,
