@@ -31,6 +31,7 @@
     "node-forge": "^1.4.3",
     "pg": "^8.23.1",
     "yaml": "^2.9.1",
+    "@vexnar/store": "workspace:*",
     "@vexnar/web": "workspace:*"
   },
   "devDependencies": {

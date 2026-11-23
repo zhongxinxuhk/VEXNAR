@@ -12,7 +12,9 @@ export const profileName = 'vexnar'
 export const bundleFiles: Record<string, string[]> = {
   '@vexnar/app-bundle': ['cordis.patch.yml'],
   '@vexnar/dsh-ui': ['lib/index.js', 'lib/client.js'],
-  '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/billing.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js', 'lib/settings-embedded.js', 'lib/yak-history.js', 'lib/yak-history.proto', 'lib/yak-history.NOTICES.txt']
+  '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/billing.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js', 'lib/settings-embedded.js', 'lib/yak-history.js', 'lib/yak-history.proto', 'lib/yak-history.NOTICES.txt'],
+  // egress 排在最后：它的产物是单文件 index.js，缺了就不该拿 profile 里的旧副本凑数。
+  '@vexnar/dsh-egress': ['index.js']
 }
 const binPart = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 

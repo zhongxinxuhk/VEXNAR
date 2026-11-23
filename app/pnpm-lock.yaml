@@ -304,6 +304,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.6
         version: 1.19.19(hono@4.13.19)
+      '@vexnar/store':
+        specifier: workspace:*
+        version: link:../vexnar-store
       '@vexnar/web':
         specifier: workspace:*
         version: link:../vexnar-web
