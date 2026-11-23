@@ -4437,6 +4437,14 @@ body[data-ds-dark-theme] {
 .vx-pkt-pair > .vx-yak-packet { height: auto; margin-inline: 0; }
 .vx-pkt-pair .vx-yak-code { max-height: 420px; }
 
+/* 弹窗里的报文查看器按弹窗高度铺满：对话框是定高的，两侧报文各自滚动，
+   而不是两层滚动条套在一起、下面留一片空白。 */
+.vx-ui-modal .vx-ui-layer-body > .vx-pkt-pair-wrap { flex: 1 1 auto; min-height: 0; }
+.vx-ui-modal .vx-pkt-pair-wrap > .vx-pkt-pair { flex: 1 1 auto; min-height: 0; }
+.vx-ui-modal .vx-pkt-pair > .vx-yak-packet { height: auto; min-height: 0; }
+.vx-ui-modal .vx-pkt-pair > .vx-yak-packet > header { flex: none; }
+.vx-ui-modal .vx-pkt-pair .vx-yak-code { flex: 1 1 auto; min-height: 0; max-height: none; }
+
 /* 缺报文：说清"没抓到"而不是留白 */
 /* 正文块：与头部在视觉上分开，颜色之外再给一层边界 */
 .vx-pkt-body {

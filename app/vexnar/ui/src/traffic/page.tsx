@@ -16,11 +16,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import {
-  ApiErrorLine, Banner, Button, Card, Chip, CodeBlock, DataTable, Drawer, EmptyState, Field,
-  KeyValue, Kpi, KpiGrid, MethodBadge, PageShell, Pager, Segmented, Select, Skeleton, Spacer,
-  Split, StatusBadge, TextInput, Toolbar, useCopy, type Column
+  ApiErrorLine, Banner, Button, Card, Chip, DataTable, EmptyState, Field, KeyValue,
+  Kpi, KpiGrid, MethodBadge, Modal, PageShell, Pager, Segmented, Select, Skeleton, Spacer, Split,
+  StatusBadge, TextInput, Toolbar, useCopy, type Column
 } from '../components/kit.tsx'
-import { fmtBytes, fmtCount, fmtInt, fmtMs, fmtPercent, fmtRelative, fmtTime, statusClass } from '../data/format.ts'
+import { PacketPair } from '../packet-view.tsx'
+import { fmtBytes, fmtCount, fmtInt, fmtMs, fmtPercent, fmtRelative, fmtTime, fmtTimeFull, statusClass } from '../data/format.ts'
 import { trafficMetrics } from '../data/metrics.ts'
 import { useQuery } from '../data/query.ts'
 import { api } from '../data/client.ts'
@@ -105,14 +106,26 @@ function TrafficDetail({ row, onClose }: { row: TrafficRow; onClose: () => void 
     { ttlMs: 60_000 }
   )
   const { copy, copied } = useCopy()
-  const [side, setSide] = useState<'request' | 'response'>('request')
-  const text = side === 'request' ? detail.data?.req ?? '' : detail.data?.resp ?? ''
+
+  // 报文两侧一次给全：请求/响应并排，切换格式与搜索各自独立。
+  const packets = useMemo(() => {
+    const encoder = new TextEncoder()
+    const request = detail.data?.req ?? ''
+    const response = detail.data?.resp ?? ''
+    const responseBytes = encoder.encode(response).length
+    return {
+      request: { text: request, bytes: encoder.encode(request).length, truncated: false },
+      // resp_len 是落库时记的响应长度；正文比它短说明查看时被截断了。
+      response: { text: response, bytes: responseBytes, truncated: row.bytes > responseBytes + 256 }
+    }
+  }, [detail.data, row.bytes])
 
   return (
-    <Drawer
+    <Modal
       open
       onClose={onClose}
-      width={860}
+      width={1240}
+      height="min(88vh, 920px)"
       title={<><MethodBadge method={row.method} /> <span className="vx-ui-mono-inline">{pathOf(row.url)}</span></>}
       subtitle={row.host}
       meta={<>
@@ -122,9 +135,6 @@ function TrafficDetail({ row, onClose }: { row: TrafficRow; onClose: () => void 
         <span className="vx-ui-muted">{fmtTime(row.ts)}</span>
       </>}
       footer={<>
-        <Button size="sm" onClick={() => copy(text, side === 'request' ? '请求报文' : '响应报文')}>
-          {copied === (side === 'request' ? '请求报文' : '响应报文') ? '已复制' : '复制报文'}
-        </Button>
         <Button
           size="sm"
           disabled={detail.data === undefined}
@@ -142,18 +152,12 @@ function TrafficDetail({ row, onClose }: { row: TrafficRow; onClose: () => void 
         { label: '响应类型', value: row.contentType === '' ? '—' : row.contentType },
         { label: '状态分段', value: statusClass(row.status) }
       ]} />
-      <div className="vx-ui-detail-tabs">
-        <Segmented
-          value={side}
-          label="报文侧"
-          options={[{ value: 'request', label: '请求' }, { value: 'response', label: '响应' }]}
-          onChange={(next) => setSide(next)}
-        />
-      </div>
-      {detail.loading ? <Skeleton rows={6} /> : null}
-      {detail.error === undefined ? null : <Banner tone="red">{detail.error.message}</Banner>}
-      {detail.data === undefined ? null : <CodeBlock text={text} maxHeight={430} empty={side === 'request' ? '该记录没有请求正文' : '该记录没有响应正文'} />}
-    </Drawer>
+      {detail.loading && detail.data === undefined ? <Skeleton rows={6} /> : null}
+      {detail.error === undefined ? null : <ApiErrorLine error={detail.error.message} detail={detail.error.detail} onRetry={detail.refresh} />}
+      {detail.data === undefined ? null : (
+        <PacketPair request={packets.request} response={packets.response} />
+      )}
+    </Modal>
   )
 }
 
@@ -375,7 +379,10 @@ export function TrafficPanel(): ReactNode {
   }
 
   const columns: ReadonlyArray<Column<TrafficRow>> = [
-    { key: 'ts', header: '时间', width: '92px', mono: true, sortable: true, render: (row) => fmtTime(row.ts) },
+    {
+      key: 'ts', header: '时间', width: '96px', mono: true, sortable: true,
+      render: (row) => fmtTime(row.ts), title: (row) => fmtTimeFull(row.ts)
+    },
     { key: 'method', header: '方法', width: '82px', render: (row) => <MethodBadge method={row.method} /> },
     { key: 'status', header: '状态', width: '62px', sortable: true, render: (row) => <StatusBadge status={row.status} /> },
     {
