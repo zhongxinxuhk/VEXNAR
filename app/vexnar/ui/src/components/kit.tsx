@@ -16,12 +16,14 @@
  *   Segmented  视图切换（可访问的 aria-pressed，不是伪按钮）
  *   DataTable  表格（表头固定、可排序、行可选中）
  *   Drawer     右侧检查器（详情一律在这里，不挤占列表）
+ *   Modal      居中弹窗（顶层 `<dialog>`，遮罩盖满视口）
  *   Empty/Skeleton/Banner  三态（空/加载/错误）
  *
  * 所有颜色走 `--vx-*` 桥，深色与换皮不额外写第二份。
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalLayer } from '@deepseek-ai/dsh-client-ui-primitives'
 
 // ── 页面骨架 ────────────────────────────────────────────────────────────────
 export interface PageShellProps {
@@ -524,7 +526,87 @@ export function Pager({ page, pageCount, total, unit, onPage }: {
   )
 }
 
-// ── 检查器（右侧抽屉） ─────────────────────────────────────────────────────
+// ── 浮层（顶层对话框） ─────────────────────────────────────────────────────
+/**
+ * 所有浮层的唯一底座：原生 `<dialog>` + `showModal()`。
+ *
+ * 遮罩由 `::backdrop` 绘制，面板进浏览器顶层（top layer）。顶层不参与
+ * z-index 比较，也不受祖先 `transform` 影响——这两条正是之前
+ * `position: fixed; inset: 0` 的死穴：外壳把抽屉侧栏放在 71、底栏状态条也
+ * 各有层级，遮罩只要更低就被压在下面，弹窗底部于是永远留一条不暗的缝。
+ *
+ * 键盘归属（Esc / Tab 循环 / 焦点归还）交给 dsh 的模态栈，与设置弹窗同一套
+ * 规则，避免两套 Esc 处理器各关一次。
+ */
+function Overlay({ open, onClose, variant, label, children }: {
+  open: boolean
+  onClose: () => void
+  variant: 'sheet' | 'modal'
+  label: string
+  children: ReactNode
+}): ReactNode {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useModalLayer(dialog, open, onClose)
+
+  useLayoutEffect(() => {
+    const element = dialog.current
+    if (element === null) return
+    // showModal 对已打开的 dialog 会抛 InvalidStateError，重渲染时不能重复调。
+    if (!element.open) element.showModal()
+    // 原生 showModal 会把焦点交给面板里第一个可聚焦控件（顶栏的 ×），
+    // 于是在刚打开的一瞬间多出一圈描边。焦点先留在面板本身，按 Tab
+    // 再由模态栈交给第一个控件。
+    element.focus()
+    return () => {
+      if (element.open) element.close()
+    }
+  }, [open])
+
+  if (!open) return null
+  return createPortal(
+    <dialog
+      ref={dialog}
+      tabIndex={-1}
+      className={`vx-ui-layer vx-ui-layer--${variant}`}
+      aria-label={label}
+      // Esc：原生 cancel 事件与模态栈都会走到同一个 onClose，这里只拦默认行为。
+      onCancel={(event) => { event.preventDefault(); onClose() }}
+      // 点空白处关闭；点面板内部由子元素自己处理。
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
+      {children}
+    </dialog>,
+    document.body
+  )
+}
+
+interface LayerChromeProps {
+  title: ReactNode
+  subtitle?: ReactNode
+  meta?: ReactNode
+  onClose: () => void
+  children: ReactNode
+  footer?: ReactNode
+}
+
+function LayerChrome({ title, subtitle, meta, onClose, children, footer }: LayerChromeProps): ReactNode {
+  return (
+    <>
+      <header className="vx-ui-layer-head">
+        <div className="vx-ui-layer-titles">
+          <strong>{title}</strong>
+          {subtitle === undefined ? null : <span>{subtitle}</span>}
+        </div>
+        {meta === undefined ? null : <div className="vx-ui-layer-meta">{meta}</div>}
+        <button type="button" className="vx-ui-layer-close" onClick={onClose} aria-label="关闭">×</button>
+      </header>
+      <div className="vx-ui-layer-body">{children}</div>
+      {footer === undefined ? null : <footer className="vx-ui-layer-foot">{footer}</footer>}
+    </>
+  )
+}
+
+/** 右侧检查器：详情一律在这里，不挤占列表。 */
 export function Drawer({ open, title, subtitle, meta, onClose, children, footer, width = 780 }: {
   open: boolean
   title: ReactNode
@@ -535,34 +617,38 @@ export function Drawer({ open, title, subtitle, meta, onClose, children, footer,
   footer?: ReactNode
   width?: number
 }): ReactNode {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
-  // 挂到 body：设置弹窗与皮肤中间层带 transform，`position: fixed` 会被它们改写。
-  return createPortal(
-    <div className="vx-ui-drawer-root" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : '详情'}>
-      <button type="button" className="vx-ui-drawer-backdrop" onClick={onClose} aria-label="关闭详情" />
-      <div className="vx-ui-drawer" style={{ width: `min(${width}px, 94vw)` }}>
-        <header className="vx-ui-drawer-head">
-          <div className="vx-ui-drawer-titles">
-            <strong>{title}</strong>
-            {subtitle === undefined ? null : <span>{subtitle}</span>}
-          </div>
-          {meta === undefined ? null : <div className="vx-ui-drawer-meta">{meta}</div>}
-          <button type="button" className="vx-ui-drawer-close" onClick={onClose} aria-label="关闭">×</button>
-        </header>
-        <div className="vx-ui-drawer-body">{children}</div>
-        {footer === undefined ? null : <footer className="vx-ui-drawer-foot">{footer}</footer>}
+  return (
+    <Overlay open={open} onClose={onClose} variant="sheet" label={typeof title === 'string' ? title : '详情'}>
+      <div className="vx-ui-sheet" style={{ width: `min(${width}px, 100%)` }}>
+        <LayerChrome title={title} subtitle={subtitle} meta={meta} onClose={onClose} footer={footer}>
+          {children}
+        </LayerChrome>
       </div>
-    </div>,
-    document.body
+    </Overlay>
+  )
+}
+
+/** 居中弹窗：需要一眼看全的检查器用它，而不是贴边的抽屉。 */
+export function Modal({ open, title, subtitle, meta, onClose, children, footer, width = 720, height }: {
+  open: boolean
+  title: ReactNode
+  subtitle?: ReactNode
+  meta?: ReactNode
+  onClose: () => void
+  children: ReactNode
+  footer?: ReactNode
+  width?: number
+  /** 固定高度（CSS 长度，如 `min(84vh, 760px)`）；不给就按内容自适应。 */
+  height?: string | undefined
+}): ReactNode {
+  return (
+    <Overlay open={open} onClose={onClose} variant="modal" label={typeof title === 'string' ? title : '弹窗'}>
+      <div className="vx-ui-modal" style={{ width: `min(${width}px, 100%)`, height }}>
+        <LayerChrome title={title} subtitle={subtitle} meta={meta} onClose={onClose} footer={footer}>
+          {children}
+        </LayerChrome>
+      </div>
+    </Overlay>
   )
 }
 

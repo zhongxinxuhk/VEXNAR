@@ -3247,6 +3247,10 @@ body {
   padding: 10px 12px 12px;
 }
 
+/* 卡片内容区里的按钮按内容宽度站好，不要被 flex 拉成一整行。 */
+.vx-ui-card-body > .vx-ui-btn,
+.vx-ui-kv + .vx-ui-btn { align-self: flex-start; }
+
 .vx-ui-card-body--scroll {
   max-height: 420px;
   overflow-y: auto;
@@ -3639,6 +3643,7 @@ body {
 .vx-ui-field-hint { color: var(--vx-text-faint); font-size: 9.5px; line-height: 1.45; }
 
 .vx-ui-input,
+.vx-ui-select,
 .vx-ui-textarea {
   width: 100%;
   min-height: 26px;
@@ -3655,11 +3660,21 @@ body {
 .vx-ui-input.is-mono,
 .vx-ui-textarea.is-mono { font-family: var(--vx-mono); font-size: 11px; }
 
-/* 下拉框按内容宽度排，不占满一行：工具条里一行能放下三个筛选器。 */
+/* 下拉框按内容宽度排，不占满一行：工具条里一行能放下三个筛选器。
+   原生 select 的边框/内距与 input 不同高，工具条里会一高一矮；这里统一成
+   同一套盒子，箭头自己画。 */
 .vx-ui-select {
   width: auto;
   min-width: 104px;
   max-width: 220px;
+  padding-inline-end: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none'><path d='M2.6 4.1 5 6.5l2.4-2.4' stroke='%236b7280' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 10px 10px;
+  cursor: pointer;
 }
 
 .vx-ui-textarea { resize: vertical; }
@@ -3801,43 +3816,93 @@ body {
 .vx-ui-pager-total { color: var(--vx-text-faint); font-variant-numeric: tabular-nums; }
 .vx-ui-pager-page { min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* ── 检查器（抽屉） ───────────────────────────────────────────────────── */
-.vx-ui-drawer-root {
+/* ── 浮层（顶层对话框 / 右侧抽屉） ──────────────────────────────────────
+   底座是原生 dialog：showModal() 把面板送进顶层（top layer），遮罩由
+   ::backdrop 绘制。顶层既不参与 z-index 比较，也不受任何祖先 transform
+   影响，所以遮罩一定盖满整个视口。
+
+   之前是 position: fixed; inset: 0 挂在 body 上：外壳把抽屉侧栏放在 71、
+   把底栏状态条也各有层级，遮罩只要比它们低就被压在下面，表现为「弹窗底部
+   永远留一条不暗的缝」。把层级从 60 往上调只是换一个输赢，进顶层才是收口。 */
+.vx-ui-layer {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 1000;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vx-text);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.vx-ui-layer::backdrop {
+  background: color-mix(in srgb, #0b1220 34%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: vx-ov-fade 0.16s var(--vx-ease) both;
+}
+
+/* 打开瞬间焦点落在面板本身（见 kit.tsx 的 Overlay），面板不该有描边。 */
+.vx-ui-layer:focus,
+.vx-ui-layer:focus-visible { outline: none; }
+
+/* 右侧检查器：贴住视口右边，整高。 */
+.vx-ui-layer--sheet {
   display: flex;
+  align-items: stretch;
   justify-content: flex-end;
 }
 
-.vx-ui-drawer-backdrop {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  border: 0;
-  background: color-mix(in srgb, #000 32%, transparent);
-  cursor: pointer;
-  animation: vx-ov-fade 0.18s var(--vx-ease) both;
+/* 居中弹窗：四周留白由底座给，卡片只按自己的宽度与最大高度算。 */
+.vx-ui-layer--modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 24px;
 }
 
-.vx-ui-drawer {
+.vx-ui-sheet,
+.vx-ui-modal {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: column;
-  max-width: 100vw;
-  height: 100%;
-  border-inline-start: 1px solid var(--vx-border);
-  background: var(--vx-surface);
-  box-shadow: -24px 0 60px -40px rgba(0, 0, 0, 0.6);
+  max-width: 100%;
+  min-height: 0;
   color: var(--vx-text);
   font-size: 12px;
+  background: var(--vx-surface);
+}
+
+.vx-ui-sheet *,
+.vx-ui-modal * { box-sizing: border-box; }
+
+.vx-ui-sheet {
+  height: 100%;
+  border-inline-start: 1px solid var(--vx-border);
+  box-shadow: -24px 0 60px -40px rgba(0, 0, 0, 0.6);
   animation: vx-ui-slide 0.22s var(--vx-ease) both;
 }
 
-.vx-ui-drawer,
-.vx-ui-drawer * { box-sizing: border-box; }
+.vx-ui-modal {
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--vx-border);
+  border-radius: 14px;
+  /* 两层阴影：一层贴边描边，一层远投影，卡片才像浮起来而不是贴了张纸。 */
+  box-shadow:
+    0 1px 2px rgba(11, 18, 32, 0.06),
+    0 40px 90px -44px rgba(11, 18, 32, 0.5);
+  animation: vx-ui-pop 0.2s var(--vx-ease) both;
+}
 
-.vx-ui-drawer-head {
+.vx-ui-layer-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3847,15 +3912,21 @@ body {
   background: color-mix(in srgb, var(--vx-surface-sunken) 45%, transparent);
 }
 
-.vx-ui-drawer-titles {
+.vx-ui-modal .vx-ui-layer-head {
+  padding: 13px 16px;
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+}
+
+.vx-ui-layer-titles {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1;
 }
 
-.vx-ui-drawer-titles > strong {
+.vx-ui-layer-titles > strong {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3866,7 +3937,9 @@ body {
   white-space: nowrap;
 }
 
-.vx-ui-drawer-titles > span {
+.vx-ui-modal .vx-ui-layer-titles > strong { font-size: 13px; }
+
+.vx-ui-layer-titles > span {
   overflow: hidden;
   color: var(--vx-text-faint);
   font-family: var(--vx-mono);
@@ -3875,14 +3948,14 @@ body {
   white-space: nowrap;
 }
 
-.vx-ui-drawer-meta {
+.vx-ui-layer-meta {
   display: flex;
   flex: none;
   align-items: center;
   gap: 6px;
 }
 
-.vx-ui-drawer-close {
+.vx-ui-layer-close {
   flex: none;
   width: 24px;
   height: 24px;
@@ -3894,26 +3967,43 @@ body {
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  transition: border-color var(--vx-dur-fast) var(--vx-ease), color var(--vx-dur-fast) var(--vx-ease);
 }
 
-.vx-ui-drawer-close:hover { border-color: var(--vx-accent); color: var(--vx-text); }
+.vx-ui-layer-close:hover { border-color: var(--vx-accent); color: var(--vx-text); }
 
-.vx-ui-drawer-body {
+.vx-ui-layer-body {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 14px 16px;
+  min-height: 0;
+  padding: 12px 14px 14px;
   overflow-y: auto;
 }
 
-.vx-ui-drawer-foot {
+.vx-ui-modal .vx-ui-layer-body {
+  padding: 14px 16px 16px;
+  overflow: auto;
+}
+
+.vx-ui-layer-foot {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 9px 14px;
   border-top: 1px solid var(--vx-border);
   background: color-mix(in srgb, var(--vx-surface-sunken) 45%, transparent);
+}
+
+.vx-ui-modal .vx-ui-layer-foot {
+  padding: 11px 16px;
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
+}
+
+@keyframes vx-ui-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
 }
 
 .vx-ui-detail-tabs { display: flex; align-items: center; gap: 8px; }
@@ -4208,6 +4298,33 @@ body {
 .vx-ui-mono-inline { font-family: var(--vx-mono); font-size: 11px; }
 .vx-ui-break { overflow-wrap: anywhere; word-break: break-all; }
 
+/* 会话流量弹窗里的三个小件 */
+.vx-ui-inline-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--vx-mono);
+  font-size: 11.5px;
+}
+
+.vx-ui-link {
+  color: var(--vx-chart-1);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.vx-ui-link:hover { text-decoration: underline; }
+
+.vx-ui-note {
+  margin: 0;
+  color: var(--vx-text-dim);
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
+.vx-ui-note strong { color: var(--vx-text); font-weight: 600; }
+
 .vx-ui-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -4242,11 +4359,114 @@ body {
   .vx-ui-meter > i,
   .vx-ui-hbar > i > b,
   .vx-ui-session { transition: none; }
-  .vx-ui-drawer,
-  .vx-ui-drawer-backdrop,
+  .vx-ui-sheet,
+  .vx-ui-modal,
+  .vx-ui-layer::backdrop,
   .vx-ui-skeleton > i,
   .vx-ui-live.is-on > i { animation: none; }
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   报文查看器（请求 / 响应成对）
+   ─────────────────────────────────────────────────────────────────────────
+   着色沿用 http-packet 的词法分词：起始行、头部名、头部值、会话凭据、正文各一色。
+   新增 --vx-syn-session 一族：Cookie / Authorization / CSRF 这类"身份"信息，
+   在排查越权与会话固定时比普通头更该被一眼看到。
+   ══════════════════════════════════════════════════════════════════════════ */
+body {
+  --vx-syn-session: var(--dsw-static-violet-600, #7c3aed);
+  --vx-syn-session-soft: color-mix(in oklab, var(--vx-syn-session) 72%, var(--vx-text));
+}
+
+body[data-ds-dark-theme] {
+  --vx-syn-session: var(--dsw-static-violet-400, #a78bfa);
+  --vx-syn-session-soft: color-mix(in oklab, var(--vx-syn-session) 82%, var(--vx-text));
+}
+
+.vx-tone--session { color: var(--vx-syn-session); font-weight: 600; }
+.vx-tone--cookie-key { color: var(--vx-syn-session); font-weight: 600; }
+.vx-tone--cookie-value { color: var(--vx-syn-session-soft); }
+
+/* 行号独立一列：换行时正文从第二列继续，像编辑器而不是被折断的文本。 */
+.vx-yak-line {
+  display: grid;
+  grid-template-columns: 3.1em minmax(0, 1fr);
+  align-items: start;
+  padding: 0 10px 0 0;
+  min-height: 1.65em;
+}
+
+.vx-yak-line > code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.vx-yak-line[data-tone="start"] {
+  background: color-mix(in oklab, var(--vx-surface-sunken) 70%, transparent);
+}
+
+.vx-pkt-ln {
+  padding-inline-end: 10px;
+  color: var(--vx-text-faint);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  line-height: 1.9;
+  text-align: end;
+  opacity: 0.55;
+  user-select: none;
+}
+
+/* 成对布局 */
+.vx-pkt-pair-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.vx-pkt-pair-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--vx-text-faint);
+}
+
+.vx-pkt-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.vx-pkt-pair[data-layout="stack"] { grid-template-columns: minmax(0, 1fr); }
+.vx-pkt-pair > .vx-yak-packet { height: auto; margin-inline: 0; }
+.vx-pkt-pair .vx-yak-code { max-height: 420px; }
+
+/* 缺报文：说清"没抓到"而不是留白 */
+/* 正文块：与头部在视觉上分开，颜色之外再给一层边界 */
+.vx-pkt-body {
+  margin: 2px 8px 6px 12px;
+  padding: 2px 0;
+  border-inline-start: 2px solid color-mix(in oklab, var(--vx-syn-string) 38%, transparent);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--vx-text) 2.5%, transparent);
+}
+
+.vx-pkt-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 16px;
+  color: var(--vx-text-faint);
+  font-size: 11px;
+  text-align: center;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    color-mix(in oklab, var(--vx-text) 3%, transparent) 6px 12px
+  );
+}
+
+@media (max-width: 1080px) {
+  .vx-pkt-pair { grid-template-columns: minmax(0, 1fr); }
+}
+
 `
 
 /** Inject the stylesheet once. Returns a disposer that removes it. */
