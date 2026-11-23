@@ -65,6 +65,9 @@ function providerInput(body) {
   return input;
 }
 function installPlatform(ctx) {
+  const loginClient = readFile(new URL("./login-client.js", import.meta.url), "utf8");
+  loginClient.catch(() => {
+  });
   const account = createPlatformAccount();
   const billing = createBilling(account.read);
   let ready = false;
@@ -227,7 +230,7 @@ function installPlatform(ctx) {
         return res.end();
       }
       res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(await readFile(new URL("./login-client.js", import.meta.url)));
+      res.end(await loginClient);
     }
   }));
   for (const method of ["update", "replace", "mutate", "discoverModels"]) {

@@ -220,7 +220,8 @@ test('访问令牌登录校验身份、复用 VERNAX API 密钥并读取账单',
   const account = createPlatformAccount({ home })
   await assert.rejects(() => account.wallet(), { status: 401 })
   await assert.rejects(() => account.loginWithToken('sk-this-is-not-a-pat'), { status: 400 })
-  await assert.rejects(() => account.loginWithToken('nap_invalid-test-token'), { status: 401 })
+  await assert.rejects(() => account.loginWithToken('nap_invalid-test-token'), (error: unknown) =>
+    statusOf(error) === 401 && /访问令牌无效或已过期/.test(String((error as Error).message)))
   assert.equal((await account.status()).signed_in, false)
 
   assert.match(managedModelKey, /^VERNAX-[0-9a-f-]{36}$/)
@@ -232,6 +233,12 @@ test('访问令牌登录校验身份、复用 VERNAX API 密钥并读取账单',
   assert.equal(view.providers[0]?.id, 'vexnar')
   assert.equal(JSON.stringify(view).includes(token), false)
   assert.equal(createdModelKeys, 1, '已有可用的 VERNAX 密钥时不再签发')
+
+  // 已登录时再粘一次令牌：更新令牌而不是报"请先退出"（登录页可能因启动竞态出现）。
+  const again = await account.loginWithToken(token)
+  assert.equal(again.signed_in, true)
+  assert.equal(again.username, 'alice')
+  assert.equal(createdModelKeys, 1, '同一账户重复登录不重复签发模型密钥')
 
   const result = await account.wallet()
   assert.equal(result.platform.amount, 3)
@@ -247,6 +254,13 @@ test('访问令牌登录校验身份、复用 VERNAX API 密钥并读取账单',
   const renewed = await account.renewWithToken(token)
   assert.deepEqual(renewed.providers, withDeepSeek.providers)
   assert.equal(createdModelKeys, 1)
+
+  // 已登录时粘另一个账户的令牌：切换账户，不继承上一个账户的第三方提供方。
+  const switched = await account.loginWithToken('nap_fixture-other-user')
+  assert.equal(switched.signed_in, true)
+  assert.equal(switched.username, 'bob')
+  assert.deepEqual(switched.providers.map((provider) => provider.id), ['vexnar'])
+
   await account.logout()
   await assert.rejects(() => account.wallet(), { status: 401 })
 })

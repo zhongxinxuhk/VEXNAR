@@ -219,6 +219,17 @@ function providerInput(body: JsonBody): AddProviderInput & UpdateProviderInput {
 }
 
 export function installPlatform(ctx: PlatformContext): () => boolean {
+  /**
+   * 登录页脚本读一次就记住。
+   *
+   * 登录页 HTML 由本模块的 `loginPage()` 生成（进程启动时的模块快照），而
+   * `entry.js` 过去每次请求都从磁盘读——`pnpm run setup` 替换 lib 后，正在跑的
+   * 进程会拿"新脚本配旧模板"，脚本找不到 `#reveal` 之类的元素直接抛错，表现就是
+   * "登录页报错 / 点登录没反应"。脚本与模板必须来自同一份快照：这里在插件装载时
+   * 读一次，之后不再碰磁盘。换版本就重启，语义与模板一致。
+   */
+  const loginClient = readFile(new URL('./login-client.js', import.meta.url), 'utf8')
+  loginClient.catch(() => {})
   const account = createPlatformAccount()
   const billing = createBilling(account.read)
   let ready = false
@@ -431,7 +442,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
         return res.end()
       }
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' })
-      res.end(await readFile(new URL('./login-client.js', import.meta.url)))
+      res.end(await loginClient)
     }
   }))
 
