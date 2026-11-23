@@ -338,15 +338,24 @@ WebStorm 的 MCP 端点（`127.0.0.1:64542/stream`，项目路径 `app`）不在
 ## GitHub Actions 编译
 
 仓库的 **App build** 工作流在 `app/`、品牌 Logo 或工作流文件发生变更时对 PR 和
-`main` 推送运行。它用 npm 锁文件安装依赖、重新编译 UI 与账户插件并检查生成的
-JavaScript。运行详情的 **Artifacts** 可下载 `vexnar-app-bundle`，其中包含编译后的
-插件、profile patch 和上游版本锁。
+`main` 推送运行。它用 pnpm 锁文件安装依赖、**全量重建四个插件包**（ui / account /
+egress / core-embedded）并逐个校验产物，然后产出两份归档：
+
+- `vexnar-app-bundle`：编译后的插件、profile patch 与上游版本锁，给源码工作区用；
+- `vexnar-desktop-overlay`：**安装包自带的覆盖层**——四个插件加一份装好全部
+  `extras.json` 插件的 profile（含 `node_modules`），约 500 MB。
 
 在 **Actions → App build → Run workflow** 保持 `desktop` 勾选，会额外编译 macOS
-Apple Silicon、macOS Intel 和 Windows x64 的无签名 dsh 安装包。工作流使用
-`scripts/fetch-dsh.sh` 校验上游 commit，安装包和 VEXNAR 覆盖层分别下载。
-安装 dsh 后可在源码工作区执行 `npm run setup`，将 VEXNAR 插件和配置装入隔离 profile。
+Apple Silicon 与 Windows x64 的无签名安装包。工作流使用 `scripts/fetch-dsh.sh`
+校验上游 commit，`scripts/brand-desktop.mjs` 把 vendored 上游改成 VEXNAR Harness
+并把覆盖层塞进 `Resources/vexnar-overlay`。
+
+**装完就能用**：安装包启动时先跑 `apps/desktop/vexnar-bootstrap.js`，把预装 profile
+落到 `~/.vexnar/profiles/desktop`、把插件源码放到 `~/.vexnar/bundles/`，再把清单里
+指向构建机的 `file:` 路径改写成安装后的位置，最后才加载 dsh 的主进程。用户不需要
+装 Node、不需要 pnpm、不需要在源码工作区跑 `setup`。
 
 推送 `app-v<版本>` 标签（例如 `app-v0.1.0`）会在当前 VEXNAR 仓库发布预发行版，
-附带三个平台的无签名安装包、`vexnar-app-bundle.tar.gz` 和 `SHA256SUMS`。
-Go 服务继续使用 `v*` 标签发布，App 预发行版不会成为仓库的 Latest Release。
+附带两个平台的安装包、`vexnar-app-bundle.tar.gz` 和 `SHA256SUMS`（覆盖层是构建
+中间物，不进 Release）。Go 服务继续使用 `v*` 标签发布，App 预发行版不会成为仓库的
+Latest Release。

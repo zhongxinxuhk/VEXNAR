@@ -20,6 +20,7 @@
     "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress run build && pnpm --filter @vexnar/core run build:embedded",
     "clean:outputs": "node scripts/clean-build-outputs.mjs",
     "check:artifacts": "node scripts/check-built-artifacts.mjs",
+    "overlay:prepare": "node scripts/prepare-desktop-overlay.mjs",
     "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress --filter @vexnar/core --filter @vexnar/web run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
