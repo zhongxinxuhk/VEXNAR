@@ -36,6 +36,7 @@
     "web:mcp": "pnpm --filter @vexnar/web run mcp",
     "plugins:check": "tsx scripts/plugin-inventory.ts",
     "check:data": "node scripts/check-tracked-data.mjs",
+    "brand:desktop": "node scripts/brand-desktop.mjs",
     "test:preset": "tsx --test scripts/vexnar-extras.test.ts scripts/plugin-inventory.test.ts"
   },
   "devDependencies": {

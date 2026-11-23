@@ -117,6 +117,12 @@ jobs:
           node -e "const {execFileSync} = require('node:child_process');
           const head = execFileSync('git', ['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
           if (head !== require('../upstream.lock.json').commit) throw new Error('dsh checkout differs from app/upstream.lock.json');"
+      - name: Apply the VEXNAR brand patch
+        working-directory: app
+        # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：
+        # productName / 产物前缀 / .app 目录名 / 桌面文案 / 图标 / CLI 命令 / home 目录。
+        # 改了哪些文件记在 app/.vexnar-brand.json，upstream:check 据此放宽到「只差品牌补丁」。
+        run: pnpm run brand:desktop
       - name: Install dsh workspace dependencies
         working-directory: app/dsh
         run: pnpm install --frozen-lockfile
@@ -206,7 +212,7 @@ jobs:
             gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
           else
             gh release create "$TAG" --target "$GITHUB_SHA" \
-              --title "VEXNAR 客户端 v${VERSION}" \
+              --title "VEXNAR Harness v${VERSION}" \
               --notes-file "$RUNNER_TEMP/notes.md" \
               ./*.dmg ./*.exe ./*.tar.gz ./SHA256SUMS
           fi

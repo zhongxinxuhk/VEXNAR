@@ -47,3 +47,6 @@ vexnar/account/lib/client.cjs
 
 # dsh client build intermediates
 vexnar/*/lib/client.cjs
+
+# 品牌补丁记录：check-upstream 用它区分「品牌补丁」与「有人手改 vendored 代码」。
+.vexnar-brand.json

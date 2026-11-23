@@ -177,14 +177,14 @@ function commandNotes(argv) {
     : 'https://github.com/zhongxinxuhk/VEXNAR/commits'
 
   const body = [
-    `VEXNAR 客户端 v${options.version}`,
+    `VEXNAR Harness v${options.version}`,
     '',
     section('重点', bucket.highlights, HIGHLIGHT_LIMIT),
     section('新增功能', bucket.features),
     section('修复', bucket.fixes),
     section('其他', [
       ...bucket.others,
-      '安装包未签名：macOS 首次打开需 `xattr -dr com.apple.quarantine /Applications/DeepSeek\\ Harness.app`，Windows 需在 SmartScreen 里选「仍要运行」',
+      '安装包未签名：macOS 首次打开需 `xattr -dr com.apple.quarantine /Applications/VEXNAR\\ Harness.app`，Windows 需在 SmartScreen 里选「仍要运行」',
       '安装包内部版本跟随上游 dsh（0.2.2-rc.5），本页版本号只表示本次构建序列'
     ])
   ].join('\n').replace(/\{\{compare\}\}/gu, compare)
