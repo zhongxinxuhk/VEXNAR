@@ -5,7 +5,6 @@
 
 import { readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 import { installPlatform, recordOf, type PlatformContext } from './platform.js'
 import { registerYakHistoryTools } from './yak-history-tools.js'
@@ -153,21 +152,25 @@ export function apply(ctx: AccountContext): void {
   if (process.env.VEXNAR_RUNTIME_MODE === 'go') registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
     let core: typeof import('./core-embedded.js') | undefined
-    let coreState: 'loading' | 'available' | 'failed' | 'timed_out' = 'loading'
-    const starting = import('./core-embedded.js').then(result => {
+    let coreState: 'loading' | 'available' | 'failed' = 'loading'
+    // 完整 core 是唯一路径：加载完成后域接口、任务队列与自主执行链都从这里来。
+    // 这里不再用固定期限和它赛跑 —— 期限一到就放弃，只会让 request 永远拿到 503，
+    // 而 core 其实还在加载。加载失败是另一种状态（core_state=failed），不是超时。
+    const starting: Promise<typeof import('./core-embedded.js') | undefined> = import('./core-embedded.js').then(result => {
       core = result
       coreState = 'available'
+      // 就绪即启动底座：触发器、定时任务、store 独占锁与任务队列都跑起来，
+      // 自主渗透执行链不必等到页面的第一个请求。
+      void result.startRuntime().catch(error => {
+        console.error('[vexnar] 运行时底座启动失败', error)
+      })
       return result
-    }, () => {
+    }, error => {
       coreState = 'failed'
+      console.error('[vexnar] 嵌入 core 加载失败', error)
       return undefined
     })
-    const deadline = delay(4_000, undefined, { ref: false }).then(() => {
-      if (coreState === 'loading') coreState = 'timed_out'
-      return undefined
-    })
-    const startup = Promise.race([starting, deadline])
-    const getCore = async () => core ?? await startup
+    const getCore = async () => core ?? await starting
     const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === 'go'
     const diagnostics = () => {
       const configuredStore = process.env.VEXNAR_STORE?.trim().toLowerCase()

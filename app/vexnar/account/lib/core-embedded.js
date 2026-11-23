@@ -29463,10 +29463,15 @@ function openMeta(root = storeRoot()) {
   if (wantsPg && connection !== void 0) return pgMetaStore(connection, sqliteMetaStore(dbPath(root)));
   return explicit === "json" ? metaStore(root) : sqliteMetaStore(dbPath(root));
 }
-async function openStore(root = storeRoot()) {
-  const store2 = backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
-  await store2.init();
-  return store2;
+function openStoreSync(root = storeRoot()) {
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
+  const connection = pgConnection();
+  const mode = explicit || (connection ? "postgres" : "sqlite");
+  if (mode === "postgres") {
+    if (connection === void 0) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
+    return pgStore(connection);
+  }
+  return backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
 }
 var init_backend = __esm({
   "../vexnar-store/src/backend.ts"() {
@@ -29475,6 +29480,7 @@ var init_backend = __esm({
     init_meta_store();
     init_json_store();
     init_sqlite();
+    init_pg_store();
     init_pg_meta();
   }
 });
@@ -31659,18 +31665,6 @@ var init_report = __esm({
 });
 
 // ../vexnar-store/src/index.ts
-async function openStore2(root) {
-  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
-  const connection = pgConnection();
-  const mode = explicit || (connection ? "postgres" : "sqlite");
-  if (mode === "postgres") {
-    if (connection === void 0) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
-    const store2 = pgStore(connection);
-    await store2.init();
-    return store2;
-  }
-  return openStore(root);
-}
 var init_src = __esm({
   "../vexnar-store/src/index.ts"() {
     "use strict";
@@ -34376,6 +34370,7 @@ __export(context_exports, {
   runTool: () => runTool,
   saveReport: () => saveReport,
   scheduler: () => scheduler,
+  seedCatalogDefaults: () => seedCatalogDefaults,
   spawnTriggerTask: () => spawnTriggerTask,
   startSchedules: () => startSchedules,
   startTriggers: () => startTriggers,
@@ -34392,24 +34387,26 @@ function parseJson2(value) {
     return value;
   }
 }
+async function seedCatalogDefaults() {
+  try {
+    const seeded = await registerCatalogDefaults(meta3, { firstRunOnly: true });
+    if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
+      console.log(`[catalog] \u9ED8\u8BA4\u76EE\u5F55\u5DF2\u6CE8\u518C\uFF1A\u5DE5\u5177 +${seeded.toolsAdded}\uFF0CMCP server +${seeded.serversAdded}`);
+    }
+  } catch (error62) {
+    console.warn("[catalog] \u9ED8\u8BA4\u76EE\u5F55\u6CE8\u518C\u5931\u8D25\uFF1A", String(error62?.message ?? error62));
+  }
+}
 var store, meta3, operations, engine, scheduler, taskQueue;
 var init_context2 = __esm({
-  async "src/context.ts"() {
+  "src/context.ts"() {
     "use strict";
     init_src();
     init_gateway();
     init_dsl();
     init_register();
-    store = await openStore2();
+    store = openStoreSync();
     meta3 = openMeta();
-    try {
-      const seeded = await registerCatalogDefaults(meta3, { firstRunOnly: true });
-      if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
-        console.log(`[catalog] \u9ED8\u8BA4\u76EE\u5F55\u5DF2\u6CE8\u518C\uFF1A\u5DE5\u5177 +${seeded.toolsAdded}\uFF0CMCP server +${seeded.serversAdded}`);
-      }
-    } catch (error62) {
-      console.warn("[catalog] \u9ED8\u8BA4\u76EE\u5F55\u6CE8\u518C\u5931\u8D25\uFF1A", String(error62?.message ?? error62));
-    }
     operations = storeOperations(storeRoot());
     engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
     scheduler = createScheduler({ concurrency: 4 });
@@ -41787,9 +41784,9 @@ function registerSettingsCatalog(api2) {
   });
 }
 var init_settings_catalog = __esm({
-  async "src/routes/settings-catalog.ts"() {
+  "src/routes/settings-catalog.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
   }
 });
 
@@ -41886,9 +41883,9 @@ function registerLocalTrafficCleanup(api2) {
   });
 }
 var init_data_management = __esm({
-  async "src/routes/data-management.ts"() {
+  "src/routes/data-management.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
   }
 });
 
@@ -41917,6 +41914,8 @@ __export(runtime_exports, {
   storeBackend: () => storeBackend
 });
 async function boot() {
+  await store.init();
+  await seedCatalogDefaults();
   for (const agent of await meta3.table("agents")) {
     try {
       const stop = await startTriggers(store, scheduler, operations, agent.key, async (fire) => {
@@ -42024,10 +42023,10 @@ function runtimeInfo() {
 }
 var state, stops, releaseStoreLock, booting, signalHooks;
 var init_runtime = __esm({
-  async "src/runtime.ts"() {
+  "src/runtime.ts"() {
     "use strict";
     init_src();
-    await init_context2();
+    init_context2();
     init_mode();
     state = {
       started: false,
@@ -42636,9 +42635,9 @@ async function exists(path) {
 }
 var CONV, CONV_ACT, maxConversationDeleteBatch, maxConversationAgentKeyRunes, maxConversationTitleRunes, maxChatMentions, safeChatID, busy, cancelMap, liveMap, taskBusy, taskCancel, convKey, taskKey, convIdSeed, actIdSeed, ConvLiveText, TRACE_MASK;
 var init_conversations = __esm({
-  async "src/routes/conversations.ts"() {
+  "src/routes/conversations.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     CONV = "conversations";
     CONV_ACT = "conversation_activities";
     maxConversationDeleteBatch = 100;
@@ -43187,10 +43186,10 @@ function register3(api2) {
 }
 var DESKTOP_TOKEN_HEADER, APPROVAL_HEADER, TASK_PAGE_SIZE, HISTORY_SIZE, REASONING_EFFORTS, THINKING_TYPES, ACCESS_MODES, desktopAuth;
 var init_desktop = __esm({
-  async "src/routes/desktop.ts"() {
+  "src/routes/desktop.ts"() {
     "use strict";
     init_dist();
-    await init_context2();
+    init_context2();
     DESKTOP_TOKEN_HEADER = "x-vexnar-desktop-token";
     APPROVAL_HEADER = "x-vexnar-user-approved";
     TASK_PAGE_SIZE = 50;
@@ -43502,9 +43501,9 @@ function register4(api2) {
 }
 var VIS_TABLE, SKILL_VIS_TABLE, TOOLS_TABLE, kindRe, builtinCommands;
 var init_visibility = __esm({
-  async "src/routes/visibility.ts"() {
+  "src/routes/visibility.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     VIS_TABLE = "visibility";
     SKILL_VIS_TABLE = "skillVisibility";
     TOOLS_TABLE = "tools";
@@ -44369,9 +44368,9 @@ function register5(api2) {
 }
 var writer, MAX_RETRY_ATTEMPTS, MAX_RETRY_INTERVAL_MS, TOKEN_FIELDS;
 var init_llm = __esm({
-  async "src/routes/llm.ts"() {
+  "src/routes/llm.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     writer = operations.writer;
     MAX_RETRY_ATTEMPTS = 20;
     MAX_RETRY_INTERVAL_MS = 36e5;
@@ -45023,9 +45022,9 @@ function register6(api2) {
 }
 var TABLE_RULES, TABLE_ASSET_RULES, TABLE_TASK_RULES, TABLE_PENDING, TABLE_TOOL_CONFIG, TABLE_JUDGE_CONFIG, DEFAULT_INTERCEPT_TOOLS, DEFAULT_JUDGE_PROMPT;
 var init_intercept = __esm({
-  async "src/routes/intercept.ts"() {
+  "src/routes/intercept.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     TABLE_RULES = "intercept_rules";
     TABLE_ASSET_RULES = "asset_intercept_rules";
     TABLE_TASK_RULES = "task_intercept_rules";
@@ -45304,9 +45303,9 @@ async function stopCapture(scope) {
   return next;
 }
 var init_capture_state = __esm({
-  async "src/capture-state.ts"() {
+  "src/capture-state.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
   }
 });
 
@@ -45446,10 +45445,10 @@ function registerTrafficHistory(api2) {
   });
 }
 var init_traffic_history = __esm({
-  async "src/routes/traffic-history.ts"() {
+  "src/routes/traffic-history.ts"() {
     "use strict";
-    await init_context2();
-    await init_capture_state();
+    init_context2();
+    init_capture_state();
     init_traffic_index();
   }
 });
@@ -64158,6 +64157,9 @@ import { Agent as Agent2, createServer as createHttpServer2, request as httpRequ
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { connect as netConnect2, isIP as isIP3 } from "node:net";
 import { createServer as createTlsServer, connect as tlsConnect2 } from "node:tls";
+function setExchangeRecorder(next) {
+  recorder = next;
+}
 function splitTarget2(value) {
   const index = value.lastIndexOf(":");
   if (index < 0) return { host: value, port: 443 };
@@ -64194,11 +64196,10 @@ function truncateBody(body, total) {
   if (total <= CAPTURE_BODY_LIMIT || body.length <= CAPTURE_BODY_LIMIT) return body;
   return Buffer.concat([body.subarray(0, CAPTURE_BODY_LIMIT), Buffer.from("\n\u2026[truncated by mitm]")]);
 }
-var CAPTURE_BODY_LIMIT, NON_TLS_PORTS, HOP_HEADERS, MitmProxy;
+var recorder, CAPTURE_BODY_LIMIT, NON_TLS_PORTS, HOP_HEADERS, MitmProxy;
 var init_mitm = __esm({
-  async "src/traffic-proxy/mitm.ts"() {
+  "src/traffic-proxy/mitm.ts"() {
     "use strict";
-    await init_traffic();
     init_ca2();
     CAPTURE_BODY_LIMIT = 5 * 1024 * 1024;
     NON_TLS_PORTS = /* @__PURE__ */ new Set([22, 25, 110, 143, 465, 587, 993, 995, 3306, 5432, 6379, 11211, 27017]);
@@ -64412,9 +64413,12 @@ var init_mitm = __esm({
                 source: "vexnar",
                 duration_ms: Date.now() - started
               };
-              void recordExchange(record2).catch((error62) => {
-                console.error("[mitm] record failed:", error62.message);
-              });
+              const recording = recorder?.(record2);
+              if (recording) {
+                void recording.catch((error62) => {
+                  console.error("[mitm] record failed:", error62.message);
+                });
+              }
             });
           }
         );
@@ -64444,7 +64448,7 @@ var init_mitm = __esm({
         upstream.pipe(client);
         client.once("close", () => upstream.destroy());
         upstream.once("close", () => client.destroy());
-        void recordExchange({
+        const recording = recorder?.({
           host: target.host,
           method: String(req.method ?? "GET"),
           url: `${scheme}://${target.host}:${target.port}${path}`,
@@ -64454,7 +64458,8 @@ var init_mitm = __esm({
           resp_head: "HTTP 101 Switching Protocols",
           scope,
           source: "vexnar"
-        }).catch(() => {
+        });
+        if (recording) void recording.catch(() => {
         });
       }
       connectUpstream(target, scheme) {
@@ -64494,10 +64499,11 @@ function mitmProxy() {
 }
 var proxy;
 var init_traffic_proxy = __esm({
-  async "src/traffic-proxy/index.ts"() {
+  "src/traffic-proxy/index.ts"() {
     "use strict";
-    await init_context2();
-    await init_mitm();
+    init_context2();
+    init_mitm();
+    init_mitm();
   }
 });
 
@@ -64965,15 +64971,15 @@ function register7(api2) {
 }
 var TRAFFIC_ROLES, MAX_INLINE_BODY, BLOB_PREVIEW, BLOB_HASH_RE, BINARY_TYPES2, writer2, blobs, exchangeSeqSeed;
 var init_traffic = __esm({
-  async "src/routes/traffic.ts"() {
+  "src/routes/traffic.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     init_traffic_scope();
     init_traffic_index();
-    await init_data_management();
-    await init_traffic_history();
-    await init_traffic_history();
-    await init_traffic_proxy();
+    init_data_management();
+    init_traffic_history();
+    init_traffic_history();
+    init_traffic_proxy();
     TRAFFIC_ROLES = /* @__PURE__ */ new Set(["baseline", "proof", "verification", "supporting"]);
     MAX_INLINE_BODY = 256 * 1024;
     BLOB_PREVIEW = 8 * 1024;
@@ -65000,6 +65006,7 @@ var init_traffic = __esm({
     writer2 = () => operations.writer;
     blobs = () => blobStore(storeRoot());
     exchangeSeqSeed = null;
+    setExchangeRecorder(recordExchange);
   }
 });
 
@@ -65524,16 +65531,16 @@ function yakitHook(scope, origin) {
 }
 var MAX_INGEST_BODY, STREAM_POLL_MS2, STREAM_PING_MS2, SESSION_ID2, yakitMirrorHook;
 var init_session_traffic = __esm({
-  async "src/routes/session-traffic.ts"() {
+  "src/routes/session-traffic.ts"() {
     "use strict";
     init_streaming();
-    await init_context2();
-    await init_capture_state();
-    await init_traffic_proxy();
+    init_context2();
+    init_capture_state();
+    init_traffic_proxy();
     init_traffic_key();
     init_traffic_scope();
-    await init_traffic_history();
-    await init_traffic();
+    init_traffic_history();
+    init_traffic();
     MAX_INGEST_BODY = 16 << 20;
     STREAM_POLL_MS2 = 600;
     STREAM_PING_MS2 = 2e4;
@@ -66440,9 +66447,9 @@ function pickSkillRoot(roots, sub) {
 }
 var skillsRoot, provFile, maxSkillZipBytes, maxSkillTotalBytes, maxSkillFileBytes, maxSkillEntries, maxSkillPathLen, skillPathBlocked, marketRepoRe;
 var init_skills = __esm({
-  async "src/routes/skills.ts"() {
+  "src/routes/skills.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     skillsRoot = () => join14(storeRoot(), "skills");
     provFile = ".vexnar-skill.json";
     maxSkillZipBytes = 20 << 20;
@@ -66969,9 +66976,9 @@ function register10(api2) {
 }
 var marketSchemaFile, marketMCPFile, marketMaxItems, marketMaxFile, marketMaxDiscover, marketHTTPBudgetMs, marketRepoRe2, builtinCatalog;
 var init_market = __esm({
-  async "src/routes/market.ts"() {
+  "src/routes/market.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     marketSchemaFile = "market.json";
     marketMCPFile = "mcp.json";
     marketMaxItems = 200;
@@ -68138,9 +68145,9 @@ function register11(api2) {
 }
 var writer3, now, text2, runeCount2, MAX_BATCH_IDS, MAX_CATEGORY_BATCH_IDS, TERMINAL_TASK_STATUS, INTENT_TERMINAL_STATES, MAX_SCOPE_RUNES, SCOPE_KINDS, MULTI_PART_SUFFIXES, DOMAIN_ATTRIBUTION_TYPES, NET_ATTRIBUTION_TYPES, SCOPE_MATCH_TYPES;
 var init_tasks_companies = __esm({
-  async "src/routes/tasks-companies.ts"() {
+  "src/routes/tasks-companies.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     init_gateway();
     writer3 = () => operations.writer;
     now = () => rfc33395(/* @__PURE__ */ new Date());
@@ -68198,9 +68205,10 @@ async function commitMeta3(tables) {
   meta3.reload();
 }
 async function settingsMap() {
-  const rows = await meta3.table(META_SETTINGS);
+  const stored = await meta3.table(META_SETTINGS);
+  const rows = Array.isArray(stored) ? stored : stored && typeof stored === "object" ? Object.entries(stored).map(([key, value]) => ({ key, value })) : [];
   const out = /* @__PURE__ */ new Map();
-  for (const row of rows ?? []) {
+  for (const row of rows) {
     if (!row || row.key == null) continue;
     out.set(String(row.key), row.value == null ? "" : String(row.value));
   }
@@ -69000,10 +69008,10 @@ function register12(api2) {
 }
 var DELIVERY_TABLE, SIDE_TABLE, SIDE_SESSION_TABLE, META_CHANNELS, META_MCP, META_SETTINGS, SETTING_NOTIFY_ENABLED, SETTING_NOTIFY_PUBLIC_BASE_URL, SETTING_NOTIFY_DIGEST_MINUTES, NOTIFY_DEFAULT_DIGEST_MINUTES, NOTIFY_MASKED_PREFIX, NOTIFY_ALLOW_LOCAL_ENV, NOTIFY_SEND_TIMEOUT_MS, NOTIFY_MAX_ERROR_CHARS, MCP_DISCOVER_TIMEOUT_MS, MCP_PROTOCOL_VERSION, MCP_MAX_IMPORT_BYTES, SIDE_MAX_QUESTION_RUNES, SIDE_PAGE_DEFAULT, SIDE_PAGE_MAX, rfc33396, truncate3, isMasked, LOOPBACK_HOSTS, NOTIFY_CHANNELS, notifyKinds, NOTIFY_STATE_ALIASES, SIDE_CLIENT_ID;
 var init_notify_mcp = __esm({
-  async "src/routes/notify-mcp.ts"() {
+  "src/routes/notify-mcp.ts"() {
     "use strict";
-    await init_settings_catalog();
-    await init_context2();
+    init_settings_catalog();
+    init_context2();
     DELIVERY_TABLE = "notification_deliveries";
     SIDE_TABLE = "side_questions";
     SIDE_SESSION_TABLE = "side_question_sessions";
@@ -69732,9 +69740,9 @@ function register13(api2) {
 }
 var AGENT_KEY_RE, PROMPT_TABLE, TRIGGER_TABLE, VIS_TABLE2, SKILL_VIS_TABLE2, TRIGGER_RUN_MODES, TRIGGER_MERGE_MODES, BUILTIN_KEYS, builtinPromptSeeds, DEFAULT_ASSISTANT_PROMPT, wrapupDefaults, genericWrapUpDefault, wrapupTurnDefaults, genericWrapupTurns, taskTimeoutWrapupDefaults, builtinPromptVars, TAG_SPLIT, VALUE_TAG, IF_TAG, truthy, promptKey, jsonBody3;
 var init_agents = __esm({
-  async "src/routes/agents.ts"() {
+  "src/routes/agents.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     AGENT_KEY_RE = /^[a-z][a-z0-9_]*$/;
     PROMPT_TABLE = "agent_prompts";
     TRIGGER_TABLE = "agent_triggers";
@@ -70123,9 +70131,9 @@ function register14(api2) {
 }
 var maxWorkspaceRead, maxWorkspaceUpload;
 var init_workspace = __esm({
-  async "src/routes/workspace.ts"() {
+  "src/routes/workspace.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     maxWorkspaceRead = 2 << 20;
     maxWorkspaceUpload = 512 << 20;
   }
@@ -70533,9 +70541,9 @@ function register15(api2) {
 }
 var scopeSentryMCPName, syncMaxPerType, syncDefaultPage, ScopeSentryClient;
 var init_sync = __esm({
-  async "src/routes/sync.ts"() {
+  "src/routes/sync.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     scopeSentryMCPName = "ScopeSentry";
     syncMaxPerType = 5e3;
     syncDefaultPage = 100;
@@ -75514,7 +75522,7 @@ function register17(api2) {
       await writeSetting(ACTIVE_TASK_KEY, String(task.id));
       void (async () => {
         if (!modelCompletionReady() || task.queued) return;
-        const { engine: engine2, taskQueue: taskQueue2, gatewayComplete: gatewayComplete2 } = await init_context2().then(() => context_exports);
+        const { engine: engine2, taskQueue: taskQueue2, gatewayComplete: gatewayComplete2 } = await Promise.resolve().then(() => (init_context2(), context_exports));
         if (typeof engine2?.plan !== "function" || typeof taskQueue2?.enqueue !== "function") return;
         await taskQueue2.enqueue(String(task.id), async () => {
           await engine2.plan(String(task.id), gatewayComplete2);
@@ -75548,12 +75556,12 @@ function register17(api2) {
 }
 var import_jsonwebtoken, REPO_ROOT, JWT_KEY_PATH, JWT_SUBJECT, JWT_TTL_SECONDS, KEY_ALPHABET, AUTH_PASS_KEY, ACTIVE_TASK_KEY, MIN_PASSWORD_RUNES, MAX_PASSWORD_BYTES, ERR_DATA_SOURCE, LOG_TABLE, LOG_CAP, LOG_STREAM_REPLAY, LOG_RETENTION, LOG_PING_MS, cachedKey, BCRYPT_PI, BCRYPT_ALPHABET, BCRYPT_REVERSE, BCRYPT_PATTERN, piWords, ORPHEAN, metaChain, ring, logSeq, logSubscribers, persistChain, persistSeq, persistReady, capturing;
 var init_auth = __esm({
-  async "src/routes/auth.ts"() {
+  "src/routes/auth.ts"() {
     "use strict";
     import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
     init_gateway();
     init_streaming();
-    await init_context2();
+    init_context2();
     REPO_ROOT = fileURLToPath2(new URL("../../../../", import.meta.url));
     JWT_KEY_PATH = join16(REPO_ROOT, "jwt.key");
     JWT_SUBJECT = "VEXNAR";
@@ -75807,9 +75815,9 @@ function requestId(row) {
 }
 var errResponse8, rfc;
 var init_gaps = __esm({
-  async "src/routes/gaps.ts"() {
+  "src/routes/gaps.ts"() {
     "use strict";
-    await init_context2();
+    init_context2();
     init_register();
     errResponse8 = (c, e) => c.json({ error: String(e?.message ?? e) }, e?.name === "StoreConflict" ? 409 : e?.status ?? 400);
     rfc = (d) => d.toISOString();
@@ -75818,7 +75826,7 @@ var init_gaps = __esm({
 
 // src/routes.ts
 init_dist();
-await init_context2();
+init_context2();
 import { readFile as readFile8 } from "node:fs/promises";
 import { join as join17 } from "node:path";
 
@@ -75827,7 +75835,7 @@ import { crc32, deflateRawSync } from "node:zlib";
 
 // src/routes/read-views.ts
 init_task_status();
-await init_context2();
+init_context2();
 var taskDto = (row, metrics) => ({
   id: String(row.id),
   exploration_id: Number(row.exploration_id),
@@ -76091,7 +76099,7 @@ function registerReadViews(api2) {
 }
 
 // src/routes/exploration.ts
-await init_context2();
+init_context2();
 var MAX_FOLLOW_UP_RUNES = 4e3;
 var MAX_RETEST_NOTES_RUNES = 4e3;
 var FINDING_RETEST_AGENT_KEY = "retester";
@@ -77237,7 +77245,7 @@ data: ${JSON.stringify(activityDto(row))}
 }
 
 // src/egress/routes.ts
-await init_context2();
+init_context2();
 import { join as join9 } from "node:path";
 
 // src/egress/gateway.ts
@@ -80621,7 +80629,7 @@ function gatewayPorts(gateway) {
 }
 
 // src/routes/notification-settings.ts
-await init_context2();
+init_context2();
 function registerNotificationSettings(api2, redactConfig = false) {
   api2.get("/api/notify/channels", async (c) => {
     const channels = await meta3.table("notify");
@@ -80659,9 +80667,9 @@ function registerNotificationSettings(api2, redactConfig = false) {
 }
 
 // src/routes.ts
-await init_settings_catalog();
+init_settings_catalog();
 init_register();
-await init_data_management();
+init_data_management();
 var api = new Hono3();
 registerSettingsCatalog(api);
 registerNotificationSettings(api);
@@ -80670,7 +80678,7 @@ register(api);
 registerReadViews(api);
 api.get("/api/health", (c) => c.json({ ok: true, service: "vexnar", version: process.env.VEXNAR_VERSION ?? "dev" }));
 api.get("/api/_runtime", async (c) => {
-  const { runtimeInfo: runtimeInfo2 } = await init_runtime().then(() => runtime_exports);
+  const { runtimeInfo: runtimeInfo2 } = await Promise.resolve().then(() => (init_runtime(), runtime_exports));
   return c.json(runtimeInfo2());
 });
 api.get("/api/settings", async (c) => c.json(await meta3.table("settings")));
@@ -81389,23 +81397,23 @@ api.get("/api/exploration/activity/history", async (c) => {
   });
 });
 var routeModules = [
-  { load: () => init_conversations().then(() => conversations_exports), scope: "conversations/chat" },
-  { load: () => init_desktop().then(() => desktop_exports), scope: "desktop gateway" },
-  { load: () => init_visibility().then(() => visibility_exports), scope: "visibility/commands" },
-  { load: () => init_llm().then(() => llm_exports), scope: "llm pool/records" },
-  { load: () => init_intercept().then(() => intercept_exports), scope: "intercept approvals" },
-  { load: () => init_traffic().then(() => traffic_exports), scope: "traffic evidence" },
-  { load: () => init_session_traffic().then(() => session_traffic_exports), scope: "session traffic" },
-  { load: () => init_skills().then(() => skills_exports), scope: "skills" },
-  { load: () => init_market().then(() => market_exports), scope: "market" },
-  { load: () => init_tasks_companies().then(() => tasks_companies_exports), scope: "tasks/companies" },
-  { load: () => init_notify_mcp().then(() => notify_mcp_exports), scope: "notify/mcp/side-questions" },
-  { load: () => init_agents().then(() => agents_exports), scope: "agents" },
-  { load: () => init_workspace().then(() => workspace_exports), scope: "workspace" },
-  { load: () => init_sync().then(() => sync_exports), scope: "scopesentry sync" },
+  { load: () => Promise.resolve().then(() => (init_conversations(), conversations_exports)), scope: "conversations/chat" },
+  { load: () => Promise.resolve().then(() => (init_desktop(), desktop_exports)), scope: "desktop gateway" },
+  { load: () => Promise.resolve().then(() => (init_visibility(), visibility_exports)), scope: "visibility/commands" },
+  { load: () => Promise.resolve().then(() => (init_llm(), llm_exports)), scope: "llm pool/records" },
+  { load: () => Promise.resolve().then(() => (init_intercept(), intercept_exports)), scope: "intercept approvals" },
+  { load: () => Promise.resolve().then(() => (init_traffic(), traffic_exports)), scope: "traffic evidence" },
+  { load: () => Promise.resolve().then(() => (init_session_traffic(), session_traffic_exports)), scope: "session traffic" },
+  { load: () => Promise.resolve().then(() => (init_skills(), skills_exports)), scope: "skills" },
+  { load: () => Promise.resolve().then(() => (init_market(), market_exports)), scope: "market" },
+  { load: () => Promise.resolve().then(() => (init_tasks_companies(), tasks_companies_exports)), scope: "tasks/companies" },
+  { load: () => Promise.resolve().then(() => (init_notify_mcp(), notify_mcp_exports)), scope: "notify/mcp/side-questions" },
+  { load: () => Promise.resolve().then(() => (init_agents(), agents_exports)), scope: "agents" },
+  { load: () => Promise.resolve().then(() => (init_workspace(), workspace_exports)), scope: "workspace" },
+  { load: () => Promise.resolve().then(() => (init_sync(), sync_exports)), scope: "scopesentry sync" },
   { load: () => Promise.resolve().then(() => (init_update(), update_exports)), scope: "update/self-update" },
-  { load: () => init_auth().then(() => auth_exports), scope: "auth/logs/system" },
-  { load: () => init_gaps().then(() => gaps_exports), scope: "misc gap fill" }
+  { load: () => Promise.resolve().then(() => (init_auth(), auth_exports)), scope: "auth/logs/system" },
+  { load: () => Promise.resolve().then(() => (init_gaps(), gaps_exports)), scope: "misc gap fill" }
 ];
 for (const { load, scope } of routeModules) {
   try {
@@ -81700,7 +81708,7 @@ async function goData(request, localPeer) {
 }
 
 // src/intercept-seed.ts
-await init_context2();
+init_context2();
 import { readFile as readFile9 } from "node:fs/promises";
 import { existsSync as existsSync5 } from "node:fs";
 import { dirname as dirname7, join as join18, resolve as resolve3 } from "node:path";
@@ -82080,9 +82088,9 @@ async function ensureInterceptRulesSeeded(loadRows = process.env.VEXNAR_CLIENT_S
 }
 
 // src/embedded.ts
-await init_runtime();
+init_runtime();
 init_gateway();
-await init_runtime();
+init_runtime();
 var migration = null;
 function migrateOnce() {
   migration ??= ensureInterceptRulesSeeded().then(
@@ -82106,7 +82114,9 @@ export {
   isGoDataRequest,
   modelCompletionReady,
   runtimeInfo,
-  setModelCompletion
+  setModelCompletion,
+  startRuntime,
+  stopRuntime
 };
 /*! Bundled license information:
 

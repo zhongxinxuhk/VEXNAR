@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { installPlatform, recordOf } from "./platform.js";
 import { registerYakHistoryTools } from "./yak-history-tools.js";
@@ -125,17 +124,16 @@ function apply(ctx) {
     const starting = import("./core-embedded.js").then((result) => {
       core = result;
       coreState = "available";
+      void result.startRuntime().catch((error) => {
+        console.error("[vexnar] \u8FD0\u884C\u65F6\u5E95\u5EA7\u542F\u52A8\u5931\u8D25", error);
+      });
       return result;
-    }, () => {
+    }, (error) => {
       coreState = "failed";
+      console.error("[vexnar] \u5D4C\u5165 core \u52A0\u8F7D\u5931\u8D25", error);
       return void 0;
     });
-    const deadline = delay(4e3, void 0, { ref: false }).then(() => {
-      if (coreState === "loading") coreState = "timed_out";
-      return void 0;
-    });
-    const startup = Promise.race([starting, deadline]);
-    const getCore = async () => core ?? await startup;
+    const getCore = async () => core ?? await starting;
     const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === "go";
     const diagnostics = () => {
       const configuredStore = process.env.VEXNAR_STORE?.trim().toLowerCase();

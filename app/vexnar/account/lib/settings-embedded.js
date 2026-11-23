@@ -28546,10 +28546,15 @@ function openMeta(root = storeRoot()) {
   if (wantsPg && connection !== void 0) return pgMetaStore(connection, sqliteMetaStore(dbPath(root)));
   return explicit === "json" ? metaStore(root) : sqliteMetaStore(dbPath(root));
 }
-async function openStore(root = storeRoot()) {
-  const store2 = backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
-  await store2.init();
-  return store2;
+function openStoreSync(root = storeRoot()) {
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
+  const connection = pgConnection();
+  const mode = explicit || (connection ? "postgres" : "sqlite");
+  if (mode === "postgres") {
+    if (connection === void 0) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
+    return pgStore(connection);
+  }
+  return backend() === "sqlite" ? sqliteStore(dbPath(root)) : jsonStore(root);
 }
 
 // ../vexnar-store/src/operations.ts
@@ -30425,20 +30430,6 @@ function createTaskQueue(options = {}) {
       return [...paused];
     }
   };
-}
-
-// ../vexnar-store/src/index.ts
-async function openStore2(root) {
-  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase();
-  const connection = pgConnection();
-  const mode = explicit || (connection ? "postgres" : "sqlite");
-  if (mode === "postgres") {
-    if (connection === void 0) throw new Error("VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL");
-    const store2 = pgStore(connection);
-    await store2.init();
-    return store2;
-  }
-  return openStore(root);
 }
 
 // src/catalog/defaults.ts
@@ -32771,127 +32762,8 @@ var DEFAULT_TOOLS = [
     "deferred": false
   }
 ];
-var DEFAULT_SERVERS = [
-  {
-    "name": "browser",
-    "transport": "stdio",
-    "command": "npx",
-    "args": [
-      "@playwright/mcp",
-      "--headless"
-    ],
-    "env": {},
-    "enabled": true,
-    "insecure": false
-  },
-  {
-    "name": "ScopeSentry",
-    "transport": "http",
-    "args": [],
-    "env": {
-      "X-API-Key": ""
-    },
-    "enabled": true,
-    "insecure": false
-  },
-  {
-    "name": "UFOX\u5728\u7EBFAPK\u53CD\u7F16\u8BD1",
-    "transport": "http",
-    "url": "https://ufox.cc/apk/mcp",
-    "args": [],
-    "env": {},
-    "enabled": true,
-    "insecure": false
-  }
-];
 
 // src/catalog/register.ts
-var SEED_MARKER = "catalogSeeded";
-function rowsOf(tables, name) {
-  const rows = tables[name];
-  if (Array.isArray(rows)) return rows;
-  const fresh = [];
-  tables[name] = fresh;
-  return fresh;
-}
-function settingsOf(tables) {
-  const row = tables.settings;
-  if (row && typeof row === "object" && !Array.isArray(row)) return row;
-  const fresh = {};
-  tables.settings = fresh;
-  return fresh;
-}
-function toolRowFromDefault(def) {
-  return {
-    key: def.key,
-    system: true,
-    description: def.description,
-    schema: def.schema,
-    agents: [...def.agents],
-    enabled: def.enabled,
-    kind: def.kind,
-    ...def.exec === void 0 ? {} : { exec: def.exec },
-    deferred: def.deferred,
-    calls: 0
-  };
-}
-async function registerCatalogDefaults(meta4, options = {}) {
-  const tables = await meta4.load();
-  const tools = rowsOf(tables, "tools");
-  const servers = rowsOf(tables, "mcp");
-  const settings2 = settingsOf(tables);
-  const firstRunOnly = options.firstRunOnly === true;
-  const seeded = settings2[SEED_MARKER] === true;
-  const wantTools = options.only === void 0 || options.only === "tools";
-  const wantServers = options.only === void 0 || options.only === "mcp";
-  const proceed = !firstRunOnly || !seeded;
-  let toolsAdded = 0;
-  let serversAdded = 0;
-  if (proceed && wantTools) {
-    const known = new Set(tools.map((row) => String(row?.key ?? "")));
-    for (const def of DEFAULT_TOOLS) {
-      if (known.has(def.key)) continue;
-      tools.push(toolRowFromDefault(def));
-      known.add(def.key);
-      toolsAdded += 1;
-    }
-  }
-  if (proceed && wantServers) {
-    const known = new Set(servers.map((row) => String(row?.name ?? "").toLowerCase()));
-    let nextId2 = Math.max(0, ...servers.map((row) => Number(row?.id ?? 0))) + 1;
-    for (const def of DEFAULT_SERVERS) {
-      const name = def.name.toLowerCase();
-      if (known.has(name)) continue;
-      servers.push({
-        id: nextId2++,
-        name: def.name,
-        transport: def.transport,
-        ...def.command === void 0 ? {} : { command: def.command },
-        ...def.url === void 0 ? {} : { url: def.url },
-        args: [...def.args],
-        env: { ...def.env },
-        enabled: def.enabled,
-        insecure: def.insecure,
-        tools: []
-      });
-      known.add(name);
-      serversAdded += 1;
-    }
-  }
-  const markNow = proceed && (toolsAdded > 0 || serversAdded > 0 || !seeded);
-  if (markNow) settings2[SEED_MARKER] = true;
-  if (markNow || toolsAdded > 0 || serversAdded > 0) {
-    await meta4.save(tables);
-    meta4.reload();
-  }
-  return {
-    toolsAdded,
-    toolsTotal: tools.length,
-    serversAdded,
-    serversTotal: servers.length,
-    seeded
-  };
-}
 function defaultTool(key) {
   return DEFAULT_TOOLS.find((def) => def.key === key);
 }
@@ -32905,16 +32777,8 @@ function parseJson2(value) {
     return value;
   }
 }
-var store = await openStore2();
+var store = openStoreSync();
 var meta3 = openMeta();
-try {
-  const seeded = await registerCatalogDefaults(meta3, { firstRunOnly: true });
-  if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
-    console.log(`[catalog] \u9ED8\u8BA4\u76EE\u5F55\u5DF2\u6CE8\u518C\uFF1A\u5DE5\u5177 +${seeded.toolsAdded}\uFF0CMCP server +${seeded.serversAdded}`);
-  }
-} catch (error62) {
-  console.warn("[catalog] \u9ED8\u8BA4\u76EE\u5F55\u6CE8\u518C\u5931\u8D25\uFF1A", String(error62?.message ?? error62));
-}
 var operations = storeOperations(storeRoot());
 var engine = createEngine(store, operations, { runner: createRunner({ concurrency: 2 }) });
 var scheduler = createScheduler({ concurrency: 4 });

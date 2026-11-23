@@ -8,6 +8,7 @@ import { metaStore as jsonMetaStore } from './meta-store.js'
 import type { MetaStore } from './meta-store.js'
 import { jsonStore } from './json-store.js'
 import { sqliteWriter, sqliteMetaStore, sqliteStore } from './sqlite.js'
+import { pgStore } from './pg-store.js'
 import { pgMetaStore, type PgConnection } from './pg-meta.js'
 import type { Store } from './types.js'
 
@@ -71,8 +72,27 @@ export function openMeta(root = storeRoot()): MetaStore {
   return explicit === 'json' ? jsonMetaStore(root) : sqliteMetaStore(dbPath(root))
 }
 
+/**
+ * Store 对象的同步构造：选后端、开文件，不做 `await`。
+ *
+ * 嵌入 bundle（`core-embedded.js`）的模块图里不允许顶层 await：esbuild 会把含
+ * TLA 的模块包成异步 init，环形 import 的两个模块就会互相等待，整个 core 永远
+ * 停在加载中。把异步初始化（JSON 目录、PG 连通性）留给 `startRuntime()`，
+ * 模块图就能同步求值。
+ */
+export function openStoreSync(root = storeRoot()): Store {
+  const explicit = process.env.VEXNAR_STORE?.trim().toLowerCase()
+  const connection = pgConnection()
+  const mode = explicit || (connection ? 'postgres' : 'sqlite')
+  if (mode === 'postgres') {
+    if (connection === undefined) throw new Error('VEXNAR_STORE=postgres requires VEXNAR_PG_DSN or VEXNAR_PG_URL')
+    return pgStore(connection)
+  }
+  return backend() === 'sqlite' ? sqliteStore(dbPath(root)) : jsonStore(root)
+}
+
 export async function openStore(root = storeRoot()): Promise<Store> {
-  const store = backend() === 'sqlite' ? sqliteStore(dbPath(root)) : jsonStore(root)
+  const store = openStoreSync(root)
   await store.init()
   return store
 }

@@ -8,7 +8,7 @@ import { startRuntime } from './runtime.ts'
 
 export { isGoDataRequest, isDataPlaneRequest } from './go-data.ts'
 export { modelCompletionReady, setModelCompletion } from './gateway.ts'
-export { runtimeInfo } from './runtime.ts'
+export { runtimeInfo, startRuntime, stopRuntime } from './runtime.ts'
 
 /**
  * 拦截规则的一次性迁移只跑一次：成功或失败都记住这次尝试，之后的请求不再重试，

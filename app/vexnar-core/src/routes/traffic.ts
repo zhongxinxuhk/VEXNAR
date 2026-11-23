@@ -11,7 +11,7 @@ import { archivedRaw } from '../traffic-index.ts'
 import { registerLocalTrafficCleanup } from './data-management.ts'
 import { allExchanges, registerTrafficHistory } from './traffic-history.ts'
 export { allExchanges, exchangeDto } from './traffic-history.ts'
-import { mitmProxy } from '../traffic-proxy/index.ts'
+import { mitmProxy, setExchangeRecorder } from '../traffic-proxy/index.ts'
 
 /**
  * 流量证据路由层：在 dsh 进程内以 Hono 前缀 /vexnar-api 挂载，持久层为 SQLite
@@ -251,6 +251,10 @@ export async function recordExchange(exchange: CaptureExchange) {
   store.invalidate?.(['traffic_exchanges'])
   return record
 }
+
+// MITM 代理只持有落库回调，不反向 import 本模块：这样 traffic ↔ traffic-proxy
+// 不再成环，嵌入 bundle 的模块图可以同步求值（旧版 core 卡在加载中就是那个环）。
+setExchangeRecorder(recordExchange)
 
 /** One exchange's raw request/response, for the detail pane. */
 export async function getExchangeRaw(id: string) {

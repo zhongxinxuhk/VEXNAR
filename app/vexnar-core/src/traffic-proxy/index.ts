@@ -9,6 +9,9 @@ import { join } from 'node:path'
 import { storeRoot } from '../context.ts'
 import { MitmProxy } from './mitm.ts'
 
+export { setExchangeRecorder } from './mitm.ts'
+export type { ExchangeRecorder } from './mitm.ts'
+
 let proxy: MitmProxy | undefined
 
 export function mitmProxy(): MitmProxy {

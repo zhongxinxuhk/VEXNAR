@@ -52,6 +52,10 @@ const check = (name: string, ok: boolean, detail = ''): void => {
 
 const app = new Hono()
 register(app)
+// GET /api/mcp/:id/tools 由设置目录模块提供（完整 core 里 routes.ts 也这样挂）；
+// 这里不挂它，工具列表检查就只是在验证 404。
+const { registerSettingsCatalog } = await import('./src/routes/settings-catalog.ts')
+registerSettingsCatalog(app)
 
 const json = async (response: Response) => {
   const text = await response.text()
