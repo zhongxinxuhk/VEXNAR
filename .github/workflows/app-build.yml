@@ -89,7 +89,6 @@ jobs:
       matrix:
         include:
           - { runner: macos-15, target: mac-arm64, script: 'package:desktop:mac:arm64:unsigned', ext: dmg }
-          - { runner: macos-15-intel, target: mac-x64, script: 'package:desktop:mac:x64:unsigned', ext: dmg }
           - { runner: windows-2022, target: win-x64, script: 'package:desktop:win:x64:unsigned', ext: exe }
     env:
       DSH_TELEMETRY_DISABLED: '1'
@@ -164,8 +163,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           shopt -s nullglob
+          # 两个产物：macOS arm64 的 dmg 与 Windows x64 的 exe（macOS x64 已不打包）。
           installers=(*.dmg *.exe)
-          test "${#installers[@]}" -eq 3
+          test "${#installers[@]}" -eq 2
           test -s vexnar-app-bundle.tar.gz
           sha256sum vexnar-app-bundle.tar.gz "${installers[@]}" > SHA256SUMS
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
