@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { pgStore } from './pg-store.js'
 import type { Store } from './types.js'
-import { backend, dbPath, openStore as openDefaultStore, openMeta, openWriter, pgConnection, storeRoot } from './backend.js'
+import { backend, dbPath, openStore as openDefaultStore, openMeta, openStoreSync, openWriter, pgConnection, storeRoot } from './backend.js'
 
 export type { Store } from './types.js'
-export { storeRoot, dbPath, backend, openWriter, openMeta, pgConnection } from './backend.js'
+export { storeRoot, dbPath, backend, openWriter, openMeta, openStoreSync, pgConnection } from './backend.js'
 export { storeOperations } from './operations.js'
 export { createEngine } from './engine.js'
 export { createRunner } from './exec.js'

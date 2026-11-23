@@ -156,9 +156,10 @@ pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续�
 ## 运行时诊断
 
 已登录客户端可从 `GET /vexnar-api/api/_runtime` 查看运行时状态。
-`core_state` 表示模块加载状态，分别为 `loading`（加载中）、`available`（模块可用）、
-`failed`（加载失败）和 `timed_out`（超过启动等待时间）。`started` 表示运行时是否已经启动。
-诊断由 dsh 宿主回答，core 加载超时时仍可读取。
+`core_state` 表示模块加载状态，分别为 `loading`（加载中）、`available`（模块可用）和
+`failed`（加载失败）。`started` 表示运行时底座（触发器、定时任务、store 锁、任务队列）
+是否已经启动。诊断由 dsh 宿主回答，core 仍在加载时也能读取；加载完成后域接口等待同一个
+导入结果，不再有固定期限的「启动超时」。
 
 ## 管理客户端数据
 

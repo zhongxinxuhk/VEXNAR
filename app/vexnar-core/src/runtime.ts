@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createNotifier, spawnTriggerTask, startSchedules, startTriggers } from '../../vexnar-store/src/index.ts'
-import { engine, gatewayComplete, meta, modelCompletionReady, operations, scheduler, store, taskQueue } from './context.ts'
+import { engine, gatewayComplete, meta, modelCompletionReady, operations, scheduler, seedCatalogDefaults, store, taskQueue } from './context.ts'
 import { runtimeMode, storeBackend } from './mode.ts'
 
 export { runtimeMode, storeBackend }
@@ -35,6 +35,11 @@ let releaseStoreLock: (() => void) | null = null
 let booting: Promise<void> | null = null
 let signalHooks = false
 async function boot() {
+  // store 对象在导入时同步构造；异步初始化（JSON 目录 / PG 连通性）必须先完成，
+  // 否则触发器与定时任务会读到半初始化的库。
+  await store.init()
+  await seedCatalogDefaults()
+
   // 触发器的回调与任务队列：命中触发器 → 建任务 → 有模型网关才自动规划并执行。
   for (const agent of await meta.table<any[]>('agents')) {
     try {

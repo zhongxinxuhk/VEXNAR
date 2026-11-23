@@ -94,9 +94,16 @@ async function commitMeta(tables: Record<string, unknown>) {
 
 /** settings 是 [{key,value}] 形态的键值表（PG `SELECT key, value` 导入）。 */
 async function settingsMap(): Promise<Map<string, string>> {
-  const rows = await meta.table<any[]>(META_SETTINGS)
+  const stored = await meta.table<any>(META_SETTINGS)
+  // settings 有两种历史形态：数组行（Go 时代）与对象键值（auth / desktop 写入，
+  // 首次启动的目录播种也走对象）。只认数组时，播种过的库会让通知页 400。
+  const rows: Array<{ key: unknown; value: unknown }> = Array.isArray(stored)
+    ? stored as Array<{ key: unknown; value: unknown }>
+    : stored && typeof stored === 'object'
+      ? Object.entries(stored as Record<string, unknown>).map(([key, value]) => ({ key, value }))
+      : []
   const out = new Map<string, string>()
-  for (const row of rows ?? []) {
+  for (const row of rows) {
     if (!row || row.key == null) continue
     out.set(String(row.key), row.value == null ? '' : String(row.value))
   }

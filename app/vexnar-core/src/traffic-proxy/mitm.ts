@@ -18,8 +18,25 @@ import { Agent as HttpsAgent, request as httpsRequest } from 'node:https'
 import { createServer as createNetServer, connect as netConnect, isIP, type Socket } from 'node:net'
 import { createServer as createTlsServer, connect as tlsConnect, type TLSSocket } from 'node:tls'
 
-import { recordExchange, type CaptureExchange } from '../routes/traffic.ts'
+import type { CaptureExchange } from '../routes/traffic.ts'
 import { MitmCA } from './ca.ts'
+
+/**
+ * 采集落库回调。
+ *
+ * 这里只留类型引用、不 import 路由模块：`routes/traffic.ts` 会 import 本模块的
+ * 代理单例，若本模块再反向 import 它的 `recordExchange`，嵌入 bundle 里就是
+ * traffic → traffic-proxy → mitm → traffic 的环形图 —— 旧版 core 一直卡在
+ * `timed_out` 就是这个环。路由在自身求值时用 `setExchangeRecorder()` 注入。
+ */
+export type ExchangeRecorder = (exchange: CaptureExchange) => Promise<unknown>
+
+let recorder: ExchangeRecorder | undefined
+
+/** 由流量路由注册落库实现；重复注册时后一次覆盖前一次。 */
+export function setExchangeRecorder(next: ExchangeRecorder | undefined): void {
+  recorder = next
+}
 
 const CAPTURE_BODY_LIMIT = 5 * 1024 * 1024
 // 默认对所有 CONNECT 做 TLS 拦截，只有明确的非 TLS 协议端口原样隧道。
@@ -267,9 +284,12 @@ export class MitmProxy {
             source: 'vexnar',
             duration_ms: Date.now() - started
           }
-          void recordExchange(record).catch((error) => {
-            console.error('[mitm] record failed:', (error as Error).message)
-          })
+          const recording = recorder?.(record)
+          if (recording) {
+            void recording.catch((error) => {
+              console.error('[mitm] record failed:', (error as Error).message)
+            })
+          }
         })
       }
     )
@@ -307,7 +327,7 @@ export class MitmProxy {
     upstream.pipe(client)
     client.once('close', () => upstream.destroy())
     upstream.once('close', () => client.destroy())
-    void recordExchange({
+    const recording = recorder?.({
       host: target.host,
       method: String(req.method ?? 'GET'),
       url: `${scheme}://${target.host}:${target.port}${path}`,
@@ -317,7 +337,8 @@ export class MitmProxy {
       resp_head: 'HTTP 101 Switching Protocols',
       scope,
       source: 'vexnar'
-    }).catch(() => {})
+    })
+    if (recording) void recording.catch(() => {})
   }
 
   private connectUpstream(target: { host: string; port: number }, scheme: 'http' | 'https'): Promise<Socket | TLSSocket | null> {

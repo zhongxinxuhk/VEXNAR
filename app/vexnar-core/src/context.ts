@@ -1,7 +1,7 @@
 // Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStore, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot, toolSpecs } from '../../vexnar-store/src/index.ts'
+import { blobStore, buildReport, buildReportHtml, listReports, saveReport, createEngine, createNotifier, createRunner, createScheduler, createTaskQueue, openMeta, openStoreSync, persistToolResult, runTool, spawnTriggerTask, startSchedules, startTriggers, storeOperations, storeRoot, toolSpecs } from '../../vexnar-store/src/index.ts'
 import { gatewayComplete, modelCompletionReady } from './gateway.ts'
 import { queryDSL } from './dsl.ts'
 import { registerCatalogDefaults } from './catalog/register.ts'
@@ -23,18 +23,27 @@ export function parseJson(value: unknown): unknown {
   }
 }
 
-export const store = await openStore()
+/**
+ * 无顶层 await：嵌入 bundle 的模块图必须同步求值（见 `openStoreSync`）。
+ * 打开文件、建表仍然同步完成；`init()` 与首次目录播种由 `startRuntime()` await。
+ */
+export const store = openStoreSync()
 export const meta = openMeta()
 
-// 首次启动把默认工具目录与默认 MCP server 灌进空库：装好即用，之后不再自动补
-// （用户删掉的 MCP server 不该在下一次启动时复活；显式「重新注册」走接口）。
-try {
-  const seeded = await registerCatalogDefaults(meta, { firstRunOnly: true })
-  if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
-    console.log(`[catalog] 默认目录已注册：工具 +${seeded.toolsAdded}，MCP server +${seeded.serversAdded}`)
+/**
+ * 首次启动把默认工具目录与默认 MCP server 灌进空库：装好即用，之后不再自动补
+ * （用户删掉的 MCP server 不该在下一次启动时复活；显式「重新注册」走接口）。
+ * 由 `startRuntime()` 调用 —— 导入本模块的单测不应写库。
+ */
+export async function seedCatalogDefaults(): Promise<void> {
+  try {
+    const seeded = await registerCatalogDefaults(meta, { firstRunOnly: true })
+    if (seeded.toolsAdded > 0 || seeded.serversAdded > 0) {
+      console.log(`[catalog] 默认目录已注册：工具 +${seeded.toolsAdded}，MCP server +${seeded.serversAdded}`)
+    }
+  } catch (error: any) {
+    console.warn('[catalog] 默认目录注册失败：', String(error?.message ?? error))
   }
-} catch (error: any) {
-  console.warn('[catalog] 默认目录注册失败：', String(error?.message ?? error))
 }
 export const operations = storeOperations(storeRoot())
 export const engine = createEngine(store as any, operations as any, { runner: createRunner({ concurrency: 2 }) })

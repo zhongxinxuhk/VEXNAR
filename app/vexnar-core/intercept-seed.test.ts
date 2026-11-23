@@ -180,6 +180,10 @@ check('设置构建产物读取同一份规则', settingsRules.status === 200 &&
 const settingsScope = await settingsRequest('/api/intercept/tool-config')
 check('设置构建产物加载范围', settingsScope.status === 200 &&
   JSON.stringify(await settingsScope.json()) === JSON.stringify(await getJson('/api/intercept/tool-config')))
+// 默认工具 / MCP 目录由 `startRuntime()` 播种（context.ts 只创建对象）。这里
+// 显式播一次，验证设置产物读的是同一份存储，而不是它自己的常量表。
+const { seedCatalogDefaults } = await import('./src/context.ts')
+await seedCatalogDefaults()
 const storedServers = await meta.table<unknown[]>('mcp')
 const settingsMcp = await settingsRequest('/api/mcp')
 check('设置构建产物读取存储中的 MCP Server', storedServers.length > 0 && settingsMcp.status === 200 &&

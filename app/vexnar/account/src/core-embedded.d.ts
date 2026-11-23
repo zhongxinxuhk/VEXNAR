@@ -33,3 +33,12 @@ export function runtimeInfo(): {
   engine: string
   task_concurrency: number
 }
+/**
+ * 启动运行时底座（幂等）：触发器、定时任务、store 恢复与独占锁、任务队列。
+ *
+ * 宿主插件在 core 加载完成后直接调用它，自主执行链因此在后台运行，
+ * 而不是等 `/vexnar-api` 的第一个请求。重复调用返回同一个 Promise。
+ */
+export function startRuntime(options?: { signals?: boolean }): Promise<void>
+/** 停掉底座（退出或测试清理用）：触发器、定时任务与 store 锁逐个释放。 */
+export function stopRuntime(): Promise<void>
