@@ -13,6 +13,7 @@ import { TasksWorkspace } from './tasks/workspace.js'
 import { InterceptSettings as InterceptPanel } from './intercept/page.js'
 import { EgressPanel } from './egress/page.js'
 import { TrafficPanel } from './traffic/page.js'
+import { promotePluginMasks } from './top-layer.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -1121,6 +1122,11 @@ export function apply(ctx: {
   // Stylesheet first and once: cards may mount before the plugin's own effects
   // run, and the injection is idempotent, so it is not wired to disposal.
   installStyles()
+
+  // 第三方插件的整屏遮罩挂在会话面板里，会被面板的层叠上下文与圆角裁剪困住，
+  // 只盖住中间那块，四周留一圈没变暗的边。细节见 top-layer.ts。
+  if (ctx.effect !== undefined) ctx.effect(promotePluginMasks)
+  else promotePluginMasks()
 
   slots.inject('tool.call.toolview', () =>
     slots.register({ name: 'tool.call.toolview', key: FINDING_TOOL }, FindingCard))
