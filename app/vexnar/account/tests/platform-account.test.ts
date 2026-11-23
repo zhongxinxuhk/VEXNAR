@@ -31,6 +31,8 @@ let base: string
 let models: Server
 let accounts: string
 let plainTextMode = false
+let managedModelKey = ''
+let createdModelKeys = 0
 
 const listen = (server: Server): Promise<number> => new Promise<number>((resolve) => {
   server.listen(0, '127.0.0.1', () => {
@@ -94,7 +96,8 @@ before(async () => {
     if (url.pathname === '/api/status') {
       return json(res, 200, {
         success: true,
-        data: { password_login_enabled: true, password_login_encryption_enabled: false, turnstile_check: false, github_oauth: true }
+        data: { password_login_enabled: true, password_login_encryption_enabled: false, turnstile_check: false, github_oauth: true,
+          quota_per_unit: 500000, quota_display_type: 'CNY', usd_exchange_rate: 2 }
       })
     }
     if (url.pathname === '/api/user/login' && req.method === 'POST') {
@@ -104,18 +107,45 @@ before(async () => {
       }, { 'Set-Cookie': 'session=cookie-value; Path=/; HttpOnly' })
     }
     if (url.pathname === '/api/user/self') {
-      if (!req.headers.cookie && !req.headers.authorization) return json(res, 401, { success: false })
+      if (!req.headers.cookie && !['Bearer platform-access', 'Bearer nap_fixture-access-1234567890'].includes(req.headers.authorization ?? '')) {
+        return json(res, 401, { success: false })
+      }
       return json(res, 200, {
         success: true,
-        data: { id: 7, username: 'alice', display_name: 'Alice', request_count: 42 }
+        data: { id: 7, username: 'alice', display_name: 'Alice', request_count: 42, quota: 750000,
+          avatar_url: 'https://example.com/avatar.png' }
       })
     }
     if (url.pathname === '/api/user/token') return json(res, 200, { success: true, data: { token: 'manage-token' } })
-    if (url.pathname === '/api/token/' && req.method === 'POST') return json(res, 200, { success: true })
+    if (url.pathname === '/api/token/' && req.method === 'POST') {
+      void (async () => {
+        const chunks: Uint8Array[] = []
+        for await (const chunk of req) chunks.push(chunk)
+        managedModelKey = JSON.parse(Buffer.concat(chunks).toString()).name
+        createdModelKeys++
+        json(res, 200, { success: true })
+      })()
+      return
+    }
     if (url.pathname === '/api/token/search') {
-      return json(res, 200, { success: true, data: { items: [{ id: 11, name: url.searchParams.get('keyword') }] } })
+      const keyword = url.searchParams.get('keyword')
+      const items = keyword && managedModelKey.startsWith(keyword) ? [{ id: 11, name: managedModelKey }] : []
+      return json(res, 200, { success: true, data: { items } })
     }
     if (url.pathname === '/api/token/11/key') return json(res, 200, { success: true, data: { key: 'good' } })
+    if (url.pathname === '/api/user/topup/info') {
+      return json(res, 200, { success: true, data: { pay_methods: [{ type: 'alipay', name: '支付宝' }] } })
+    }
+    if (url.pathname === '/api/subscription/plans') {
+      return json(res, 200, { success: true, data: [{ plan: {
+        id: 5, title: '测试套餐', enabled: true, price_amount: 10, currency: 'CNY', duration_unit: 'month', duration_value: 1
+      } }] })
+    }
+    if (url.pathname === '/api/subscription/self') {
+      return json(res, 200, { success: true, data: { subscriptions: [
+        { subscription: { plan_id: 5, amount_total: 1000, amount_used: 200, end_time: 2000000000 } }
+      ] } })
+    }
     json(res, 404, { success: false, message: 'missing' })
   })
   const platformPort = await listen(platform)
@@ -180,6 +210,35 @@ test('密码登录把平台令牌、key 与模型目录都落到本地', async (
 test('重复登录被拒，必须先退出', async () => {
   const account = createPlatformAccount({ home: accounts })
   await assert.rejects(() => account.password('alice', 'secret'), (error: unknown) => statusOf(error) === 409)
+})
+
+test('访问令牌登录校验身份、复用 VERNAX API 密钥并读取账单', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'vexnar-account-token-'))
+  const account = createPlatformAccount({ home })
+  await assert.rejects(() => account.wallet(), { status: 401 })
+  await assert.rejects(() => account.loginWithToken('sk-this-is-not-a-pat'), { status: 400 })
+  await assert.rejects(() => account.loginWithToken('nap_invalid-test-token'), { status: 401 })
+  assert.equal((await account.status()).signed_in, false)
+
+  assert.match(managedModelKey, /^VERNAX-[0-9a-f-]{36}$/)
+  assert.equal(createdModelKeys, 1)
+  const token = 'nap_fixture-access-1234567890'
+  const view = await account.loginWithToken(`Bearer ${token}`)
+  assert.equal(view.signed_in, true)
+  assert.equal(view.avatar_url, 'https://example.com/avatar.png')
+  assert.equal(view.providers[0]?.id, 'vexnar')
+  assert.equal(JSON.stringify(view).includes(token), false)
+  assert.equal(createdModelKeys, 1, '已有可用的 VERNAX 密钥时不再签发')
+
+  const result = await account.wallet()
+  assert.equal(result.platform.amount, 3)
+  assert.equal(result.platform.currency, 'CNY')
+  assert.deepEqual(result.platform.methods, ['支付宝'])
+  assert.deepEqual(result.platform.plans, [{ id: 5, title: '测试套餐', price: 10, currency: 'CNY', duration: '1 个月' }])
+  assert.deepEqual(result.platform.subscriptions, [{ id: 5, remaining: 800, ends: 2000000000 }])
+  assert.equal(result.deepseek.status, 'unconfigured')
+  await account.logout()
+  await assert.rejects(() => account.wallet(), { status: 401 })
 })
 
 test('用户可以接入自己的第三方 API', async () => {

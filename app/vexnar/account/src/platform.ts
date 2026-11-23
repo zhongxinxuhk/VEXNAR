@@ -18,7 +18,6 @@
 import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Socket } from 'node:net'
-import type { Browser, BrowserContext, Page, Response as PlaywrightResponse } from 'playwright-core'
 import { loginPage, workspaceSessionScript } from './login-page.js'
 import { createModelCompletion } from './model-channel.js'
 import {
@@ -32,7 +31,6 @@ import {
 import type {
   Account,
   AddProviderInput,
-  PlatformProof,
   ProviderModel,
   UpdateProviderInput
 } from './platform-account.js'
@@ -123,12 +121,6 @@ interface LlmProviderSetting {
   retryPolicy?: { mode: 'always' }
 }
 
-/** 平台登录窗口的状态机：`/login` 路由把它原样交给登录页。 */
-interface BrowserState {
-  state: 'idle' | 'waiting' | 'done' | 'error'
-  message: string
-}
-
 /** 一条 `/vexnar-api/platform/*` 路由的方法表，键是 HTTP 方法。 */
 type RouteHandlers = Record<string, ((req: IncomingMessage) => unknown) | undefined>
 
@@ -143,12 +135,6 @@ type JsonBody = Record<string, unknown>
  */
 export function recordOf(value: unknown): Record<string, unknown> {
   return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
-}
-
-/** `catch (error)` 里的 message：没有或不是字符串时读成空串。 */
-function messageOf(error: unknown): string {
-  const message = recordOf(error).message
-  return typeof message === 'string' ? message : ''
 }
 
 /** 把 typertGateway.invoke 的失败翻成浏览器看得懂的字段。 */
@@ -230,85 +216,14 @@ function providerInput(body: JsonBody): AddProviderInput & UpdateProviderInput {
   return input
 }
 
-async function capturePlatformLogin(
-  context: BrowserContext,
-  page: Page,
-  origin: string,
-  signal: AbortSignal
-): Promise<PlatformProof> {
-  // Observe only this isolated browser's successful requests to the configured platform.
-  // Current deployments return a short-lived auth bundle; older ones use a session cookie.
-  let proof: PlatformProof | undefined
-  const observe = async (response: PlaywrightResponse): Promise<void> => {
-    try {
-      const url = new URL(response.url())
-      if (url.origin !== origin || !response.ok()) return
-      const identityRequest = url.pathname === '/api/user/self'
-      const authResponse = /^\/api\/(?:oauth\/[a-z0-9_-]+|user\/(?:auth\/refresh|login(?:\/verify|\/2fa|\/passkey\/finish)?|passkey\/login\/finish))$/i.test(url.pathname)
-      if (!identityRequest && !authResponse) return
-      const body: unknown = await response.json()
-      const envelope = recordOf(body)
-      const data = recordOf(envelope.data)
-      const userID = recordOf(data.user).id ?? (identityRequest ? data.id : undefined)
-      const id = typeof userID === 'number' ? userID : 0
-      if (envelope.success !== true || !Number.isSafeInteger(id) || id <= 0) return
-      const authorization = data.access_token
-        ? `Bearer ${String(data.access_token)}`
-        : await response.request().headerValue('authorization')
-      const cookie = (await response.request().headerValue('cookie')) ?? ''
-      if (authorization || cookie) proof = { user_id: id, authorization: authorization ?? '', cookie }
-    } catch {
-      // OAuth navigation may close a request before its response can be read.
-    }
-  }
-  context.on('response', observe)
-  try {
-    await page.goto(origin + '/login', { waitUntil: 'domcontentloaded', timeout: 30_000 })
-    const deadline = Date.now() + 5 * 60 * 1000
-    while (Date.now() < deadline) {
-      signal.throwIfAborted()
-      if (proof) return proof
-      if (context.pages().length === 0 || page.isClosed()) throw new Error('登录窗口已关闭')
-      if (new URL(page.url()).origin === origin) {
-        const userID = await page.evaluate(() => {
-          try {
-            return Number(JSON.parse(localStorage.getItem('user') ?? 'null')?.id ?? localStorage.getItem('uid'))
-          } catch {
-            return 0
-          }
-        }).catch(() => 0)
-        if (Number.isSafeInteger(userID) && userID > 0) {
-          const cookie = (await context.cookies(origin + '/api/user/self')).map(item => `${item.name}=${item.value}`).join('; ')
-          if (cookie) {
-            const me: unknown = await context.request.get(origin + '/api/user/self', {
-              headers: { 'New-Api-User': String(userID) }, maxRedirects: 0, timeout: 3_000
-            }).then(res => res.ok() ? res.json() : null).catch(() => null)
-            const verified = recordOf(me)
-            if (verified.success === true && recordOf(verified.data).id === userID) {
-              return { user_id: userID, authorization: '', cookie }
-            }
-          }
-        }
-      }
-      await new Promise(resolve => setTimeout(resolve, 750))
-    }
-    throw new Error('等待平台登录超时，请重试')
-  } finally {
-    context.off('response', observe)
-  }
-}
-
 export function installPlatform(ctx: PlatformContext): () => boolean {
   const account = createPlatformAccount()
   let ready = false
   let lastCatalog = ''
   let syncedProviders = new Set<string>()
-  let browserState: BrowserState = { state: 'idle', message: '' }
   let lastState: Account | undefined
   let channelInstalled = false
   let channelLoading = false
-  let browserTask: Promise<void> | undefined
-  let chrome: Browser | undefined
   const life = new AbortController()
   const activeSockets = new Set<Socket>()
   const setReady = (value: boolean): void => {
@@ -408,7 +323,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
 
   // The pinned carrier routes Workspace RPC and stream upgrades through the
   // same Host admission. Keep the carrier's origin/cookie checks for every route.
-  const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login', 'login/password', 'login/verify']
+  const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login/token']
     .map(path => clientPrefix + '/' + path))
   ctx.effect(() => {
     // cordis 把追踪代理背后的真实服务实例挂在 `Symbol.for('cordis.original')` 上。
@@ -443,7 +358,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   // 未登录时整个工作区换成登录页：没有半登录状态，也没有"能动但全是空数据"的控制台。
   ctx.effect(() => ctx.webServer.tapIndex(html => ready
     ? html.replace('</head>', workspaceSessionScript + '</head>')
-    : loginPage))
+    : loginPage(platformOrigin())))
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact', path: clientPrefix + '/entry.js',
@@ -489,43 +404,6 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     })
   }
 
-  function startLogin(): BrowserState {
-    if (browserTask) return browserState
-    browserState = { state: 'waiting', message: '请在浏览器中完成 HXSEC AI Platform 登录' }
-    browserTask = (async () => {
-      try {
-        const status = await refresh()
-        if (status.signed_in) throw new Error('请先退出当前 VEXNAR 账号')
-        const { chromium } = await import('playwright-core')
-        chrome = await chromium.launch({
-          channel: process.env.VEXNAR_LOGIN_BROWSER || 'chrome',
-          headless: false, ignoreDefaultArgs: ['--enable-automation']
-        })
-        life.signal.throwIfAborted()
-        const context = await chrome.newContext()
-        const page = await context.newPage()
-        const proof = await capturePlatformLogin(context, page, platformOrigin(), life.signal)
-        const result = await account.login(proof)
-        await syncCatalog(await account.read())
-        browserState = { state: 'done', message: '已验证 HXSEC AI Platform 身份' }
-        if (result.signed_in) console.log('vexnar: account-handoff')
-      } catch (error) {
-        const reason = messageOf(error)
-        browserState = {
-          state: 'error',
-          message: reason.includes('Executable')
-            ? '找不到登录浏览器，请安装 Google Chrome，或设置 VEXNAR_LOGIN_BROWSER'
-            : recordOf(error).status ? reason : chrome ? '登录未完成。请在平台窗口完成验证后重试。' : (reason || '无法打开平台登录')
-        }
-      } finally {
-        await chrome?.close().catch(() => {})
-        chrome = undefined
-        browserTask = undefined
-      }
-    })()
-    return browserState
-  }
-
   function route(suffix: string, handlers: RouteHandlers): void {
     ctx.effect(() => ctx.webServer.register({
       kind: 'exact',
@@ -564,29 +442,20 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
     GET: () => ready ? account.status() : refresh(),
     DELETE: async () => {
-      if (browserTask) throw new PlatformError(409, '请关闭平台登录窗口后再试')
       await account.logout()
       return syncCatalog(await account.read())
     }
   })
-  route('/login', { POST: startLogin, GET: () => browserState })
-  route('/login/password', {
+  route('/login/token', {
     POST: async (req) => {
       const input = await readJson(req)
-      const result = await account.password(bodyText(input, 'username'), bodyText(input, 'password'))
-      // 旧代码靠 `result?.challenge` 探属性；`PasswordResult` 是两种形状的联合，
-      // 必须显式收窄（账号层只在两步验证时返回 `{ challenge }`）。
-      if ('challenge' in result) return result
-      return syncCatalog(await account.read())
+      await account.loginWithToken(bodyText(input, 'access_token'))
+      const view = await refresh()
+      if (view.signed_in) console.log('vexnar: account-handoff')
+      return view
     }
   })
-  route('/login/verify', {
-    POST: async (req) => {
-      const input = await readJson(req)
-      await account.verify(bodyText(input, 'challenge'), bodyText(input, 'code'))
-      return syncCatalog(await account.read())
-    }
-  })
+  route('/wallet', { GET: () => account.wallet() })
   route('/providers', {
     POST: async (req) => {
       const input = await readJson(req)
@@ -613,7 +482,6 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     return () => {
       clearInterval(timer)
       life.abort()
-      void chrome?.close().catch(() => {})
       void clearModelChannel().catch(() => {})
     }
   })

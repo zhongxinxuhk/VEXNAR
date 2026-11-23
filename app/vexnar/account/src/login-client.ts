@@ -76,13 +76,9 @@ if (entry) {
     if (!(control instanceof HTMLInputElement)) throw new Error(`登录表单缺少 ${name} 字段`)
     return control
   }
-  const password = form('password-login')
-  const verify = form('verify-login')
-  const browser = node('browser-options')
-  const browserButton = node('browser-login')
+  const tokenForm = form('token-login')
   const retry = node('retry')
   const notice = node('notice')
-  let challenge: unknown
   let running = false
   const message = (text: string, error = false) => {
     notice.textContent = text
@@ -103,14 +99,10 @@ if (entry) {
       retry.hidden = true
       const account = await read('/account')
       if (present(account)) return
-      const methods = await read('/methods')
-      challenge = undefined
-      verify.hidden = true
-      password.hidden = !methods.password
-      browser.hidden = false
-      node('methods').textContent = listOf(methods.methods)
-      if (account.reauth_required) message('请重新验证平台身份，以初始化 VEXNAR 的访问令牌。')
-      else message('')
+      message(account.reauth_required ? '请使用访问令牌重新验证希灵 AI 账户。' : '')
+      void read('/methods').then(methods => {
+        node('methods').textContent = listOf(methods.methods)
+      }).catch(() => {})
     } catch (error) {
       retry.hidden = false
       showError(error)
@@ -131,45 +123,17 @@ if (entry) {
     }
   }
 
-  password.addEventListener('submit', event => {
+  tokenForm.addEventListener('submit', event => {
     event.preventDefault()
     void work(async () => {
-      message('正在验证账号…')
-      const data = Object.fromEntries(new FormData(password))
-      input(password, 'password').value = ''
-      const response = await read('/login/password', 'POST', data)
-      if (response.challenge) {
-        challenge = response.challenge
-        password.hidden = true
-        verify.hidden = false
-        input(verify, 'code').focus()
-        message('请输入平台两步验证码，或使用平台窗口完成验证。')
-      } else if (!present(response)) await initialize()
+      message('正在验证访问令牌并同步模型…')
+      const control = input(tokenForm, 'access_token')
+      const token = control.value
+      control.value = ''
+      if (!present(await read('/login/token', 'POST', { access_token: token }))) await initialize()
     })
   })
 
-  verify.addEventListener('submit', event => {
-    event.preventDefault()
-    void work(async () => {
-      message('正在验证验证码…')
-      const code = input(verify, 'code').value
-      input(verify, 'code').value = ''
-      if (!present(await read('/login/verify', 'POST', { challenge, code }))) await initialize()
-    })
-  })
-
-  browserButton.addEventListener('click', () => void work(async () => {
-    let state = await read('/login', 'POST', {})
-    while (state.state === 'waiting') {
-      message(textOf(state.message))
-      await new Promise<void>(resolve => setTimeout(resolve, 800))
-      state = await read('/login')
-    }
-    if (state.state === 'done') await initialize()
-    else message(textOf(state.message) || '平台登录未完成。', true)
-  }))
-
-  node('back').addEventListener('click', () => void work(initialize))
   retry.addEventListener('click', () => void work(initialize))
   void initialize()
 } else {

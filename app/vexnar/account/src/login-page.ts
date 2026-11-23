@@ -5,7 +5,7 @@
 const script = '/vexnar-api/platform/entry.js'
 export const workspaceSessionScript = `<script defer src="${script}"></script>`
 
-export const loginPage = `<!doctype html>
+export const loginPage = (origin: string): string => `<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'self'">
@@ -20,26 +20,24 @@ aside{display:flex;align-items:flex-start;flex-direction:column;justify-content:
 aside p{color:#b0cfce;margin:4px 0} section{display:grid;align-content:center;justify-items:start;padding:clamp(22px,8vw,124px)}
 .content{width:min(100%,450px)} h1{font-size:clamp(25px,4vw,39px);letter-spacing:-.035em;margin:0 0 4px}
 p{margin:0 0 22px;color:#4b6470} form{display:grid;gap:14px;margin:0 0 18px}
-label{display:grid;gap:5px;font-weight:600} input,button{width:100%;font:inherit;border-radius:9px;min-height:42px}
+label{display:grid;gap:5px;font-weight:600} input,button,.online{width:100%;font:inherit;border-radius:9px;min-height:42px}
 input{border:1px solid #9bb0b5;background:#fff;color:inherit;padding:8px 11px}
 button{color:#15343d;background:#fff;border:1px solid #9bb0b5;padding:8px 12px;cursor:pointer;font-weight:600}
-button.primary{background:#086b5d;color:#fff;border-color:#086b5d}
-button:disabled{opacity:.62;cursor:wait} :focus-visible{outline:3px solid #14a489;outline-offset:3px}
+button.primary,.online{background:#086b5d;color:#fff;border-color:#086b5d}
+.online{display:grid;place-items:center;font-weight:600;text-decoration:none} .hint{font-size:13px;margin-top:8px} button:disabled{opacity:.62;cursor:wait} :focus-visible{outline:3px solid #14a489;outline-offset:3px}
 .methods{margin:12px 0 16px;font-size:13px;overflow-wrap:anywhere}
 #notice:not(:empty){margin:0 0 16px;color:#355760}
 #notice[data-error="true"]{color:#9c3139}
 @media(max-width:650px){main{grid-template-columns:1fr;grid-template-rows:auto 1fr}aside{padding:18px 22px}aside p{display:none}section{align-content:start;justify-items:center;padding:35px 22px}}
 </style>${workspaceSessionScript}</head>
-<body><main id="vexnar-sign-in"><aside><div class="brand"><img src="/vexnar-brand/favicon.png" alt="">VEXNAR</div><p>HXSEC AI Platform</p></aside>
-<section><div class="content"><h1>登录 VEXNAR</h1><p>登录 HXSEC AI Platform 后进入工作区。</p>
+<body><main id="vexnar-sign-in"><aside><div class="brand"><img src="/vexnar-brand/favicon.png" alt="">VEXNAR</div><p>希灵 AI</p></aside>
+<section><div class="content"><h1>登录 VEXNAR</h1><p>登录希灵 AI 后进入工作区。</p>
 <div id="notice" aria-live="polite">正在检查账户状态…</div>
-<form id="password-login" hidden>
-<label>平台账号<input name="username" autocomplete="username" required></label>
-<label>密码<input name="password" type="password" autocomplete="current-password" required></label>
-<button class="primary" type="submit">登录</button></form>
-<form id="verify-login" hidden><label>两步验证代码<input name="code" autocomplete="one-time-code" required></label>
-<button class="primary" type="submit">验证并登录</button>
-<button id="back" type="button">返回登录</button></form>
-<div id="browser-options" hidden><button id="browser-login" type="button">在平台窗口登录</button><p id="methods" class="methods"></p></div>
+<a class="online" href="${origin}/login" target="_blank" rel="noopener noreferrer">打开希灵 AI 在线登录</a>
+<p id="methods" class="methods"></p>
+<p class="hint">在希灵 AI 完成登录后，到个人设置创建访问令牌，再回到此页粘贴。令牌名称使用 <code>VERNAX-随机 UUID</code>，并授权读取账户、管理模型密钥及读取充值与订阅信息。</p>
+<form id="token-login">
+<label>平台访问令牌<input name="access_token" type="password" autocomplete="off" spellcheck="false" required></label>
+<button class="primary" type="submit">使用访问令牌登录</button></form>
 <button id="retry" type="button" hidden>重新检测</button>
 </div></section></main></body></html>`

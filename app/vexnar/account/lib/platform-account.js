@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -10,6 +10,7 @@ const DEEPSEEK_BASE = "https://api.deepseek.com";
 const REQUEST_TIMEOUT_MS = 2e4;
 const modelInputTypes = /* @__PURE__ */ new Set(["text", "image"]);
 const reasoningLevels = /* @__PURE__ */ new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+const managedName = /^VERNAX-[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i;
 function asRecord(value) {
   return typeof value === "object" && value !== null ? value : void 0;
 }
@@ -48,7 +49,9 @@ const fail = (status, message) => new PlatformError(status, message);
 function platformOrigin() {
   const raw = process.env.VEXNAR_NEWAPI_PLATFORM || DEFAULT_PLATFORM;
   try {
-    return new URL(raw).origin;
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("Invalid origin");
+    return url.origin;
   } catch {
     throw fail(500, "VEXNAR_NEWAPI_PLATFORM \u4E0D\u662F\u5408\u6CD5\u5730\u5740");
   }
@@ -70,6 +73,7 @@ function emptyAccount() {
     user_id: 0,
     username: "",
     display_name: "",
+    avatar_url: "",
     request_count: null,
     access_token: "",
     credential_version: CREDENTIAL_VERSION,
@@ -79,6 +83,16 @@ function emptyAccount() {
 }
 function text(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+function avatarURL(value) {
+  const raw = text(value);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw, platformOrigin());
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 function normalizeModel(model) {
   const source = asRecord(model);
@@ -152,6 +166,7 @@ function normalizeAccount(raw) {
   account.user_id = userID !== void 0 && userID > 0 ? userID : 0;
   account.username = text(stored.username);
   account.display_name = text(stored.display_name);
+  account.avatar_url = avatarURL(stored.avatar_url);
   account.request_count = safeInteger(stored.request_count) ?? null;
   account.access_token = text(stored.access_token);
   account.credential_version = safeInteger(stored.credential_version) ?? 0;
@@ -180,6 +195,7 @@ function publicView(account) {
     reauth_required: needsReauth(account),
     username: active ? account.username : "",
     display_name: active ? account.display_name : "",
+    avatar_url: active ? account.avatar_url : "",
     request_count: active ? account.request_count : null,
     access_token_ready: active && account.access_token !== "",
     providers: active ? account.providers.map((provider) => ({
@@ -248,7 +264,7 @@ function proofHeaders(proof) {
   const headers = {};
   if (proof.cookie) headers.Cookie = proof.cookie;
   if (proof.authorization) headers.Authorization = proof.authorization;
-  headers["New-Api-User"] = String(proof.user_id);
+  if (proof.user_id > 0) headers["New-Api-User"] = String(proof.user_id);
   return headers;
 }
 function proofOf(data, cookie) {
@@ -393,8 +409,40 @@ function createPlatformAccount(options = {}) {
       password: advertised.password_login_enabled === true && advertised.password_login_encryption_enabled !== true && advertised.turnstile_check !== true
     };
   }
-  async function complete(proof) {
-    if (!proof || !(proof.user_id > 0) || !proof.cookie && !text(proof.authorization)) {
+  async function modelCredential(proof, expires) {
+    const origin = platformOrigin();
+    const headers = proofHeaders(proof);
+    const search = async (keyword) => {
+      const result = await exchange("GET", `${origin}/api/token/search?keyword=${encodeURIComponent(keyword)}`, { headers });
+      if (!result.ok || !envelopeOK(result.data)) throw fail(403, "\u8BBF\u95EE\u4EE4\u724C\u9700\u8981\u6A21\u578B API \u5BC6\u94A5\u7684\u8BFB\u53D6\u6743\u9650");
+      return listOf(envelopeRecord(result.data).items).map(asRecord).filter(defined);
+    };
+    const available = (entry2) => {
+      const expiration = safeInteger(entry2.expired_time);
+      return (safeInteger(entry2.id) ?? 0) > 0 && (entry2.status === void 0 || entry2.status === 1) && (expiration === void 0 || expiration < 0 || expiration * 1e3 > Date.now());
+    };
+    const candidates = await search("VERNAX-");
+    let entry = candidates.find((item) => available(item) && managedName.test(text(item.name)));
+    if (!entry) {
+      const name = `VERNAX-${randomUUID()}`;
+      const created = await exchange("POST", `${origin}/api/token/`, {
+        headers,
+        body: { name, unlimited_quota: true, remain_quota: 0, expired_time: Math.floor(expires / 1e3) }
+      });
+      if (!created.ok || !envelopeOK(created.data)) throw fail(403, "\u65E0\u6CD5\u521B\u5EFA VERNAX \u6A21\u578B API \u5BC6\u94A5\uFF0C\u8BF7\u68C0\u67E5\u8BBF\u95EE\u4EE4\u724C\u7684\u7BA1\u7406\u6743\u9650");
+      entry = (await search(name)).find((item) => available(item) && text(item.name) === name);
+    }
+    if (!entry) throw fail(502, "\u5E73\u53F0\u672A\u8FD4\u56DE\u521A\u521B\u5EFA\u7684\u6A21\u578B API \u5BC6\u94A5\uFF0C\u8BF7\u91CD\u8BD5");
+    const token = await exchange("POST", `${origin}/api/token/${entry.id}/key`, { headers });
+    let key = text(envelopeRecord(token.data).key);
+    if (!token.ok || !envelopeOK(token.data) || !key) throw fail(403, "\u65E0\u6CD5\u8BFB\u53D6 VERNAX \u6A21\u578B API \u5BC6\u94A5\uFF0C\u8BF7\u68C0\u67E5\u8BBF\u95EE\u4EE4\u724C\u6743\u9650");
+    if (!key.startsWith("sk-")) key = `sk-${key}`;
+    const base = modelsBase();
+    const models = await readModels(base, key);
+    return models.length === 0 ? void 0 : { id: "vexnar", name: "\u5E0C\u7075 AI", base, key, models };
+  }
+  async function complete(proof, suppliedToken = "") {
+    if (!proof || !proof.cookie && !text(proof.authorization)) {
       throw fail(400, "\u65E0\u6548\u7684\u5E73\u53F0\u767B\u5F55\u4F1A\u8BDD");
     }
     const previous = await read();
@@ -402,16 +450,19 @@ function createPlatformAccount(options = {}) {
     const origin = platformOrigin();
     const self = await exchange("GET", `${origin}/api/user/self`, { headers: proofHeaders(proof) });
     const identity = envelopeRecord(self.data);
-    if (!self.ok || !envelopeOK(self.data) || Number(identity.id) !== proof.user_id || !text(identity.username)) {
+    const id = safeInteger(identity.id);
+    if (!self.ok || !envelopeOK(self.data) || !id || id <= 0 || proof.user_id > 0 && id !== proof.user_id || !text(identity.username)) {
       throw fail(401, "HXSEC AI Platform \u767B\u5F55\u5C1A\u672A\u5B8C\u6210\u6216\u5DF2\u5931\u6548");
     }
+    proof = { ...proof, user_id: id };
     const account = emptyAccount();
-    account.user_id = proof.user_id;
+    account.user_id = id;
     account.username = text(identity.username);
     account.display_name = text(identity.display_name);
+    account.avatar_url = avatarURL(identity.avatar_url ?? identity.avatar);
     account.request_count = safeInteger(identity.request_count) ?? null;
     account.expires_at = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1e3;
-    account.access_token = text(identity.access_token);
+    account.access_token = suppliedToken || text(identity.access_token);
     if (account.access_token === "" && previous.user_id === account.user_id) {
       account.access_token = previous.access_token;
     }
@@ -421,49 +472,93 @@ function createPlatformAccount(options = {}) {
       const payloadRecord = asRecord(payload);
       account.access_token = text(payload) || text(payloadRecord?.access_token) || text(payloadRecord?.token);
     }
-    const name = `VEXNAR-${randomID()}`;
-    const created = await exchange("POST", `${origin}/api/token/`, {
-      headers: proofHeaders(proof),
-      body: {
-        name,
-        unlimited_quota: true,
-        remain_quota: 0,
-        expired_time: Math.floor(account.expires_at / 1e3)
-      }
-    });
-    const base = modelsBase();
-    if (envelopeOK(created.data)) {
-      const found = await exchange("GET", `${origin}/api/token/search?keyword=${encodeURIComponent(name)}`, {
-        headers: proofHeaders(proof)
-      });
-      const items = listOf(asRecord(envelopeData(found.data))?.items);
-      for (const item of items) {
-        const entry = asRecord(item);
-        const id = Number(entry?.id);
-        if (!Number.isSafeInteger(id) || id <= 0 || text(entry?.name) !== name) continue;
-        const tokenPath = `${origin}/api/token/${id}`;
-        const token = await exchange("POST", `${tokenPath}/key`, { headers: proofHeaders(proof) });
-        let key = text(asRecord(envelopeData(token.data))?.key);
-        if (key !== "" && !key.startsWith("sk-")) key = `sk-${key}`;
-        if (key !== "") {
-          const models = await readModels(base, key).catch(() => []);
-          if (models.length > 0) {
-            account.providers = [{ id: "vexnar", name: "HXSEC AI Platform", base, key, models }];
-            break;
-          }
-        }
-        await exchange("DELETE", tokenPath, { headers: proofHeaders(proof) });
-        break;
-      }
-    }
+    const provider = await modelCredential(proof, account.expires_at);
+    if (provider) account.providers.push(provider);
     if (previous.user_id === account.user_id) {
-      for (const provider of previous.providers) {
-        if (provider.id !== "vexnar") account.providers.push(provider);
+      for (const provider2 of previous.providers) {
+        if (provider2.id !== "vexnar") account.providers.push(provider2);
       }
     }
     await save(account);
     pending = void 0;
     return publicView(account);
+  }
+  async function loginWithToken(raw) {
+    const token = text(raw).replace(/^Bearer\s+/i, "");
+    if (!/^[\x21-\x7e]{16,2048}$/.test(token) || token.startsWith("sk-")) {
+      throw fail(400, "\u8BF7\u8F93\u5165\u5E0C\u7075 AI \u4E2A\u4EBA\u8D44\u6599\u4E2D\u7684\u8BBF\u95EE\u4EE4\u724C");
+    }
+    return complete({ user_id: 0, cookie: "", authorization: `Bearer ${token}` }, token);
+  }
+  async function wallet() {
+    const account = await read();
+    if (!gateOpen(account)) throw fail(401, "\u8BF7\u5148\u767B\u5F55\u5E0C\u7075 AI");
+    const origin = platformOrigin();
+    const headers = proofHeaders({ user_id: account.user_id, cookie: "", authorization: `Bearer ${account.access_token}` });
+    const platformRead = async (path) => {
+      const result = await exchange("GET", origin + path, { headers, timeout: 7e3 }).catch(() => void 0);
+      return result?.ok && envelopeOK(result.data) ? envelopeData(result.data) : void 0;
+    };
+    const deepseek = account.providers.find((provider) => provider.id === "deepseek" && URL.canParse(provider.base) && new URL(provider.base).origin === DEEPSEEK_BASE);
+    const deepseekRead = async () => {
+      if (!deepseek) return { status: "unconfigured", balances: [] };
+      const reply = await exchange("GET", DEEPSEEK_BASE + "/user/balance", {
+        headers: { Authorization: `Bearer ${deepseek.key}` },
+        timeout: 7e3
+      }).catch(() => void 0);
+      const balances = listOf(asRecord(reply?.data)?.balance_infos).flatMap((value) => {
+        const row = asRecord(value);
+        const currency2 = text(row?.currency);
+        const total = text(row?.total_balance);
+        return /^[A-Z]{3}$/.test(currency2) && /^-?\d+(?:\.\d+)?$/.test(total) ? [{ currency: currency2, total }] : [];
+      });
+      return { status: reply?.ok && balances.length > 0 ? "ready" : "unavailable", balances };
+    };
+    const [identity, settings, topup, plans, subscriptions, official] = await Promise.all([
+      platformRead("/api/user/self"),
+      platformRead("/api/status"),
+      platformRead("/api/user/topup/info"),
+      platformRead("/api/subscription/plans"),
+      platformRead("/api/subscription/self"),
+      deepseekRead()
+    ]);
+    const profile = asRecord(identity);
+    const config = asRecord(settings);
+    const quota = safeInteger(profile?.quota) ?? null;
+    const perUnit = Number(config?.quota_per_unit);
+    const currency = text(config?.quota_display_type);
+    const rate = currency === "CNY" ? Number(config?.usd_exchange_rate) : currency === "CUSTOM" ? Number(config?.custom_currency_exchange_rate) : 1;
+    const amount = quota !== null && perUnit > 0 && Number.isFinite(perUnit) && rate > 0 && Number.isFinite(rate) && ["USD", "CNY", "CUSTOM"].includes(currency) ? quota / perUnit * rate : null;
+    return {
+      platform: {
+        quota,
+        amount,
+        currency: currency === "CUSTOM" ? text(config?.custom_currency_symbol) : currency,
+        methods: listOf(asRecord(topup)?.pay_methods).map((value) => text(asRecord(value)?.name)).filter(Boolean),
+        plans: listOf(plans).flatMap((value) => {
+          const row = asRecord(asRecord(value)?.plan);
+          const id = safeInteger(row?.id);
+          const title = text(row?.title);
+          const price = Number(row?.price_amount);
+          const unit = text(row?.duration_unit);
+          const duration = safeInteger(row?.duration_value);
+          const unitLabel = { year: "\u5E74", month: "\u4E2A\u6708", day: "\u5929", hour: "\u5C0F\u65F6" }[unit];
+          return id && title && row?.enabled === true && Number.isFinite(price) && price >= 0 ? [{ id, title, price, currency: text(row.currency), duration: duration && unitLabel ? `${duration} ${unitLabel}` : "" }] : [];
+        }),
+        subscriptions: listOf(asRecord(subscriptions)?.subscriptions).flatMap((value) => {
+          const row = asRecord(asRecord(value)?.subscription);
+          const id = safeInteger(row?.plan_id);
+          const ends = safeInteger(row?.end_time);
+          const total = safeInteger(row?.amount_total);
+          const used = safeInteger(row?.amount_used);
+          if (!id || ends === void 0) return [];
+          return [{ id, ends, remaining: total && used !== void 0 ? Math.max(0, total - used) : null }];
+        }),
+        url: origin + "/wallet",
+        error: quota === null ? "\u65E0\u6CD5\u8BFB\u53D6\u5E0C\u7075 AI \u4F59\u989D\uFF0C\u8BF7\u68C0\u67E5\u8BBF\u95EE\u4EE4\u724C\u6743\u9650" : ""
+      },
+      deepseek: official
+    };
   }
   async function password(username, secret) {
     const login = text(username);
@@ -633,6 +728,8 @@ function createPlatformAccount(options = {}) {
     status: () => serial(status),
     methods: () => serial(methods),
     login: (proof) => serial(() => complete(proof)),
+    loginWithToken: (token) => serial(() => loginWithToken(token)),
+    wallet,
     password: (username, secret) => serial(() => password(username, secret)),
     verify: (challenge, code) => serial(() => verify(challenge, code)),
     addProvider: (input) => serial(() => addProvider(input)),

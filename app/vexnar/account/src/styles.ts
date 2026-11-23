@@ -637,6 +637,51 @@ export const ACCOUNT_CSS = `
 }
 .vxa-mode:disabled { opacity: 0.4; cursor: default; }
 
+.vxa-avatar { overflow: hidden; }
+.vxa-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.vxa-launcher { position: relative; width: 100%; min-width: 0; }
+.vxa-launcher-trigger {
+  width: 100%; display: flex; align-items: center; gap: 9px; min-height: 38px;
+  text-align: left; border: 0; border-radius: 8px; padding: 5px 8px;
+  color: inherit; font: inherit; background: transparent; cursor: pointer;
+}
+.vxa-launcher-trigger:hover { background: var(--dsw-alias-settings-card-fill, #8882); }
+/* Claude Style supplies its own footer when the settings launcher is absent. */
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']:has(.vxa-launcher)
+  :is(.dsh-claude-account-btn, .dsh-claude-account-popover) { display: none !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  > [data-dsh-claude-part~='settings-area']:has(.vxa-launcher) {
+  display: block !important; flex: 1 1 auto; width: 100% !important; height: auto !important;
+}
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger']:has(.vxa-launcher) { display: flex !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-launcher button.vxa-launcher-trigger { display: flex !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-launcher-popover .vxa-btn { display: inline-flex !important; }
+.vxa-launcher-trigger .vxa-avatar { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; }
+.vxa-launcher-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vxa-launcher[data-wide='false'] .vxa-launcher-trigger { justify-content: center; padding: 4px; }
+.vxa-launcher-popover {
+  position: fixed; z-index: 20;
+  width: min(300px, calc(100vw - 16px)); max-height: calc(100dvh - 74px); overflow: auto;
+  padding: 10px; border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-subtle, #8884);
+  color: var(--dsw-alias-label-primary, #18232c);
+  background: var(--dsw-alias-bg-layer-2, #fff);
+  box-shadow: 0 9px 32px #0002;
+}
+.vxa-launcher-actions { display: flex; gap: 8px; margin-top: 10px; }
+.vxa-wallet { display: grid; gap: 8px; }
+.vxa-wallet-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px; border: 1px solid var(--dsw-alias-border-subtle, #8884); border-radius: 8px;
+}
+.vxa-wallet-row .vxa-btn { white-space: nowrap; }
+.vxa-wallet-value { margin-top: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.vxa-wallet-plans { display: grid; gap: 6px; margin: 8px 0; padding-left: 0; list-style: none; }
+.vxa-wallet-plans li { display: flex; justify-content: space-between; gap: 10px; }
+
 @media (prefers-reduced-motion: reduce) {
   .vxa-fold-summary::before { transition: none; }
 }
