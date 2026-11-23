@@ -238,11 +238,12 @@ export function apply(ctx: AccountContext): void {
           const url = new URL(req.url || '/', 'http://127.0.0.1')
           url.pathname = url.pathname.replace(/^\/vexnar-api/, '') || '/'
           const readingYakHistory = req.method === 'POST' && url.pathname === '/api/yak/history'
-          const nativeYakHistory = readingYakHistory && !goMode
+          const readingYakSources = (req.method === 'GET' || req.method === 'PUT') && url.pathname === '/api/yak/sources'
+          const nativeYak = (readingYakHistory || readingYakSources) && !goMode
           const remoteAddress = req.socket.remoteAddress
           const localPeer = remoteAddress !== undefined &&
             ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(remoteAddress)
-          if (nativeYakHistory && !localPeer) {
+          if (nativeYak && !localPeer) {
             res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
             res.end(JSON.stringify({ error: 'Yak 流量接口仅供本机 VEXNAR 客户端' }))
             return
@@ -254,15 +255,22 @@ export function apply(ctx: AccountContext): void {
             (req.method === 'GET' && isStoredDataRead(url.pathname, goMode))
           // Diagnostics observes startup without waiting for the core or calling its request handler.
           const runtimeRead = req.method === 'GET' && url.pathname === '/api/_runtime'
-          const app = configRoute || nativeYakHistory || runtimeRead ? undefined : await getCore()
-          if (!configRoute && !nativeYakHistory && !runtimeRead && !app) {
+          const app = configRoute || nativeYak || runtimeRead ? undefined : await getCore()
+          if (!configRoute && !nativeYak && !runtimeRead && !app) {
             res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
             res.end(JSON.stringify({ error: 'VEXNAR 领域服务尚未就绪', core_state: coreState }))
             return
           }
-          if (configRoute || nativeYakHistory || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
+          if (configRoute || nativeYak || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req)
             if (rejection) {
+              // 一行诊断：宿主拒绝的是"哪个方法/路径"、请求落在哪个 host、有没有带 cookie。
+              // 少了这行，界面上的 401 与"路由没注册"在日志里长得一样。
+              console.warn(
+                `[vexnar] /vexnar-api ${rejection} ${req.method} ${url.pathname}` +
+                ` host=${req.headers.host ?? '-'} cookie=${req.headers.cookie === undefined ? 'none' : 'present'}` +
+                ` origin=${req.headers.origin ?? '-'}`
+              )
               res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
               res.end(JSON.stringify({ error: '请从已登录的 VEXNAR 客户端访问' }))
               return
@@ -275,7 +283,7 @@ export function apply(ctx: AccountContext): void {
           }
           // `/api/traffic/import/yakit` 没有对应路由（Yakit 走会话捕获的 ingest），
           // 留一条永远走不到的体积分支只会让人以为它存在。
-          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : Infinity
+          const limit = readingYakHistory ? 8192 : (readingYakSources || toolDocumentation) ? 65536 : Infinity
           const chunks: Buffer[] = []
           let size = 0
           // node 把正文按 Buffer 块交出来；Readable 的迭代器类型是 any，这里收窄。
@@ -323,9 +331,11 @@ export function apply(ctx: AccountContext): void {
           if (req.method !== undefined) init.method = req.method
           if (body !== undefined) init.body = body
           const request = new Request(url, init)
-          const response = nativeYakHistory
+          const response = readingYakHistory
             ? await (await import('./yak-history.js')).handleYakHistory(request)
-            : configRoute
+            : readingYakSources
+              ? await (await import('./yak-sources.js')).handleYakSources(request)
+              : configRoute
               ? await (await import('./settings-embedded.js')).handleSettings(request)
               : await app!.handle(request, localPeer)
           const responseHeaders: Record<string, string> = {}

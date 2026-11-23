@@ -192,10 +192,11 @@ function apply(ctx) {
           const url = new URL(req.url || "/", "http://127.0.0.1");
           url.pathname = url.pathname.replace(/^\/vexnar-api/, "") || "/";
           const readingYakHistory = req.method === "POST" && url.pathname === "/api/yak/history";
-          const nativeYakHistory = readingYakHistory && !goMode;
+          const readingYakSources = (req.method === "GET" || req.method === "PUT") && url.pathname === "/api/yak/sources";
+          const nativeYak = (readingYakHistory || readingYakSources) && !goMode;
           const remoteAddress = req.socket.remoteAddress;
           const localPeer = remoteAddress !== void 0 && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remoteAddress);
-          if (nativeYakHistory && !localPeer) {
+          if (nativeYak && !localPeer) {
             res.writeHead(403, { "Content-Type": "application/json", "Cache-Control": "no-store" });
             res.end(JSON.stringify({ error: "Yak \u6D41\u91CF\u63A5\u53E3\u4EC5\u4F9B\u672C\u673A VEXNAR \u5BA2\u6237\u7AEF" }));
             return;
@@ -203,15 +204,18 @@ function apply(ctx) {
           const toolDocumentation = req.method === "PUT" && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname) || req.method === "POST" && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname);
           const configRoute = isClientMaintenance(req.method, url.pathname, goMode) || toolDocumentation || isNotificationSetting(req.method, url.pathname) || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && isStoredDataRead(url.pathname, goMode);
           const runtimeRead = req.method === "GET" && url.pathname === "/api/_runtime";
-          const app = configRoute || nativeYakHistory || runtimeRead ? void 0 : await getCore();
-          if (!configRoute && !nativeYakHistory && !runtimeRead && !app) {
+          const app = configRoute || nativeYak || runtimeRead ? void 0 : await getCore();
+          if (!configRoute && !nativeYak && !runtimeRead && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
             res.end(JSON.stringify({ error: "VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA", core_state: coreState }));
             return;
           }
-          if (configRoute || nativeYakHistory || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
+          if (configRoute || nativeYak || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req);
             if (rejection) {
+              console.warn(
+                `[vexnar] /vexnar-api ${rejection} ${req.method} ${url.pathname} host=${req.headers.host ?? "-"} cookie=${req.headers.cookie === void 0 ? "none" : "present"} origin=${req.headers.origin ?? "-"}`
+              );
               res.writeHead(rejection, { "Content-Type": "application/json", "Cache-Control": "no-store" });
               res.end(JSON.stringify({ error: "\u8BF7\u4ECE\u5DF2\u767B\u5F55\u7684 VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }));
               return;
@@ -222,7 +226,7 @@ function apply(ctx) {
             res.end(JSON.stringify(diagnostics()));
             return;
           }
-          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : Infinity;
+          const limit = readingYakHistory ? 8192 : readingYakSources || toolDocumentation ? 65536 : Infinity;
           const chunks = [];
           let size = 0;
           for await (const chunk of req) {
@@ -265,7 +269,7 @@ function apply(ctx) {
           if (req.method !== void 0) init.method = req.method;
           if (body !== void 0) init.body = body;
           const request = new Request(url, init);
-          const response = nativeYakHistory ? await (await import("./yak-history.js")).handleYakHistory(request) : configRoute ? await (await import("./settings-embedded.js")).handleSettings(request) : await app.handle(request, localPeer);
+          const response = readingYakHistory ? await (await import("./yak-history.js")).handleYakHistory(request) : readingYakSources ? await (await import("./yak-sources.js")).handleYakSources(request) : configRoute ? await (await import("./settings-embedded.js")).handleSettings(request) : await app.handle(request, localPeer);
           const responseHeaders = {};
           for (const [key, value] of response.headers.entries()) responseHeaders[key] = value;
           res.writeHead(response.status, responseHeaders);

@@ -99,6 +99,55 @@ Web 控制台的导航如何映射到 dsh 面板、哪些复用 dsh 原生能力
 
 Craft Anything（MCP）与 dsh-plugin-shop（插件商店）的安装、更新见 [PLUGINS.md](./PLUGINS.md)。
 
+## Web 测试引擎（会话感知 HTTP）
+
+Harness 的网页测试能力不再依赖抓包代理，而是走一个**受策略约束的 HTTP 引擎**：
+Agent 决定测什么，引擎负责发请求、管会话、控节奏、留证据。
+
+| 层 | 文件 | 职责 |
+|---|---|---|
+| Policy Gate | `vexnar-web/src/policy.ts` | origin 范围、预算/窗口、写批准、攻击载荷授权 |
+| Session Manager | `vexnar-web/src/vault.ts` | 独立 CookieJar/Token/CSRF，凭据只进 Vault |
+| Scheduler + Transport | `vexnar-web/src/engine.ts`、`transport.ts` | 串行队列、去重、undici、连接层 SSRF 过滤 |
+| Response Observer | `vexnar-web/src/analyzer.ts` | 状态码/限流/挑战特征、结构提取、差异对比、脱敏 |
+| Evidence Store | `vexnar-web/src/store.ts` | 脱敏记录 + AES-256-GCM 证据正文 |
+
+MCP 入口默认 `127.0.0.1:8792/mcp`（`vexnar/cordis.patch.yml` 已注册 `vexnar-web`），
+工具：`web_session_create` / `web_request_execute` / `web_response_analyze` /
+`web_session_inspect` / `web_session_control` / `web_evasion_report`。REST 面在 `/api/web/*`。
+
+默认遇 WAF/限流即熔断。需要"被打回后继续测规则覆盖"时，可开启**对抗模式**
+（平台 `VEXNAR_WEB_ADVERSARIAL=on` + 会话 `adversarial: true` + origin 白名单，三件套缺一不可）：
+按 载荷变异 → 出口轮换 → 身份切换 的固定阶梯升级，配额耗尽即停，每步写入策略事件，
+`web_evasion_report` 汇总"哪种编码/出口/身份还能通"。它不改 TLS 指纹、不保证绕过。
+
+```sh
+pnpm --filter @vexnar/web run test    # 策略/会话/去重/重定向/熔断/分析/MCP 共 14 例
+pnpm --filter @vexnar/web run mcp     # 独立起 MCP；随 core 启动则无需单独跑
+```
+
+详见 [Web 测试引擎](docs/WEB-TESTING-ENGINE.md)。能力边界写在文档 §3.2：不消除 TLS 指纹、
+不承诺绕过 WAF、403 不等于 WAF。
+
+## 控制台（四页统一）
+
+概览 / 任务 / 流量 / 代理池共用一套数据层与一套外壳：
+
+- **数据层** `vexnar/ui/src/data/`：唯一 HTTP 出口（超时 + `ApiError`）、键控缓存
+  （同 key 合并请求、`invalidate(前缀)` 联动刷新）、接口 → 视图模型、派生指标、
+  格式化、代理池 SSE。页面里不出现 `fetch`，也不自己算比率。
+- **设计层** `vexnar/ui/src/components/kit.tsx` + `styles.ts` 的 `.vx-ui-*`：
+  PageShell / Kpi / Card / Toolbar / Segmented / DataTable / Drawer / Empty / Skeleton。
+- **三源流量**：会话抓包（本机 kv）、采集面归档（Go 索引）、Web 测试引擎（独立库）
+  在流量页分源展示，行上带来源徽标；`/api/traffic` 的 DTO 新增 `source` 字段。
+
+口径与组件清单见 [控制台：数据层与设计系统](docs/UI-CONSOLE.md)。
+
+```sh
+pnpm --filter @vexnar/dsh-ui run typecheck && pnpm --filter @vexnar/dsh-ui run build
+pnpm --filter @vexnar/dsh-ui run test     # 10 例冒烟：注册面、共享键、token 定义
+```
+
 ## 存储架构
 
 域划分、读写路径、性能预算、冲突规则与迁移阶段见 [STORAGE-ARCHITECTURE.md](./STORAGE-ARCHITECTURE.md)。

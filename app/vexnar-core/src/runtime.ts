@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createNotifier, spawnTriggerTask, startSchedules, startTriggers } from '../../vexnar-store/src/index.ts'
 import { engine, gatewayComplete, meta, modelCompletionReady, operations, scheduler, seedCatalogDefaults, store, taskQueue } from './context.ts'
+import { stopWebRuntime, webRuntime } from './web.ts'
 import { runtimeMode, storeBackend } from './mode.ts'
 
 export { runtimeMode, storeBackend }
@@ -39,6 +40,9 @@ async function boot() {
   // 否则触发器与定时任务会读到半初始化的库。
   await store.init()
   await seedCatalogDefaults()
+
+  // Web 测试引擎：Harness 的工具面必须在第一个工具调用之前就绪，失败也不阻断 core。
+  await webRuntime()
 
   // 触发器的回调与任务队列：命中触发器 → 建任务 → 有模型网关才自动规划并执行。
   for (const agent of await meta.table<any[]>('agents')) {
@@ -129,6 +133,7 @@ export async function stopRuntime(): Promise<void> {
   }
   state.storeLocked = false
   state.started = false
+  await stopWebRuntime()
 }
 
 /** 供 `/api/_runtime` 与启动日志用：一眼看出底座跑的是哪一套。 */
@@ -142,6 +147,7 @@ export function runtimeInfo() {
     schedules: state.schedules,
     store_locked: state.storeLocked,
     engine: modelCompletionReady() ? 'ready' : 'idle',
-    task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2
+    task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2,
+    web_mcp: process.env.VEXNAR_WEB_MCP_PORT ?? '8792'
   }
 }

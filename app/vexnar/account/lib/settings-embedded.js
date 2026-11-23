@@ -34107,7 +34107,10 @@ async function allExchanges() {
   const local = await operations.writer.list("traffic_exchanges");
   const seen = new Set(local.map((row) => String(row.id)));
   const archived = archivedExchanges().filter((row) => !seen.has(row.id));
-  return [...local, ...archived];
+  return [
+    ...local.map((row) => ({ ...row, source: "local" })),
+    ...archived.map((row) => ({ ...row, source: "archive" }))
+  ];
 }
 async function listExchanges(query) {
   const all = await allExchanges();
@@ -34140,7 +34143,8 @@ function exchangeDto(row) {
     url: String(row.url ?? ""),
     status: Number(row.status ?? 0),
     content_type: String(row.content_type ?? ""),
-    resp_len: Number(row.resp_len ?? 0)
+    resp_len: Number(row.resp_len ?? 0),
+    source: row.source === "archive" ? "archive" : "local"
   };
 }
 async function listHosts() {

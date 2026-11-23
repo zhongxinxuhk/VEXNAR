@@ -7,6 +7,7 @@ import { constants, readFileSync } from 'node:fs'
 import { lstat, open, realpath, stat } from 'node:fs/promises'
 import { dirname, isAbsolute, normalize } from 'node:path'
 import protobuf from 'protobufjs'
+import { readYakSources } from './yak-sources.js'
 
 type Fields = Record<string, unknown>
 interface Source {
@@ -79,29 +80,16 @@ async function canonical(path: string): Promise<string> {
   return realpath(path).catch(() => normalize(path))
 }
 
-async function sources(path: string | undefined): Promise<Source[]> {
-  if (!path) return []
+async function sources(): Promise<Source[]> {
   try {
-    const raw: unknown = JSON.parse(await boundedFile(path, 64 << 10))
-    if (!Array.isArray(raw)) throw new Error('Invalid source list')
-    const result: Source[] = []
-    for (const value of raw) {
-      const row = fields(value)
-      if (!row || typeof row.name !== 'string' || !row.name.trim() ||
-          typeof row.workspace !== 'string' || !isAbsolute(row.workspace) ||
-          typeof row.socket !== 'string' || !isAbsolute(row.socket) ||
-          typeof row.token_file !== 'string' || !isAbsolute(row.token_file) ||
-          typeof row.project_id !== 'number' || !Number.isSafeInteger(row.project_id) || row.project_id <= 0) {
-        throw new Error('Invalid source')
-      }
-      const workspace = await canonical(row.workspace)
-      const socket = await canonical(row.socket)
-      if (result.some(other => other.name === row.name || other.workspace === workspace || other.socket === socket)) {
-        throw new Error('Duplicate source')
-      }
-      result.push({ name: row.name, workspace, socket, tokenFile: row.token_file, projectID: String(row.project_id) })
-    }
-    return result
+    const rows = await readYakSources()
+    return rows.map(row => ({
+      name: row.name,
+      workspace: row.workspace,
+      socket: row.socket,
+      tokenFile: row.token_file,
+      projectID: String(row.project_id)
+    }))
   } catch {
     throw new HistoryError(503, 'Yak 流量来源配置不可用')
   }
@@ -213,7 +201,7 @@ async function readLocalHistory(source: Source, query: Query) {
 export async function handleYakHistory(request: Request): Promise<Response> {
   try {
     const query = readQuery(await request.json().catch(() => undefined))
-    const rows = await sources(process.env.VEXNAR_YAK_HISTORY_CONFIG)
+    const rows = await sources()
     if (query.action === 'sources') return Response.json({ sources: rows.map(row => row.name) }, responseOptions)
     const payload = await readLocalHistory(await sourceOf(rows, query), query)
     return Response.json(payload, responseOptions)

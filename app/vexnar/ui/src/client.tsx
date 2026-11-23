@@ -6,12 +6,14 @@ import { createElement as h, useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
-import { YakHistory, SessionTrafficAction } from './yak-history.js'
+import { SessionTrafficAction } from './yak-history.js'
 import { SessionCaptureAction } from './capture-action.js'
 import { CORE_BASE, callApi, responseError, useApi } from './api.js'
 import { McpTab, ToolsTab } from './catalog.js'
 import { TasksWorkspace } from './tasks/workspace.js'
 import { InterceptSettings as InterceptPanel } from './intercept/page.js'
+import { EgressPanel } from './egress/page.js'
+import { TrafficPanel } from './traffic/page.js'
 
 /**
  * VEXNAR tool cards for the dsh client.
@@ -893,11 +895,20 @@ function ExecStream({ taskID }: { taskID: string }) {
         }, row.summary ?? ''))))) : null)
 }
 
-function PanelShell({ title, desc, children }: { title: string; desc?: string; children?: ReactNode }) {
-  return h('div', { className: 'vx-panel' },
-    h('div', { className: 'vx-panel-head' },
-      h('h1', { className: 'vx-panel-title' }, title),
-      desc ? h('p', { className: 'vx-panel-desc' }, desc) : null),
+/**
+ * 领域页面壳（发现 / 通知 / 拦截）。
+ *
+ * 与 `vx-ui-page` 是同一套骨架：四页（概览 / 任务 / 流量 / 代理池）已经迁到
+ * `components/kit.tsx` 的 PageShell，这里让剩下的设置页与子页签保持一致，
+ * 不再各写一份 padding 与标题字号。
+ */
+function PanelShell({ title, desc, actions, children }: { title: string; desc?: string; actions?: ReactNode; children?: ReactNode }) {
+  return h('div', { className: 'vx-ui-page' },
+    h('header', { className: 'vx-ui-head' },
+      h('div', { className: 'vx-ui-head-main' },
+        h('h1', { className: 'vx-ui-title' }, title),
+        desc ? h('p', { className: 'vx-ui-desc' }, desc) : null),
+      actions ? h('div', { className: 'vx-ui-head-actions' }, actions) : null),
     children ?? null)
 }
 
@@ -1023,107 +1034,36 @@ const TASKS_TABS: ReadonlyArray<readonly [TasksTab, string]> = [
 /**
  * 任务面板：清单 + 发现两页签。
  *
- * 任务是对象，发现是它的产出，两者共用一个「任务范围」；工具执行与执行记录属于任务的
- * 从属数据，放在任务详情里（选中任务就能跑工具、看它调过什么），不占顶层页签。
+ * 任务是对象，发现是它的产出，两者共用一个「任务范围」；工具执行与执行记录属于
+ * 任务的从属数据，放在任务详情里（选中任务就能跑工具、看它调过什么），不占顶层页签。
+ *
+ * 视图切换挂在**页面外壳的动作区**，所以两个页签共用一条视觉基线；任务页签内部的
+ * 壳由 `TasksWorkspace` 自己提供，不在这里套第二层标题。
  */
 function TasksPanel() {
   const [tab, setTab] = useState<TasksTab>('tasks')
   const [findingID, setFindingID] = useState('')
   const [scope, setScope] = useState('')
 
-  const tabButton = (id: TasksTab, label: string): ReactNode =>
-    h('button', { key: id, type: 'button', 'aria-pressed': tab === id, onClick: () => setTab(id) }, label)
+  const viewSwitch = h('div', { className: 'vx-ui-seg', role: 'group', 'aria-label': '任务视图' },
+    TASKS_TABS.map(([id, label]) => h('button', {
+      key: id,
+      type: 'button',
+      'aria-pressed': tab === id,
+      onClick: () => setTab(id)
+    }, label)))
 
+  if (tab === 'tasks') return h(TasksWorkspace, { viewSwitch })
 
-  let body: ReactNode
-  if (tab === 'tasks') {
-    // 任务页签整体交给复刻版工作区：清单 + 详情十页（与 Web 控制台同一组接口）。
-    body = h(TasksWorkspace, null)
-  } else {
-    body = findingID
+  return h(PanelShell, {
+    title: '任务',
+    desc: '任务清单、发现，以及每个任务的执行记录',
+    actions: viewSwitch
+  },
+    scope ? h('div', { className: 'vx-ui-statusline' }, `任务范围 #${scope}`) : null,
+    findingID
       ? h(FindingDetail, { id: findingID, onBack: () => setFindingID('') })
-      : h(FindingsTab, { scope, onScope: setScope, onOpen: setFindingID })
-  }
-
-  return h(PanelShell, { title: '任务', desc: '任务清单、发现，以及每个任务的执行记录' },
-    h('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 } },
-      h('div', { className: 'vx-seg', role: 'group', 'aria-label': '任务视图' },
-        TASKS_TABS.map(([id, label]) => tabButton(id, label))),
-      tab === 'findings' && scope
-        ? h('span', { style: { fontSize: 12, color: 'var(--vx-text-dim)' } }, `任务范围 #${scope}`)
-        : null),
-    body)
-}
-
-function LocalTrafficCleanup() {
-  const [date, setDate] = useState('')
-  const [host, setHost] = useState('')
-  const [preview, setPreview] = useState<{ path: string; count: number; token: string }>()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [deleted, setDeleted] = useState<number>()
-
-  async function review() {
-    if (!date) return
-    const before = Math.floor(new Date(`${date}T00:00:00`).getTime() / 1000)
-    const query = new URLSearchParams({ before: String(before), host: host.trim() })
-    const path = `/api/traffic/local-cleanup?${query}`
-    setBusy(true)
-    setError('')
-    setPreview(undefined)
-    setDeleted(undefined)
-    try {
-      const result = await callApi(path)
-      setPreview({ path, count: result.count, token: result.token })
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function apply() {
-    if (!preview || !window.confirm(`清理 ${preview.count} 条本地流量记录？此操作无法撤销。`)) return
-    setBusy(true)
-    setError('')
-    try {
-      const result = await callApi(preview.path, 'DELETE', { token: preview.token })
-      setDeleted(result.deleted)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
-    } finally {
-      setPreview(undefined)
-      setBusy(false)
-    }
-  }
-
-  return (
-    <details>
-      <summary>清理本地流量</summary>
-      <p>按所选日期当天零点筛选更早的客户端记录。Yak 历史和已绑定的证据会保留。</p>
-      <Toolbar>
-        <label>截止日期 <input type="date" value={date} disabled={busy} onChange={(event) => {
-          setDate(event.target.value)
-          setPreview(undefined)
-        }} /></label>
-        <label>主机 <input value={host} placeholder="留空为全部主机" disabled={busy} onChange={(event) => {
-          setHost(event.target.value)
-          setPreview(undefined)
-        }} /></label>
-        <button type="button" disabled={!date || busy} onClick={() => void review()}>预览清理</button>
-        {preview && <button type="button" disabled={preview.count === 0 || busy} onClick={() => void apply()}>
-          清理 {preview.count} 条
-        </button>}
-      </Toolbar>
-      {preview?.count === 0 && <p role="status">没有符合条件的本地流量。</p>}
-      {deleted !== undefined && <p role="status">已清理 {deleted} 条本地流量。</p>}
-      {error && <p role="alert">{error}</p>}
-    </details>
-  )
-}
-
-function TrafficPanel() {
-  return h(PanelShell, { title: '流量 History' }, h(LocalTrafficCleanup), h(YakHistory))
+      : h(FindingsTab, { scope, onScope: setScope, onOpen: setFindingID }))
 }
 
 function NotifySettings() {
@@ -1138,7 +1078,8 @@ function InterceptSettings() {
 const PANELS = [
   { id: 'vexnar-overview', label: '概览', order: 99, component: OverviewPanel, icon: OverviewIcon },
   { id: 'vexnar-tasks', label: '任务', order: 100, component: TasksPanel },
-  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel }
+  { id: 'vexnar-traffic', label: '流量', order: 102, component: TrafficPanel },
+  { id: 'vexnar-egress', label: '代理池', order: 101, component: EgressPanel }
 ]
 
 // Agent 名册不在这里：引擎的每个角色都是 app/vexnar/cordis.patch.yml 里一条

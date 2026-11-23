@@ -42,6 +42,8 @@ const hostEntries = [
   'login-page',
   'login-client',
   'model-channel',
+  'yak-history',
+  'yak-sources',
   'yak-history-tools'
 ].map(name => join(here, 'src', `${name}.ts`))
 

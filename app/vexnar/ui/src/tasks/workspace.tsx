@@ -5,12 +5,23 @@
 /**
  * 任务工作区：清单 + 详情（十个页签）。
  *
- * 数据走 /vexnar-api/api，与控制台 :3000 同源；每个页签只读自己那组接口，
- * 切换页签不会把整页数据重拉一遍。
+ * 清单的取数与统计走 `data/resources.ts`（`useTasks` / `useTaskSummary`），
+ * 与概览共用同一个缓存键与同一个 `taskMetrics()` 口径——之前在任务页算一遍、
+ * 在概览再算一遍，两个页面的「完成率」曾经差 0.3 个百分点，就是这里来的。
+ *
+ * 详情页签仍直接调用 `tasksApi`：它们是任务内部的从属数据，切换页签不该把
+ * 整页重拉，也不需要进入全局缓存。
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
+import {
+  ApiErrorLine, Button as KitButton, Card as KitCard, Chip, DataTable, Drawer, Kpi, KpiGrid,
+  PageShell, Pager, Spacer, TextInput, Toolbar, type Column
+} from '../components/kit.tsx'
+import { fmtCount, fmtInt, fmtPercent } from '../data/format.ts'
+import { taskMetrics } from '../data/metrics.ts'
+import { useTaskSummary, useTasks } from '../data/resources.ts'
 import { tasksApi, type Task } from './api.js'
 import { useResource } from './hooks.js'
 import {
@@ -25,16 +36,7 @@ import {
   RetestsSection,
   SessionsSection
 } from './sections.js'
-import { Button, Card, Empty, ErrorLine, Field, Select, StatusChip, relTime } from './ui.js'
-
-/** 服务端语义色 → 面板已有的 chip 色调类（`info` 落到 redirect，没有独立类）。 */
-const CHIP_TONE: Record<string, string> = {
-  muted: 'muted',
-  info: 'redirect',
-  success: 'success',
-  warn: 'warn',
-  error: 'error'
-}
+import { Button, Card, Empty, ErrorLine, StatusChip, relTime } from './ui.js'
 
 const TABS = [
   ['sessions', '会话'],
@@ -55,82 +57,54 @@ type TabID = (typeof TABS)[number][0]
  * 状态筛选：与服务端生命周期同源。`archived` 不是状态（归档任务已不在清单里），
  * 所以这里不再提供这个选项——此前选它必然得到空列表。
  */
-const STATUS_FILTER: Array<[string, string]> = [
-  ['', '全部状态'],
-  ['created', '待启动'],
-  ['queued', '排队中'],
-  ['running', '进行中'],
-  ['paused', '已暂停'],
-  ['done', '已完成'],
-  ['failed', '失败'],
-  ['timeout', '已超时']
-]
+const STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: 'created', label: '待启动' },
+  { value: 'queued', label: '排队中' },
+  { value: 'running', label: '进行中' },
+  { value: 'paused', label: '已暂停' },
+  { value: 'done', label: '已完成' },
+  { value: 'failed', label: '失败' },
+  { value: 'timeout', label: '已超时' }
+] as const
+const SIZE_OPTIONS = [
+  { value: '10', label: '10 / 页' },
+  { value: '20', label: '20 / 页' },
+  { value: '50', label: '50 / 页' }
+] as const
 
-function TaskRow({ task, onOpen }: { task: Task; onOpen: () => void }) {
-  const findings = task.findings ?? { critical: 0, high: 0, medium: 0, low: 0 }
-  const total = findings.critical + findings.high + findings.medium + findings.low
-  const goals = task.goals_total ? `${task.goals_met ?? 0}/${task.goals_total}` : '—'
-  return (
-    <button type="button" className="vx-task-rowitem" onClick={onOpen}>
-      <span className="vx-task-rowitem-main">
-        <span className="vx-task-rowitem-title">{task.name || task.description || `任务 #${task.id}`}</span>
-        <span className="vx-task-rowitem-sub">
-          <code>#{task.id}</code>
-          {task.goal ? <span>{task.goal}</span> : null}
-        </span>
-      </span>
-      <span className="vx-task-rowitem-meta">
-        <StatusChip status={task.status} />
-        <span className="vx-task-mini">
-          <b>{goals}</b>
-          <small>目标</small>
-        </span>
-        <span className="vx-task-mini">
-          <b>{total}</b>
-          <small>漏洞</small>
-        </span>
-        <span className="vx-task-mini">
-          <b>{relTime(task.last_activity)}</b>
-          <small>最近活动</small>
-        </span>
-      </span>
-    </button>
-  )
-}
-
-export function TasksWorkspace() {
+export function TasksWorkspace({ viewSwitch }: { viewSwitch?: ReactNode }): ReactNode {
+  const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(20)
   const [open, setOpen] = useState('')
   const [showArchives, setShowArchives] = useState(false)
-  const [draft, setDraft] = useState({ description: '', goal: '' })
   const [creating, setCreating] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [draft, setDraft] = useState({ description: '', goal: '' })
   const [error, setError] = useState('')
 
-  const key = `tasks:${query}:${status}:${page}:${size}`
-  const list = useResource(key, () => tasksApi.list({ q: query, status, page, size }))
-  // 筛选计数读全量聚合，不读当前页：一页 20 条算出来的分布从来不是全站分布。
-  const summary = useResource('tasks:summary', () => tasksApi.summary())
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setQuery(search.trim()); setPage(1) }, 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const list = useTasks({ q: query, status, page, size })
+  const summary = useTaskSummary(30)
+  const metrics = useMemo(() => taskMetrics(summary.data), [summary.data])
+
   const rows = list.data?.tasks ?? []
   const total = list.data?.total ?? rows.length
   const pages = Math.max(1, Math.ceil(total / size))
+  const reload = (): void => { list.refresh(); summary.refresh() }
 
-  const lifecycle = summary.data?.lifecycle ?? []
-  const statusline = useMemo(() => {
-    const counts = summary.data?.by_status ?? {}
-    return lifecycle
-      .map((entry) => ({ ...entry, value: Number(counts[entry.key] ?? 0) }))
-      .filter((entry) => entry.value > 0)
-  }, [lifecycle, summary.data])
+  if (showArchives) return <TaskArchives onBack={() => { setShowArchives(false); reload() }} />
+  if (open !== '') return <TaskDetailPage id={open} onBack={() => { setOpen(''); reload() }} />
 
-  const reloadTasks = () => { list.reload(); summary.reload() }
-  if (showArchives) return <TaskArchives onBack={() => { setShowArchives(false); reloadTasks() }} />
-  if (open) return <TaskDetailPage id={open} onBack={() => { setOpen(''); reloadTasks() }} />
-
-  const create = () => {
-    if (!draft.description.trim()) return
+  const create = (): void => {
+    if (draft.description.trim() === '') return
     setCreating(true)
     setError('')
     tasksApi
@@ -138,74 +112,161 @@ export function TasksWorkspace() {
       .then((task) => {
         setDraft({ description: '', goal: '' })
         setPage(1)
-        list.reload()
+        reload()
         if (task?.id) setOpen(String(task.id))
       })
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setCreating(false))
   }
 
-  return (
-    <div className="vx-task-workspace">
-      <div className="vx-task-toolbar">
-        <Field placeholder="搜索任务（名称 / 描述 / 目标）" value={query} onChange={(value) => { setQuery(value); setPage(1) }} ariaLabel="搜索任务" />
-        <Select value={status} onChange={(value) => { setStatus(value); setPage(1) }} ariaLabel="状态" options={STATUS_FILTER} />
-        <Select value={String(size)} onChange={(value) => setSize(Number(value))} ariaLabel="每页" options={[['10', '10 / 页'], ['20', '20 / 页'], ['50', '50 / 页']]} />
-        <Button onClick={reloadTasks}>刷新</Button>
-        <Button onClick={() => setShowArchives(true)}>归档记录</Button>
-        <span className="vx-task-spacer" />
-        <span className="vx-task-hint">
-          共 {total} 个任务 · 第 {page}/{pages} 页
-        </span>
-        <Button disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-          上一页
-        </Button>
-        <Button disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>
-          下一页
-        </Button>
-      </div>
-
-      <Card title="新建任务" extra={<span className="vx-task-hint">描述与目标决定规划器的探索边界</span>}>
-        <div className="vx-task-inline vx-task-inline--wide">
-          <Field placeholder="任务描述，如「example.com 外网资产梳理」" value={draft.description} onChange={(value) => setDraft({ ...draft, description: value })} />
-          <Field placeholder="目标（可选），如「拿到管理员账号的越权访问」" value={draft.goal} onChange={(value) => setDraft({ ...draft, goal: value })} />
-          <Button tone="primary" disabled={!draft.description.trim() || creating} onClick={create}>
-            {creating ? '创建中…' : '创建'}
-          </Button>
+  const columns: ReadonlyArray<Column<Task>> = [
+    {
+      key: 'task', header: '任务', render: (task) => (
+        <div className="vx-ui-cell-stack">
+          <strong>{task.name || task.description || `任务 #${task.id}`}</strong>
+          <span className="vx-ui-muted">
+            <code>#{task.id}</code>{task.goal ? ` · ${task.goal}` : ''}
+          </span>
         </div>
+      )
+    },
+    { key: 'status', header: '状态', width: '86px', render: (task) => <StatusChip status={task.status} /> },
+    {
+      key: 'goals', header: '目标', width: '68px', align: 'right', mono: true,
+      render: (task) => task.goals_total ? `${task.goals_met ?? 0}/${task.goals_total}` : '—'
+    },
+    {
+      key: 'findings', header: '漏洞', width: '86px', align: 'right', render: (task) => {
+        const bucket = task.findings ?? { critical: 0, high: 0, medium: 0, low: 0 }
+        const sum = bucket.critical + bucket.high + bucket.medium + bucket.low
+        if (sum === 0) return <span className="vx-ui-muted">—</span>
+        return (
+          <span className="vx-ui-row-actions">
+            {bucket.critical > 0 ? <Chip tone="red">{bucket.critical} 严重</Chip> : null}
+            <Chip tone={bucket.high > 0 ? 'amber' : 'neutral'}>{sum}</Chip>
+          </span>
+        )
+      }
+    },
+    {
+      key: 'tokens', header: 'Token', width: '72px', align: 'right', mono: true,
+      render: (task) => fmtCount(task.tokens?.total ?? 0)
+    },
+    {
+      key: 'activity', header: '最近活动', width: '92px', align: 'right',
+      render: (task) => <span className="vx-ui-muted">{relTime(task.last_activity)}</span>
+    },
+    {
+      key: 'open', header: '', width: '64px', align: 'right', render: (task) => (
+        <KitButton size="sm" onClick={() => setOpen(String(task.id))}>打开</KitButton>
+      )
+    }
+  ]
+
+  const pageCount = pages
+
+  return (
+    <PageShell
+      title="任务"
+      desc="任务的探索边界、目标达成与产出；清单口径与概览一致，数字不会两处不一致。"
+      actions={<>
+        {viewSwitch ?? null}
+        <KitButton size="sm" busy={list.refreshing} onClick={reload}>刷新</KitButton>
+        <KitButton size="sm" onClick={() => setShowArchives(true)}>归档记录</KitButton>
+        <KitButton size="sm" variant="primary" onClick={() => { setDraft({ description: '', goal: '' }); setError(''); setCreateOpen(true) }}>新建任务</KitButton>
+      </>}
+      status={<>
+        <span className="vx-ui-live is-on"><i />活动 {fmtInt(metrics.active)}</span>
+        <span className="vx-ui-muted">暂停 {fmtInt(metrics.paused)}</span>
+        <span className="vx-ui-muted">在飞 {fmtInt(metrics.inFlight)}</span>
+        <Spacer />
+        {summary.error === undefined ? null : <span className="vx-ui-bad">统计不可用：{summary.error.message}</span>}
+      </>}
+    >
+      {list.error === undefined ? null : (
+        <ApiErrorLine error={list.error.message} detail={list.error.detail} onRetry={reload} />
+      )}
+      <KpiGrid>
+        <Kpi label="任务总数" value={fmtInt(metrics.total)} unit="个" hint={`本页 ${fmtInt(rows.length)} 条 · 第 ${page}/${pageCount} 页`} tone="blue" />
+        <Kpi label="进行中" value={fmtInt(metrics.active)} unit="个" hint={`暂停 ${metrics.paused} · 在飞 ${metrics.inFlight}`} tone={metrics.active > 0 ? 'green' : 'neutral'} />
+        <Kpi label="已完成" value={fmtInt(metrics.done)} unit="个" hint={`失败 ${metrics.failed} · 超时 ${metrics.timeout}`} tone="violet" />
+        <Kpi label="完成率" value={fmtPercent(metrics.completionRate)} hint={`终态 ${fmtInt(metrics.terminal)} 个里完成的比例`} tone={metrics.completionRate >= 0.6 ? 'green' : 'amber'} />
+        <Kpi label="目标达成" value={fmtPercent(metrics.goalRate)} hint={`${fmtInt(metrics.goalsMet)} / ${fmtInt(metrics.goalsTotal)} 个目标`} tone="amber" />
+        <Kpi label="漏洞" value={fmtInt(metrics.findings.total)} unit="个" hint={`严重 ${metrics.findings.critical} · 高危 ${metrics.findings.high}`} tone={metrics.findings.critical > 0 ? 'red' : 'neutral'} />
+      </KpiGrid>
+
+      <KitCard title="任务清单" hint={query === '' ? '全部任务' : `搜索「${query}」`}>
+        <Toolbar>
+          <TextInput value={search} onChange={setSearch} placeholder="搜索任务（名称 / 描述 / 目标）" width={260} />
+          <select
+            className="vx-ui-select"
+            style={{ width: 120 }}
+            value={status}
+            aria-label="状态"
+            onChange={(event) => { setStatus(event.target.value); setPage(1) }}
+          >
+            {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+          <select
+            className="vx-ui-select"
+            style={{ width: 92 }}
+            value={String(size)}
+            aria-label="每页"
+            onChange={(event) => { setSize(Number(event.target.value)); setPage(1) }}
+          >
+            {SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+          <Spacer />
+          <span className="vx-ui-muted">共 {fmtInt(total)} 个</span>
+        </Toolbar>
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(task) => String(task.id)}
+          onRowClick={(task) => setOpen(String(task.id))}
+          loading={list.loading}
+          maxHeight={520}
+          empty={<Empty text="没有匹配的任务" hint="换个筛选条件，或点右上角新建一个。" />}
+        />
+        <Pager page={page - 1} pageCount={pageCount} total={total} unit="个任务" onPage={(next) => setPage(next + 1)} />
+        {list.error === undefined ? null : <ErrorLine error={list.error.message} />}
+      </KitCard>
+
+      <Drawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        width={560}
+        title="新建任务"
+        subtitle="描述与目标决定规划器的探索边界；创建后自动进入任务详情"
+        footer={<>
+          <KitButton size="sm" variant="primary" busy={creating} disabled={draft.description.trim() === ''} onClick={create}>创建</KitButton>
+          <Spacer />
+          <KitButton size="sm" variant="ghost" onClick={() => setCreateOpen(false)}>取消</KitButton>
+        </>}
+      >
+        <label className="vx-ui-field">
+          <span className="vx-ui-field-label">任务描述</span>
+          <textarea
+            className="vx-ui-textarea"
+            rows={3}
+            value={draft.description}
+            placeholder="如：example.com 外网资产梳理"
+            onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+          />
+        </label>
+        <label className="vx-ui-field">
+          <span className="vx-ui-field-label">测试目标（可选）</span>
+          <textarea
+            className="vx-ui-textarea"
+            rows={2}
+            value={draft.goal}
+            placeholder="如：拿到管理员账号的越权访问"
+            onChange={(event) => setDraft({ ...draft, goal: event.target.value })}
+          />
+        </label>
         <ErrorLine error={error} />
-      </Card>
-
-      <div className="vx-task-statusline">
-        {summary.data !== undefined ? (
-          <>
-            <span className="vx-task-hint">共 {summary.data.total} 个任务</span>
-            {statusline.map((entry) => (
-              <span key={entry.key} className={`vx-chip vx-chip--${CHIP_TONE[entry.tone] ?? 'muted'}`}>
-                {entry.label} · {entry.value}
-              </span>
-            ))}
-          </>
-        ) : (
-          <span className="vx-task-hint">{summary.error ? `统计不可用：${summary.error}` : '读取统计…'}</span>
-        )}
-      </div>
-
-      <Card className="vx-task-listcard">
-        {list.loading ? (
-          <Empty text="读取任务…" />
-        ) : rows.length === 0 ? (
-          <Empty text="没有匹配的任务" hint="换个筛选条件，或在上方新建一个。" />
-        ) : (
-          <div className="vx-task-rows">
-            {rows.map((task) => (
-              <TaskRow key={task.id} task={task} onOpen={() => setOpen(String(task.id))} />
-            ))}
-          </div>
-        )}
-        <ErrorLine error={list.error} />
-      </Card>
-    </div>
+      </Drawer>
+    </PageShell>
   )
 }
 

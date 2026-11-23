@@ -30,7 +30,8 @@
     "kysely": "^0.29.9",
     "node-forge": "^1.4.3",
     "pg": "^8.23.1",
-    "yaml": "^2.9.1"
+    "yaml": "^2.9.1",
+    "@vexnar/web": "workspace:*"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",

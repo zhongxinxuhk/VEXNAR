@@ -3,54 +3,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * 任务面板的数据面：同源 /vexnar-api（由账户插件转给本机 Go 服务）。
+ * 任务面板的数据面：同源 /vexnar-api（由账户插件转给本机 core）。
  *
- * 这里只放任务面板要用的接口，字段按 Go 的 JSON 取子集；写操作与 Web 控制台
- * （web/src/lib/api.ts）逐条对齐，保证两个客户端改的是同一行数据。
+ * 这里只放任务面板要用的接口，字段按后端的 JSON 取子集；底层传输统一走
+ * `data/client.ts`（同一套超时、错误归一化与查询串规则），页面不再各自 fetch。
+ * 写操作与 Web 控制台（web/src/lib/api.ts）逐条对齐，保证两个客户端改的是同一行数据。
  */
+import { api, query } from '../data/client.ts'
 
-const BASE = '/vexnar-api/api'
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { ...(init?.body ? { 'content-type': 'application/json' } : {}), ...(init?.headers ?? {}) },
-    cache: 'no-store'
-  })
-  const text = await response.text()
-  let body: unknown = null
-  try {
-    body = text ? JSON.parse(text) : null
-  } catch {
-    body = text
-  }
-  if (!response.ok) {
-    const message = (body as { error?: string } | null)?.error ?? `HTTP ${response.status}`
-    throw new Error(message)
-  }
-  return body as T
-}
-
-const get = <T>(path: string) => request<T>(path)
-const post = <T>(path: string, body?: unknown) =>
-  request<T>(path, body === undefined ? { method: 'POST' } : { method: 'POST', body: JSON.stringify(body) })
-const patch = <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
-const del = <T>(path: string) => request<T>(path, { method: 'DELETE' })
+const get = <T>(path: string) => api.get<T>(path)
+const post = <T>(path: string, body?: unknown) => api.post<T>(path, body)
+const patch = <T>(path: string, body: unknown) => api.patch<T>(path, body)
+const del = <T>(path: string) => api.del<T>(path)
 
 /** Go 的列表接口有的直接回数组，有的包一层 {xxx:[...]}；统一在这里收口。 */
 function listOf<T>(value: unknown, key: string): T[] {
   if (Array.isArray(value)) return value as T[]
   const inner = (value as Record<string, unknown> | null)?.[key]
   return Array.isArray(inner) ? (inner as T[]) : []
-}
-
-const query = (params: Record<string, string | number | undefined>) => {
-  const search = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') search.set(key, String(value))
-  }
-  const text = search.toString()
-  return text ? `?${text}` : ''
 }
 
 /**
