@@ -273,6 +273,153 @@ export async function fetchWebSession(sessionId: string, signal?: AbortSignal): 
   }
 }
 
+// ── 会话流量（按 scope 归属，抓包按会话发起） ─────────────────────────────
+/**
+ * 一条会话的流量窗口。
+ *
+ * 数据来自 `/api/sessions/:id/traffic`（Go 时代是 Yakit 的 History），
+ * 归属键是 `session-<id>`：只有这个 scope 抓到的报文会出现在这里。
+ */
+export interface SessionTrafficRow {
+  id: string
+  seq: number
+  ts: number
+  source: string
+  method: string
+  url: string
+  host: string
+  status: number
+  reqBytes: number
+  respBytes: number
+  durationMs: number
+  contentType: string
+}
+
+export interface SessionTrafficWindow {
+  enabled: boolean
+  scope: string
+  rows: SessionTrafficRow[]
+  nextSeq: number
+  hasMore: boolean
+}
+
+/** 采集端点：代理地址、CA、条数，以及可选的 Yakit 注入脚本。 */
+export interface SessionEndpoint {
+  enabled: boolean
+  scope: string
+  proxy: string
+  caPemUrl: string
+  items: number
+  lastTs: number
+  source: string
+  hook: string
+}
+
+export interface SessionExchangeRaw {
+  req: string
+  resp: string
+}
+
+/**
+ * 会话 id → URL 段。
+ *
+ * 宿主 slot 给的 id 已经带 `session-` 前缀（`session-3fe9…`），而 core 侧会再拼一次
+ * → `session-session-3fe9…`，scope 就对不上抓包记录。这里统一剥一层，两个入口
+ * （头部开关、流量弹窗）共用，避免只修一处。
+ */
+export function sessionKey(sessionId: string): string {
+  const raw = String(sessionId ?? '').trim()
+  return raw.startsWith('session-') ? raw.slice('session-'.length) : raw
+}
+
+function sessionRow(row: Record<string, unknown>): SessionTrafficRow {
+  return {
+    id: str(row['id']),
+    seq: num(row['seq']),
+    ts: num(row['ts']),
+    source: str(row['source']),
+    method: str(row['method'], 'GET').toUpperCase(),
+    url: str(row['url']),
+    host: str(row['host']),
+    status: num(row['status']),
+    reqBytes: num(row['req_len']),
+    respBytes: num(row['resp_len']),
+    durationMs: num(row['duration_ms']),
+    contentType: str(row['content_type'])
+  }
+}
+
+export async function fetchSessionTraffic(
+  sessionId: string,
+  options: { limit?: number; afterSeq?: number } = {},
+  signal?: AbortSignal
+): Promise<SessionTrafficWindow> {
+  const payload = await api.get<Record<string, unknown>>(
+    `/api/sessions/${encodeURIComponent(sessionKey(sessionId))}/traffic`,
+    signal,
+    { limit: options.limit ?? 200, after_seq: options.afterSeq ?? 0 }
+  )
+  const rows = rowsOf<Record<string, unknown>>(payload, 'items').map(sessionRow)
+  // 接口按 seq 升序给"最近一窗"，界面要最新在上。
+  rows.sort((left, right) => right.seq - left.seq)
+  return {
+    enabled: bool(payload['enabled']),
+    scope: str(payload['scope']),
+    rows,
+    nextSeq: num(payload['next_seq']),
+    hasMore: bool(payload['has_more'])
+  }
+}
+
+export async function fetchSessionEndpoint(sessionId: string, signal?: AbortSignal): Promise<SessionEndpoint> {
+  const payload = await api.get<Record<string, unknown>>(
+    `/api/sessions/${encodeURIComponent(sessionKey(sessionId))}/traffic/endpoint`,
+    signal
+  )
+  const capture = (payload['capture'] ?? {}) as Record<string, unknown>
+  return {
+    enabled: bool(payload['enabled']),
+    scope: str(payload['scope']),
+    proxy: str(payload['proxy']),
+    caPemUrl: str(payload['ca_pem_url']),
+    items: num(capture['items']),
+    lastTs: num(capture['last_ts']),
+    source: str(capture['source']),
+    hook: str(payload['hook'])
+  }
+}
+
+export async function fetchSessionExchange(sessionId: string, exchangeId: string, signal?: AbortSignal): Promise<SessionExchangeRaw> {
+  const payload = await api.get<Record<string, unknown>>(
+    `/api/sessions/${encodeURIComponent(sessionKey(sessionId))}/traffic/exchange`,
+    signal,
+    { id: exchangeId }
+  )
+  return { req: str(payload['req']), resp: str(payload['resp']) }
+}
+
+/** 开始/停止本会话抓包。返回新的端点状态，调用方据此刷新。 */
+export async function setSessionCapture(sessionId: string, action: 'start' | 'stop'): Promise<{ enabled: boolean }> {
+  const payload = await api.post<Record<string, unknown>>(
+    `/api/sessions/${encodeURIComponent(sessionKey(sessionId))}/traffic/capture`,
+    { action }
+  )
+  return { enabled: bool(payload['enabled']) }
+}
+
+/**
+ * Yak 流量来源（可选项）。
+ *
+ * 未配置时接口会失败或返回空数组——这两种情况都等价于"没有 Yak"，
+ * 调用方不该把它渲染成红色错误：Yak 只是本地采集之外的第二来源。
+ */
+export async function fetchYakSources(signal?: AbortSignal): Promise<string[]> {
+  const payload = await api.get<Record<string, unknown>>('/api/yak/sources', signal).catch(() => null)
+  if (payload === null) return []
+  const rows = Array.isArray(payload['sources']) ? payload['sources'] : []
+  return rows.map((row) => str(row)).filter((name) => name !== '')
+}
+
 // ── 代理池 ─────────────────────────────────────────────────────────────────
 export type NodeHealth = 'up' | 'degraded' | 'down' | 'cooldown' | 'unknown'
 
@@ -537,6 +684,27 @@ export function useWebSession(sessionId: string | null): QueryResult<WebSessionD
     (signal) => fetchWebSession(sessionId as string, signal),
     { ttlMs: 3000 }
   )
+}
+
+/** 会话流量窗口；`live` 打开时 3s 轮询（只在该页签可见时）。 */
+export function useSessionTraffic(sessionId: string | null, live = true): QueryResult<SessionTrafficWindow> {
+  return useQuery(
+    sessionId === null ? null : `session:traffic:${sessionId}`,
+    (signal) => fetchSessionTraffic(sessionId as string, { limit: 300 }, signal),
+    { ttlMs: 3000, pollMs: live ? 3000 : 0 }
+  )
+}
+
+export function useSessionEndpoint(sessionId: string | null): QueryResult<SessionEndpoint> {
+  return useQuery(
+    sessionId === null ? null : `session:endpoint:${sessionId}`,
+    (signal) => fetchSessionEndpoint(sessionId as string, signal),
+    { ttlMs: 3000, pollMs: 10_000 }
+  )
+}
+
+export function useYakSources(): QueryResult<string[]> {
+  return useQuery('yak:sources', fetchYakSources, { ttlMs: 60_000 })
 }
 
 export function useProxyState(live = true): QueryResult<ProxyState> {

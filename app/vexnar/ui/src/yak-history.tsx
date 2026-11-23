@@ -2,26 +2,14 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { YakSourcesEditor } from './yak-sources.js'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
-import {
-  detectBodyKind,
-  hexDump,
-  methodClass,
-  packetHeader,
-  parseHttpPacket,
-  prettyJsonBody,
-  statusClass,
-  tokenizeBodyLine,
-  tokenizeHeader,
-  tokenizeStartLine,
-  type PacketSide,
-  type Token
-} from './http-packet.js'
+import { methodClass, statusClass } from './http-packet.js'
+import { PacketPane, type Packet } from './packet-view.js'
 
 type Flow = {
   id: string
@@ -37,10 +25,8 @@ type Flow = {
   time: number
   websocket: boolean
 }
-type Packet = { text: string; base64?: string; bytes: number; truncated: boolean }
 type Page = { rows: Flow[]; total: number; size: number }
 type Exchange = { flow: Flow; request: Packet; response: Packet }
-type Format = 'pretty' | 'raw' | 'hex'
 
 function useHistory<T>(body: string | null, revision = 0) {
   const [result, setResult] = useState<{ key: string; data?: T; error?: string }>()
@@ -71,228 +57,6 @@ function useHistory<T>(body: string | null, revision = 0) {
     error: result?.key === key ? result.error : undefined,
     loading: body !== null && result?.key !== key
   }
-}
-
-type HitCounter = { value: number }
-
-/** 把一段文本按搜索词切开，命中处包 <mark>，并给出全篇序号供“上一个/下一个”定位。 */
-function splitOnQuery(text: string, query: string, counter: HitCounter): ReactNode {
-  if (!query) return text
-  const haystack = text.toLowerCase()
-  const needle = query.toLowerCase()
-  let at = haystack.indexOf(needle)
-  if (at < 0) return text
-  const parts: ReactNode[] = []
-  let cursor = 0
-  while (at >= 0) {
-    if (at > cursor) parts.push(text.slice(cursor, at))
-    const ordinal = counter.value++
-    parts.push(
-      <mark key={`${at}-${ordinal}`} className="vx-hit" data-match={ordinal}>
-        {text.slice(at, at + needle.length)}
-      </mark>
-    )
-    cursor = at + needle.length
-    at = haystack.indexOf(needle, cursor)
-  }
-  if (cursor < text.length) parts.push(text.slice(cursor))
-  return <>{parts}</>
-}
-
-function Tokens({ tokens, query, counter }: { tokens: Token[]; query: string; counter: HitCounter }) {
-  return (
-    <>
-      {tokens.map((token, index) =>
-        token.tone ? (
-          <span key={index} className={`vx-tone vx-tone--${token.tone}`}>
-            {splitOnQuery(token.text, query, counter)}
-          </span>
-        ) : (
-          <span key={index}>{splitOnQuery(token.text, query, counter)}</span>
-        )
-      )}
-    </>
-  )
-}
-
-/** 报文按 Burp 的四段骨架渲染：起始行、头部、空行、正文。 */
-function PacketBody({ packet, side, format, query }: { packet: Packet; side: PacketSide; format: Format; query: string }) {
-  if (format === 'hex') {
-    const dump = hexDump(atob(packet.base64 ?? ''), 4096)
-    return (
-      <div className="vx-yak-code">
-        {dump.rows.map((row) => (
-          <div key={row.offset} className="vx-yak-line">
-            <code>
-              <span className="vx-tone vx-tone--muted">{row.offset}</span>
-              {'  '}
-              <span className="vx-tone vx-tone--value">{row.hex}</span>
-              {'  │'}
-              <span className="vx-tone vx-tone--comment">{row.ascii}</span>│
-            </code>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const parsed = parseHttpPacket(packet.text)
-  const contentType = packetHeader(parsed, 'content-type')
-  const kind = detectBodyKind(contentType, parsed.body)
-  const pretty = format === 'pretty' ? prettyJsonBody(parsed.body) : null
-  const bodyText = pretty ?? parsed.body
-  const bodyKind = pretty ? 'json' : kind
-
-  const counter: HitCounter = { value: 0 }
-  const rows: ReactNode[] = []
-  if (parsed.startLine) {
-    rows.push(
-      <div key="start" className="vx-yak-line vx-yak-line--start">
-        <code>
-          <Tokens tokens={tokenizeStartLine(parsed, side)} query={query} counter={counter} />
-        </code>
-      </div>
-    )
-  }
-  for (const [index, header] of parsed.headers.entries()) {
-    rows.push(
-      <div key={`h${index}`} className="vx-yak-line">
-        <code>
-          <Tokens tokens={tokenizeHeader(header)} query={query} counter={counter} />
-        </code>
-      </div>
-    )
-  }
-  if (parsed.body) {
-    rows.push(<div key="sep" className="vx-yak-separator" />)
-    if (bodyKind === 'binary') {
-      const dump = hexDump(parsed.body)
-      rows.push(
-        <div key="note" className="vx-yak-note">
-          二进制正文 · {parsed.body.length} B{dump.truncated ? '（仅显示前 512 字节）' : ''}
-        </div>
-      )
-      for (const row of dump.rows) {
-        rows.push(
-          <div key={`d${row.offset}`} className="vx-yak-line">
-            <code>
-              <span className="vx-tone vx-tone--muted">{row.offset}</span>
-              {'  '}
-              <span className="vx-tone vx-tone--value">{row.hex}</span>
-              {'  │'}
-              <span className="vx-tone vx-tone--comment">{row.ascii}</span>│
-            </code>
-          </div>
-        )
-      }
-    } else {
-      for (const [index, line] of bodyText.split('\n').entries()) {
-        rows.push(
-          <div key={`b${index}`} className="vx-yak-line">
-            <code>
-              <Tokens tokens={tokenizeBodyLine(bodyKind, line)} query={query} counter={counter} />
-            </code>
-          </div>
-        )
-      }
-    }
-  }
-  return <div className="vx-yak-code">{rows}</div>
-}
-
-function PacketPane({ label, packet, side }: { label: string; packet: Packet; side: PacketSide }) {
-  const [format, setFormat] = useState<Format>('pretty')
-  const [copied, setCopied] = useState('')
-  const [query, setQuery] = useState('')
-  const [hits, setHits] = useState(0)
-  const [active, setActive] = useState(-1)
-  const bodyRef = useRef<HTMLDivElement>(null)
-
-  // 命中数量与当前序号都从渲染结果里数，避免着色/美化切换后和 DOM 对不上。
-  useEffect(() => {
-    const nodes = bodyRef.current?.querySelectorAll('.vx-hit') ?? []
-    setHits(nodes.length)
-    setActive(nodes.length > 0 ? 0 : -1)
-  }, [query, format, packet])
-
-  useEffect(() => {
-    const nodes = bodyRef.current?.querySelectorAll<HTMLElement>('.vx-hit') ?? []
-    nodes.forEach((node, index) => node.toggleAttribute('data-active', index === active))
-    if (active >= 0) nodes[active]?.scrollIntoView({ block: 'center', inline: 'nearest' })
-  }, [active, hits])
-
-  const step = (delta: number) => {
-    if (hits === 0) return
-    setActive((current) => (current + delta + hits) % hits)
-  }
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(packet.text)
-      setCopied('已复制')
-    } catch {
-      setCopied('剪贴板不可用')
-    }
-  }
-  return (
-    <section className="vx-yak-packet" data-side={side} aria-label={label}>
-      <header>
-        <span className={`vx-yak-chip vx-yak-chip--${side}`}>{side === 'response' ? '响应' : '请求'}</span>
-        <strong>{label}</strong>
-        <span className="vx-yak-size">{packet.bytes.toLocaleString()} B</span>
-        <span className="vx-yak-search">
-          <input
-            aria-label={`在${label}里搜索`}
-            placeholder="搜索"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                step(event.shiftKey ? -1 : 1)
-              }
-              if (event.key === 'Escape') setQuery('')
-            }}
-          />
-          <small>{query ? (hits > 0 ? `${active + 1}/${hits}` : '0') : ''}</small>
-          <button type="button" aria-label="上一个命中" disabled={hits === 0} onClick={() => step(-1)}>
-            ↑
-          </button>
-          <button type="button" aria-label="下一个命中" disabled={hits === 0} onClick={() => step(1)}>
-            ↓
-          </button>
-        </span>
-        <div className="vx-yak-segmented" role="group" aria-label={`${label}显示格式`}>
-          {(
-            [
-              ['pretty', '美化'],
-              ['raw', '原文'],
-              ['hex', 'HEX']
-            ] as const
-          ).map(([value, text]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={format === value}
-              onClick={() => {
-                setFormat(value)
-                setCopied('')
-              }}
-            >
-              {text}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="vx-yak-copy" onClick={() => void copy()}>
-          {copied || '复制'}
-        </button>
-      </header>
-      <div ref={bodyRef}>
-        <PacketBody packet={packet} side={side} format={format} query={query} />
-      </div>
-      {packet.truncated && <small className="vx-yak-hint">显示前 128 KiB</small>}
-    </section>
-  )
 }
 
 const emptyFilters = {
@@ -610,36 +374,5 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
         </section>
       )}
     </div>
-  )
-}
-
-export function SessionTrafficAction({ sessionId }: { sessionId?: string }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [opened, setOpened] = useState(false)
-  useEffect(() => {
-    if (opened && !dialog.current?.open) dialog.current?.showModal()
-  }, [opened])
-  if (!sessionId) return null
-  return (
-    <>
-      <button type="button" title="查看此会话项目的 Yak 流量" onClick={() => setOpened(true)}>
-        流量
-      </button>
-      {opened && (
-        <dialog
-          className="vx-yak-dialog"
-          ref={dialog}
-          onClose={() => setOpened(false)}
-        >
-          <header>
-            <strong>会话项目流量</strong>
-            <button type="button" onClick={() => dialog.current?.close()}>
-              关闭
-            </button>
-          </header>
-          <YakHistory key={sessionId} sessionId={sessionId} />
-        </dialog>
-      )}
-    </>
   )
 }

@@ -6,8 +6,7 @@ import { createElement as h, useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
-import { SessionTrafficAction } from './yak-history.js'
-import { SessionCaptureAction } from './capture-action.js'
+import { SessionTrafficAction } from './session-traffic.js'
 import { CORE_BASE, callApi, responseError, useApi } from './api.js'
 import { McpTab, ToolsTab } from './catalog.js'
 import { TasksWorkspace } from './tasks/workspace.js'
@@ -1129,9 +1128,8 @@ export function apply(ctx: {
     slots.register({ name: 'tool.call.toolview', key: TRAFFIC_TOOL }, TrafficViewer))
   slots.inject('conversation.session.header.actions', () =>
     slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-yak-history' }, SessionTrafficAction))
-  // 抓包按会话发起：开关放在 chat 头部，只作用于当前会话的 scope。
-  slots.inject('conversation.session.header.actions', () =>
-    slots.register({ name: 'conversation.session.header.actions', id: 'vexnar-session-capture', order: 40 }, SessionCaptureAction))
+  // 抓包开关不再单独占一个头部动作：宿主头部只实际渲染「流量」这一个占位
+  // （第二个登记从来不上屏），采集的开始/停止放在弹窗里，与端点信息在一起。
   slots.inject('conversation.hero.options', () =>
     slots.register({ name: 'conversation.hero.options', id: 'vexnar-yak-history' }, SessionTrafficAction))
   for (const panel of PANELS) {

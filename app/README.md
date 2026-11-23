@@ -141,6 +141,7 @@ pnpm --filter @vexnar/web run mcp     # 独立起 MCP；随 core 启动则无需
 - **三源流量**：会话抓包（本机 kv）、采集面归档（Go 索引）、Web 测试引擎（独立库）
   在流量页分源展示，行上带来源徽标；`/api/traffic` 的 DTO 新增 `source` 字段。
 
+四页的截图、系统架构图与会话抓包时序图见仓库根 [README](../README.md#客户端控制台)；
 口径与组件清单见 [控制台：数据层与设计系统](docs/UI-CONSOLE.md)。
 
 ```sh

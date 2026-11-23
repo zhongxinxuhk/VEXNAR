@@ -21,7 +21,8 @@ import {
 } from '../components/kit.tsx'
 import { fmtCount, fmtInt, fmtPercent } from '../data/format.ts'
 import { taskMetrics } from '../data/metrics.ts'
-import { useTaskSummary, useTasks } from '../data/resources.ts'
+import { useQuery } from '../data/query.ts'
+import { fetchFindingStats, useTaskSummary, useTasks } from '../data/resources.ts'
 import { tasksApi, type Task } from './api.js'
 import { useResource } from './hooks.js'
 import {
@@ -94,6 +95,10 @@ export function TasksWorkspace({ viewSwitch }: { viewSwitch?: ReactNode }): Reac
   const list = useTasks({ q: query, status, page, size })
   const summary = useTaskSummary(30)
   const metrics = useMemo(() => taskMetrics(summary.data), [summary.data])
+  // 漏洞数与概览同源（`findings:stats`，全量）：任务汇总里的 findings 只统计近 30 天，
+  // 两个页面放一起会被读成"数字对不上"。
+  const findings = useQuery('findings:stats', fetchFindingStats, { ttlMs: 10_000 })
+  const severity = findings.data ?? metrics.findings
 
   const rows = list.data?.tasks ?? []
   const total = list.data?.total ?? rows.length
@@ -192,7 +197,7 @@ export function TasksWorkspace({ viewSwitch }: { viewSwitch?: ReactNode }): Reac
         <Kpi label="已完成" value={fmtInt(metrics.done)} unit="个" hint={`失败 ${metrics.failed} · 超时 ${metrics.timeout}`} tone="violet" />
         <Kpi label="完成率" value={fmtPercent(metrics.completionRate)} hint={`终态 ${fmtInt(metrics.terminal)} 个里完成的比例`} tone={metrics.completionRate >= 0.6 ? 'green' : 'amber'} />
         <Kpi label="目标达成" value={fmtPercent(metrics.goalRate)} hint={`${fmtInt(metrics.goalsMet)} / ${fmtInt(metrics.goalsTotal)} 个目标`} tone="amber" />
-        <Kpi label="漏洞" value={fmtInt(metrics.findings.total)} unit="个" hint={`严重 ${metrics.findings.critical} · 高危 ${metrics.findings.high}`} tone={metrics.findings.critical > 0 ? 'red' : 'neutral'} />
+        <Kpi label="漏洞" value={fmtInt(severity.total)} unit="个" hint={`严重 ${severity.critical} · 高危 ${severity.high} · 全量`} tone={severity.critical > 0 ? 'red' : 'neutral'} />
       </KpiGrid>
 
       <KitCard title="任务清单" hint={query === '' ? '全部任务' : `搜索「${query}」`}>

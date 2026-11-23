@@ -209,8 +209,12 @@ export function taskMetrics(summary: TaskSummary | undefined): TaskMetrics {
     failed,
     timeout,
     terminal,
-    completionRate: summary?.completion_rate ?? (terminal === 0 ? 0 : done / terminal),
-    goalRate: summary?.goal_rate ?? 0,
+    // `/api/tasks/summary` 的这两个字段是**百分数**（86.64 / 75），`fmtPercent` 收的是
+    // 0..1 的比例。归一化放在这里：之前直接把 86.64 传进去，页面上出现「8663.8%」。
+    completionRate: summary?.completion_rate === undefined
+      ? (terminal === 0 ? 0 : done / terminal)
+      : summary.completion_rate / 100,
+    goalRate: summary?.goal_rate === undefined ? 0 : summary.goal_rate / 100,
     goalsMet: summary?.goals_met ?? 0,
     goalsTotal: summary?.goals_total ?? 0,
     inFlight: summary?.in_flight ?? 0,

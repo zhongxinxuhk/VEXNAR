@@ -12,13 +12,14 @@
 
 **AI 自主渗透测试系统** · LLM 多 Agent 驱动的攻击面探索与漏洞验证
 
-<sub>Go 单体后端 · Next.js 内嵌前端 · PostgreSQL 双图</sub>
+<sub>Go 单体后端 · PostgreSQL 双图 · Next.js Web 控制台 · TypeScript 客户端控制台</sub>
 
 <br />
 
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![License](https://img.shields.io/badge/License-AGPL--3.0-A42E2B)
 
 <br />
@@ -34,6 +35,7 @@
 - [核心特性](#核心特性)
 - [最近更新](#最近更新)
 - [截图预览](#截图预览)
+- [客户端控制台](#客户端控制台)
 - [安装](#安装)
 - [更新升级](#更新升级)
 - [配置](#配置)
@@ -52,12 +54,15 @@
 | 🧪 | **真实执行** | Kali / Bash / HTTP 全量工具面，记录型 MITM 代理逐请求留痕，证据可回溯、可导出 |
 | 🛡️ | **人在环路** | 危险命令与删除类接口内置拦截，审批记录可展开；随时通过对话介入、纠偏或接管 |
 | 🎯 | **判真而非猜测** | 8 类漏洞基线、OAST 带外回连、独立验证器：只有实测复现（`reproduced`）才进入 `confirmed` |
+| 🖥️ | **统一控制台** | 概览 / 任务 / 流量 / 代理池四页共用一套数据层与一套口径；会话级抓包 + 请求/响应并排检查器，会话凭据单独着色 |
 | 📮 | **交付与集成** | 漏洞推送（钉钉 / 飞书 / 企业微信 / Webhook / Telegram / 邮件）、报告导出、ScopeSentry 资产同步、MCP / Skills |
 
 ---
 
 ## 最近更新
 
+- ✅ **客户端控制台重做**：四页（概览 / 任务 / 流量 / 代理池）收敛到一套数据层与一套外壳；流量页把三路来源（会话抓包 / 采集面归档 / Web 测试引擎）分开计数、行上带来源；代理池页补上健康度、池覆盖率与租约。数字口径见 [客户端控制台](#客户端控制台)。
+- ✅ **会话请求抓包**：chat 头部「流量」按会话归属展开报文，请求与响应并排、Cookie / Authorization 一类会话凭据单独着色；采集开关与代理地址、CA 就地下发。
 - ✅ **品牌统一为 VEXNAR**：侧边栏、登录页、应用图标、favicon 与后端启动横幅全部换成新版标识。
 - ✅ **LLM 不可用时自动止损**：鉴权失败（401/403）不再做意图级重跑；重跑次数用尽后任务自动暂停，不再领完整个意图队列刷屏。
 - ✅ **P0 能力落地**：凭据与会话成为任务级一等资产、capability 缺口查询、任务度量（MTTD / 类目命中 / 无效意图占比）均已开发完成，详见 [CHANGELOG](CHANGELOG.md)。
@@ -66,35 +71,151 @@
 
 ## 截图预览
 
-> 截图取自本地演示实例，界面细节可能随版本略有差异；完整交互请按下方「[安装](#安装)」本地部署后体验。
+> 截图取自本地实例的控制台（`app/`，`pnpm web --port 3099`，1440 宽视口），数据来自本机 store；
+> 界面细节可能随版本略有差异。
 
-| 仪表盘（总览 / Token 消耗 / 活动流） | 任务列表 |
+**概览**：任务 / 发现 / Token / 抓包流量四组 KPI，下面是 Token 走势、缓存命中、漏洞严重度与任务健康度。
+
+![概览](screenshots/console-overview.png)
+
+| 任务：清单与完成率（与概览同源） | 代理池：节点 / 池 / 租约 / 实时事件 |
 | :---: | :---: |
-| ![仪表盘](screenshots/dashboard.png) | ![任务](screenshots/tasks.png) |
+| ![任务](screenshots/console-tasks.png) | ![代理池](screenshots/console-egress.png) |
 
-| 任务 · 执行过程（会话 / 工具调用） | 探索链路 |
-| :---: | :---: |
-| ![执行过程](screenshots/sessions.png) | ![探索链路](screenshots/graph.png) |
+**流量**：会话抓包 / 采集面归档 / Web 测试引擎三路分开计数，右侧是 Top 站点、状态分布与活跃抓包。
 
-| 发现 | 资产 |
-| :---: | :---: |
-| ![发现](screenshots/findings.png) | ![资产](screenshots/assets.png) |
+![流量](screenshots/console-traffic.png)
 
-| 资产覆盖图（力导向布局 · 已测高亮 · 节点折叠展开） |
-| :---: |
-| ![资产覆盖图](screenshots/assets_test.png) |
+**报文检查器**：请求与响应并排；起始行、头部名、头部值与正文（HTML 标签 / JSON 键值）各一色，
+`Set-Cookie` / `Authorization` 一类会话凭据另有专属颜色；每侧可独立搜索、切换美化 / 原文 / HEX，
+底部可复制为 cURL。
 
-| 流量录制 | 人在环路对话 |
-| :---: | :---: |
-| ![流量](screenshots/traffic.png) | ![对话](screenshots/chat.png) |
+![报文](screenshots/console-packet.png)
 
-| Agent 管理 | LLM 配置 |
-| :---: | :---: |
-| ![Agent](screenshots/agents.png) | ![LLM](screenshots/llm.png) |
+Go 内嵌 Web 控制台（`web/`）是另一个界面，它的历史截图收在 [screenshots/web-console/](screenshots/web-console/)。
 
-| 拦截审批 | 后端日志 |
-| :---: | :---: |
-| ![拦截](screenshots/intercept.png) | ![日志](screenshots/logs.png) |
+---
+
+## 客户端控制台
+
+`app/` 是客户端工作区：dsh 运行时 + `vexnar-core`（TypeScript 数据面）+ `vexnar/ui`（控制台插件）。
+四个领域页共用一个数据层、一套外壳、一套口径——页面里不出现 `fetch`，也不自己算比率，
+所以「同一件事只有一个数」是结构决定的，而不是靠人工核对。
+
+### 系统架构
+
+```mermaid
+flowchart TB
+  subgraph CLIENT["客户端工作区 app/（dsh 运行时）"]
+    direction TB
+    PAGES["控制台四页<br/>概览 · 任务 · 流量 · 代理池"]
+    KIT["设计层<br/>components/kit.tsx + .vx-ui-*"]
+    DATA["数据层 src/data<br/>client · query · resources · metrics · stream"]
+    PAGES --> DATA
+    PAGES --- KIT
+  end
+
+  subgraph CORE["vexnar-core（同进程回答，不起第二个监听）"]
+    ACC["账户插件 /vexnar-api<br/>登录态 · 前缀剥离"]
+    API["领域路由 /api/*<br/>tasks · traffic · exploration · assets · proxy"]
+    CAP["capture-state + traffic-proxy<br/>按 scope 懒启动 MITM"]
+    EG["egress manager<br/>节点 / 池 / 租约"]
+    WEB["web 引擎 /api/web/*"]
+  end
+
+  subgraph STORE["本地存储"]
+    KV[("kv 表<br/>tasks · findings · traffic_exchanges")]
+    IDX[("归档索引 index.sqlite<br/>只读")]
+    WDB[("web_exchanges")]
+    CFG[("出口配置 / 订阅")]
+  end
+
+  DATA -->|"同源 HTTP"| ACC --> API
+  API --> KV
+  API --> IDX
+  API --> WDB
+  API --> CFG
+  CAP --> KV
+  WEB --> WDB
+  EG --> CFG
+  API -.->|"VEXNAR_RUNTIME_MODE=go"| GO["Go 服务（回退数据面）"]
+```
+
+### 一次查询怎么走到页面
+
+```mermaid
+flowchart LR
+  UI["页面组件"] --> Q["useQuery(key)"]
+  Q -->|"命中且未过期"| CACHE["键控缓存"]
+  Q -->|"未命中 / 强制刷新"| RES["resources.ts<br/>DTO → 视图模型"]
+  RES --> HTTP["client.ts<br/>唯一 HTTP 出口<br/>20s 超时 · ApiError"]
+  HTTP --> API["/vexnar-api/api/*"]
+  CACHE --> MET["metrics.ts<br/>派生指标（给出分子分母）"]
+  RES --> MET
+  MET --> UI
+```
+
+- 同一个 key 的并发请求合并成一次；`invalidate('proxy:')` 这类前缀调用让相关页面一起刷新。
+- snake_case 只出现在 `resources.ts` 的边界上，页面与组件拿到的都是视图模型。
+- 错误统一成 `ApiError{status, code, detail}`，501 会把「方法 + 路径 + 后端提示」显示在页面上。
+
+### 会话请求抓包（一次点击到一条报文）
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as 会话（chat 头部「流量」）
+  participant D as 会话流量弹窗
+  participant C as core /api/sessions/:id/traffic
+  participant P as MITM 代理（按 scope 分端口）
+  participant S as kv · traffic_exchanges
+
+  U->>D: 打开弹窗
+  D->>C: GET …/traffic/endpoint
+  C-->>D: scope=session-{id} · 代理地址 · CA · 已抓条数
+  D->>C: POST …/traffic/capture {"action":"start"}
+  C->>P: openScope(scope)（首次点击才监听）
+  C-->>D: enabled=true
+  Note over P: Agent 或用户把出口指向该代理
+  P->>C: POST /api/traffic/ingest（请求 + 响应原始报文，带 X-Flow-Scope）
+  C->>S: recordExchange(scope, req, resp)
+  D->>C: GET …/traffic?limit=300（3s 轮询）
+  C-->>D: 本 scope 的报文，seq 倒序
+  D->>C: GET …/traffic/exchange?id=（校验归属，越权 403）
+  C-->>D: 请求 / 响应原文 → 并排渲染
+```
+
+归属是 `session-{id}`：宿主给的 id 自带 `session-` 前缀，`sessionKey()` 统一剥一层，
+避免出现 `session-session-…` 这种永远匹配不到记录的 scope。
+
+### 三路流量怎么合账
+
+```mermaid
+flowchart LR
+  subgraph SRC["三路来源（三个库，各自计数）"]
+    A[("会话抓包<br/>kv：traffic_exchanges")]
+    B[("采集面归档<br/>index.sqlite · 只读")]
+    C[("Web 测试引擎<br/>web_exchanges")]
+  end
+
+  A --> T["GET /api/traffic<br/>DTO 带 source=local|archive"]
+  B --> T
+  C --> W["GET /api/web/sessions"]
+  T --> M["trafficMetrics()<br/>总记录 / 站点 / 错误率 / 体积"]
+  W --> M
+  M --> UI["流量页：KPI + 分源泳道 + 检查器"]
+  T -.-> O["概览「抓包流量」<br/>同一个 traffic:totals"]
+  M -.-> O
+```
+
+| 指标 | 来源 | 说明 |
+|---|---|---|
+| 抓包流量（总记录） | `/api/traffic` 的 `count` | 本地 ∪ 归档；概览与流量页读同一个查询键 `traffic:totals` |
+| 任务完成率 / 目标达成 | `/api/tasks/summary` | 服务端下发百分数，客户端只除以 100，不重算 |
+| 健康率 / 加权成功率 | `/api/proxy/state` | 健康率按已启用节点，成功率按请求数加权（不是按节点平均） |
+| 错误率 / 体积 | 当前页样本 | 卡片上写明「近 N 条」——全量聚合接口目前没有，不伪造 |
+
+更细的结构、组件清单与验收清单见 [控制台：数据层与设计系统](app/docs/UI-CONSOLE.md)。
 
 ---
 
@@ -315,17 +436,23 @@ server {
 
 ### 客户端与 Go 服务的关系
 
-本仓库不再包含第一方桌面客户端。原 Electron 客户端（`apps/desktop`）与旧 Tauri 壳（`desktop/`）
-已于 2026-11-21 移除，界面层改为在独立仓库基于 agent 框架重建。
+界面层在本仓库有两处：
 
-Go 服务仍是产品的唯一后端，对外提供两类接口：
+- **客户端工作区 `app/`**：dsh 运行时 + `vexnar-core`（TypeScript 数据面：领域路由、SQLite store、
+  引擎与任务队列）+ `vexnar/ui`（控制台插件）。`pnpm web` 起浏览器控制台，`pnpm desktop` 起 Electron 外壳；
+  它的数据面默认由 `vexnar-core` 原生回答，`VEXNAR_RUNTIME_MODE=go` 时才回退给 Go 服务。
+- **Go Web 控制台 `web/`**：可独立部署，或由 Go 以 `-tags embedui` 内嵌成单二进制界面。
+
+原 Electron 客户端（`apps/desktop`）与旧 Tauri 壳（`desktop/`）已于 2026-11-21 移除。
+
+Go 服务仍是长期的数据面后端，对外提供两类接口：
 
 - **MCP Server**（`/mcp`，Streamable HTTP）：任务、漏洞、流量、资产、报告、技能等领域工具。
-- **模型网关**（`/api/desktop/openai/v1`，仅 loopback + 每次启动的 token）：外部 agent 的推理
-  请求统一回源到这里，供应商与密钥不出 Go 进程。
+- **模型访问不在 Go 服务里**：供应商目录与密钥留在 dsh 进程，账户插件通过 `setModelCompletion`
+  注册一个**进程内**函数，推理不开第二个监听。旧 `/api/desktop/*` 只作为外部客户端的兼容面保留
+  （仅 loopback + token，未设 token 时关闭）。
 
-Web 控制台（`web/`）保留，可独立部署或由 Go 以 `-tags embedui` 内嵌。客户端打包、签名与
-自动更新属于客户端仓库，不再由本项目承担。
+客户端打包、签名与自动更新的产物不属于本仓库的发布内容；仓库只保留源码与构建脚本。
 
 ### 手动漏洞复测
 

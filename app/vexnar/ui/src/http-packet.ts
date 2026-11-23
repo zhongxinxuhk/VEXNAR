@@ -23,6 +23,8 @@ export type SyntaxTone =
   | 'reason'
   | 'header'
   | 'value'
+  /** 会话类凭据：Cookie / Set-Cookie / Authorization / API-Key / CSRF。 */
+  | 'session'
   | 'cookie-key'
   | 'cookie-value'
   | 'key'
@@ -207,6 +209,18 @@ export function tokenizeStartLine(packet: HttpPacket, side: PacketSide = packet.
 }
 
 const COOKIE_LIKE = new Set(['cookie', 'set-cookie'])
+/**
+ * 会话类头：看报文时最需要一眼认出来的那些。
+ *
+ * 单独给一个色调，是因为它们和普通头不同——普通头是"协议细节"，这些是"身份"，
+ * 排查越权/会话固定/凭据泄漏时视线会直接扫这几行。
+ */
+const SESSION_LIKE = new Set([
+  'cookie', 'set-cookie',
+  'authorization', 'proxy-authorization',
+  'x-api-key', 'api-key', 'x-auth-token', 'x-access-token',
+  'x-csrf-token', 'x-xsrf-token', 'csrf-token', 'x-session-id', 'session', 'x-token'
+])
 
 function tokenizeCookieValue(value: string): Token[] {
   const tokens: Token[] = []
@@ -226,14 +240,18 @@ function tokenizeCookieValue(value: string): Token[] {
 
 export function tokenizeHeader(header: PacketHeader): Token[] {
   if (!header.name) return [{ text: header.value, tone: 'value' }]
+  const name = header.name.toLowerCase()
+  const session = SESSION_LIKE.has(name)
   const tokens: Token[] = [
-    { text: header.name, tone: 'header' },
+    { text: header.name, tone: session ? 'session' : 'header' },
     { text: ':', tone: 'punct' },
     { text: ' ', tone: 'punct' }
   ]
-  const name = header.name.toLowerCase()
   if (COOKIE_LIKE.has(name)) {
     tokens.push(...tokenizeCookieValue(header.value))
+  } else if (session) {
+    // 非 Cookie 的凭据整段同色：值通常是不可解析的稠密串，分词只会更乱。
+    tokens.push({ text: header.value, tone: 'session' })
   } else if (/^[<]?[a-zA-Z][\w+.-]*:\/\//.test(header.value)) {
     const bracketed = /^<([^>]+)>(.*)$/.exec(header.value)
     if (bracketed) {
