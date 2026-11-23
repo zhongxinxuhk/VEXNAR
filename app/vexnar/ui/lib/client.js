@@ -16610,6 +16610,59 @@ function TrafficPanel() {
   );
 }
 
+// src/top-layer.ts
+var PLUGIN_MASKS = [".dshp-auth-mask"];
+var PROMOTED = "data-vx-top-layer";
+function promote(element) {
+  if (element.hasAttribute(PROMOTED)) return;
+  if (typeof element.showPopover !== "function") return;
+  element.setAttribute(PROMOTED, "");
+  element.setAttribute("popover", "manual");
+  element.style.inset = "0";
+  element.style.width = "auto";
+  element.style.height = "auto";
+  element.style.maxWidth = "none";
+  element.style.maxHeight = "none";
+  element.style.margin = "0";
+  try {
+    element.showPopover();
+  } catch {
+    element.removeAttribute(PROMOTED);
+    element.removeAttribute("popover");
+  }
+}
+function scan(root) {
+  for (const selector of PLUGIN_MASKS) {
+    for (const element of root.querySelectorAll(selector)) promote(element);
+  }
+}
+function promotePluginMasks() {
+  if (typeof document === "undefined") return () => {
+  };
+  scan(document);
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        const element = node;
+        if (PLUGIN_MASKS.some((selector) => element.matches(selector))) promote(element);
+        scan(element);
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => {
+    observer.disconnect();
+    for (const selector of PLUGIN_MASKS) {
+      for (const element of document.querySelectorAll(`${selector}[${PROMOTED}]`)) {
+        element.hidePopover?.();
+        element.removeAttribute(PROMOTED);
+        element.removeAttribute("popover");
+      }
+    }
+  };
+}
+
 // src/client.tsx
 var inject = ["slots"];
 var FINDING_TOOL = "mcp__vexnar__report_finding";
@@ -17719,6 +17772,8 @@ function apply(ctx) {
     return;
   }
   installStyles();
+  if (ctx.effect !== void 0) ctx.effect(promotePluginMasks);
+  else promotePluginMasks();
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: FINDING_TOOL }, FindingCard));
   slots.inject("tool.call.toolview", () => slots.register({ name: "tool.call.toolview", key: TRAFFIC_TOOL }, TrafficViewer));
   slots.inject("conversation.session.header.actions", () => slots.register({ name: "conversation.session.header.actions", id: "vexnar-yak-history" }, SessionTrafficAction));
