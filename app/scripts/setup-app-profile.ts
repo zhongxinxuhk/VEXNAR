@@ -98,9 +98,14 @@ const provided = (name: string): boolean => {
     return false
   }
 }
+// 运行时自带的 bundle 有两种来路：dsh 安装里就有（provided），或 profile 依赖里
+// 装了同名包（例如 @deepseek-ai/dsh-subagent-codex 是 on-demand 包）。两种都算
+// "能解析"，只在这两处都找不到时才提示改名。
+const inProfile = (name: string): boolean =>
+  existsSync(join(profile, 'node_modules', ...name.split('/'), 'package.json'))
 for (const item of extras) {
-  if (item.runtime === true && !provided(item.name)) {
-    console.warn(`[vexnar] 运行时里找不到预置 bundle ${item.name}：升级 dsh 后可能改名，请核对 extras.json`)
+  if (item.runtime === true && !provided(item.name) && !inProfile(item.name)) {
+    console.warn(`[vexnar] 运行时与 profile 里都找不到预置 bundle ${item.name}：升级 dsh 后可能改名，请核对 extras.json`)
   }
 }
 const plan = process.env.VEXNAR_MIGRATE_PROFILE === 'off'
