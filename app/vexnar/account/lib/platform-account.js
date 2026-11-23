@@ -497,9 +497,50 @@ function createPlatformAccount(options = {}) {
     pending = void 0;
     return publicView(account);
   }
+  async function tokenIdentity(proof) {
+    try {
+      return await verifiedIdentity(proof);
+    } catch (error) {
+      if (error instanceof PlatformError && error.status === 401) {
+        throw fail(401, "\u8BBF\u95EE\u4EE4\u724C\u65E0\u6548\u6216\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u5230\u5E0C\u7075 AI \u4E2A\u4EBA\u8BBE\u7F6E\u91CD\u65B0\u521B\u5EFA");
+      }
+      throw error;
+    }
+  }
+  async function loginWithVerified(proof, token) {
+    try {
+      return await complete(proof, token);
+    } catch (error) {
+      if (error instanceof PlatformError && error.status === 401) {
+        throw fail(401, "\u8BBF\u95EE\u4EE4\u724C\u65E0\u6548\u6216\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u5230\u5E0C\u7075 AI \u4E2A\u4EBA\u8BBE\u7F6E\u91CD\u65B0\u521B\u5EFA");
+      }
+      throw error;
+    }
+  }
   async function loginWithToken(raw) {
     const token = inputToken(raw);
-    return complete({ user_id: 0, cookie: "", authorization: `Bearer ${token}` }, token);
+    const proof = { user_id: 0, cookie: "", authorization: `Bearer ${token}` };
+    const previous = await read();
+    if (!gateOpen(previous)) return loginWithVerified(proof, token);
+    const { id, identity } = await tokenIdentity(proof);
+    if (id !== previous.user_id) {
+      try {
+        await unlink(file);
+      } catch (error) {
+        if (errorCode(error) !== "ENOENT") throw fail(500, "\u9000\u51FA\u539F VEXNAR \u8D26\u53F7\u5931\u8D25");
+      }
+      return loginWithVerified(proof, token);
+    }
+    const account = previous;
+    applyIdentity(account, id, identity);
+    account.access_token = token;
+    const provider = await modelCredential({ ...proof, user_id: id }, account.expires_at).catch(() => void 0);
+    if (provider !== void 0) {
+      account.providers = [provider, ...account.providers.filter((item) => item.id !== "vexnar")];
+    }
+    await save(account);
+    pending = void 0;
+    return publicView(account);
   }
   async function renewWithToken(raw) {
     const token = inputToken(raw);

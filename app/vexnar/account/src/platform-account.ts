@@ -792,9 +792,66 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
     return publicView(account)
   }
 
+  /** 令牌登录时的身份校验：令牌无效/过期要说清是令牌的问题。 */
+  async function tokenIdentity(proof: PlatformProof) {
+    try {
+      return await verifiedIdentity(proof)
+    } catch (error) {
+      if (error instanceof PlatformError && error.status === 401) {
+        throw fail(401, '访问令牌无效或已过期，请到希灵 AI 个人设置重新创建')
+      }
+      throw error
+    }
+  }
+
+  /** 完整登录，但把令牌错误翻成人话。 */
+  async function loginWithVerified(proof: PlatformProof, token: string): Promise<AccountView> {
+    try {
+      return await complete(proof, token)
+    } catch (error) {
+      if (error instanceof PlatformError && error.status === 401) {
+        throw fail(401, '访问令牌无效或已过期，请到希灵 AI 个人设置重新创建')
+      }
+      throw error
+    }
+  }
+
+  /**
+   * 访问令牌登录。
+   *
+   * 已经登录时不再报"请先退出当前 VEXNAR 账号"：登录页可能因为启动竞态、
+   * 旧页面或另一个标签页而在已登录状态下出现，这时用户粘一个令牌进来，期望的
+   * 是"用它登录"，不是被要求先去某个地方点退出。同一个账户就更新令牌；
+   * 换了一个账户就把旧状态清掉、按新账户登录。
+   */
   async function loginWithToken(raw: string): Promise<AccountView> {
     const token = inputToken(raw)
-    return complete({ user_id: 0, cookie: '', authorization: `Bearer ${token}` }, token)
+    const proof: PlatformProof = { user_id: 0, cookie: '', authorization: `Bearer ${token}` }
+    const previous = await read()
+    if (!gateOpen(previous)) return loginWithVerified(proof, token)
+
+    const { id, identity } = await tokenIdentity(proof)
+    if (id !== previous.user_id) {
+      // 换号：先把旧账号的令牌与状态删掉，再按新账号走完整登录。
+      try {
+        await unlink(file)
+      } catch (error) {
+        if (errorCode(error) !== 'ENOENT') throw fail(500, '退出原 VEXNAR 账号失败')
+      }
+      return loginWithVerified(proof, token)
+    }
+
+    const account = previous
+    applyIdentity(account, id, identity)
+    account.access_token = token
+    // 平台模型密钥与账户绑定；令牌换了就重取一次，取不到时保留已有那把。
+    const provider = await modelCredential({ ...proof, user_id: id }, account.expires_at).catch(() => undefined)
+    if (provider !== undefined) {
+      account.providers = [provider, ...account.providers.filter((item) => item.id !== 'vexnar')]
+    }
+    await save(account)
+    pending = undefined
+    return publicView(account)
   }
 
   async function renewWithToken(raw: string): Promise<AccountView> {

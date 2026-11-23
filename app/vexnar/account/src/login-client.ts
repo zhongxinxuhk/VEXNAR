@@ -59,111 +59,114 @@ const read = async (path: string, method = 'GET', data?: unknown): Promise<Field
 }
 
 if (entry) {
-  /** 这个页面的 DOM 由 login-page.ts 的模板固定给出；缺元素说明模板与脚本不同步。 */
-  const node = <T extends HTMLElement>(id: string): T => {
-    const found = document.getElementById(id)
-    if (found === null) throw new Error(`登录页缺少 #${id}`)
-    return found as T
-  }
-  const form = (id: string): HTMLFormElement => {
-    const found = document.getElementById(id)
-    if (!(found instanceof HTMLFormElement)) throw new Error(`登录页缺少表单 #${id}`)
-    return found
-  }
-  /** 表单字段按 name 取：模板里的访问令牌字段名固定。 */
-  const input = (owner: HTMLFormElement, name: string): HTMLInputElement => {
-    const control = owner.elements.namedItem(name)
-    if (!(control instanceof HTMLInputElement)) throw new Error(`登录表单缺少 ${name} 字段`)
-    return control
-  }
-  const tokenForm = form('token-login')
-  const token = input(tokenForm, 'access_token')
-  const reveal = node<HTMLButtonElement>('reveal')
-  const retry = node<HTMLButtonElement>('retry')
-  const notice = node<HTMLParagraphElement>('notice')
-  let running = false
+  /**
+   * 登录页 DOM 由 login-page.ts 的模板给出；脚本可能与模板不是同一版（热替换、
+   * 缓存、或者插件文件刚被 setup 换过）。所以：
+   *   - 必需元素（表单、令牌输入、状态行）缺一个就整体报错，并把原因写到状态行；
+   *   - 可选元素（显示/隐藏、重试、方法列表）缺了只是少一个按钮，不让登录失效。
+   */
+  const node = <T extends HTMLElement>(id: string): T | null =>
+    document.getElementById(id) as T | null
 
-  /** 三种状态决定左侧色点与配色：检查中、可以操作、出错。 */
+  const notice = node<HTMLParagraphElement>('notice')
   const message = (text: string, state: 'busy' | 'ready' | 'error' = 'ready') => {
+    if (notice === null) return
     notice.textContent = text
     notice.dataset.state = state
     notice.dataset.error = String(state === 'error')
   }
 
-  // 从退出登录跳回来时，登录页要说清楚"为什么回到这里、删掉了什么"。
-  if (new URLSearchParams(location.search).get('signed-out') === '1') {
-    message('已退出登录：访问令牌与保存的 APIKEY 已删除。', 'ready')
-  }
+  try {
+    const form = document.getElementById('token-login')
+    if (!(form instanceof HTMLFormElement)) throw new Error('登录表单 #token-login')
+    const control = form.elements.namedItem('access_token')
+    if (!(control instanceof HTMLInputElement)) throw new Error('访问令牌输入框')
+    const tokenForm = form
+    const token = control
+    const reveal = node<HTMLButtonElement>('reveal')
+    const retry = node<HTMLButtonElement>('retry')
+    const methods = node<HTMLElement>('methods')
+    let running = false
 
-  // 有效的平台身份即可进入工作区，旧凭据按宿主门禁要求重新验证。
-  const present = (account: Fields): boolean => {
-    if (account.signed_in && !account.reauth_required) {
-      location.replace('/')
-      return true
+    // 从退出登录跳回来时，登录页要说清楚"为什么回到这里、删掉了什么"。
+    if (new URLSearchParams(location.search).get('signed-out') === '1') {
+      message('已退出登录：访问令牌与保存的 APIKEY 已删除。', 'ready')
     }
-    return false
-  }
-  const showError = (error: unknown) => message(errorText(error), 'error')
 
-  async function initialize(): Promise<void> {
-    try {
-      retry.hidden = true
-      if (new URLSearchParams(location.search).get('signed-out') === '1') return
-      message('正在检查账户状态…', 'busy')
-      const account = await read('/account')
-      if (present(account)) return
-      message(account.reauth_required ? '账户凭据已失效，请用访问令牌重新验证。' : '已连接 VEXNAR，请粘贴访问令牌继续。')
-      void read('/methods').then(methods => {
-        const text = listOf(methods.methods)
-        const target = node('methods')
-        target.textContent = text === '' ? '' : `平台登录方式：${text}`
-      }).catch(() => {})
-    } catch (error) {
-      retry.hidden = false
-      showError(error)
-    }
-  }
-
-  const work = async (action: () => Promise<void>): Promise<void> => {
-    if (running) return
-    running = true
-    for (const button of entry.querySelectorAll<HTMLButtonElement>('button')) button.disabled = true
-    try {
-      await action()
-    } catch (error) {
-      showError(error)
-    } finally {
-      running = false
-      for (const button of entry.querySelectorAll<HTMLButtonElement>('button')) button.disabled = false
-    }
-  }
-
-  reveal.addEventListener('click', () => {
-    const shown = token.type === 'text'
-    token.type = shown ? 'password' : 'text'
-    reveal.textContent = shown ? '显示' : '隐藏'
-    reveal.setAttribute('aria-pressed', String(!shown))
-    reveal.setAttribute('aria-label', shown ? '显示访问令牌' : '隐藏访问令牌')
-    token.focus()
-  })
-
-  tokenForm.addEventListener('submit', event => {
-    event.preventDefault()
-    void work(async () => {
-      if (token.value.trim() === '') {
-        message('请先粘贴访问令牌。', 'error')
-        token.focus()
-        return
+    // 有效的平台身份即可进入工作区，旧凭据按宿主门禁要求重新验证。
+    const present = (account: Fields): boolean => {
+      if (account.signed_in && !account.reauth_required) {
+        location.replace('/')
+        return true
       }
-      message('正在验证访问令牌并同步模型…', 'busy')
-      const secret = token.value.trim()
-      token.value = ''
-      if (!present(await read('/login/token', 'POST', { access_token: secret }))) await initialize()
-    })
-  })
+      return false
+    }
+    const showError = (error: unknown) => message(errorText(error), 'error')
 
-  retry.addEventListener('click', () => void work(initialize))
-  void initialize()
+    async function initialize(): Promise<void> {
+      try {
+        if (retry !== null) retry.hidden = true
+        if (new URLSearchParams(location.search).get('signed-out') === '1') return
+        message('正在检查账户状态…', 'busy')
+        const account = await read('/account')
+        if (present(account)) return
+        message(account.reauth_required ? '账户凭据已失效，请用访问令牌重新验证。' : '已连接 VEXNAR，请粘贴访问令牌继续。')
+        void read('/methods').then(result => {
+          if (methods === null) return
+          const text = listOf(result.methods)
+          methods.textContent = text === '' ? '' : `平台登录方式：${text}`
+        }).catch(() => {})
+      } catch (error) {
+        if (retry !== null) retry.hidden = false
+        showError(error)
+      }
+    }
+
+    const work = async (action: () => Promise<void>): Promise<void> => {
+      if (running) return
+      running = true
+      for (const button of entry.querySelectorAll<HTMLButtonElement>('button')) button.disabled = true
+      try {
+        await action()
+      } catch (error) {
+        showError(error)
+      } finally {
+        running = false
+        for (const button of entry.querySelectorAll<HTMLButtonElement>('button')) button.disabled = false
+      }
+    }
+
+    tokenForm.addEventListener('submit', event => {
+      event.preventDefault()
+      void work(async () => {
+        if (token.value.trim() === '') {
+          message('请先粘贴访问令牌。', 'error')
+          token.focus()
+          return
+        }
+        message('正在验证访问令牌并同步模型…', 'busy')
+        const secret = token.value.trim()
+        token.value = ''
+        if (!present(await read('/login/token', 'POST', { access_token: secret }))) await initialize()
+      })
+    })
+
+    if (reveal !== null) {
+      reveal.addEventListener('click', () => {
+        const shown = token.type === 'text'
+        token.type = shown ? 'password' : 'text'
+        reveal.textContent = shown ? '显示' : '隐藏'
+        reveal.setAttribute('aria-pressed', String(!shown))
+        reveal.setAttribute('aria-label', shown ? '显示访问令牌' : '隐藏访问令牌')
+        token.focus()
+      })
+    }
+
+    if (retry !== null) retry.addEventListener('click', () => void work(initialize))
+    void initialize()
+  } catch (error) {
+    message(`登录页加载失败（${errorText(error)}），请重启 VEXNAR 后重试。`, 'error')
+  }
 } else {
   let checking = false
   async function checkSession(): Promise<void> {
