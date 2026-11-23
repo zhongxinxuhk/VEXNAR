@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 
@@ -70,6 +70,75 @@ export function craftBinary(): string {
   return process.env.CRAFT_ANYTHING_CLI || join(vexnarHome(), 'plugins-data', 'craft-anything', 'craft-anything-cli')
 }
 
+/**
+ * 插件用的 Python：`@furongjun1999/dsh-memory` 的 md_cg 在模块顶层用了 PEP 604
+ * （`str | None`），Python 3.9 会在 import 时直接抛 TypeError。macOS 自带的
+ * `/usr/bin/python3` 就是 3.9，所以不能只依赖 PATH 里的 `python3`。
+ *
+ * 解析顺序：显式 `MDCG_PYTHON` → PATH 里的 python3.x → Homebrew/usr-local 的绝对路径。
+ * 探测用 `-c` 检查 version_info，避免把 3.9 当成可用解释器。
+ */
+const PYTHON_CANDIDATES = [
+  'python3', 'python3.14', 'python3.13', 'python3.12', 'python3.11', 'python3.10',
+  '/opt/homebrew/bin/python3.14', '/opt/homebrew/bin/python3.13', '/opt/homebrew/bin/python3.12',
+  '/usr/local/bin/python3.14', '/usr/local/bin/python3.13', '/usr/local/bin/python3.12'
+]
+
+let cachedPython: string | null | undefined
+
+/** 测试用：清掉解释器探测缓存。 */
+export function resetPythonCache(): void {
+  cachedPython = undefined
+}
+
+/** 返回一个 ≥3.10 的 Python 可执行文件；找不到时返回 undefined（不阻断启动）。 */
+export function modernPython(): string | undefined {
+  if (cachedPython !== undefined) return cachedPython ?? undefined
+  const explicit = process.env.MDCG_PYTHON?.trim()
+  if (explicit) {
+    cachedPython = explicit
+    return explicit
+  }
+  for (const candidate of PYTHON_CANDIDATES) {
+    if (candidate.startsWith('/') && !existsSync(candidate)) continue
+    const probe = spawnSync(candidate, ['-c', 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)'], {
+      stdio: 'ignore', timeout: 3000
+    })
+    if (probe.status !== 0) continue
+    if (candidate.startsWith('/')) {
+      cachedPython = candidate
+      return candidate
+    }
+    const which = spawnSync('sh', ['-c', `command -v ${candidate}`], { encoding: 'utf8' })
+    const resolved = which.stdout?.trim()
+    if (resolved) {
+      cachedPython = resolved
+      return resolved
+    }
+  }
+  cachedPython = null
+  return undefined
+}
+
+/**
+ * 给子进程一个 `python3` 垫片：把选中的解释器链到 `<VEXNAR_HOME>/bin/python3`。
+ * 这样不认 `MDCG_PYTHON` 的插件也能拿到 ≥3.10；垫片目录只加在 VEXNAR 子进程的
+ * PATH 最前面，不改宿主与其它工具。
+ */
+function pythonShim(python: string): string | undefined {
+  const dir = join(vexnarHome(), 'bin')
+  try {
+    mkdirSync(dir, { recursive: true })
+    const link = join(dir, 'python3')
+    // 解释器可能随 Homebrew 升级换路径；每次启动重建，避免垫片指向已删除的旧版本。
+    rmSync(link, { force: true })
+    symlinkSync(python, link)
+    return dir
+  } catch {
+    return undefined
+  }
+}
+
 /** 客户端子进程的环境：去掉上游的 DSH_/DEEPSEEK_ 前缀变量，再注入 VEXNAR 自己的那一套。 */
 export function runtimeEnv(): Record<string, string> {
   const home = vexnarHome()
@@ -79,8 +148,13 @@ export function runtimeEnv(): Record<string, string> {
     if (name.startsWith('DSH_') || name.startsWith('DEEPSEEK_')) continue
     inherited[name] = value
   }
+  // Python 解释器：先修 dsh-memory 的 3.9 崩溃，再让所有子进程默认拿到 ≥3.10。
+  const python = modernPython()
+  const shim = python ? pythonShim(python) : undefined
+  if (shim) inherited.PATH = [shim, inherited.PATH].filter(Boolean).join(':')
   return {
     ...inherited,
+    ...(python ? { MDCG_PYTHON: process.env.MDCG_PYTHON?.trim() || python } : {}),
     VEXNAR_HOME: home,
     VEXNAR_TRAFFIC_DIR: process.env.VEXNAR_TRAFFIC_DIR || join(appDir, '..', 'data', 'traffic'),
     VEXNAR_LOOPBACK_ADAPTER: 'vexnar-loopback',

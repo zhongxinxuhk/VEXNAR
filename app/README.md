@@ -221,6 +221,21 @@ Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-cla
   要么用 `VEXNAR_EXTRAS=off`。
 - **不含 skills**：`app/dsh/.claude` 是 skills 符号链接，不是 bundle，不进清单。
 
+## Python 依赖（dsh-memory）
+
+`@furongjun1999/dsh-memory` 的 md_cg 需要 Python ≥3.10：`md_cg/routing.py` 在模块顶层
+用了 `str | None`，Python 3.9 会在 import 时直接抛 `TypeError`，表现为插件每 1/2/4/8…
+秒重试 8 次、日志刷屏。
+
+启动器（`runtimeEnv()`）按 `MDCG_PYTHON` → PATH 里的 python3.x → Homebrew / usr-local
+绝对路径的顺序探测 ≥3.10 的解释器，给子进程设置 `MDCG_PYTHON`，并在
+`<VEXNAR_HOME>/bin/python3` 生成垫片、放到子进程 PATH 最前。找不到时只跳过，不阻断启动。
+
+- 显式覆盖：`MDCG_PYTHON=/path/to/python3 pnpm run web`。
+- 检查：`MDCG_PYTHON=/opt/homebrew/bin/python3.12 python3 -c "import md_cg"`（在插件包根目录）。
+- `[dsh-purge-community] DSH 未在已验证清单内` 是它对宿主版本的兼容性提示（写入前会备份），
+  不是启动失败。
+
 ## 运行与调试（WebStorm，全部用运行配置选项）
 
 WebStorm 工程根是 `app/`，配置在 `app/.idea/runConfigurations/`，用 WebStorm 的
