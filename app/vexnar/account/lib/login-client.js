@@ -9,7 +9,7 @@ function errorText(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function listOf(value) {
-  return Array.isArray(value) ? value.join(" \xB7 ") : "";
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean).join(" \xB7 ") : "";
 }
 const entry = document.getElementById("vexnar-sign-in");
 const read = async (path, method = "GET", data) => {
@@ -56,13 +56,19 @@ if (entry) {
     return control;
   };
   const tokenForm = form("token-login");
+  const token = input(tokenForm, "access_token");
+  const reveal = node("reveal");
   const retry = node("retry");
   const notice = node("notice");
   let running = false;
-  const message = (text, error = false) => {
+  const message = (text, state = "ready") => {
     notice.textContent = text;
-    notice.dataset.error = String(error);
+    notice.dataset.state = state;
+    notice.dataset.error = String(state === "error");
   };
+  if (new URLSearchParams(location.search).get("signed-out") === "1") {
+    message("\u5DF2\u9000\u51FA\u767B\u5F55\uFF1A\u8BBF\u95EE\u4EE4\u724C\u4E0E\u4FDD\u5B58\u7684 APIKEY \u5DF2\u5220\u9664\u3002", "ready");
+  }
   const present = (account) => {
     if (account.signed_in && !account.reauth_required) {
       location.replace("/");
@@ -70,15 +76,19 @@ if (entry) {
     }
     return false;
   };
-  const showError = (error) => message(errorText(error), true);
+  const showError = (error) => message(errorText(error), "error");
   async function initialize() {
     try {
       retry.hidden = true;
+      if (new URLSearchParams(location.search).get("signed-out") === "1") return;
+      message("\u6B63\u5728\u68C0\u67E5\u8D26\u6237\u72B6\u6001\u2026", "busy");
       const account = await read("/account");
       if (present(account)) return;
-      message(account.reauth_required ? "\u8BF7\u4F7F\u7528\u8BBF\u95EE\u4EE4\u724C\u91CD\u65B0\u9A8C\u8BC1\u5E0C\u7075 AI \u8D26\u6237\u3002" : "");
+      message(account.reauth_required ? "\u8D26\u6237\u51ED\u636E\u5DF2\u5931\u6548\uFF0C\u8BF7\u7528\u8BBF\u95EE\u4EE4\u724C\u91CD\u65B0\u9A8C\u8BC1\u3002" : "\u5DF2\u8FDE\u63A5 VEXNAR\uFF0C\u8BF7\u7C98\u8D34\u8BBF\u95EE\u4EE4\u724C\u7EE7\u7EED\u3002");
       void read("/methods").then((methods) => {
-        node("methods").textContent = listOf(methods.methods);
+        const text = listOf(methods.methods);
+        const target = node("methods");
+        target.textContent = text === "" ? "" : `\u5E73\u53F0\u767B\u5F55\u65B9\u5F0F\uFF1A${text}`;
       }).catch(() => {
       });
     } catch (error) {
@@ -99,14 +109,26 @@ if (entry) {
       for (const button of entry.querySelectorAll("button")) button.disabled = false;
     }
   };
+  reveal.addEventListener("click", () => {
+    const shown = token.type === "text";
+    token.type = shown ? "password" : "text";
+    reveal.textContent = shown ? "\u663E\u793A" : "\u9690\u85CF";
+    reveal.setAttribute("aria-pressed", String(!shown));
+    reveal.setAttribute("aria-label", shown ? "\u663E\u793A\u8BBF\u95EE\u4EE4\u724C" : "\u9690\u85CF\u8BBF\u95EE\u4EE4\u724C");
+    token.focus();
+  });
   tokenForm.addEventListener("submit", (event) => {
     event.preventDefault();
     void work(async () => {
-      message("\u6B63\u5728\u9A8C\u8BC1\u8BBF\u95EE\u4EE4\u724C\u5E76\u540C\u6B65\u6A21\u578B\u2026");
-      const control = input(tokenForm, "access_token");
-      const token = control.value;
-      control.value = "";
-      if (!present(await read("/login/token", "POST", { access_token: token }))) await initialize();
+      if (token.value.trim() === "") {
+        message("\u8BF7\u5148\u7C98\u8D34\u8BBF\u95EE\u4EE4\u724C\u3002", "error");
+        token.focus();
+        return;
+      }
+      message("\u6B63\u5728\u9A8C\u8BC1\u8BBF\u95EE\u4EE4\u724C\u5E76\u540C\u6B65\u6A21\u578B\u2026", "busy");
+      const secret = token.value.trim();
+      token.value = "";
+      if (!present(await read("/login/token", "POST", { access_token: secret }))) await initialize();
     });
   });
   retry.addEventListener("click", () => void work(initialize));

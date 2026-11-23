@@ -113,6 +113,51 @@ check('repeat decide is 409', decideAgain.status === 409, JSON.stringify(decideA
 const history = await json('GET', '/api/intercept/history')
 check('history shows decided row', history.items.length === 1 && history.items[0].status === 'allowed' && history.items[0].decided_at != null, JSON.stringify(history.items))
 
+// ── 运行时创建待审批（ask 规则命中时）──────────────────────────────────────
+const askCreated = await req('POST', '/api/intercept/pending', {
+  rule_id: 7, tool_name: 'bash', tool_input: { command: 'rm -rf /srv' },
+  message: '需要人工确认', decision_source: 'rule'
+})
+check('create pending from runtime', askCreated.status === 201 && askCreated.json.status === 'pending' && askCreated.json.tool_input.command === 'rm -rf /srv', JSON.stringify(askCreated.json))
+
+const askNoTool = await req('POST', '/api/intercept/pending', { message: 'x' })
+check('create pending rejects missing tool', askNoTool.status === 400, JSON.stringify(askNoTool.json))
+
+const askPendingList = await json('GET', '/api/intercept/pending')
+check('created ask is listed', askPendingList.pending.some((row: any) => row.id === askCreated.json.id), JSON.stringify(askPendingList.pending))
+
+const askDecided = await req('POST', `/api/intercept/pending/${askCreated.json.id}/decide`, { decision: 'allowed' })
+check('runtime ask can be decided', askDecided.status === 200 && askDecided.json.ok === true, JSON.stringify(askDecided.json))
+
+const askGone = await json('GET', '/api/intercept/pending')
+check('decided ask leaves the queue', !askGone.pending.some((row: any) => row.id === askCreated.json.id), JSON.stringify(askGone.pending))
+
+// ── 已决定记录的写入（dsh 运行时把判定结果落到这里）────────────────────────
+const logged = await req('POST', '/api/intercept/decisions', {
+  rule_id: 1, tool_name: 'bash', tool_input: { command: 'rm -rf /tmp/x' },
+  status: 'denied', message: '危险删除', decision_source: 'rule'
+})
+check('log decided row', logged.status === 201 && logged.json.ok === true && logged.json.id > 0, JSON.stringify(logged.json))
+
+const loggedBadStatus = await req('POST', '/api/intercept/decisions', { tool_name: 'bash', status: 'pending' })
+check('log rejects non-decided status', loggedBadStatus.status === 400, JSON.stringify(loggedBadStatus.json))
+
+const loggedNoTool = await req('POST', '/api/intercept/decisions', { status: 'allowed' })
+check('log rejects missing tool', loggedNoTool.status === 400, JSON.stringify(loggedNoTool.json))
+
+const loggedBadSource = await req('POST', '/api/intercept/decisions', { tool_name: 'bash', status: 'allowed', decision_source: 'robot' })
+check('log rejects unknown source', loggedBadSource.status === 400, JSON.stringify(loggedBadSource.json))
+
+const afterLog = await json('GET', '/api/intercept/pending')
+check('decided log does not enter pending', afterLog.pending.length === 0, JSON.stringify(afterLog.pending))
+
+const historyAfterLog = await json('GET', '/api/intercept/history')
+check(
+  'history shows runtime decision',
+  historyAfterLog.items.some((row: any) => row.tool_name === 'bash' && row.status === 'denied'),
+  JSON.stringify(historyAfterLog.items)
+)
+
 const badDecision = await req('POST', '/api/intercept/pending/2/decide', { decision: 'maybe' })
 check('bad decision rejected', badDecision.status === 400, JSON.stringify(badDecision.json))
 

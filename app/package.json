@@ -33,7 +33,9 @@
     "test:catalog": "tsx --test vexnar-core/test/catalog-register.test.ts",
     "test:profile": "tsx --test scripts/profile-migration.test.ts",
     "test:web": "pnpm --filter @vexnar/web run test",
-    "web:mcp": "pnpm --filter @vexnar/web run mcp"
+    "web:mcp": "pnpm --filter @vexnar/web run mcp",
+    "plugins:check": "tsx scripts/plugin-inventory.ts",
+    "test:preset": "tsx --test scripts/vexnar-extras.test.ts scripts/plugin-inventory.test.ts"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",

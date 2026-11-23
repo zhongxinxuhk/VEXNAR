@@ -291,16 +291,16 @@ export function AccountSection(): ReactNode {
     }
   }
 
-  const logout = async () => {
+  /**
+   * 退出登录走服务端的 /signout：它删掉访问令牌与每个提供方的 APIKEY，
+   * 再用 303 把浏览器送回登录页（带 ?signed-out=1，登录页会说明删了什么）。
+   * 不用 DELETE /account + location.replace('/')：那样 200 之后页面可能命中
+   * 工作区的 index 缓存，看起来"点了退出还在里面"。
+   */
+  const logout = () => {
     setBusy(true)
-    try {
-      await request<Account>('/account', 'DELETE')
-      window.location.replace('/')
-    } catch (reason) {
-      onError(reason)
-    } finally {
-      setBusy(false)
-    }
+    onError('')
+    window.location.assign(`${api}/signout`)
   }
 
   if (account === undefined) {

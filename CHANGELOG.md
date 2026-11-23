@@ -12,7 +12,30 @@
 
 ### dsh 客户端（app/）
 
+#### 新增
+
+- **拦截规则在 dsh 运行时真正生效**：`@vexnar/dsh-account` 注册
+  `tools/pre-execute` 监听器，按 Go 的语义（优先级降序、首条命中、string/regex、
+  tool_name/tool_input）判定每次工具调用。`deny` 直接拦下，`allow` 跳过后续规则，
+  `ask` 走「拦截审批」（新增 `POST /api/intercept/pending` 与
+  `POST /api/intercept/decisions`），超时按 `timeout_action` 收尾。工具名兼容
+  Claude 风格（`Bash`）与 dsh 命名（`bash`）。
+- **插件预设覆盖全部已装 bundle**：`extras.json` 补齐 `dsh-plugin-shop` 与 7 个
+  运行时自带的 `@deepseek-ai/dsh-*`；新增 `pnpm run plugins:check` 盘点 profile 与
+  预设的分叉，`"runtime": true` 的条目只补 bundle 层、不写 spec。
+- **Claude Style 设置固化为默认**：品牌、动效、首页布局、侧栏、会话日志与对话视图
+  的选定值写进 `vexnar/cordis.patch.yml`，新机器装完即是这套观感，profile patch
+  仍然优先。
+
 #### 变更
+
+- **登录页重做**：品牌面 + 登录卡的两栏版式，内联 CSS（仍满足 `default-src 'none'`
+  的 CSP），状态点区分检查中/就绪/出错，访问令牌可显示/隐藏，补上「没有访问令牌」
+  的完整步骤。
+- **退出登录删净凭据并回登录页**：新增 `GET|POST /vexnar-api/platform/signout`，
+  先作废在飞的目录同步，再删除访问令牌文件、逐个 unset `VEXNAR_*_API_KEY` 凭据、
+  清空 `llm-pi-ai` 提供方，最后 303 到 `/?signed-out=1`；登录页会说明删了什么。
+  `DELETE /account` 走同一条清理路径。
 
 - **运行时底座换成 TypeScript，Go 退成回退路径**：客户端启动不再编译、不再拉起 Go。数据面
   （任务 / 发现 / 资产 / 流量 / 拦截 / 用量）由 `vexnar-core` 原生路由直读 SQLite store；引擎的

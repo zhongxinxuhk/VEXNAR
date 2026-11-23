@@ -104,6 +104,35 @@
 - id: ui-settings-web-search
   disabled: true
 
+# ── Skin defaults: Claude Style, baked in ──────────────────────────────────
+# 皮肤设置页把用户改过的每个值写进 profile 的 patch 层；新机器没有那一层，
+# 皮肤于是回到上游默认（字体、动效、侧栏都变一遍）。这里把选定的整套写进
+# bundle patch：profile patch 仍然最后应用，所以用户自己改过的值优先。
+- id: ui-skin-claude-style
+  name: dsh-claude-style
+  config:
+    brand: deepseek
+    statusMotion: wash
+    sodium: on
+    homeLayout: classic
+    homeRipple: true
+    searchStyle: icon
+    ongoingIndicator: ring
+    reasoningDisplay: stepped
+    sidebarLayout: compact
+
+# 会话日志与对话视图的默认值同样是"用户设过、新机器却没有"的那一类。
+- id: session-log-deepseek
+  name: '@deepseek-ai/dsh-session-log-deepseek'
+  config:
+    enabled: false
+- id: ui-chat
+  name: '@deepseek-ai/dsh-client-ui-chat'
+  config:
+    collapseTiming: next-input
+    foldedReplies: final
+    transcriptView: compact
+
 # ── Agent presets: the engine's roles, registered as built-in dsh agents ────
 # The engine seeds eight named roles (goals / planner / main / worker / auto /
 # pentest / reporter / retester). They are copied here as ordinary

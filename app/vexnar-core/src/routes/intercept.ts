@@ -506,6 +506,45 @@ export function register(api: Hono) {
     }
   })
 
+  /**
+   * 创建一条待审批（ask 规则命中时由 dsh 运行时写入）。
+   *
+   * Go 引擎自己在 HandleAsk 里建行；TS 运行时没有数据库句柄，所以由 core 提供
+   * 这一个写入口，guard 拿到 id 后轮询同一条记录，用户在「拦截审批」里点允许/
+   * 拒绝，工具调用随之放行或拦下。整个过程只有一次写、一次读循环。
+   */
+  api.post('/api/intercept/pending', async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    try {
+      const toolName = String(body.tool_name ?? '').trim()
+      if (toolName === '') return c.json({ error: 'tool_name 不能为空' }, 400)
+      const source = String(body.decision_source ?? 'rule')
+      if (!['rule', 'model', 'unknown'].includes(source)) {
+        return c.json({ error: 'decision_source 必须是 rule、model 或 unknown' }, 400)
+      }
+      const now = rfc3339(new Date())
+      const id = (await operations.writer.maxKey(TABLE_PENDING)) + 1
+      const record = {
+        id,
+        rule_id: body.rule_id == null ? null : Number(body.rule_id),
+        conversation_id: null,
+        task_id: null,
+        agent_name: String(body.agent_name ?? ''),
+        tool_name: toolName,
+        tool_input: JSON.stringify(body.tool_input ?? {}),
+        status: 'pending',
+        reason: String(body.message ?? body.reason ?? ''),
+        decision_source: source,
+        decided_at: null,
+        created_at: now
+      }
+      await operations.writer.put({ table: TABLE_PENDING, key: String(id), record })
+      return c.json(pendingDto(record), 201)
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
   api.get('/api/intercept/pending/:id', async (c) => {
     try {
       const id = pathId(c.req.param('id'), 'pending id')
@@ -530,6 +569,49 @@ export function register(api: Hono) {
       delete next.rev
       await operations.writer.put({ table: TABLE_PENDING, key: String(id), record: next, expectedRev: Number(current.rev ?? 0) })
       return c.json({ ok: true })
+    } catch (error: any) {
+      return errResponse(c, error)
+    }
+  })
+
+  /**
+   * 记录一次"已经决定"的拦截（Go 的 Interceptor.Log 的 TS 对应物）。
+   *
+   * dsh 运行时在工具调用前用规则做判定，判定结果通过这里落一条 decided 行：
+   * 规则命中、模型兜底、审批结果都能在「拦截审批 → 历史」里看到，而不是只有
+   * 被拦下的那部分才留痕。只写 status 已定的行，pending 列表不受影响。
+   */
+  api.post('/api/intercept/decisions', async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    try {
+      const toolName = String(body.tool_name ?? '').trim()
+      if (toolName === '') return c.json({ error: 'tool_name 不能为空' }, 400)
+      const status = String(body.status ?? '')
+      if (!['allowed', 'denied', 'timeout'].includes(status)) {
+        return c.json({ error: 'status 必须是 allowed、denied 或 timeout' }, 400)
+      }
+      const source = String(body.decision_source ?? 'rule')
+      if (!['rule', 'model', 'unknown'].includes(source)) {
+        return c.json({ error: 'decision_source 必须是 rule、model 或 unknown' }, 400)
+      }
+      const now = rfc3339(new Date())
+      const id = (await operations.writer.maxKey(TABLE_PENDING)) + 1
+      const record = {
+        id,
+        rule_id: body.rule_id == null ? null : Number(body.rule_id),
+        conversation_id: body.conversation_id == null ? null : Number(body.conversation_id),
+        task_id: body.task_id == null ? null : String(body.task_id),
+        agent_name: String(body.agent_name ?? ''),
+        tool_name: toolName,
+        tool_input: JSON.stringify(body.tool_input ?? {}),
+        status,
+        reason: String(body.message ?? body.reason ?? ''),
+        decision_source: source,
+        decided_at: now,
+        created_at: now
+      }
+      await operations.writer.put({ table: TABLE_PENDING, key: String(id), record })
+      return c.json({ ok: true, id }, 201)
     } catch (error: any) {
       return errResponse(c, error)
     }

@@ -19,8 +19,13 @@ import { readFile } from 'node:fs/promises'
 /** 一个预置 bundle：`name` 是包名（写进 bundle 层），`spec` 是 pnpm add 的参数。 */
 export interface ExtraBundle {
   name: string
-  spec: string
+  spec?: string
   note?: string
+  /**
+   * 由 dsh 安装自带的 bundle（例如 `@deepseek-ai/dsh-cua-bundle`）：预设只需要把
+   * 包名写进 bundle 层，`pnpm add` 与版本都跟着运行时走，升级 dsh 时不会漂移。
+   */
+  runtime?: boolean
 }
 
 /** `extras.json` 的形状。`preset` 只用于日志与文档。 */
@@ -38,17 +43,23 @@ export async function readExtras(file: string): Promise<ExtraBundle[]> {
   for (const [index, row] of raw.bundles.entries()) {
     const name = String(row?.name ?? '').trim()
     const spec = String(row?.spec ?? '').trim()
-    if (!name || !spec) throw new Error(`${file}: bundles[${index}] 缺 name 或 spec`)
+    const runtime = row?.runtime === true
+    if (!name) throw new Error(`${file}: bundles[${index}] 缺 name`)
+    if (runtime && spec !== '') throw new Error(`${file}: ${name} 是运行时自带的 bundle，不能写 spec`)
+    if (!runtime && spec === '') throw new Error(`${file}: bundles[${index}] 缺 spec`)
     if (seen.has(name)) throw new Error(`${file}: bundle ${name} 重复`)
     seen.add(name)
-    out.push({ name, spec, ...(row.note ? { note: String(row.note) } : {}) })
+    out.push({ name, ...(runtime ? { runtime: true as const } : { spec }), ...(row.note ? { note: String(row.note) } : {}) })
   }
   return out
 }
 
-/** `pnpm add` 的参数列表。registry 包用 `name@version`，GitHub 包用 `github:owner/repo#sha`。 */
+/**
+ * `pnpm add` 的参数列表。registry 包用 `name@version`，GitHub 包用
+ * `github:owner/repo#sha`；运行时自带的条目没有 spec，只进 bundle 层。
+ */
 export function extrasSpecs(list: readonly ExtraBundle[]): string[] {
-  return list.map((item) => item.spec)
+  return list.filter((item) => item.spec !== undefined).map((item) => item.spec as string)
 }
 
 /**

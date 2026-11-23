@@ -2904,16 +2904,10 @@ function AccountSection() {
       setBusy(false);
     }
   };
-  const logout = async () => {
+  const logout = () => {
     setBusy(true);
-    try {
-      await request("/account", "DELETE");
-      window.location.replace("/");
-    } catch (reason) {
-      onError(reason);
-    } finally {
-      setBusy(false);
-    }
+    onError("");
+    window.location.assign(`${api}/signout`);
   };
   if (account === void 0) {
     return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-panel", role: "status" }, error || "\u6B63\u5728\u8BFB\u53D6 VEXNAR \u4E2A\u4EBA\u8D44\u6599\u2026");

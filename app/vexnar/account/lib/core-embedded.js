@@ -84995,6 +84995,37 @@ function register6(api2) {
       return errResponse2(c, error62);
     }
   });
+  api2.post("/api/intercept/pending", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const toolName = String(body.tool_name ?? "").trim();
+      if (toolName === "") return c.json({ error: "tool_name \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      const source = String(body.decision_source ?? "rule");
+      if (!["rule", "model", "unknown"].includes(source)) {
+        return c.json({ error: "decision_source \u5FC5\u987B\u662F rule\u3001model \u6216 unknown" }, 400);
+      }
+      const now2 = rfc33394(/* @__PURE__ */ new Date());
+      const id = await operations.writer.maxKey(TABLE_PENDING) + 1;
+      const record2 = {
+        id,
+        rule_id: body.rule_id == null ? null : Number(body.rule_id),
+        conversation_id: null,
+        task_id: null,
+        agent_name: String(body.agent_name ?? ""),
+        tool_name: toolName,
+        tool_input: JSON.stringify(body.tool_input ?? {}),
+        status: "pending",
+        reason: String(body.message ?? body.reason ?? ""),
+        decision_source: source,
+        decided_at: null,
+        created_at: now2
+      };
+      await operations.writer.put({ table: TABLE_PENDING, key: String(id), record: record2 });
+      return c.json(pendingDto(record2), 201);
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
   api2.get("/api/intercept/pending/:id", async (c) => {
     try {
       const id = pathId(c.req.param("id"), "pending id");
@@ -85018,6 +85049,41 @@ function register6(api2) {
       delete next.rev;
       await operations.writer.put({ table: TABLE_PENDING, key: String(id), record: next, expectedRev: Number(current.rev ?? 0) });
       return c.json({ ok: true });
+    } catch (error62) {
+      return errResponse2(c, error62);
+    }
+  });
+  api2.post("/api/intercept/decisions", async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const toolName = String(body.tool_name ?? "").trim();
+      if (toolName === "") return c.json({ error: "tool_name \u4E0D\u80FD\u4E3A\u7A7A" }, 400);
+      const status = String(body.status ?? "");
+      if (!["allowed", "denied", "timeout"].includes(status)) {
+        return c.json({ error: "status \u5FC5\u987B\u662F allowed\u3001denied \u6216 timeout" }, 400);
+      }
+      const source = String(body.decision_source ?? "rule");
+      if (!["rule", "model", "unknown"].includes(source)) {
+        return c.json({ error: "decision_source \u5FC5\u987B\u662F rule\u3001model \u6216 unknown" }, 400);
+      }
+      const now2 = rfc33394(/* @__PURE__ */ new Date());
+      const id = await operations.writer.maxKey(TABLE_PENDING) + 1;
+      const record2 = {
+        id,
+        rule_id: body.rule_id == null ? null : Number(body.rule_id),
+        conversation_id: body.conversation_id == null ? null : Number(body.conversation_id),
+        task_id: body.task_id == null ? null : String(body.task_id),
+        agent_name: String(body.agent_name ?? ""),
+        tool_name: toolName,
+        tool_input: JSON.stringify(body.tool_input ?? {}),
+        status,
+        reason: String(body.message ?? body.reason ?? ""),
+        decision_source: source,
+        decided_at: now2,
+        created_at: now2
+      };
+      await operations.writer.put({ table: TABLE_PENDING, key: String(id), record: record2 });
+      return c.json({ ok: true, id }, 201);
     } catch (error62) {
       return errResponse2(c, error62);
     }

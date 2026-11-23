@@ -71,7 +71,10 @@ const extras = process.env.VEXNAR_EXTRAS === 'off'
     throw error
   })
 const extraNames = extras.map(item => item.name)
-if (extras.length) console.log(`[vexnar] 预置插件 ${extras.length} 个：${extraNames.join(', ')}`)
+if (extras.length) {
+  const own = extras.filter(item => item.runtime !== true).length
+  console.log(`[vexnar] 预置插件 ${extras.length} 个（依赖 ${own} 个，运行时自带 ${extras.length - own} 个）：${extraNames.join(', ')}`)
+}
 
 const installed = spawnSync('pnpm', ['add', '--force', ...addons, ...theme, ...extrasSpecs(extras)], {
   cwd: profile, env: runtimeEnv(), stdio: 'inherit'
@@ -93,6 +96,11 @@ const provided = (name: string): boolean => {
     return true
   } catch {
     return false
+  }
+}
+for (const item of extras) {
+  if (item.runtime === true && !provided(item.name)) {
+    console.warn(`[vexnar] 运行时里找不到预置 bundle ${item.name}：升级 dsh 后可能改名，请核对 extras.json`)
   }
 }
 const plan = process.env.VEXNAR_MIGRATE_PROFILE === 'off'
