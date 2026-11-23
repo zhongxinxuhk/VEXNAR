@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { loginPage, workspaceSessionScript } from "./login-page.js";
+import { createBilling } from "./billing.js";
 import { createModelCompletion } from "./model-channel.js";
 import {
   catalog,
@@ -65,6 +66,7 @@ function providerInput(body) {
 }
 function installPlatform(ctx) {
   const account = createPlatformAccount();
+  const billing = createBilling(account.read);
   let ready = false;
   let lastCatalog = "";
   let syncedProviders = /* @__PURE__ */ new Set();
@@ -278,6 +280,10 @@ function installPlatform(ctx) {
     }
   });
   route("/wallet", { GET: () => account.wallet() });
+  route("/billing/options", { GET: () => billing.options() });
+  route("/billing/quote", { POST: async (req) => billing.quote(await readJson(req)) });
+  route("/billing/order", { POST: async (req) => billing.order(await readJson(req)) });
+  route("/billing/status", { POST: async (req) => billing.status(bodyText(await readJson(req), "request_id")) });
   route("/providers", {
     POST: async (req) => {
       const input = await readJson(req);

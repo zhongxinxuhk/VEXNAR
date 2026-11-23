@@ -35,7 +35,7 @@ button.primary,.online{background:#086b5d;color:#fff;border-color:#086b5d}
 <div id="notice" aria-live="polite">正在检查账户状态…</div>
 <a class="online" href="${origin}/login" target="_blank" rel="noopener noreferrer">打开希灵 AI 在线登录</a>
 <p id="methods" class="methods"></p>
-<p class="hint">在希灵 AI 完成登录后，到个人设置创建访问令牌，再回到此页粘贴。令牌名称使用 <code>VERNAX-随机 UUID</code>，并授权读取账户、管理模型密钥及读取充值与订阅信息。</p>
+<p class="hint">在希灵 AI 完成登录后，到个人设置创建访问令牌，再回到此页粘贴。令牌名称使用 <code>VERNAX-随机 UUID</code>，并按需授权账户、模型密钥、充值和订阅权限。</p>
 <form id="token-login">
 <label>平台访问令牌<input name="access_token" type="password" autocomplete="off" spellcheck="false" required></label>
 <button class="primary" type="submit">使用访问令牌登录</button></form>

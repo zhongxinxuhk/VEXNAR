@@ -29,7 +29,276 @@ __export(client_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(client_exports);
+var import_react2 = require("react");
+
+// src/billing-client.tsx
 var import_react = require("react");
+var errorText = (reason) => reason instanceof Error ? reason.message : String(reason);
+function AppDialog({ title, onClose, children, busy = false, narrow = false }) {
+  const dialog = (0, import_react.useRef)(null);
+  (0, import_react.useEffect)(() => {
+    const element = dialog.current;
+    if (element && !element.open) element.showModal();
+  }, []);
+  return /* @__PURE__ */ (0, import_react.createElement)(
+    "dialog",
+    {
+      ref: dialog,
+      className: "vxa-payment-dialog",
+      "data-narrow": narrow,
+      "aria-label": title,
+      onCancel: (event) => {
+        if (busy) event.preventDefault();
+      },
+      onClose
+    },
+    /* @__PURE__ */ (0, import_react.createElement)("header", { className: "vxa-payment-head" }, /* @__PURE__ */ (0, import_react.createElement)("h2", null, title), /* @__PURE__ */ (0, import_react.createElement)(
+      "button",
+      {
+        type: "button",
+        className: "vxa-btn",
+        "aria-label": `\u5173\u95ED${title}`,
+        disabled: busy,
+        onClick: () => {
+          dialog.current?.close();
+        }
+      },
+      "\u5173\u95ED"
+    )),
+    children
+  );
+}
+function Loading({ children }) {
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-payment-loading", role: "status" }, /* @__PURE__ */ (0, import_react.createElement)("span", { "aria-hidden": "true" }), children);
+}
+function sendToCashier(formTarget, checkout) {
+  if (!checkout.fields) return;
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = checkout.url;
+  form.target = formTarget;
+  form.hidden = true;
+  for (const [name, value] of Object.entries(checkout.fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.append(input);
+  }
+  document.body.append(form);
+  try {
+    HTMLFormElement.prototype.submit.call(form);
+  } finally {
+    form.remove();
+  }
+}
+function Cashier({ order, requestID, request: request2, onPaid }) {
+  const [loaded, setLoaded] = (0, import_react.useState)(false);
+  const [status, setStatus] = (0, import_react.useState)("pending");
+  const [delay, setDelay] = (0, import_react.useState)(false);
+  const [checkingFailed, setCheckingFailed] = (0, import_react.useState)(false);
+  const frame = (0, import_react.useRef)(null);
+  const submitted = (0, import_react.useRef)(false);
+  const name = `vexnar-payment-${requestID}`;
+  (0, import_react.useEffect)(() => {
+    if (!submitted.current && order.checkout.fields && frame.current) {
+      submitted.current = true;
+      sendToCashier(name, order.checkout);
+    }
+    const timer = window.setTimeout(() => setDelay(true), 8e3);
+    return () => window.clearTimeout(timer);
+  }, [name, order]);
+  (0, import_react.useEffect)(() => {
+    if (!order.canCheckStatus) return;
+    let live = true;
+    let timer = 0;
+    const deadline = Date.now() + 10 * 6e4;
+    const check = async () => {
+      try {
+        const result = await request2("/billing/status", "POST", { request_id: requestID });
+        if (!live) return;
+        setCheckingFailed(false);
+        setStatus(result.status);
+        if (result.status === "paid") onPaid();
+        if (result.status !== "pending") return;
+      } catch {
+        if (live) setCheckingFailed(true);
+      }
+      if (live && Date.now() < deadline) timer = window.setTimeout(() => {
+        void check();
+      }, 4e3);
+      else if (live) setCheckingFailed(true);
+    };
+    timer = window.setTimeout(() => {
+      void check();
+    }, 3e3);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+    };
+  }, [order, requestID, request2, onPaid]);
+  if (status === "paid") return /* @__PURE__ */ (0, import_react.createElement)("p", { role: "status", className: "vxa-payment-success" }, "\u652F\u4ED8\u6210\u529F\uFF0C\u4F59\u989D\u5DF2\u5237\u65B0\u3002");
+  if (status === "closed") return /* @__PURE__ */ (0, import_react.createElement)("p", { role: "status", className: "vxa-error" }, "\u8BA2\u5355\u5DF2\u5173\u95ED\uFF0C\u8BF7\u8FD4\u56DE\u91CD\u65B0\u9009\u62E9\u3002");
+  return /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, !loaded && /* @__PURE__ */ (0, import_react.createElement)(Loading, null, "\u6B63\u5728\u52A0\u8F7D\u652F\u4ED8\u6536\u94F6\u53F0\u2026"), /* @__PURE__ */ (0, import_react.createElement)(
+    "iframe",
+    {
+      ref: frame,
+      className: "vxa-payment-frame",
+      name,
+      title: "\u652F\u4ED8\u4E8C\u7EF4\u7801\u6216\u6536\u94F6\u53F0",
+      sandbox: "allow-forms allow-scripts allow-same-origin",
+      referrerPolicy: "no-referrer",
+      src: order.checkout.fields ? "about:blank" : order.checkout.url,
+      onLoad: () => {
+        try {
+          if (frame.current?.contentWindow?.location.href === "about:blank") return;
+        } catch {
+        }
+        setLoaded(true);
+      }
+    }
+  ), delay && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint" }, "\u6536\u94F6\u53F0\u82E5\u4ECD\u7A7A\u767D\uFF0C\u652F\u4ED8\u6E20\u9053\u53EF\u80FD\u9650\u5236\u4E86\u5E94\u7528\u5185\u5C55\u793A\u3002"), checkingFailed ? /* @__PURE__ */ (0, import_react.createElement)("p", { role: "status", className: "vxa-hint" }, "\u6682\u672A\u786E\u8BA4\u4ED8\u6B3E\uFF0C\u8BF7\u6838\u5BF9\u6E20\u9053\u7ED3\u679C\uFF0C\u907F\u514D\u91CD\u590D\u4ED8\u6B3E\u3002") : order.canCheckStatus && /* @__PURE__ */ (0, import_react.createElement)("p", { role: "status", className: "vxa-hint" }, "\u7B49\u5F85\u4ED8\u6B3E\uFF0C\u5230\u8D26\u540E\u81EA\u52A8\u5237\u65B0\u3002"), !order.canCheckStatus && /* @__PURE__ */ (0, import_react.createElement)("button", { className: "vxa-btn", type: "button", onClick: onPaid }, "\u5237\u65B0\u4F59\u989D"));
+}
+function RechargeDialog({ provider, request: request2, onClose, onPaid }) {
+  const [config, setConfig] = (0, import_react.useState)();
+  const [mode, setMode] = (0, import_react.useState)("topup");
+  const [method, setMethod] = (0, import_react.useState)("");
+  const [amount, setAmount] = (0, import_react.useState)("");
+  const [plan, setPlan] = (0, import_react.useState)(0);
+  const [product, setProduct] = (0, import_react.useState)("");
+  const [quote, setQuote] = (0, import_react.useState)();
+  const [error, setError] = (0, import_react.useState)("");
+  const [attempt, setAttempt] = (0, import_react.useState)(0);
+  const [quoteRevision, setQuoteRevision] = (0, import_react.useState)(0);
+  const [cashier, setCashier] = (0, import_react.useState)();
+  const starting = (0, import_react.useRef)(false);
+  (0, import_react.useEffect)(() => {
+    if (provider !== "xilin") return;
+    let active = true;
+    setError("");
+    void request2("/billing/options").then((next) => {
+      if (!active) return;
+      setConfig(next);
+      const first = next.methods[0];
+      setMethod(first?.id ?? "");
+      setAmount(String(next.amounts.find((value) => value >= (first?.minimum ?? 1)) ?? first?.minimum ?? ""));
+      setProduct(first?.products?.[0]?.id ?? "");
+      setPlan(next.plans[0]?.id ?? 0);
+    }, (reason) => {
+      if (active) setError(errorText(reason));
+    });
+    return () => {
+      active = false;
+    };
+  }, [attempt, provider, request2]);
+  const channels = config?.methods.filter((channel2) => mode === "topup" || channel2.subscriptions) ?? [];
+  const channel = channels.find((item) => item.id === method) ?? channels[0];
+  const numericAmount = Number(amount);
+  const selection = channel && (mode === "subscription" ? plan > 0 ? { kind: mode, method: channel.id, plan } : void 0 : channel.products ? product ? { kind: mode, method: channel.id, amount: 1, product } : void 0 : /^\d+$/.test(amount) && Number.isSafeInteger(numericAmount) && numericAmount >= channel.minimum ? { kind: mode, method: channel.id, amount: numericAmount } : void 0);
+  const selectionKey = selection ? JSON.stringify(selection) : "";
+  const activeQuote = quote?.selection === selectionKey ? quote.value : void 0;
+  (0, import_react.useEffect)(() => {
+    if (!selectionKey) return;
+    let active = true;
+    setError("");
+    setQuote(void 0);
+    const timer = window.setTimeout(() => {
+      void request2("/billing/quote", "POST", JSON.parse(selectionKey)).then((value) => {
+        if (active) setQuote({ selection: selectionKey, value });
+      }, (reason) => {
+        if (active) setError(errorText(reason));
+      });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [selectionKey, request2, quoteRevision]);
+  const pay = () => {
+    if (!selection || !activeQuote || starting.current) return;
+    starting.current = true;
+    const id = crypto.randomUUID();
+    setCashier({ id });
+    void request2("/billing/order", "POST", { ...selection, ...activeQuote, request_id: id }).then(
+      (order) => setCashier({ id, order }),
+      (reason) => setCashier({ id, error: errorText(reason) })
+    ).finally(() => {
+      starting.current = false;
+    });
+  };
+  const title = provider === "xilin" ? "\u5E0C\u7075 AI \u5145\u503C" : "DeepSeek \u5145\u503C";
+  const ordering = cashier !== void 0 && !cashier.order && !cashier.error;
+  return /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)(AppDialog, { title, onClose, narrow: provider === "deepseek" }, provider === "deepseek" ? /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-payment-note" }, "DeepSeek \u5F53\u524D\u63D0\u4F9B\u4F59\u989D\u67E5\u8BE2\u63A5\u53E3\u3002\u5E94\u7528\u5185\u5145\u503C\u9700\u8981 DeepSeek \u5F00\u653E\u652F\u4ED8\u63A5\u53E3\u3002") : !config ? error ? /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => setAttempt((value) => value + 1) }, "\u91CD\u65B0\u8BFB\u53D6")) : /* @__PURE__ */ (0, import_react.createElement)(Loading, null, "\u6B63\u5728\u8BFB\u53D6\u5145\u503C\u914D\u7F6E\u2026") : /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("div", { role: "group", "aria-label": "\u8D2D\u4E70\u7C7B\u578B", className: "vxa-payment-modes" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", "aria-pressed": mode === "topup", onClick: () => setMode("topup") }, "\u989D\u5EA6\u5145\u503C"), config.plans.length > 0 && /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      type: "button",
+      className: "vxa-btn",
+      "aria-pressed": mode === "subscription",
+      onClick: () => setMode("subscription")
+    },
+    "\u8D2D\u4E70\u8BA2\u9605"
+  )), mode === "subscription" ? /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-payment-options", role: "group", "aria-label": "\u8BA2\u9605\u5957\u9910" }, config.plans.map((item) => /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      className: "vxa-pay-option",
+      key: item.id,
+      type: "button",
+      "aria-pressed": plan === item.id,
+      onClick: () => setPlan(item.id)
+    },
+    /* @__PURE__ */ (0, import_react.createElement)("strong", null, item.title),
+    /* @__PURE__ */ (0, import_react.createElement)("span", null, item.price, " ", item.currency)
+  ))) : channel?.products ? /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-payment-options", role: "group", "aria-label": "\u5145\u503C\u5546\u54C1" }, channel.products.map((item) => /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      className: "vxa-pay-option",
+      key: item.id,
+      type: "button",
+      "aria-pressed": product === item.id,
+      onClick: () => setProduct(item.id)
+    },
+    item.name
+  ))) : /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-payment-options", role: "group", "aria-label": "\u9884\u8BBE\u5145\u503C\u91D1\u989D" }, config.amounts.map((value) => /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      className: "vxa-pay-option",
+      key: value,
+      type: "button",
+      disabled: value < (channel?.minimum ?? 1),
+      "aria-pressed": amount === String(value),
+      onClick: () => setAmount(String(value))
+    },
+    value
+  ))), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u5145\u503C\u91D1\u989D"), /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      className: "vxa-input",
+      type: "text",
+      inputMode: "numeric",
+      value: amount,
+      onChange: (event) => setAmount(event.target.value)
+    }
+  ), channel && /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u6700\u4F4E\u5145\u503C\u91D1\u989D ", channel.minimum))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-payment-channels", role: "group", "aria-label": "\u652F\u4ED8\u6E20\u9053" }, channels.map((item) => /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      key: item.id,
+      type: "button",
+      className: "vxa-btn",
+      "aria-pressed": channel?.id === item.id,
+      onClick: () => {
+        setMethod(item.id);
+        setProduct(item.products?.[0]?.id ?? "");
+      }
+    },
+    item.name
+  )), channels.length === 0 && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint" }, "\u5E73\u53F0\u5F53\u524D\u6CA1\u6709\u53EF\u7528\u7684\u652F\u4ED8\u6E20\u9053\u3002")), error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error), /* @__PURE__ */ (0, import_react.createElement)("footer", { className: "vxa-payment-total" }, /* @__PURE__ */ (0, import_react.createElement)("div", null, activeQuote ? /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, "\u5B9E\u4ED8 ", /* @__PURE__ */ (0, import_react.createElement)("strong", null, activeQuote.total, " ", activeQuote.currency)) : selection && !error ? /* @__PURE__ */ (0, import_react.createElement)(Loading, null, "\u6B63\u5728\u8BFB\u53D6\u5B9E\u4ED8\u91D1\u989D\u2026") : "\u5B9E\u4ED8 \u2014"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn-primary", disabled: !activeQuote || !!cashier, onClick: pay }, "\u786E\u8BA4\u5E76\u6253\u5F00\u6536\u94F6\u53F0")))), cashier && /* @__PURE__ */ (0, import_react.createElement)(AppDialog, { title: "\u626B\u7801\u652F\u4ED8", busy: ordering, narrow: true, onClose: () => {
+    if (cashier.error) {
+      setQuote(void 0);
+      setQuoteRevision((value) => value + 1);
+    }
+    setCashier(void 0);
+  } }, ordering ? /* @__PURE__ */ (0, import_react.createElement)(Loading, null, "\u6B63\u5728\u521B\u5EFA\u8BA2\u5355\u2026") : cashier.error ? /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, cashier.error) : cashier.order && /* @__PURE__ */ (0, import_react.createElement)(Cashier, { order: cashier.order, requestID: cashier.id, request: request2, onPaid })));
+}
 
 // src/styles.ts
 var STYLE_ID = "vexnar-account-settings-styles";
@@ -670,6 +939,10 @@ body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-pa
   [data-dsh-claude-part~='settings-trigger'] .vxa-launcher button.vxa-launcher-trigger { display: flex !important; }
 body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
   [data-dsh-claude-part~='settings-trigger'] .vxa-launcher-popover .vxa-btn { display: inline-flex !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-payment-dialog .vxa-pay-option { display: grid !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-payment-dialog .vxa-btn-primary { display: inline-flex !important; }
 .vxa-launcher-trigger .vxa-avatar { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; }
 .vxa-launcher-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vxa-launcher[data-wide='false'] .vxa-launcher-trigger { justify-content: center; padding: 4px; }
@@ -690,11 +963,47 @@ body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-pa
 }
 .vxa-wallet-row .vxa-btn { white-space: nowrap; }
 .vxa-wallet-value { margin-top: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
-.vxa-wallet-plans { display: grid; gap: 6px; margin: 8px 0; padding-left: 0; list-style: none; }
-.vxa-wallet-plans li { display: flex; justify-content: space-between; gap: 10px; }
+.vxa-profile-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.vxa-payment-dialog {
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 28px);
+  padding: clamp(16px, 4vw, 28px); border-radius: 16px;
+  border: 1px solid var(--dsw-alias-border-subtle, #8884);
+  color: var(--dsw-alias-label-primary, #18232c); background: var(--dsw-alias-bg-layer-2, #fff);
+  box-shadow: 0 16px 64px #0003;
+}
+.vxa-payment-dialog[data-narrow='true'] { width: min(490px, calc(100vw - 24px)); }
+.vxa-payment-dialog::backdrop { background: #1118206b; }
+.vxa-payment-head, .vxa-payment-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.vxa-payment-head { margin-bottom: 18px; }
+.vxa-payment-head h2 { margin: 0; font-size: 19px; }
+.vxa-payment-modes, .vxa-payment-channels { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.vxa-payment-options {
+  display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); margin: 14px 0;
+}
+.vxa-pay-option {
+  display: grid; gap: 4px; place-content: center; min-height: 54px; padding: 8px;
+  border: 1px solid var(--dsw-alias-border-subtle, #8885); border-radius: 9px;
+  color: inherit; background: transparent; font: inherit; cursor: pointer;
+}
+.vxa-pay-option:disabled { opacity: .45; cursor: default; }
+.vxa-payment-dialog button[aria-pressed='true'] { border-color: #25867e; background: #25867e16; }
+.vxa-payment-total { flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid #8884; }
+.vxa-payment-loading { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+.vxa-payment-loading > span {
+  width: 15px; height: 15px; flex: 0 0 15px; border: 2px solid #27877d40;
+  border-top-color: #27877d; border-radius: 50%; animation: vxa-payment-spin .8s linear infinite;
+}
+@keyframes vxa-payment-spin { to { transform: rotate(1turn); } }
+.vxa-payment-frame { width: 100%; height: min(480px, 55vh); border: 1px solid #8884; border-radius: 8px; background: white; }
+.vxa-payment-note, .vxa-payment-success { line-height: 1.55; margin: 0 0 10px; }
+.vxa-payment-success { color: var(--dsw-alias-label-primary, #106f51); }
 
 @media (prefers-reduced-motion: reduce) {
   .vxa-fold-summary::before { transition: none; }
+  .vxa-payment-loading > span { animation: none; }
 }
 `;
 function installAccountStyles(doc = document) {
@@ -713,7 +1022,6 @@ function installAccountStyles(doc = document) {
 // src/client.tsx
 var api = "/vexnar-api/platform";
 var platform = "https://platform.sec.hn.cn";
-var docs = "https://docs.sec.hn.cn/";
 var accountEvent = "vexnar:platform-account";
 var platformProviderID = "vexnar";
 async function request(path, method = "GET", body) {
@@ -729,8 +1037,8 @@ async function request(path, method = "GET", body) {
 }
 var message = (reason) => reason instanceof Error ? reason.message : String(reason);
 function useAccount() {
-  const [account, setAccount] = (0, import_react.useState)();
-  const [error, setError] = (0, import_react.useState)("");
+  const [account, setAccount] = (0, import_react2.useState)();
+  const [error, setError] = (0, import_react2.useState)("");
   const onError = (reason) => setError(message(reason));
   const refresh = () => void request("/account").then((next) => {
     setAccount(next);
@@ -741,7 +1049,7 @@ function useAccount() {
     setError("");
     window.dispatchEvent(new Event(accountEvent));
   };
-  (0, import_react.useEffect)(() => {
+  (0, import_react2.useEffect)(() => {
     refresh();
     window.addEventListener(accountEvent, refresh);
     return () => window.removeEventListener(accountEvent, refresh);
@@ -752,13 +1060,13 @@ function credentialName(id) {
   return `VEXNAR_${id.replace(/[^a-z0-9]+/gi, "_").toUpperCase()}_API_KEY`;
 }
 function PlusIcon({ size = 12 }) {
-  return /* @__PURE__ */ (0, import_react.createElement)("svg", { width: size, height: size, viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react.createElement)("path", { d: "M6 2.25v7.5M2.25 6h7.5", stroke: "currentColor", strokeWidth: "1.4", strokeLinecap: "round" }));
+  return /* @__PURE__ */ (0, import_react2.createElement)("svg", { width: size, height: size, viewBox: "0 0 12 12", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react2.createElement)("path", { d: "M6 2.25v7.5M2.25 6h7.5", stroke: "currentColor", strokeWidth: "1.4", strokeLinecap: "round" }));
 }
 function GripIcon() {
-  return /* @__PURE__ */ (0, import_react.createElement)("svg", { width: "10", height: "14", viewBox: "0 0 10 14", fill: "currentColor", "aria-hidden": "true" }, [2, 6, 10].map((y) => /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, { key: y }, /* @__PURE__ */ (0, import_react.createElement)("circle", { cx: "2.5", cy: y, r: "1.1" }), /* @__PURE__ */ (0, import_react.createElement)("circle", { cx: "7.5", cy: y, r: "1.1" }))));
+  return /* @__PURE__ */ (0, import_react2.createElement)("svg", { width: "10", height: "14", viewBox: "0 0 10 14", fill: "currentColor", "aria-hidden": "true" }, [2, 6, 10].map((y) => /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, { key: y }, /* @__PURE__ */ (0, import_react2.createElement)("circle", { cx: "2.5", cy: y, r: "1.1" }), /* @__PURE__ */ (0, import_react2.createElement)("circle", { cx: "7.5", cy: y, r: "1.1" }))));
 }
 function TrashIcon() {
-  return /* @__PURE__ */ (0, import_react.createElement)("svg", { width: "13", height: "13", viewBox: "0 0 14 14", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("svg", { width: "13", height: "13", viewBox: "0 0 14 14", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "path",
     {
       d: "M2.5 3.75h9M5.5 3.75V2.5h3v1.25M3.5 3.75l.5 7.25h6l.5-7.25M5.75 6v3M8.25 6v3",
@@ -770,7 +1078,7 @@ function TrashIcon() {
   ));
 }
 function EyeIcon({ open }) {
-  return open ? /* @__PURE__ */ (0, import_react.createElement)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react.createElement)("path", { d: "M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4S1.5 8 1.5 8Z", stroke: "currentColor", strokeWidth: "1.2" }), /* @__PURE__ */ (0, import_react.createElement)("circle", { cx: "8", cy: "8", r: "1.75", stroke: "currentColor", strokeWidth: "1.2" })) : /* @__PURE__ */ (0, import_react.createElement)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return open ? /* @__PURE__ */ (0, import_react2.createElement)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react2.createElement)("path", { d: "M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4S1.5 8 1.5 8Z", stroke: "currentColor", strokeWidth: "1.2" }), /* @__PURE__ */ (0, import_react2.createElement)("circle", { cx: "8", cy: "8", r: "1.75", stroke: "currentColor", strokeWidth: "1.2" })) : /* @__PURE__ */ (0, import_react2.createElement)("svg", { width: "14", height: "14", viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "path",
     {
       d: "M1.5 8s2.4-4 6.5-4c1.1 0 2.1.3 3 .8M14.5 8s-2.4 4-6.5 4c-1.1 0-2.1-.3-3-.8M2.5 2.5l11 11",
@@ -782,17 +1090,21 @@ function EyeIcon({ open }) {
 }
 var statValue = (value) => typeof value === "number" ? value.toLocaleString("zh-CN") : "\u2014";
 function Avatar({ account }) {
-  const [failed, setFailed] = (0, import_react.useState)("");
+  const [failed, setFailed] = (0, import_react2.useState)("");
   const url = account?.avatar_url;
   const name = account?.display_name || account?.username || "V";
-  return /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, url && url !== failed ? /* @__PURE__ */ (0, import_react.createElement)("img", { src: url, alt: "", referrerPolicy: "no-referrer", onError: () => {
+  return /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, url && url !== failed ? /* @__PURE__ */ (0, import_react2.createElement)("img", { src: url, alt: "", referrerPolicy: "no-referrer", onError: () => {
     setFailed(url);
   } }) : Array.from(name).slice(0, 2).join("").toUpperCase());
 }
-function Wallet({ compact = false }) {
-  const [wallet, setWallet] = (0, import_react.useState)();
-  const [error, setError] = (0, import_react.useState)("");
-  (0, import_react.useEffect)(() => {
+function notifyWallet() {
+  window.dispatchEvent(new Event(accountEvent));
+}
+function Wallet() {
+  const [wallet, setWallet] = (0, import_react2.useState)();
+  const [recharge, setRecharge] = (0, import_react2.useState)();
+  const [error, setError] = (0, import_react2.useState)("");
+  (0, import_react2.useEffect)(() => {
     let generation = 0;
     const refresh = () => {
       const current = ++generation;
@@ -816,23 +1128,30 @@ function Wallet({ compact = false }) {
   const main = wallet?.platform;
   const deepseek = wallet?.deepseek;
   const balance = main?.amount != null ? `${main.amount.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${main.currency}` : main?.quota != null ? `${statValue(main.quota)} \u989D\u5EA6` : "\u2014";
-  const billing = main?.url || platform + "/wallet";
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "\u5E0C\u7075 AI \u4F59\u989D"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-value" }, wallet || error ? balance : "\u8BFB\u53D6\u4E2D\u2026")), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: billing, target: "_blank", rel: "noopener noreferrer" }, "\u5E0C\u7075 AI \u5145\u503C")), main?.error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", role: "status" }, main.error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "DeepSeek \u4F59\u989D"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-value" }, deepseek === void 0 ? error ? "\u2014" : "\u8BFB\u53D6\u4E2D\u2026" : deepseek.status === "ready" ? deepseek.balances.map((item) => `${item.total} ${item.currency}`).join(" / ") : deepseek.status === "unconfigured" ? "\u8BF7\u5148\u6DFB\u52A0 DeepSeek \u5B98\u65B9\u6A21\u578B" : "\u6682\u65F6\u65E0\u6CD5\u8BFB\u53D6")), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: "https://platform.deepseek.com/top_up", target: "_blank", rel: "noopener noreferrer" }, "DeepSeek \u5145\u503C")), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "\u5E0C\u7075 AI \u8BA2\u9605"), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: billing, target: "_blank", rel: "noopener noreferrer" }, "\u8D2D\u4E70\u8BA2\u9605")), !compact && main && /* @__PURE__ */ (0, import_react.createElement)("div", null, main.methods.length > 0 && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint" }, "\u5E73\u53F0\u5145\u503C\u65B9\u5F0F ", main.methods.join("\u3001")), main.plans.length > 0 && /* @__PURE__ */ (0, import_react.createElement)("ul", { className: "vxa-wallet-plans" }, main.plans.map((plan) => /* @__PURE__ */ (0, import_react.createElement)("li", { key: plan.id }, /* @__PURE__ */ (0, import_react.createElement)("span", null, plan.title), /* @__PURE__ */ (0, import_react.createElement)("span", null, plan.price, " ", plan.currency, plan.duration && ` / ${plan.duration}`)))), main.subscriptions.map((subscription, index) => /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", key: `${subscription.id}-${index}` }, main.plans.find((plan) => plan.id === subscription.id)?.title || "\u5F53\u524D\u8BA2\u9605", " \xB7", subscription.remaining === null ? " \u4E0D\u9650\u989D" : ` \u5269\u4F59 ${statValue(subscription.remaining)} \u989D\u5EA6`, " \xB7", new Date(subscription.ends * 1e3).toLocaleDateString("zh-CN"), " \u5230\u671F"))), error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-wallet" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react2.createElement)("div", null, /* @__PURE__ */ (0, import_react2.createElement)("strong", null, "\u5E0C\u7075 AI \u4F59\u989D"), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-wallet-value" }, wallet || error ? balance : "\u8BFB\u53D6\u4E2D\u2026")), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => setRecharge("xilin") }, "\u5E0C\u7075 AI \u5145\u503C")), main?.error && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-hint", role: "status" }, main.error), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react2.createElement)("div", null, /* @__PURE__ */ (0, import_react2.createElement)("strong", null, "DeepSeek \u4F59\u989D"), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-wallet-value" }, deepseek === void 0 ? error ? "\u2014" : "\u8BFB\u53D6\u4E2D\u2026" : deepseek.status === "ready" ? deepseek.balances.map((item) => `${item.total} ${item.currency}`).join(" / ") : deepseek.status === "unconfigured" ? "\u8BF7\u5148\u6DFB\u52A0 DeepSeek \u5B98\u65B9\u6A21\u578B" : "\u6682\u65F6\u65E0\u6CD5\u8BFB\u53D6")), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => setRecharge("deepseek") }, "DeepSeek \u5145\u503C")), recharge && /* @__PURE__ */ (0, import_react2.createElement)(
+    RechargeDialog,
+    {
+      provider: recharge,
+      request,
+      onPaid: notifyWallet,
+      onClose: () => setRecharge(void 0)
+    }
+  ), error && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
 function AccountLauncher({ wide, openSettings }) {
   const { account } = useAccount();
   const label = account?.display_name || account?.username || "\u5E0C\u7075 AI";
-  const [position, setPosition] = (0, import_react.useState)();
-  const root = (0, import_react.useRef)(null);
-  const trigger = (0, import_react.useRef)(null);
-  (0, import_react.useEffect)(() => {
+  const [position, setPosition] = (0, import_react2.useState)();
+  const root = (0, import_react2.useRef)(null);
+  const trigger = (0, import_react2.useRef)(null);
+  (0, import_react2.useEffect)(() => {
     if (!position) return;
     const close = () => setPosition(void 0);
     const closeOutside = (event) => {
       if (event.target instanceof Node && !root.current?.contains(event.target)) close();
     };
     const escape = (event) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || document.querySelector(".vxa-payment-dialog[open]")) return;
       close();
       trigger.current?.focus();
     };
@@ -845,7 +1164,7 @@ function AccountLauncher({ wide, openSettings }) {
       window.removeEventListener("resize", close);
     };
   }, [position]);
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher", ref: root, "data-wide": wide }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-launcher", ref: root, "data-wide": wide }, /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -861,20 +1180,21 @@ function AccountLauncher({ wide, openSettings }) {
         });
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }),
-    wide && /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-launcher-name" }, label), /* @__PURE__ */ (0, import_react.createElement)("span", { "aria-hidden": "true" }, "\u2304"))
-  ), position && /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher-popover", style: position, "aria-label": "\u8D26\u6237\u4F59\u989D", role: "region" }, /* @__PURE__ */ (0, import_react.createElement)(Wallet, { compact: true }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher-actions" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
+    /* @__PURE__ */ (0, import_react2.createElement)(Avatar, { account }),
+    wide && /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, null, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-launcher-name" }, label), /* @__PURE__ */ (0, import_react2.createElement)("span", { "aria-hidden": "true" }, "\u2304"))
+  ), position && /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-launcher-popover", style: position, "aria-label": "\u8D26\u6237\u4F59\u989D", role: "region" }, /* @__PURE__ */ (0, import_react2.createElement)(Wallet, null), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-launcher-actions" }, /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
     setPosition(void 0);
     openSettings();
-  } }, "\u8BBE\u7F6E"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
+  } }, "\u8BBE\u7F6E"), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
     setPosition(void 0);
     openSettings("vexnar-account");
   } }, "\u8D26\u6237\u8BE6\u60C5"))));
 }
 function AccountSection() {
   const { account, error, onError, update } = useAccount();
-  const [busy, setBusy] = (0, import_react.useState)(false);
-  const [renewal, setRenewal] = (0, import_react.useState)("");
+  const [busy, setBusy] = (0, import_react2.useState)(false);
+  const [renewalOpen, setRenewalOpen] = (0, import_react2.useState)(false);
+  const [renewal, setRenewal] = (0, import_react2.useState)("");
   const renew = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -904,7 +1224,7 @@ function AccountSection() {
     }
   };
   if (account === void 0) {
-    return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel", role: "status" }, error || "\u6B63\u5728\u8BFB\u53D6 VEXNAR \u4E2A\u4EBA\u8D44\u6599\u2026");
+    return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-panel", role: "status" }, error || "\u6B63\u5728\u8BFB\u53D6 VEXNAR \u4E2A\u4EBA\u8D44\u6599\u2026");
   }
   const provider = account.providers.find((item) => item.id === platformProviderID);
   const displayName = account.display_name || account.username;
@@ -914,20 +1234,36 @@ function AccountSection() {
     { name: "\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C", value: account.access_token_ready ? "\u5DF2\u914D\u7F6E" : "\u672A\u914D\u7F6E" },
     { name: "\u5E73\u53F0\u7D2F\u8BA1\u8BF7\u6C42", value: statValue(account.request_count) }
   ];
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)(Wallet, null), /* @__PURE__ */ (0, import_react.createElement)("details", { className: "vxa-fold" }, /* @__PURE__ */ (0, import_react.createElement)("summary", { className: "vxa-fold-summary" }, "\u66F4\u65B0\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C"), /* @__PURE__ */ (0, import_react.createElement)("form", { className: "vxa-fold-body", onSubmit: (event) => {
-    void renew(event);
-  } }, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u5F53\u524D\u8D26\u6237\u7684\u8BBF\u95EE\u4EE4\u724C"), /* @__PURE__ */ (0, import_react.createElement)(
-    "input",
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react2.createElement)(Avatar, { account }), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react2.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-profile-actions" }, /* @__PURE__ */ (0, import_react2.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237"), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn vxa-btn-ghost", onClick: () => {
+    setRenewal("");
+    onError("");
+    setRenewalOpen(true);
+  } }, "\u66F4\u65B0\u8BBF\u95EE\u4EE4\u724C"))), /* @__PURE__ */ (0, import_react2.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react2.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react2.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react2.createElement)(Wallet, null), renewalOpen && /* @__PURE__ */ (0, import_react2.createElement)(
+    AppDialog,
     {
-      className: "vxa-input",
-      name: "access_token",
-      type: "password",
-      autoComplete: "off",
-      spellCheck: false,
-      required: true,
-      disabled: busy
-    }
-  )), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "submit", className: "vxa-btn", disabled: busy }, "\u9A8C\u8BC1\u5E76\u66F4\u65B0"), renewal && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", role: "status" }, renewal))), error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")));
+      title: "\u66F4\u65B0\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C",
+      busy,
+      narrow: true,
+      onClose: () => {
+        setRenewalOpen(false);
+        onError("");
+      }
+    },
+    /* @__PURE__ */ (0, import_react2.createElement)("form", { className: "vxa-fold-body", onSubmit: (event) => {
+      void renew(event);
+    } }, /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "\u5F53\u524D\u8D26\u6237\u7684\u8BBF\u95EE\u4EE4\u724C"), /* @__PURE__ */ (0, import_react2.createElement)(
+      "input",
+      {
+        className: "vxa-input",
+        name: "access_token",
+        type: "password",
+        autoComplete: "off",
+        spellCheck: false,
+        required: true,
+        disabled: busy
+      }
+    )), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "submit", className: "vxa-btn", disabled: busy }, "\u9A8C\u8BC1\u5E76\u66F4\u65B0"), renewal && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-hint", role: "status" }, renewal), error && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, error))
+  ), !renewalOpen && error && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, error), /* @__PURE__ */ (0, import_react2.createElement)("div", null, /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")));
 }
 var REASONING_LEVELS = [
   { level: "minimal", label: "\u6781\u4F4E" },
@@ -959,7 +1295,7 @@ function ModelCapability({ model, disabled, onChange }) {
     else next[level] = value;
     patch({ reasoningEfforts: next });
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u8F93\u5165\u7C7B\u578B"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, INPUT_TYPES.map((entry) => /* @__PURE__ */ (0, import_react.createElement)("label", { key: entry.id, className: "vxa-check" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-capability" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-label" }, "\u8F93\u5165\u7C7B\u578B"), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-values" }, INPUT_TYPES.map((entry) => /* @__PURE__ */ (0, import_react2.createElement)("label", { key: entry.id, className: "vxa-check" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       type: "checkbox",
@@ -969,7 +1305,7 @@ function ModelCapability({ model, disabled, onChange }) {
         toggleInput(entry.id, event.target.checked);
       }
     }
-  ), entry.label)))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u63A8\u7406\u6863\u4F4D"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-check" }, /* @__PURE__ */ (0, import_react.createElement)(
+  ), entry.label)))), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-label" }, "\u63A8\u7406\u6863\u4F4D"), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-check" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       type: "checkbox",
@@ -979,7 +1315,7 @@ function ModelCapability({ model, disabled, onChange }) {
         patch({ reasoningEfforts: event.target.checked ? { off: null, low: "low", medium: "medium", high: "high" } : void 0 });
       }
     }
-  ), "\u652F\u6301\u63A8\u7406"), effortOn && REASONING_LEVELS.map((entry) => /* @__PURE__ */ (0, import_react.createElement)(
+  ), "\u652F\u6301\u63A8\u7406"), effortOn && REASONING_LEVELS.map((entry) => /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       key: entry.level,
@@ -992,7 +1328,7 @@ function ModelCapability({ model, disabled, onChange }) {
         setEffort(entry.level, event.target.value);
       }
     }
-  )))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u4E0A\u9650"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react.createElement)(
+  )))), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-label" }, "\u4E0A\u9650"), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-capability-values" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-num",
@@ -1006,7 +1342,7 @@ function ModelCapability({ model, disabled, onChange }) {
         patch({ contextWindow: digits === "" ? void 0 : Number(digits) });
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-num",
@@ -1023,9 +1359,9 @@ function ModelCapability({ model, disabled, onChange }) {
   ))));
 }
 function ModelCatalog({ models, disabled, onChange }) {
-  const [dragging, setDragging] = (0, import_react.useState)();
-  const [over, setOver] = (0, import_react.useState)();
-  const [capability, setCapability] = (0, import_react.useState)();
+  const [dragging, setDragging] = (0, import_react2.useState)();
+  const [over, setOver] = (0, import_react2.useState)();
+  const [capability, setCapability] = (0, import_react2.useState)();
   const edit = (index, patch) => {
     onChange(models.map((model, current) => current === index ? { ...model, ...patch } : model));
   };
@@ -1043,7 +1379,7 @@ function ModelCatalog({ models, disabled, onChange }) {
     setDragging(void 0);
     setOver(void 0);
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-catalog" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-catalog-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-catalog-title" }, "\u6A21\u578B\u76EE\u5F55"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, models.length, " \u4E2A\u6A21\u578B")), /* @__PURE__ */ (0, import_react.createElement)("ul", { className: "vxa-model-list" }, models.map((model, index) => /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-catalog" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-catalog-head" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-catalog-title" }, "\u6A21\u578B\u76EE\u5F55"), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, models.length, " \u4E2A\u6A21\u578B")), /* @__PURE__ */ (0, import_react2.createElement)("ul", { className: "vxa-model-list" }, models.map((model, index) => /* @__PURE__ */ (0, import_react2.createElement)(
     "li",
     {
       key: index,
@@ -1061,7 +1397,7 @@ function ModelCatalog({ models, disabled, onChange }) {
         drop(event, index);
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-model-row" }, /* @__PURE__ */ (0, import_react.createElement)(
+    /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-model-row" }, /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1078,8 +1414,8 @@ function ModelCatalog({ models, disabled, onChange }) {
           setOver(void 0);
         }
       },
-      /* @__PURE__ */ (0, import_react.createElement)(GripIcon, null)
-    ), /* @__PURE__ */ (0, import_react.createElement)(
+      /* @__PURE__ */ (0, import_react2.createElement)(GripIcon, null)
+    ), /* @__PURE__ */ (0, import_react2.createElement)(
       "input",
       {
         className: "vxa-input vxa-input-mono",
@@ -1091,7 +1427,7 @@ function ModelCatalog({ models, disabled, onChange }) {
           edit(index, { id: event.target.value });
         }
       }
-    ), /* @__PURE__ */ (0, import_react.createElement)(
+    ), /* @__PURE__ */ (0, import_react2.createElement)(
       "input",
       {
         className: "vxa-input",
@@ -1108,7 +1444,7 @@ function ModelCatalog({ models, disabled, onChange }) {
           }));
         }
       }
-    ), /* @__PURE__ */ (0, import_react.createElement)(
+    ), /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1119,9 +1455,9 @@ function ModelCatalog({ models, disabled, onChange }) {
           onChange(models.filter((_, current) => current !== index));
         }
       },
-      /* @__PURE__ */ (0, import_react.createElement)(TrashIcon, null)
+      /* @__PURE__ */ (0, import_react2.createElement)(TrashIcon, null)
     )),
-    /* @__PURE__ */ (0, import_react.createElement)(
+    /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1134,7 +1470,7 @@ function ModelCatalog({ models, disabled, onChange }) {
       },
       capability === index ? "\u6536\u8D77\u80FD\u529B" : "\u80FD\u529B"
     ),
-    capability === index && /* @__PURE__ */ (0, import_react.createElement)(
+    capability === index && /* @__PURE__ */ (0, import_react2.createElement)(
       ModelCapability,
       {
         model,
@@ -1144,7 +1480,7 @@ function ModelCatalog({ models, disabled, onChange }) {
         }
       }
     )
-  ))), /* @__PURE__ */ (0, import_react.createElement)(
+  ))), /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1154,20 +1490,20 @@ function ModelCatalog({ models, disabled, onChange }) {
         onChange([...models, { id: "" }]);
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)(PlusIcon, null),
+    /* @__PURE__ */ (0, import_react2.createElement)(PlusIcon, null),
     "\u6DFB\u52A0\u6A21\u578B"
   ));
 }
 function ProviderEditor({ provider, busy, onCancel, onSave }) {
-  const [draft, setDraft] = (0, import_react.useState)(() => ({
+  const [draft, setDraft] = (0, import_react2.useState)(() => ({
     name: provider.name,
     base: provider.base,
     key: "",
     retry: provider.retry,
     models: provider.models.map((model) => ({ ...model }))
   }));
-  const [reveal, setReveal] = (0, import_react.useState)(false);
-  const [failure, setFailure] = (0, import_react.useState)("");
+  const [reveal, setReveal] = (0, import_react2.useState)(false);
+  const [failure, setFailure] = (0, import_react2.useState)("");
   const set = (key, value) => {
     setDraft((current) => ({ ...current, [key]: value }));
   };
@@ -1188,7 +1524,7 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
     setFailure("");
     onSave({ ...draft, models });
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-editor-title" }, provider.name), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-editor-route" }, provider.id.startsWith("custom-") ? "\u81EA\u5B9A\u4E49 \xB7 OpenAI \u517C\u5BB9" : provider.id)), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5", /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-editor" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-editor-head" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-editor-title" }, provider.name), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-editor-route" }, provider.id.startsWith("custom-") ? "\u81EA\u5B9A\u4E49 \xB7 OpenAI \u517C\u5BB9" : provider.id)), /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5", /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1197,7 +1533,7 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
       title: `\u5BC6\u94A5\u4FDD\u5B58\u5728\u672C\u673A\u51ED\u636E\u5E93\uFF08${credentialName(provider.id)}\uFF09\uFF0C\u6A21\u578B\u8BF7\u6C42\u65F6\u7531 dsh \u89E3\u6790\uFF0C\u4E0D\u5199\u8FDB\u8BBE\u7F6E\u6587\u4EF6\u3002`
     },
     "?"
-  )), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-key" }, /* @__PURE__ */ (0, import_react.createElement)(
+  )), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-key" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-mono",
@@ -1212,7 +1548,7 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         set("key", event.target.value);
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1222,8 +1558,8 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         setReveal((current) => !current);
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)(EyeIcon, { open: reveal })
-  )), /* @__PURE__ */ (0, import_react.createElement)("span", { className: provider.key_configured ? "vxa-hint vxa-hint-ok" : "vxa-hint" }, provider.key_configured ? "\u5DF2\u4FDD\u5B58\u5BC6\u94A5\uFF1B\u7559\u7A7A\u4FDD\u5B58\u5373\u6CBF\u7528\u3002" : "\u5C1A\u672A\u4FDD\u5B58\u5BC6\u94A5\uFF0C\u5FC5\u987B\u586B\u5199\u540E\u624D\u80FD\u8C03\u7528\u6A21\u578B\u3002")), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u663E\u793A\u540D\u79F0"), /* @__PURE__ */ (0, import_react.createElement)(
+    /* @__PURE__ */ (0, import_react2.createElement)(EyeIcon, { open: reveal })
+  )), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: provider.key_configured ? "vxa-hint vxa-hint-ok" : "vxa-hint" }, provider.key_configured ? "\u5DF2\u4FDD\u5B58\u5BC6\u94A5\uFF1B\u7559\u7A7A\u4FDD\u5B58\u5373\u6CBF\u7528\u3002" : "\u5C1A\u672A\u4FDD\u5B58\u5BC6\u94A5\uFF0C\u5FC5\u987B\u586B\u5199\u540E\u624D\u80FD\u8C03\u7528\u6A21\u578B\u3002")), /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "\u663E\u793A\u540D\u79F0"), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input",
@@ -1235,7 +1571,7 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         set("name", event.target.value);
       }
     }
-  )), /* @__PURE__ */ (0, import_react.createElement)("details", { className: "vxa-fold", open: true }, /* @__PURE__ */ (0, import_react.createElement)("summary", { className: "vxa-fold-summary" }, "\u81EA\u5B9A\u4E49\u8BBE\u7F6E"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-fold-body" }, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5730\u5740"), /* @__PURE__ */ (0, import_react.createElement)(
+  )), /* @__PURE__ */ (0, import_react2.createElement)("details", { className: "vxa-fold", open: true }, /* @__PURE__ */ (0, import_react2.createElement)("summary", { className: "vxa-fold-summary" }, "\u81EA\u5B9A\u4E49\u8BBE\u7F6E"), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-fold-body" }, /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "API \u5730\u5740"), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-mono",
@@ -1247,7 +1583,7 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         set("base", event.target.value);
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u517C\u5BB9 OpenAI chat/completions \u7684\u6839\u5730\u5740\uFF1B\u6539\u52A8\u540E\u4F1A\u5411\u4E0A\u6E38\u91CD\u65B0\u9A8C\u8BC1\u4E00\u6B21\u3002")), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u91CD\u8BD5\u7B56\u7565"), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, "\u517C\u5BB9 OpenAI chat/completions \u7684\u6839\u5730\u5740\uFF1B\u6539\u52A8\u540E\u4F1A\u5411\u4E0A\u6E38\u91CD\u65B0\u9A8C\u8BC1\u4E00\u6B21\u3002")), /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "\u91CD\u8BD5\u7B56\u7565"), /* @__PURE__ */ (0, import_react2.createElement)(
     "select",
     {
       className: "vxa-input vxa-select",
@@ -1258,9 +1594,9 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         set("retry", event.target.value === "always" ? "always" : "normal");
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)("option", { value: "normal" }, "\u9ED8\u8BA4\uFF08\u4EC5\u4E34\u65F6\u9519\u8BEF\uFF09"),
-    /* @__PURE__ */ (0, import_react.createElement)("option", { value: "always" }, "\u6240\u6709\u9519\u8BEF")
-  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, draft.retry === "always" ? "\u5931\u8D25\u7684\u8BF7\u6C42\u4F1A\u6301\u7EED\u91CD\u8BD5\uFF0C\u76F4\u5230\u6210\u529F\u6216\u672C\u8F6E\u88AB\u505C\u6B62\u3002" : "\u53EA\u91CD\u8BD5\u9650\u6D41\u3001\u8D85\u65F6\u3001\u670D\u52A1\u7AEF\u4E0E\u7F51\u7EDC\u8FD9\u7C7B\u4E34\u65F6\u9519\u8BEF\uFF0C\u6700\u591A 5 \u6B21\u3002")))), /* @__PURE__ */ (0, import_react.createElement)(
+    /* @__PURE__ */ (0, import_react2.createElement)("option", { value: "normal" }, "\u9ED8\u8BA4\uFF08\u4EC5\u4E34\u65F6\u9519\u8BEF\uFF09"),
+    /* @__PURE__ */ (0, import_react2.createElement)("option", { value: "always" }, "\u6240\u6709\u9519\u8BEF")
+  ), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, draft.retry === "always" ? "\u5931\u8D25\u7684\u8BF7\u6C42\u4F1A\u6301\u7EED\u91CD\u8BD5\uFF0C\u76F4\u5230\u6210\u529F\u6216\u672C\u8F6E\u88AB\u505C\u6B62\u3002" : "\u53EA\u91CD\u8BD5\u9650\u6D41\u3001\u8D85\u65F6\u3001\u670D\u52A1\u7AEF\u4E0E\u7F51\u7EDC\u8FD9\u7C7B\u4E34\u65F6\u9519\u8BEF\uFF0C\u6700\u591A 5 \u6B21\u3002")))), /* @__PURE__ */ (0, import_react2.createElement)(
     ModelCatalog,
     {
       models: draft.models,
@@ -1269,15 +1605,15 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
         set("models", models);
       }
     }
-  ), failure !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, failure), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn-primary", disabled: busy, onClick: submit }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58")));
+  ), failure !== "" && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, failure), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn-primary", disabled: busy, onClick: submit }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58")));
 }
 function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
-  const [kind, setKind] = (0, import_react.useState)("deepseek");
-  const [name, setName] = (0, import_react.useState)("");
-  const [base, setBase] = (0, import_react.useState)("");
-  const [key, setKey] = (0, import_react.useState)("");
-  const [models, setModels] = (0, import_react.useState)([]);
-  const [failure, setFailure] = (0, import_react.useState)("");
+  const [kind, setKind] = (0, import_react2.useState)("deepseek");
+  const [name, setName] = (0, import_react2.useState)("");
+  const [base, setBase] = (0, import_react2.useState)("");
+  const [key, setKey] = (0, import_react2.useState)("");
+  const [models, setModels] = (0, import_react2.useState)([]);
+  const [failure, setFailure] = (0, import_react2.useState)("");
   const changeKind = (next) => {
     if (next === kind) return;
     setKind(next);
@@ -1303,7 +1639,7 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
     setFailure("");
     onSubmit({ kind, name: name.trim(), base: base.trim(), key: key.trim(), models: kind === "custom" ? models : [] });
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("form", { className: "vxa-add-card", onSubmit: submit }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-modes", role: "group", "aria-label": "\u6DFB\u52A0\u65B9\u5F0F" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("form", { className: "vxa-add-card", onSubmit: submit }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-modes", role: "group", "aria-label": "\u6DFB\u52A0\u65B9\u5F0F" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1315,7 +1651,7 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
       }
     },
     "DeepSeek \u5B98\u65B9"
-  ), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1327,7 +1663,7 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
       }
     },
     "\u81EA\u5B9A\u4E49\u6A21\u578B API"
-  )), kind === "custom" ? /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u540D\u79F0"), /* @__PURE__ */ (0, import_react.createElement)(
+  )), kind === "custom" ? /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, null, /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "\u540D\u79F0"), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input",
@@ -1339,7 +1675,7 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
         setName(event.target.value);
       }
     }
-  )), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5730\u5740"), /* @__PURE__ */ (0, import_react.createElement)(
+  )), /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "API \u5730\u5740"), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-mono",
@@ -1351,7 +1687,7 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
         setBase(event.target.value);
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u586B\u5199 OpenAI \u517C\u5BB9 API \u6839\u5730\u5740\u6216\u5B8C\u6574\u7684 chat/completions \u5730\u5740\u3002"))) : /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "DeepSeek \u5B98\u65B9\u7AEF\u70B9 https://api.deepseek.com\uFF0C\u53EA\u9700\u586B API \u5BC6\u94A5\u3002"), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5"), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, "\u586B\u5199 OpenAI \u517C\u5BB9 API \u6839\u5730\u5740\u6216\u5B8C\u6574\u7684 chat/completions \u5730\u5740\u3002"))) : /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, "DeepSeek \u5B98\u65B9\u7AEF\u70B9 https://api.deepseek.com\uFF0C\u53EA\u9700\u586B API \u5BC6\u94A5\u3002"), /* @__PURE__ */ (0, import_react2.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5"), /* @__PURE__ */ (0, import_react2.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-mono",
@@ -1366,20 +1702,20 @@ function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
         setKey(event.target.value);
       }
     }
-  )), kind === "custom" && /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u7559\u7A7A\u4F1A\u8BFB\u53D6\u4E0A\u6E38\u6A21\u578B\u5217\u8868\u3002\u4E5F\u53EF\u624B\u52A8\u586B\u5199\u6A21\u578B ID\uFF0C\u4FDD\u5B58\u524D\u4F1A\u5411\u7B2C\u4E00\u4E2A\u6A21\u578B\u53D1\u9001\u4E00\u6761\u6D4B\u8BD5\u8BF7\u6C42\u3002"), /* @__PURE__ */ (0, import_react.createElement)(ModelCatalog, { models, disabled: busy, onChange: setModels })), (failure || error) !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, failure || error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "submit", className: "vxa-btn-primary", disabled: busy }, busy ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u6DFB\u52A0")));
+  )), kind === "custom" && /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, null, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-hint" }, "\u7559\u7A7A\u4F1A\u8BFB\u53D6\u4E0A\u6E38\u6A21\u578B\u5217\u8868\u3002\u4E5F\u53EF\u624B\u52A8\u586B\u5199\u6A21\u578B ID\uFF0C\u4FDD\u5B58\u524D\u4F1A\u5411\u7B2C\u4E00\u4E2A\u6A21\u578B\u53D1\u9001\u4E00\u6761\u6D4B\u8BD5\u8BF7\u6C42\u3002"), /* @__PURE__ */ (0, import_react2.createElement)(ModelCatalog, { models, disabled: busy, onChange: setModels })), (failure || error) !== "" && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, failure || error), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "submit", className: "vxa-btn-primary", disabled: busy }, busy ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u6DFB\u52A0")));
 }
 function ModelsSection() {
   const { account, error, onError, update } = useAccount();
-  const [editing, setEditing] = (0, import_react.useState)();
-  const [adding, setAdding] = (0, import_react.useState)(false);
-  const [confirming, setConfirming] = (0, import_react.useState)();
-  const [catalogOpen, setCatalogOpen] = (0, import_react.useState)(false);
-  const [busy, setBusy] = (0, import_react.useState)(false);
+  const [editing, setEditing] = (0, import_react2.useState)();
+  const [adding, setAdding] = (0, import_react2.useState)(false);
+  const [confirming, setConfirming] = (0, import_react2.useState)();
+  const [catalogOpen, setCatalogOpen] = (0, import_react2.useState)(false);
+  const [busy, setBusy] = (0, import_react2.useState)(false);
   if (account === void 0) {
-    return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-section", role: "status" }, error || "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u63D0\u4F9B\u65B9\u2026");
+    return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-section", role: "status" }, error || "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u63D0\u4F9B\u65B9\u2026");
   }
   if (!account.signed_in) {
-    return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-section" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-title" }, "\u6A21\u578B"), /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-intro" }, "\u8BF7\u5148\u767B\u5F55 VEXNAR\uFF0C\u518D\u7BA1\u7406\u6A21\u578B\u63D0\u4F9B\u65B9\u3002"), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+    return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-section" }, /* @__PURE__ */ (0, import_react2.createElement)("h2", { className: "vxa-title" }, "\u6A21\u578B"), /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-intro" }, "\u8BF7\u5148\u767B\u5F55 VEXNAR\uFF0C\u518D\u7BA1\u7406\u6A21\u578B\u63D0\u4F9B\u65B9\u3002"), error !== "" && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, error));
   }
   const platformRoute = account.providers.find((provider) => provider.id === platformProviderID);
   const editable = account.providers.filter((provider) => provider.id !== platformProviderID);
@@ -1396,7 +1732,7 @@ function ModelsSection() {
       setBusy(false);
     }
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-section" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-title" }, "\u6A21\u578B"), /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-intro" }, "\u586B\u5165\u5404\u63D0\u4F9B\u5546\u7684 API \u5BC6\u94A5\u5373\u53EF\u4F7F\u7528\u5176\u6A21\u578B\u3002"), /* @__PURE__ */ (0, import_react.createElement)("ul", { className: "vxa-rows" }, /* @__PURE__ */ (0, import_react.createElement)("li", { className: "vxa-row" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-row-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-identity" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-name" }, "\u5E0C\u7075AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-account-status" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-dot", "aria-hidden": "true" }), "\u5DF2\u767B\u5F55")), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-actions" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-section" }, /* @__PURE__ */ (0, import_react2.createElement)("h2", { className: "vxa-title" }, "\u6A21\u578B"), /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-intro" }, "\u586B\u5165\u5404\u63D0\u4F9B\u5546\u7684 API \u5BC6\u94A5\u5373\u53EF\u4F7F\u7528\u5176\u6A21\u578B\u3002"), /* @__PURE__ */ (0, import_react2.createElement)("ul", { className: "vxa-rows" }, /* @__PURE__ */ (0, import_react2.createElement)("li", { className: "vxa-row" }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-row-head" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-identity" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-name" }, "\u5E0C\u7075AI Platform"), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-account-status" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-dot", "aria-hidden": "true" }), "\u5DF2\u767B\u5F55")), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-actions" }, /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1407,9 +1743,9 @@ function ModelsSection() {
       }
     },
     platformRoute === void 0 ? "\u5E73\u53F0\u672A\u7B7E\u53D1\u6A21\u578B" : `${platformRoute.models.length} \u4E2A\u6A21\u578B`
-  ))), catalogOpen && platformRoute !== void 0 && /* @__PURE__ */ (0, import_react.createElement)("ul", { className: "vxa-catalog-plain" }, platformRoute.models.map((model) => /* @__PURE__ */ (0, import_react.createElement)("li", { key: model.id, title: model.id }, model.name || model.id)))), editable.map((provider) => {
+  ))), catalogOpen && platformRoute !== void 0 && /* @__PURE__ */ (0, import_react2.createElement)("ul", { className: "vxa-catalog-plain" }, platformRoute.models.map((model) => /* @__PURE__ */ (0, import_react2.createElement)("li", { key: model.id, title: model.id }, model.name || model.id)))), editable.map((provider) => {
     const open = editing === provider.id;
-    return /* @__PURE__ */ (0, import_react.createElement)("li", { className: "vxa-row", key: provider.id }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-row-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-identity" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-name" }, provider.name), provider.id.startsWith("custom-") && /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-tag" }, "\u81EA\u5B9A\u4E49"), /* @__PURE__ */ (0, import_react.createElement)(
+    return /* @__PURE__ */ (0, import_react2.createElement)("li", { className: "vxa-row", key: provider.id }, /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-row-head" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-identity" }, /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-name" }, provider.name), provider.id.startsWith("custom-") && /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-tag" }, "\u81EA\u5B9A\u4E49"), /* @__PURE__ */ (0, import_react2.createElement)(
       "span",
       {
         className: provider.key_configured ? "vxa-dot" : "vxa-dot vxa-dot-missing",
@@ -1417,7 +1753,7 @@ function ModelsSection() {
         "aria-label": provider.key_configured ? "API \u5BC6\u94A5\u5DF2\u914D\u7F6E" : "API \u5BC6\u94A5\u7F3A\u5931",
         title: provider.key_configured ? "API \u5BC6\u94A5\u5DF2\u914D\u7F6E" : "API \u5BC6\u94A5\u7F3A\u5931"
       }
-    )), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-row-actions" }, confirming === provider.id ? /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)(
+    )), /* @__PURE__ */ (0, import_react2.createElement)("span", { className: "vxa-row-actions" }, confirming === provider.id ? /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, null, /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1430,9 +1766,9 @@ function ModelsSection() {
         }
       },
       "\u786E\u8BA4\u5220\u9664"
-    ), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn-sm", disabled: busy, onClick: () => {
+    ), /* @__PURE__ */ (0, import_react2.createElement)("button", { type: "button", className: "vxa-btn-sm", disabled: busy, onClick: () => {
       setConfirming(void 0);
-    } }, "\u53D6\u6D88")) : /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)(
+    } }, "\u53D6\u6D88")) : /* @__PURE__ */ (0, import_react2.createElement)(import_react2.Fragment, null, /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1446,7 +1782,7 @@ function ModelsSection() {
         }
       },
       "\u7F16\u8F91"
-    ), /* @__PURE__ */ (0, import_react.createElement)(
+    ), /* @__PURE__ */ (0, import_react2.createElement)(
       "button",
       {
         type: "button",
@@ -1459,7 +1795,7 @@ function ModelsSection() {
         }
       },
       "\u5220\u9664"
-    )))), open && /* @__PURE__ */ (0, import_react.createElement)(
+    )))), open && /* @__PURE__ */ (0, import_react2.createElement)(
       ProviderEditor,
       {
         provider,
@@ -1481,7 +1817,7 @@ function ModelsSection() {
         }
       }
     ));
-  })), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-add-block" }, adding ? /* @__PURE__ */ (0, import_react.createElement)(
+  })), /* @__PURE__ */ (0, import_react2.createElement)("div", { className: "vxa-add-block" }, adding ? /* @__PURE__ */ (0, import_react2.createElement)(
     AddProviderCard,
     {
       busy,
@@ -1505,7 +1841,7 @@ function ModelsSection() {
         });
       }
     }
-  ) : /* @__PURE__ */ (0, import_react.createElement)(
+  ) : /* @__PURE__ */ (0, import_react2.createElement)(
     "button",
     {
       type: "button",
@@ -1518,9 +1854,9 @@ function ModelsSection() {
         setAdding(true);
       }
     },
-    /* @__PURE__ */ (0, import_react.createElement)(PlusIcon, { size: 14 }),
+    /* @__PURE__ */ (0, import_react2.createElement)(PlusIcon, { size: 14 }),
     "\u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546"
-  )), !adding && error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+  )), !adding && error !== "" && /* @__PURE__ */ (0, import_react2.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
 function apply(ctx) {
   installAccountStyles();

@@ -39,6 +39,7 @@
   "include": ["src"],
   // 宿主插件（node 侧）由 tsconfig.node.json 负责；这里只剩浏览器代码。
   "exclude": [
+    "src/billing.ts",
     "src/index.ts",
     "src/platform.ts",
     "src/platform-account.ts",
