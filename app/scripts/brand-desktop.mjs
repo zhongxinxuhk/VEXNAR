@@ -62,6 +62,8 @@ const ICONS = [
 /** 纯文本规则：`from` 不存在时必须已经有 `to`，否则上游真改行了，应当立刻失败。 */
 const TEXT_RULES = [
   { file: 'apps/desktop/scripts/electron-builder-config.mjs', ...ARTIFACT_PREFIX },
+  // macOS 的 --unsigned 走内置本地默认（不读打包配置），bundle id 在这里改。
+  { file: 'apps/desktop/scripts/desktop-package-environment.mjs', from: "DSH_DESKTOP_APP_ID: 'com.deepseek.harness'", to: "DSH_DESKTOP_APP_ID: 'com.vexnar.harness'" },
   { file: 'packages/util/home-paths/src/index.ts', from: "DSH_HOME_DIR_NAME = '.dsh'", to: "DSH_HOME_DIR_NAME = '.vexnar'" },
   { file: 'packages/experimental/liveshare/src/host/share-host.ts', from: "join(homedir(), '.dsh')", to: "join(homedir(), '.vexnar')" }
 ]
