@@ -12,8 +12,10 @@ export interface BillingMethod {
 
 export interface BillingOptions {
   amounts: number[]
+  discounts: Record<number, number>
   methods: BillingMethod[]
-  plans: { id: number; title: string; price: number; currency: string }[]
+  plans: { id: number; title: string; price: number; currency: 'CNY'; quota: number | null }[]
+  quotaScale: number | null
 }
 
 export type BillingSelection =
@@ -26,7 +28,7 @@ export interface BillingQuote {
 }
 
 export interface BillingOrder {
-  checkout: { url: string; fields?: Record<string, string> }
+  checkout: { url: string; fields?: Record<string, string>; scanURL?: string }
   canCheckStatus: boolean
 }
 

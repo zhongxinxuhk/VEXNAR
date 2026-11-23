@@ -106,6 +106,7 @@ for (const root of [...packageRoots].sort()) {
 await writeFile(join(lib, 'yak-history.NOTICES.txt'), notices.join('\n\n') + '\n')
 
 const cjs = join(lib, 'client.cjs')
+const qrLicense = (await readFile(join(here, 'qrcode-generator.LICENSE'), 'utf8')).trim()
 await build({
   entryPoints: [join(here, 'src/client.tsx')],
   outfile: cjs,
@@ -117,6 +118,7 @@ await build({
   jsxFactory: 'h',
   jsxFragment: 'Fragment',
   external: externals,
+  banner: { js: `/*\n${qrLicense}\n*/` },
   legalComments: 'none',
   logLevel: 'warning'
 })

@@ -709,6 +709,9 @@ body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-pa
   color: inherit; background: transparent; font: inherit; cursor: pointer;
 }
 .vxa-pay-option:disabled { opacity: .45; cursor: default; }
+.vxa-payment-plans { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
+.vxa-payment-benefit { color: #097348; font-size: 12px; font-weight: 650; }
+[data-ds-dark-theme] .vxa-payment-benefit { color: #69dbac; }
 .vxa-payment-dialog button[aria-pressed='true'] { border-color: #25867e; background: #25867e16; }
 .vxa-payment-total { flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid #8884; }
 .vxa-payment-loading { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
@@ -718,6 +721,11 @@ body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-pa
 }
 @keyframes vxa-payment-spin { to { transform: rotate(1turn); } }
 .vxa-payment-frame { width: 100%; height: min(480px, 55vh); border: 1px solid #8884; border-radius: 8px; background: white; }
+.vxa-payment-qr { display: grid; justify-items: center; gap: 12px; margin: 0 0 16px; text-align: center; }
+.vxa-payment-qr img {
+  display: block; width: min(300px, 100%); height: auto;
+  border: 1px solid #8884; border-radius: 8px; background: white; image-rendering: pixelated;
+}
 .vxa-payment-note, .vxa-payment-success { line-height: 1.55; margin: 0 0 10px; }
 .vxa-payment-success { color: var(--dsw-alias-label-primary, #106f51); }
 
