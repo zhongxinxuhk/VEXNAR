@@ -441,6 +441,10 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   route('/account', {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
     GET: () => ready ? account.status() : refresh(),
+    PATCH: async (req) => {
+      const input = await readJson(req)
+      return account.renewWithToken(bodyText(input, 'access_token'))
+    },
     DELETE: async () => {
       await account.logout()
       return syncCatalog(await account.read())

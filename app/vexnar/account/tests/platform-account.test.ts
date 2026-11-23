@@ -107,6 +107,9 @@ before(async () => {
       }, { 'Set-Cookie': 'session=cookie-value; Path=/; HttpOnly' })
     }
     if (url.pathname === '/api/user/self') {
+      if (req.headers.authorization === 'Bearer nap_fixture-other-user') {
+        return json(res, 200, { success: true, data: { id: 8, username: 'bob' } })
+      }
       if (!req.headers.cookie && !['Bearer platform-access', 'Bearer nap_fixture-access-1234567890'].includes(req.headers.authorization ?? '')) {
         return json(res, 401, { success: false })
       }
@@ -237,6 +240,13 @@ test('访问令牌登录校验身份、复用 VERNAX API 密钥并读取账单',
   assert.deepEqual(result.platform.plans, [{ id: 5, title: '测试套餐', price: 10, currency: 'CNY', duration: '1 个月' }])
   assert.deepEqual(result.platform.subscriptions, [{ id: 5, remaining: 800, ends: 2000000000 }])
   assert.equal(result.deepseek.status, 'unconfigured')
+
+  const withDeepSeek = await account.addProvider({ kind: 'deepseek', api_key: 'sk-good' })
+  await assert.rejects(() => account.renewWithToken('nap_fixture-other-user'), { status: 409 })
+  assert.deepEqual(await account.status(), withDeepSeek)
+  const renewed = await account.renewWithToken(token)
+  assert.deepEqual(renewed.providers, withDeepSeek.providers)
+  assert.equal(createdModelKeys, 1)
   await account.logout()
   await assert.rejects(() => account.wallet(), { status: 401 })
 })

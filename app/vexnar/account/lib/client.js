@@ -872,8 +872,26 @@ function AccountLauncher({ wide, openSettings }) {
   } }, "\u8D26\u6237\u8BE6\u60C5"))));
 }
 function AccountSection() {
-  const { account, error, onError } = useAccount();
+  const { account, error, onError, update } = useAccount();
   const [busy, setBusy] = (0, import_react.useState)(false);
+  const [renewal, setRenewal] = (0, import_react.useState)("");
+  const renew = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const accessToken = new FormData(form).get("access_token");
+    form.reset();
+    setBusy(true);
+    setRenewal("");
+    onError("");
+    try {
+      update(await request("/account", "PATCH", { access_token: accessToken }));
+      setRenewal("\u8BBF\u95EE\u4EE4\u724C\u5DF2\u66F4\u65B0");
+    } catch (reason) {
+      onError(reason);
+    } finally {
+      setBusy(false);
+    }
+  };
   const logout = async () => {
     setBusy(true);
     try {
@@ -896,7 +914,20 @@ function AccountSection() {
     { name: "\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C", value: account.access_token_ready ? "\u5DF2\u914D\u7F6E" : "\u672A\u914D\u7F6E" },
     { name: "\u5E73\u53F0\u7D2F\u8BA1\u8BF7\u6C42", value: statValue(account.request_count) }
   ];
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)(Wallet, null), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)(Wallet, null), /* @__PURE__ */ (0, import_react.createElement)("details", { className: "vxa-fold" }, /* @__PURE__ */ (0, import_react.createElement)("summary", { className: "vxa-fold-summary" }, "\u66F4\u65B0\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C"), /* @__PURE__ */ (0, import_react.createElement)("form", { className: "vxa-fold-body", onSubmit: (event) => {
+    void renew(event);
+  } }, /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "\u5F53\u524D\u8D26\u6237\u7684\u8BBF\u95EE\u4EE4\u724C"), /* @__PURE__ */ (0, import_react.createElement)(
+    "input",
+    {
+      className: "vxa-input",
+      name: "access_token",
+      type: "password",
+      autoComplete: "off",
+      spellCheck: false,
+      required: true,
+      disabled: busy
+    }
+  )), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "submit", className: "vxa-btn", disabled: busy }, "\u9A8C\u8BC1\u5E76\u66F4\u65B0"), renewal && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", role: "status" }, renewal))), error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")));
 }
 var REASONING_LEVELS = [
   { level: "minimal", label: "\u6781\u4F4E" },

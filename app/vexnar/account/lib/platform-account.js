@@ -267,6 +267,30 @@ function proofHeaders(proof) {
   if (proof.user_id > 0) headers["New-Api-User"] = String(proof.user_id);
   return headers;
 }
+function inputToken(raw) {
+  const token = text(raw).replace(/^Bearer\s+/i, "");
+  if (!/^[\x21-\x7e]{16,2048}$/.test(token) || token.startsWith("sk-")) {
+    throw fail(400, "\u8BF7\u8F93\u5165\u5E0C\u7075 AI \u4E2A\u4EBA\u8D44\u6599\u4E2D\u7684\u8BBF\u95EE\u4EE4\u724C");
+  }
+  return token;
+}
+async function verifiedIdentity(proof) {
+  const self = await exchange("GET", `${platformOrigin()}/api/user/self`, { headers: proofHeaders(proof) });
+  const identity = envelopeRecord(self.data);
+  const id = safeInteger(identity.id);
+  if (!self.ok || !envelopeOK(self.data) || !id || id <= 0 || proof.user_id > 0 && id !== proof.user_id || !text(identity.username)) {
+    throw fail(401, "\u5E0C\u7075 AI \u767B\u5F55\u5C1A\u672A\u5B8C\u6210\u6216\u5DF2\u5931\u6548");
+  }
+  return { id, identity };
+}
+function applyIdentity(account, id, identity) {
+  account.user_id = id;
+  account.username = text(identity.username);
+  account.display_name = text(identity.display_name);
+  account.avatar_url = avatarURL(identity.avatar_url ?? identity.avatar);
+  account.request_count = safeInteger(identity.request_count) ?? null;
+  account.expires_at = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1e3;
+}
 function proofOf(data, cookie) {
   const proof = { user_id: 0, authorization: "", cookie };
   const payload = envelopeRecord(data);
@@ -448,20 +472,10 @@ function createPlatformAccount(options = {}) {
     const previous = await read();
     if (gateOpen(previous)) throw fail(409, "\u8BF7\u5148\u9000\u51FA\u5F53\u524D VEXNAR \u8D26\u53F7");
     const origin = platformOrigin();
-    const self = await exchange("GET", `${origin}/api/user/self`, { headers: proofHeaders(proof) });
-    const identity = envelopeRecord(self.data);
-    const id = safeInteger(identity.id);
-    if (!self.ok || !envelopeOK(self.data) || !id || id <= 0 || proof.user_id > 0 && id !== proof.user_id || !text(identity.username)) {
-      throw fail(401, "HXSEC AI Platform \u767B\u5F55\u5C1A\u672A\u5B8C\u6210\u6216\u5DF2\u5931\u6548");
-    }
+    const { id, identity } = await verifiedIdentity(proof);
     proof = { ...proof, user_id: id };
     const account = emptyAccount();
-    account.user_id = id;
-    account.username = text(identity.username);
-    account.display_name = text(identity.display_name);
-    account.avatar_url = avatarURL(identity.avatar_url ?? identity.avatar);
-    account.request_count = safeInteger(identity.request_count) ?? null;
-    account.expires_at = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1e3;
+    applyIdentity(account, id, identity);
     account.access_token = suppliedToken || text(identity.access_token);
     if (account.access_token === "" && previous.user_id === account.user_id) {
       account.access_token = previous.access_token;
@@ -484,11 +498,20 @@ function createPlatformAccount(options = {}) {
     return publicView(account);
   }
   async function loginWithToken(raw) {
-    const token = text(raw).replace(/^Bearer\s+/i, "");
-    if (!/^[\x21-\x7e]{16,2048}$/.test(token) || token.startsWith("sk-")) {
-      throw fail(400, "\u8BF7\u8F93\u5165\u5E0C\u7075 AI \u4E2A\u4EBA\u8D44\u6599\u4E2D\u7684\u8BBF\u95EE\u4EE4\u724C");
-    }
+    const token = inputToken(raw);
     return complete({ user_id: 0, cookie: "", authorization: `Bearer ${token}` }, token);
+  }
+  async function renewWithToken(raw) {
+    const token = inputToken(raw);
+    const account = await read();
+    if (!gateOpen(account)) throw fail(401, "\u8BF7\u5148\u767B\u5F55\u5E0C\u7075 AI");
+    const proof = { user_id: 0, cookie: "", authorization: `Bearer ${token}` };
+    const { id, identity } = await verifiedIdentity(proof);
+    if (id !== account.user_id) throw fail(409, "\u8BF7\u4F7F\u7528\u5F53\u524D\u5E0C\u7075 AI \u8D26\u6237\u7684\u8BBF\u95EE\u4EE4\u724C");
+    applyIdentity(account, id, identity);
+    account.access_token = token;
+    await save(account);
+    return publicView(account);
   }
   async function wallet() {
     const account = await read();
@@ -729,6 +752,7 @@ function createPlatformAccount(options = {}) {
     methods: () => serial(methods),
     login: (proof) => serial(() => complete(proof)),
     loginWithToken: (token) => serial(() => loginWithToken(token)),
+    renewWithToken: (token) => serial(() => renewWithToken(token)),
     wallet,
     password: (username, secret) => serial(() => password(username, secret)),
     verify: (challenge, code) => serial(() => verify(challenge, code)),

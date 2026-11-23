@@ -183,6 +183,7 @@ export interface PlatformAccount {
   methods: () => Promise<LoginMethods>
   login: (proof: PlatformProof) => Promise<AccountView>
   loginWithToken: (token: string) => Promise<AccountView>
+  renewWithToken: (token: string) => Promise<AccountView>
   wallet: () => Promise<AccountWallet>
   password: (username: string, secret: string) => Promise<PasswordResult>
   verify: (challenge: string, code: string) => Promise<AccountView>
@@ -519,6 +520,34 @@ function proofHeaders(proof: PlatformProof): Record<string, string> {
   return headers
 }
 
+function inputToken(raw: string): string {
+  const token = text(raw).replace(/^Bearer\s+/i, '')
+  if (!/^[\x21-\x7e]{16,2048}$/.test(token) || token.startsWith('sk-')) {
+    throw fail(400, '请输入希灵 AI 个人资料中的访问令牌')
+  }
+  return token
+}
+
+async function verifiedIdentity(proof: PlatformProof) {
+  const self = await exchange('GET', `${platformOrigin()}/api/user/self`, { headers: proofHeaders(proof) })
+  const identity = envelopeRecord(self.data)
+  const id = safeInteger(identity.id)
+  if (!self.ok || !envelopeOK(self.data) || !id || id <= 0 ||
+    (proof.user_id > 0 && id !== proof.user_id) || !text(identity.username)) {
+    throw fail(401, '希灵 AI 登录尚未完成或已失效')
+  }
+  return { id, identity }
+}
+
+function applyIdentity(account: Account, id: number, identity: Record<string, unknown>): void {
+  account.user_id = id
+  account.username = text(identity.username)
+  account.display_name = text(identity.display_name)
+  account.avatar_url = avatarURL(identity.avatar_url ?? identity.avatar)
+  account.request_count = safeInteger(identity.request_count) ?? null
+  account.expires_at = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000
+}
+
 function proofOf(data: unknown, cookie: string): PlatformProof {
   const proof: PlatformProof = { user_id: 0, authorization: '', cookie }
   const payload = envelopeRecord(data)
@@ -730,22 +759,11 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
     if (gateOpen(previous)) throw fail(409, '请先退出当前 VEXNAR 账号')
 
     const origin = platformOrigin()
-    const self = await exchange('GET', `${origin}/api/user/self`, { headers: proofHeaders(proof) })
-    const identity = envelopeRecord(self.data)
-    const id = safeInteger(identity.id)
-    if (!self.ok || !envelopeOK(self.data) || !id || id <= 0 ||
-      (proof.user_id > 0 && id !== proof.user_id) || !text(identity.username)) {
-      throw fail(401, 'HXSEC AI Platform 登录尚未完成或已失效')
-    }
+    const { id, identity } = await verifiedIdentity(proof)
     proof = { ...proof, user_id: id }
 
     const account = emptyAccount()
-    account.user_id = id
-    account.username = text(identity.username)
-    account.display_name = text(identity.display_name)
-    account.avatar_url = avatarURL(identity.avatar_url ?? identity.avatar)
-    account.request_count = safeInteger(identity.request_count) ?? null
-    account.expires_at = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000
+    applyIdentity(account, id, identity)
     account.access_token = suppliedToken || text(identity.access_token)
     if (account.access_token === '' && previous.user_id === account.user_id) {
       account.access_token = previous.access_token
@@ -775,11 +793,21 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
   }
 
   async function loginWithToken(raw: string): Promise<AccountView> {
-    const token = text(raw).replace(/^Bearer\s+/i, '')
-    if (!/^[\x21-\x7e]{16,2048}$/.test(token) || token.startsWith('sk-')) {
-      throw fail(400, '请输入希灵 AI 个人资料中的访问令牌')
-    }
+    const token = inputToken(raw)
     return complete({ user_id: 0, cookie: '', authorization: `Bearer ${token}` }, token)
+  }
+
+  async function renewWithToken(raw: string): Promise<AccountView> {
+    const token = inputToken(raw)
+    const account = await read()
+    if (!gateOpen(account)) throw fail(401, '请先登录希灵 AI')
+    const proof = { user_id: 0, cookie: '', authorization: `Bearer ${token}` }
+    const { id, identity } = await verifiedIdentity(proof)
+    if (id !== account.user_id) throw fail(409, '请使用当前希灵 AI 账户的访问令牌')
+    applyIdentity(account, id, identity)
+    account.access_token = token
+    await save(account)
+    return publicView(account)
   }
 
   async function wallet(): Promise<AccountWallet> {
@@ -1053,6 +1081,7 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
     methods: () => serial(methods),
     login: (proof: PlatformProof) => serial(() => complete(proof)),
     loginWithToken: (token: string) => serial(() => loginWithToken(token)),
+    renewWithToken: (token: string) => serial(() => renewWithToken(token)),
     wallet,
     password: (username: string, secret: string) => serial(() => password(username, secret)),
     verify: (challenge: string, code: string) => serial(() => verify(challenge, code)),
