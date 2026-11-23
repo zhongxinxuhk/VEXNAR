@@ -11,7 +11,10 @@
  * 也会拿到别人机器上的测试数据。
  *
  * 这里只读、只检查 `git ls-files` 的结果，发现一条就打印一条并以 1 退出，
- * 让 `pnpm run check:data`（以及 CI）把「数据上传」变成一个显式的失败。
+ * 让 CI 把「数据上传」变成一个显式的失败。
+ *
+ * 用 Node 内置模块写成 .mjs 而不是 .ts，是因为 CI 的 app-bundle 任务只安装
+ * 两个插件的依赖闭包（没有 tsx），这条守卫必须在那之前就能跑。
  *
  * 预设 Agent 与拦截规则不在此列：它们是代码，不是数据。
  *   Agent 名册 → `vexnar/cordis.patch.yml` 的 preset 行 / `vexnar/extras.json`
@@ -23,7 +26,7 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** 每一条都是「本机跑出来的东西」，不是代码。 */
-const DENY: Array<{ pattern: RegExp; reason: string }> = [
+const DENY = [
   { pattern: /^\.vexnar-home\//, reason: '运行时 profile：store / 日志 / 会话 / 插件数据' },
   { pattern: /^\.dsh-home\//, reason: 'dsh 运行时数据：会话、记忆、抓包缓存' },
   // 锚在 app 根：`vexnar/ui/src/data/` 是源码目录，不是数据。
