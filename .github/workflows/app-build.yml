@@ -117,8 +117,28 @@ jobs:
       - name: Install dsh workspace dependencies
         working-directory: app/dsh
         run: pnpm install --frozen-lockfile
+      - name: Write unsigned packaging preset
+        shell: bash
+        # Windows 的 --unsigned 分支照样要读一份打包配置（macOS 的 --unsigned 用内置
+        # 本地默认，不读文件），而上游把 .env.windows 放在 git-ignored 的 vendored 树里。
+        # 用它自己的 CI 入口：DSH_PACKAGING_PRESET + DSH_PACKAGING_CONFIG_DIR，配置写在
+        # runner 临时目录，仓库和 app/dsh 都不留第二个 .env。
+        # 两个 origin 用 RFC 2606 的 .invalid：unsigned 产物不做更新/登录检查，
+        # 填一个真域名反而会让人以为它会联网。
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dsh-packaging/presets"
+          cat > "$RUNNER_TEMP/dsh-packaging/presets/test.env" <<'EOF'
+          DSH_DESKTOP_APP_ID=com.deepseek.harness
+          DSH_DESKTOP_AUTO_UPDATE_ENV=test
+          DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN=https://updates.invalid
+          DSH_DESKTOP_MANDATORY_UPDATE_CONFIG='{"allowedAuthOrigins":["https://login.invalid"]}'
+          EOF
       - name: Build unsigned desktop installer
         working-directory: app/dsh
+        env:
+          DSH_PACKAGING_PRESET: test
+          DSH_PACKAGING_CONFIG_DIR: ${{ runner.temp }}/dsh-packaging
         run: pnpm run ${{ matrix.script }}
       - uses: actions/upload-artifact@v4
         with:
