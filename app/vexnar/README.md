@@ -39,6 +39,13 @@ dsh (app)  ──OpenAI-compatible──▶  Go  /api/desktop/openai/v1   （模
 
 范围限制：设置 `VEXNAR_MCP_TASK_IDS=t1,t2` 后，带 `task_id` 的调用只允许这几个任务。
 
+## 2.5 预置插件（extras preset）
+
+`extras.json` 是安装时固化的插件清单：`setup-app-profile.ts` 会把每个 `spec`
+装进 profile，并把 `name` 写进 `dsh.profile.bundles`。文件本身不含代码，
+只描述「装哪几个 bundle、锁哪个版本」；细节见 [../README.md](../README.md)
+的「预置插件包」一节。
+
 ## 3. 下一步（按顺序）
 
 1. **起 profile**：`cd ../dsh && pnpm install && DSH_HOME=... pnpm dsh web`，在

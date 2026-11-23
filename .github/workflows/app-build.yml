@@ -60,7 +60,7 @@ jobs:
         run: |
           cp ../assets/logo.png vexnar/account/assets/logo.png
           tar -czf "$RUNNER_TEMP/vexnar-app-bundle.tar.gz" \
-            upstream.lock.json vexnar/package.json vexnar/cordis.patch.yml vexnar/src \
+            upstream.lock.json vexnar/package.json vexnar/cordis.patch.yml vexnar/extras.json vexnar/src \
             vexnar/ui/package.json vexnar/ui/lib/{index,client}.js \
             vexnar/account/package.json vexnar/account/lib/{index,client}.js \
             vexnar/account/assets/logo.png -C .. LICENSE
