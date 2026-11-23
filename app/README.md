@@ -235,6 +235,9 @@ Web 客户端默认套上 [dsh-claude-style](https://github.com/Nwflower/dsh-cla
 - 检查：`MDCG_PYTHON=/opt/homebrew/bin/python3.12 python3 -c "import md_cg"`（在插件包根目录）。
 - `[dsh-purge-community] DSH 未在已验证清单内` 是它对宿主版本的兼容性提示（写入前会备份），
   不是启动失败。
+- 默认会把灵枢 md_cg 的路径/策略/自报/代校验、craft-anything 的 `MCP child ready`、
+  purge 的版本提示这类**启动成功信息**从 stderr 过滤掉；`Traceback`、`TypeError`、
+  `失败`、`重试`、`退出` 仍然原样输出。要看到全部日志：`VEXNAR_VERBOSE=1 pnpm run web`。
 
 ## 运行与调试（WebStorm，全部用运行配置选项）
 

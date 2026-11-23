@@ -5,6 +5,7 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { pathToFileURL } from 'node:url'
+import { isStartupNoise } from './vexnar-logs.ts'
 import { ensureProfile, profileName, runtimeBin, runtimeEnv } from './vexnar-runtime.ts'
 import { startGoService, type GoService } from './vexnar-go.ts'
 
@@ -38,7 +39,14 @@ export async function startWeb(
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
   const child = spawn(process.execPath, [runtimeBin(), '--profile', profileName,
     '--host', '127.0.0.1', '--port', String(port), '--no-open'], {
-    stdio: ['ignore', 'pipe', 'inherit'], env
+    stdio: ['ignore', 'pipe', 'pipe'], env
+  })
+  // stderr 也要接管：三个插件把启动成功写进 stderr。只静音已知信息行，
+  // Traceback / TypeError / 失败 / 重试 等一律原样透传。
+  const errors = createInterface({ input: child.stderr! })
+  errors.on('line', (line: string) => {
+    if (isStartupNoise(line)) return
+    console.error(line)
   })
   const lines = createInterface({ input: child.stdout! })
   lines.on('line', (line: string) => {
