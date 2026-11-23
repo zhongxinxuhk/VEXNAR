@@ -74,14 +74,25 @@ const changed = []
 const OVERLAY = join(app, '.desktop-overlay')
 
 /**
- * 在文本里插一次，重复跑不会插第二遍。
- * 锚点找不到时直接失败：上游改过这一段就必须有人看一眼，不能静默漏掉。
+ * 按 `marker` 判断这一行是否已经写过：写过就把它换成新内容，没写过才插到锚点后面。
+ *
+ * 不能只看「文件里有没有这段文本」——覆盖层的绝对路径会随 checkout 位置变
+ * （主工作区、worktree、CI 的 runner 路径各不相同），那样每换一个工作区就多插
+ * 一条 `extraResources`，打包时会重复拷贝同一份五百兆的目录。
  */
-function insertOnce(rel, anchor, insertion) {
+function upsertLine(rel, anchor, line, marker) {
   const text = read(rel)
-  if (text.includes(insertion.trimEnd())) return
+  if (text.includes(marker)) {
+    const pattern = new RegExp(`^.*${marker.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}.*$`, 'mu')
+    const next = text.replace(pattern, line.trimEnd())
+    if (next !== text) {
+      writeFileSync(join(dsh, rel), next, 'utf8')
+      changed.push(rel)
+    }
+    return
+  }
   if (!text.includes(anchor)) throw new Error(`brand: ${rel} 里找不到锚点 ${JSON.stringify(anchor)}，上游可能改过这一段`)
-  writeFileSync(join(dsh, rel), text.replace(anchor, anchor + insertion), 'utf8')
+  writeFileSync(join(dsh, rel), text.replace(anchor, anchor + line), 'utf8')
   changed.push(rel)
 }
 
@@ -135,13 +146,15 @@ function applyOverlay() {
     changed.push(desktopManifest)
   }
 
-  insertOnce('apps/desktop/scripts/electron-builder-config.mjs',
+  upsertLine('apps/desktop/scripts/electron-builder-config.mjs',
     "    files: [\n      'lib/main.js',\n",
-    "      'vexnar-bootstrap.js',\n")
+    "      'vexnar-bootstrap.js',\n",
+    "'vexnar-bootstrap.js'")
 
-  insertOnce('apps/desktop/scripts/electron-builder-config.mjs',
+  upsertLine('apps/desktop/scripts/electron-builder-config.mjs',
     '    extraResources: [\n',
-    `      { from: ${JSON.stringify(OVERLAY)}, to: 'vexnar-overlay' },\n`)
+    `      { from: ${JSON.stringify(OVERLAY)}, to: 'vexnar-overlay' },\n`,
+    "to: 'vexnar-overlay'")
 
   if (!existsSync(OVERLAY)) {
     console.warn(`[!] 覆盖层尚未生成：${OVERLAY}`)
