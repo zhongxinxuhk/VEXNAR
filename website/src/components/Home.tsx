@@ -158,7 +158,7 @@ export default function Home() {
     <div className="v-cta">
       <div>
         <h2>从一次只读梳理开始。</h2>
-        <p>下载服务端，配置模型 profile，创建一个只读任务。所有工具调用与证据都留在本地工作区。</p>
+        <p>下载 VEXNAR Harness 客户端，配置模型 profile，创建一个只读任务。所有工具调用与证据都留在本地工作区。</p>
       </div>
       <div className="v-cta-actions">
         <a className="v-btn v-btn-primary" href="downloads.html"><Icon name="download" size={15} />获取 VEXNAR</a>

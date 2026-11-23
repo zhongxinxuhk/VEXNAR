@@ -78,7 +78,7 @@ export default function ArchitecturePage() {
           <h2>结构看完了，回到操作面。</h2>
           <p>客户端把同样的流程做成可以点击的界面：对话、工具调用、审批、探索图与系统配置，且不加载官网外壳。</p>
         </div>
-        <div className="v-cta-actions"><a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />打开客户端</a><a className="v-btn v-btn-secondary" href="downloads.html">下载服务端</a></div>
+        <div className="v-cta-actions"><a className="v-btn v-btn-primary" href="console.html"><Icon name="play" size={15} />打开客户端</a><a className="v-btn v-btn-secondary" href="downloads.html">下载客户端</a></div>
       </div>
       <p className="v-note">架构图依据公开提交 <code style={{ fontFamily: 'SFMono-Regular, Consolas, monospace' }}>{sourceRevision}</code> 的源码绘制，不读取未发布提交，也不代表已完成部署验收。</p>
     </section>
