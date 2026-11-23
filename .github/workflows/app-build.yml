@@ -54,29 +54,34 @@ jobs:
           cache-dependency-path: app/pnpm-lock.yaml
       - name: Build VEXNAR plugins
         working-directory: app
-        # app/ 只有 pnpm 一个包管理入口（app/pnpm-lock.yaml），两个插件都在同一个
-        # workspace 里；只装这两个包的闭包，避免把 electron 之类与本任务无关的重依赖拉下来。
+        # app/ 只有 pnpm 一个包管理入口（app/pnpm-lock.yaml），所有插件都在同一个
+        # workspace 里；只装这四个包的闭包，避免把 electron 之类与本任务无关的重依赖拉下来。
+        # 四个包缺一不可：core 的 build:embedded 产出落进 account/lib，egress 是常驻插件，
+        # 漏掉任何一个都会让安装包少一截功能。产物不入库，所以这里必须是全量重建。
         run: |
           pnpm install --frozen-lockfile \
             --filter @vexnar/dsh-ui... \
-            --filter @vexnar/dsh-account...
-          pnpm run ui:build
-          pnpm run account:build
-          for plugin in ui account; do
-            test -s "vexnar/$plugin/lib/client.js"
-            test -s "vexnar/$plugin/lib/index.js"
-            node --check "vexnar/$plugin/lib/client.js"
-            node --check "vexnar/$plugin/lib/index.js"
-          done
+            --filter @vexnar/dsh-account... \
+            --filter @vexnar/dsh-egress... \
+            --filter @vexnar/core...
+          pnpm run clean:outputs
+          pnpm run build
+          node scripts/check-built-artifacts.mjs
       - name: Archive plugins and profile
         working-directory: app
         run: |
           cp ../assets/logo.png vexnar/account/assets/logo.png
+          # 目录整体归档。点名文件才会漏：上一版只写了 account/lib 的 index/client 两个，
+          # 同一个目录里另外十三个宿主模块和 core-embedded 都没进包。
+          # client.cjs 是可复现的中间产物，node_modules 与运行时无关，一并排除。
           tar -czf "$RUNNER_TEMP/vexnar-app-bundle.tar.gz" \
-            upstream.lock.json vexnar/package.json vexnar/cordis.patch.yml vexnar/extras.json vexnar/src \
-            vexnar/ui/package.json vexnar/ui/lib/{index,client}.js \
-            vexnar/account/package.json vexnar/account/lib/{index,client}.js \
-            vexnar/account/assets/logo.png -C .. LICENSE
+            --exclude='node_modules' --exclude='*.cjs' \
+            upstream.lock.json \
+            vexnar/package.json vexnar/cordis.patch.yml vexnar/extras.json vexnar/src \
+            vexnar/ui/package.json vexnar/ui/lib \
+            vexnar/account/package.json vexnar/account/lib vexnar/account/assets \
+            vexnar-egress \
+            -C .. LICENSE
       - uses: actions/upload-artifact@v4
         with:
           name: vexnar-app-bundle

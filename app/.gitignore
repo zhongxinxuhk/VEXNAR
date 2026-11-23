@@ -41,12 +41,15 @@ dsh/
 # 不带斜杠：`node_modules/` 匹配不到指向别处的同名软链，那种软链会被误提交。
 node_modules
 
-# UI package build inputs/outputs that are reproducible.
-vexnar/ui/lib/client.cjs
-vexnar/account/lib/client.cjs
-
-# dsh client build intermediates
-vexnar/*/lib/client.cjs
+# ── 构建产物一律不入库 ─────────────────────────────────────────────────
+# `pnpm run build` 从 src/ 重新生成：ui 的卡片 bundle、account 的宿主半边与
+# client bundle、core 的 embedded bundle（落进 account/lib）、egress 的 index.js。
+# 这些产物曾经提交在仓库里，于是「改了源码没重建」也能提交成功，CI 又只重建
+# 其中两个包，剩下的直接吃 git 里的旧文件——安装包便静默装进了旧插件。现在
+# 只认构建结果：CI 全量重建后校验产物存在，本地缺产物会直接报错。
+vexnar/ui/lib/
+vexnar/account/lib/
+vexnar-egress/index.js
 
 # 品牌补丁记录：check-upstream 用它区分「品牌补丁」与「有人手改 vendored 代码」。
 .vexnar-brand.json
