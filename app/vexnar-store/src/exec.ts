@@ -32,7 +32,9 @@ const ALLOWED = new Set(['nmap', 'httpx', 'ffuf', 'sqlmap', 'nuclei', 'curl', 'd
 export function createRunner(options: { concurrency?: number; timeoutMs?: number; maxOutput?: number } = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1)
   const defaultTimeout = options.timeoutMs ?? 30_000
-  const defaultMaxOutput = options.maxOutput ?? 64 * 1024
+  // 真实扫描的输出会超过 64KB（subfinder 一个域名就能到几十 KB 的 JSONL）；
+  // 解析器会丢掉被截断的半行，但上限本身也要够大，别把整段结果砍掉。
+  const defaultMaxOutput = options.maxOutput ?? 1024 * 1024
   let active = 0
   const queue: Array<() => void> = []
 

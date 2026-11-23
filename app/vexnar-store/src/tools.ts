@@ -72,14 +72,16 @@ const templates: Record<ToolName, ToolSpec> = {
     },
     parse(output) {
       const results = []
-      const trimmed = output.trim()
-      if (trimmed.startsWith('{')) {
+      // `-o /dev/stdout` 时 ffuf 先把命中的路径按行写到 stdout，JSON 报告接在后面。
+      // 只认「以 { 开头」的整段输出会漏掉全部结果，所以从第一个 { 起解析报告。
+      const start = output.indexOf('{')
+      if (start >= 0) {
         try {
-          const data = JSON.parse(trimmed)
+          const data = JSON.parse(output.slice(start).trim())
           for (const row of data.results ?? []) results.push({ path: row.url ?? row.input?.FUZZ ?? '', status: Number(row.status ?? 0), size: Number(row.length ?? 0) })
-          return { results }
+          if (results.length > 0) return { results }
         } catch {
-          // fall through to text parsing
+          // 报告被截断或旧版本输出：退回文本行解析
         }
       }
       for (const line of output.split('\n')) {
@@ -169,7 +171,9 @@ const templates: Record<ToolName, ToolSpec> = {
         const text = line.trim()
         if (!text) continue
         if (text.startsWith('{')) {
-          try { const row = JSON.parse(text); if (row.host) hosts.push({ host: row.host, source: row.source ?? '' }); continue } catch { /* fall through */ }
+          // 输出超限时最后一行 JSON 会被截断；那不是主机名，不能当纯文本收下。
+          try { const row = JSON.parse(text); if (row.host) hosts.push({ host: row.host, source: row.source ?? '' }) } catch { /* truncated JSON line */ }
+          continue
         }
         hosts.push({ host: text, source: 'subfinder' })
       }
@@ -180,7 +184,9 @@ const templates: Record<ToolName, ToolSpec> = {
     name: 'nuclei',
     description: '模板化漏洞扫描',
     build(target, extra = {}) {
-      const args = ['-u', target, '-jsonl', '-silent', '-nc']
+      // -duc：扫描时不做模板更新检查。联网检查会和扫描抢时间，导致同一条命令
+      // 时而命中、时而空跑；工具调用的结果必须只取决于目标和模板。
+      const args = ['-u', target, '-jsonl', '-silent', '-nc', '-duc']
       if (extra.tags) args.push('-tags', String(extra.tags))
       if (extra.severity) args.push('-severity', String(extra.severity))
       return { command: 'nuclei', args }
