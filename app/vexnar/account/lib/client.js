@@ -648,6 +648,51 @@ var ACCOUNT_CSS = `
 }
 .vxa-mode:disabled { opacity: 0.4; cursor: default; }
 
+.vxa-avatar { overflow: hidden; }
+.vxa-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.vxa-launcher { position: relative; width: 100%; min-width: 0; }
+.vxa-launcher-trigger {
+  width: 100%; display: flex; align-items: center; gap: 9px; min-height: 38px;
+  text-align: left; border: 0; border-radius: 8px; padding: 5px 8px;
+  color: inherit; font: inherit; background: transparent; cursor: pointer;
+}
+.vxa-launcher-trigger:hover { background: var(--dsw-alias-settings-card-fill, #8882); }
+/* Claude Style supplies its own footer when the settings launcher is absent. */
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']:has(.vxa-launcher)
+  :is(.dsh-claude-account-btn, .dsh-claude-account-popover) { display: none !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  > [data-dsh-claude-part~='settings-area']:has(.vxa-launcher) {
+  display: block !important; flex: 1 1 auto; width: 100% !important; height: auto !important;
+}
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger']:has(.vxa-launcher) { display: flex !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-launcher button.vxa-launcher-trigger { display: flex !important; }
+body[data-dsh-claude-style][data-dsh-claude-footer-takeover] [data-dsh-claude-part~='foot-area']
+  [data-dsh-claude-part~='settings-trigger'] .vxa-launcher-popover .vxa-btn { display: inline-flex !important; }
+.vxa-launcher-trigger .vxa-avatar { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; }
+.vxa-launcher-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vxa-launcher[data-wide='false'] .vxa-launcher-trigger { justify-content: center; padding: 4px; }
+.vxa-launcher-popover {
+  position: fixed; z-index: 20;
+  width: min(300px, calc(100vw - 16px)); max-height: calc(100dvh - 74px); overflow: auto;
+  padding: 10px; border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-subtle, #8884);
+  color: var(--dsw-alias-label-primary, #18232c);
+  background: var(--dsw-alias-bg-layer-2, #fff);
+  box-shadow: 0 9px 32px #0002;
+}
+.vxa-launcher-actions { display: flex; gap: 8px; margin-top: 10px; }
+.vxa-wallet { display: grid; gap: 8px; }
+.vxa-wallet-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px; border: 1px solid var(--dsw-alias-border-subtle, #8884); border-radius: 8px;
+}
+.vxa-wallet-row .vxa-btn { white-space: nowrap; }
+.vxa-wallet-value { margin-top: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.vxa-wallet-plans { display: grid; gap: 6px; margin: 8px 0; padding-left: 0; list-style: none; }
+.vxa-wallet-plans li { display: flex; justify-content: space-between; gap: 10px; }
+
 @media (prefers-reduced-motion: reduce) {
   .vxa-fold-summary::before { transition: none; }
 }
@@ -736,6 +781,96 @@ function EyeIcon({ open }) {
   ));
 }
 var statValue = (value) => typeof value === "number" ? value.toLocaleString("zh-CN") : "\u2014";
+function Avatar({ account }) {
+  const [failed, setFailed] = (0, import_react.useState)("");
+  const url = account?.avatar_url;
+  const name = account?.display_name || account?.username || "V";
+  return /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, url && url !== failed ? /* @__PURE__ */ (0, import_react.createElement)("img", { src: url, alt: "", referrerPolicy: "no-referrer", onError: () => {
+    setFailed(url);
+  } }) : Array.from(name).slice(0, 2).join("").toUpperCase());
+}
+function Wallet({ compact = false }) {
+  const [wallet, setWallet] = (0, import_react.useState)();
+  const [error, setError] = (0, import_react.useState)("");
+  (0, import_react.useEffect)(() => {
+    let generation = 0;
+    const refresh = () => {
+      const current = ++generation;
+      void request("/wallet").then((value) => {
+        if (generation !== current) return;
+        setWallet(value);
+        setError("");
+      }, (reason) => {
+        if (generation === current) setError(message(reason));
+      });
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener(accountEvent, refresh);
+    return () => {
+      generation++;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(accountEvent, refresh);
+    };
+  }, []);
+  const main = wallet?.platform;
+  const deepseek = wallet?.deepseek;
+  const balance = main?.amount != null ? `${main.amount.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${main.currency}` : main?.quota != null ? `${statValue(main.quota)} \u989D\u5EA6` : "\u2014";
+  const billing = main?.url || platform + "/wallet";
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "\u5E0C\u7075 AI \u4F59\u989D"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-value" }, wallet || error ? balance : "\u8BFB\u53D6\u4E2D\u2026")), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: billing, target: "_blank", rel: "noopener noreferrer" }, "\u5E0C\u7075 AI \u5145\u503C")), main?.error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", role: "status" }, main.error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "DeepSeek \u4F59\u989D"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-value" }, deepseek === void 0 ? error ? "\u2014" : "\u8BFB\u53D6\u4E2D\u2026" : deepseek.status === "ready" ? deepseek.balances.map((item) => `${item.total} ${item.currency}`).join(" / ") : deepseek.status === "unconfigured" ? "\u8BF7\u5148\u6DFB\u52A0 DeepSeek \u5B98\u65B9\u6A21\u578B" : "\u6682\u65F6\u65E0\u6CD5\u8BFB\u53D6")), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: "https://platform.deepseek.com/top_up", target: "_blank", rel: "noopener noreferrer" }, "DeepSeek \u5145\u503C")), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-wallet-row" }, /* @__PURE__ */ (0, import_react.createElement)("strong", null, "\u5E0C\u7075 AI \u8BA2\u9605"), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn", href: billing, target: "_blank", rel: "noopener noreferrer" }, "\u8D2D\u4E70\u8BA2\u9605")), !compact && main && /* @__PURE__ */ (0, import_react.createElement)("div", null, main.methods.length > 0 && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint" }, "\u5E73\u53F0\u5145\u503C\u65B9\u5F0F ", main.methods.join("\u3001")), main.plans.length > 0 && /* @__PURE__ */ (0, import_react.createElement)("ul", { className: "vxa-wallet-plans" }, main.plans.map((plan) => /* @__PURE__ */ (0, import_react.createElement)("li", { key: plan.id }, /* @__PURE__ */ (0, import_react.createElement)("span", null, plan.title), /* @__PURE__ */ (0, import_react.createElement)("span", null, plan.price, " ", plan.currency, plan.duration && ` / ${plan.duration}`)))), main.subscriptions.map((subscription, index) => /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-hint", key: `${subscription.id}-${index}` }, main.plans.find((plan) => plan.id === subscription.id)?.title || "\u5F53\u524D\u8BA2\u9605", " \xB7", subscription.remaining === null ? " \u4E0D\u9650\u989D" : ` \u5269\u4F59 ${statValue(subscription.remaining)} \u989D\u5EA6`, " \xB7", new Date(subscription.ends * 1e3).toLocaleDateString("zh-CN"), " \u5230\u671F"))), error && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+}
+function AccountLauncher({ wide, openSettings }) {
+  const { account } = useAccount();
+  const label = account?.display_name || account?.username || "\u5E0C\u7075 AI";
+  const [position, setPosition] = (0, import_react.useState)();
+  const root = (0, import_react.useRef)(null);
+  const trigger = (0, import_react.useRef)(null);
+  (0, import_react.useEffect)(() => {
+    if (!position) return;
+    const close = () => setPosition(void 0);
+    const closeOutside = (event) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) close();
+    };
+    const escape = (event) => {
+      if (event.key !== "Escape") return;
+      close();
+      trigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", escape);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", escape);
+      window.removeEventListener("resize", close);
+    };
+  }, [position]);
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher", ref: root, "data-wide": wide }, /* @__PURE__ */ (0, import_react.createElement)(
+    "button",
+    {
+      type: "button",
+      className: "vxa-launcher-trigger",
+      ref: trigger,
+      "aria-label": label,
+      "aria-expanded": position !== void 0,
+      onClick: (event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        setPosition(position ? void 0 : {
+          left: Math.max(8, Math.min(bounds.left, window.innerWidth - 308)),
+          bottom: window.innerHeight - bounds.top + 8
+        });
+      }
+    },
+    /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }),
+    wide && /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-launcher-name" }, label), /* @__PURE__ */ (0, import_react.createElement)("span", { "aria-hidden": "true" }, "\u2304"))
+  ), position && /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher-popover", style: position, "aria-label": "\u8D26\u6237\u4F59\u989D", role: "region" }, /* @__PURE__ */ (0, import_react.createElement)(Wallet, { compact: true }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-launcher-actions" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
+    setPosition(void 0);
+    openSettings();
+  } }, "\u8BBE\u7F6E"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", onClick: () => {
+    setPosition(void 0);
+    openSettings("vexnar-account");
+  } }, "\u8D26\u6237\u8BE6\u60C5"))));
+}
 function AccountSection() {
   const { account, error, onError } = useAccount();
   const [busy, setBusy] = (0, import_react.useState)(false);
@@ -755,14 +890,13 @@ function AccountSection() {
   }
   const provider = account.providers.find((item) => item.id === platformProviderID);
   const displayName = account.display_name || account.username;
-  const initials = Array.from(displayName).slice(0, 2).join("").toUpperCase();
   const stats = [
     { name: "\u5E73\u53F0\u6A21\u578B", value: statValue(provider?.models.length ?? 0) },
     { name: "\u6A21\u578B\u534F\u8BAE", value: "Responses" },
     { name: "\u5E73\u53F0\u8BBF\u95EE\u4EE4\u724C", value: account.access_token_ready ? "\u5DF2\u914D\u7F6E" : "\u672A\u914D\u7F6E" },
     { name: "\u5E73\u53F0\u7D2F\u8BA1\u8BF7\u6C42", value: statValue(account.request_count) }
   ];
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, initials), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)(Avatar, { account }), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)(Wallet, null), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
 var REASONING_LEVELS = [
   { level: "minimal", label: "\u6781\u4F4E" },
@@ -1359,6 +1493,7 @@ function ModelsSection() {
 }
 function apply(ctx) {
   installAccountStyles();
+  ctx.slots.inject("settings.launcher", () => ctx.slots.register({ name: "settings.launcher" }, AccountLauncher));
   ctx.slots.inject("settings.section", () => {
     ctx.slots.register({ name: "settings.section", id: "vexnar-account", label: "\u4E2A\u4EBA\u8D44\u6599", order: -100 }, AccountSection);
     return ctx.slots.register({ name: "settings.section", id: "models", label: "\u6A21\u578B", order: 10 }, ModelsSection);

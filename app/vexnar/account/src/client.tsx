@@ -2,8 +2,9 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, Fragment, useEffect, useState } from 'react'
+import { createElement as h, Fragment, useEffect, useRef, useState } from 'react'
 import type { DragEvent, FormEvent, ReactNode } from 'react'
+import type { AccountWallet } from './wallet-types.js'
 import { installAccountStyles } from './styles.js'
 
 const api = '/vexnar-api/platform'
@@ -41,6 +42,7 @@ interface Account {
   ready: boolean
   username: string
   display_name?: string
+  avatar_url?: string
   request_count?: number | null
   access_token_ready: boolean
   providers: Provider[]
@@ -140,6 +142,136 @@ function EyeIcon({ open }: { open: boolean }): ReactNode {
 const statValue = (value: number | null | undefined): string =>
   typeof value === 'number' ? value.toLocaleString('zh-CN') : '—'
 
+function Avatar({ account }: { account: Account | undefined }): ReactNode {
+  const [failed, setFailed] = useState('')
+  const url = account?.avatar_url
+  const name = account?.display_name || account?.username || 'V'
+  return <span className="vxa-avatar" aria-hidden="true">
+    {url && url !== failed
+      ? <img src={url} alt="" referrerPolicy="no-referrer" onError={() => { setFailed(url) }} />
+      : Array.from(name).slice(0, 2).join('').toUpperCase()}
+  </span>
+}
+
+function Wallet({ compact = false }: { compact?: boolean }): ReactNode {
+  const [wallet, setWallet] = useState<AccountWallet>()
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let generation = 0
+    const refresh = () => {
+      const current = ++generation
+      void request<AccountWallet>('/wallet').then((value) => {
+        if (generation !== current) return
+        setWallet(value)
+        setError('')
+      }, (reason: unknown) => {
+        if (generation === current) setError(message(reason))
+      })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    window.addEventListener(accountEvent, refresh)
+    return () => {
+      generation++
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener(accountEvent, refresh)
+    }
+  }, [])
+  const main = wallet?.platform
+  const deepseek = wallet?.deepseek
+  const balance = main?.amount != null
+    ? `${main.amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${main.currency}`
+    : main?.quota != null ? `${statValue(main.quota)} 额度` : '—'
+  const billing = main?.url || platform + '/wallet'
+
+  return <div className="vxa-wallet">
+    <div className="vxa-wallet-row">
+      <div><strong>希灵 AI 余额</strong><div className="vxa-wallet-value">{wallet || error ? balance : '读取中…'}</div></div>
+      <a className="vxa-btn" href={billing} target="_blank" rel="noopener noreferrer">希灵 AI 充值</a>
+    </div>
+    {main?.error && <p className="vxa-hint" role="status">{main.error}</p>}
+    <div className="vxa-wallet-row">
+      <div><strong>DeepSeek 余额</strong>
+        <div className="vxa-wallet-value">{deepseek === undefined ? (error ? '—' : '读取中…')
+          : deepseek.status === 'ready' ? deepseek.balances.map(item => `${item.total} ${item.currency}`).join(' / ')
+          : deepseek.status === 'unconfigured' ? '请先添加 DeepSeek 官方模型' : '暂时无法读取'}</div>
+      </div>
+      <a className="vxa-btn" href="https://platform.deepseek.com/top_up" target="_blank" rel="noopener noreferrer">DeepSeek 充值</a>
+    </div>
+    <div className="vxa-wallet-row">
+      <strong>希灵 AI 订阅</strong>
+      <a className="vxa-btn" href={billing} target="_blank" rel="noopener noreferrer">购买订阅</a>
+    </div>
+    {!compact && main && <div>
+      {main.methods.length > 0 && <p className="vxa-hint">平台充值方式 {main.methods.join('、')}</p>}
+      {main.plans.length > 0 && <ul className="vxa-wallet-plans">{main.plans.map((plan) =>
+        <li key={plan.id}>
+          <span>{plan.title}</span><span>{plan.price} {plan.currency}{plan.duration && ` / ${plan.duration}`}</span>
+        </li>)}</ul>}
+      {main.subscriptions.map((subscription, index) => <p className="vxa-hint" key={`${subscription.id}-${index}`}>
+        {main.plans.find(plan => plan.id === subscription.id)?.title || '当前订阅'} ·
+        {subscription.remaining === null ? ' 不限额' : ` 剩余 ${statValue(subscription.remaining)} 额度`} ·
+        {new Date(subscription.ends * 1000).toLocaleDateString('zh-CN')} 到期
+      </p>)}
+    </div>}
+    {error && <p className="vxa-error" role="alert">{error}</p>}
+  </div>
+}
+
+function AccountLauncher({ wide, openSettings }: { wide: boolean; openSettings: (section?: string) => void }): ReactNode {
+  const { account } = useAccount()
+  const label = account?.display_name || account?.username || '希灵 AI'
+  const [position, setPosition] = useState<{ left: number; bottom: number }>()
+  const root = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!position) return
+    const close = () => setPosition(undefined)
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) close()
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      close()
+      trigger.current?.focus()
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', escape)
+    window.addEventListener('resize', close)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', escape)
+      window.removeEventListener('resize', close)
+    }
+  }, [position])
+  return <div className="vxa-launcher" ref={root} data-wide={wide}>
+    <button type="button" className="vxa-launcher-trigger" ref={trigger} aria-label={label}
+      aria-expanded={position !== undefined} onClick={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect()
+        setPosition(position ? undefined : {
+          left: Math.max(8, Math.min(bounds.left, window.innerWidth - 308)),
+          bottom: window.innerHeight - bounds.top + 8
+        })
+      }}>
+      <Avatar account={account} />
+      {wide && <><span className="vxa-launcher-name">{label}</span><span aria-hidden="true">⌄</span></>}
+    </button>
+    {position && <div className="vxa-launcher-popover" style={position} aria-label="账户余额" role="region">
+      <Wallet compact />
+      <div className="vxa-launcher-actions">
+        <button type="button" className="vxa-btn" onClick={() => {
+          setPosition(undefined)
+          openSettings()
+        }}>设置</button>
+        <button type="button" className="vxa-btn" onClick={() => {
+          setPosition(undefined)
+          openSettings('vexnar-account')
+        }}>账户详情</button>
+      </div>
+    </div>}
+  </div>
+}
+
 /**
  * 个人资料：Codex 的版式——深青渐变身份卡 + 四项统计 + 平台卡片 + 退出登录。
  *
@@ -167,7 +299,6 @@ export function AccountSection(): ReactNode {
 
   const provider = account.providers.find(item => item.id === platformProviderID)
   const displayName = account.display_name || account.username
-  const initials = Array.from(displayName).slice(0, 2).join('').toUpperCase()
   const stats = [
     { name: '平台模型', value: statValue(provider?.models.length ?? 0) },
     { name: '模型协议', value: 'Responses' },
@@ -177,7 +308,7 @@ export function AccountSection(): ReactNode {
 
   return <div className="vxa-profile">
     <div className="vxa-profile-head">
-      <span className="vxa-avatar" aria-hidden="true">{initials}</span>
+      <Avatar account={account} />
       <div className="vxa-profile-id">
         <h2 className="vxa-profile-name">{displayName}</h2>
         <span className="vxa-profile-handle">@{account.username}</span>
@@ -192,6 +323,7 @@ export function AccountSection(): ReactNode {
         <dd>{value}</dd>
       </div>)}
     </dl>
+    <Wallet />
     <div className="vxa-panel">
       <span className="vxa-panel-title">HXSEC AI Platform</span>
       <div className="vxa-panel-meta">
@@ -918,10 +1050,11 @@ export function ModelsSection(): ReactNode {
 export function apply(ctx: {
   slots: {
     inject: (name: string, register: () => unknown) => void
-    register: (options: { name: string; id: string; label: string; order: number }, component: unknown) => unknown
+    register: (options: { name: string; id?: string; label?: string; order?: number }, component: unknown) => unknown
   }
 }): void {
   installAccountStyles()
+  ctx.slots.inject('settings.launcher', () => ctx.slots.register({ name: 'settings.launcher' }, AccountLauncher))
   ctx.slots.inject('settings.section', () => {
     ctx.slots.register({ name: 'settings.section', id: 'vexnar-account', label: '个人资料', order: -100 }, AccountSection)
     return ctx.slots.register({ name: 'settings.section', id: 'models', label: '模型', order: 10 }, ModelsSection)

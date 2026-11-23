@@ -14,10 +14,6 @@ const maxBody = 16 * 1024;
 function recordOf(value) {
   return typeof value === "object" && value !== null ? value : {};
 }
-function messageOf(error) {
-  const message = recordOf(error).message;
-  return typeof message === "string" ? message : "";
-}
 function failureOf(error) {
   const record = recordOf(error);
   return { code: record.code || "settings/rejected", message: record.message, details: record.details || {} };
@@ -67,76 +63,14 @@ function providerInput(body) {
   if (Array.isArray(models)) input.models = models;
   return input;
 }
-async function capturePlatformLogin(context, page, origin, signal) {
-  let proof;
-  const observe = async (response) => {
-    try {
-      const url = new URL(response.url());
-      if (url.origin !== origin || !response.ok()) return;
-      const identityRequest = url.pathname === "/api/user/self";
-      const authResponse = /^\/api\/(?:oauth\/[a-z0-9_-]+|user\/(?:auth\/refresh|login(?:\/verify|\/2fa|\/passkey\/finish)?|passkey\/login\/finish))$/i.test(url.pathname);
-      if (!identityRequest && !authResponse) return;
-      const body = await response.json();
-      const envelope = recordOf(body);
-      const data = recordOf(envelope.data);
-      const userID = recordOf(data.user).id ?? (identityRequest ? data.id : void 0);
-      const id = typeof userID === "number" ? userID : 0;
-      if (envelope.success !== true || !Number.isSafeInteger(id) || id <= 0) return;
-      const authorization = data.access_token ? `Bearer ${String(data.access_token)}` : await response.request().headerValue("authorization");
-      const cookie = await response.request().headerValue("cookie") ?? "";
-      if (authorization || cookie) proof = { user_id: id, authorization: authorization ?? "", cookie };
-    } catch {
-    }
-  };
-  context.on("response", observe);
-  try {
-    await page.goto(origin + "/login", { waitUntil: "domcontentloaded", timeout: 3e4 });
-    const deadline = Date.now() + 5 * 60 * 1e3;
-    while (Date.now() < deadline) {
-      signal.throwIfAborted();
-      if (proof) return proof;
-      if (context.pages().length === 0 || page.isClosed()) throw new Error("\u767B\u5F55\u7A97\u53E3\u5DF2\u5173\u95ED");
-      if (new URL(page.url()).origin === origin) {
-        const userID = await page.evaluate(() => {
-          try {
-            return Number(JSON.parse(localStorage.getItem("user") ?? "null")?.id ?? localStorage.getItem("uid"));
-          } catch {
-            return 0;
-          }
-        }).catch(() => 0);
-        if (Number.isSafeInteger(userID) && userID > 0) {
-          const cookie = (await context.cookies(origin + "/api/user/self")).map((item) => `${item.name}=${item.value}`).join("; ");
-          if (cookie) {
-            const me = await context.request.get(origin + "/api/user/self", {
-              headers: { "New-Api-User": String(userID) },
-              maxRedirects: 0,
-              timeout: 3e3
-            }).then((res) => res.ok() ? res.json() : null).catch(() => null);
-            const verified = recordOf(me);
-            if (verified.success === true && recordOf(verified.data).id === userID) {
-              return { user_id: userID, authorization: "", cookie };
-            }
-          }
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 750));
-    }
-    throw new Error("\u7B49\u5F85\u5E73\u53F0\u767B\u5F55\u8D85\u65F6\uFF0C\u8BF7\u91CD\u8BD5");
-  } finally {
-    context.off("response", observe);
-  }
-}
 function installPlatform(ctx) {
   const account = createPlatformAccount();
   let ready = false;
   let lastCatalog = "";
   let syncedProviders = /* @__PURE__ */ new Set();
-  let browserState = { state: "idle", message: "" };
   let lastState;
   let channelInstalled = false;
   let channelLoading = false;
-  let browserTask;
-  let chrome;
   const life = new AbortController();
   const activeSockets = /* @__PURE__ */ new Set();
   const setReady = (value) => {
@@ -218,7 +152,7 @@ function installPlatform(ctx) {
     return publicView(state);
   };
   const refresh = async () => syncCatalog(await account.read());
-  const startupPaths = new Set(["entry.js", "ready", "methods", "account", "login", "login/password", "login/verify"].map((path) => clientPrefix + "/" + path));
+  const startupPaths = new Set(["entry.js", "ready", "methods", "account", "login/token"].map((path) => clientPrefix + "/" + path));
   ctx.effect(() => {
     const ORIGINAL = Symbol.for("cordis.original");
     const connection = ctx.connection[ORIGINAL] ?? ctx.connection;
@@ -245,7 +179,7 @@ function installPlatform(ctx) {
       }
     };
   });
-  ctx.effect(() => ctx.webServer.tapIndex((html) => ready ? html.replace("</head>", workspaceSessionScript + "</head>") : loginPage));
+  ctx.effect(() => ctx.webServer.tapIndex((html) => ready ? html.replace("</head>", workspaceSessionScript + "</head>") : loginPage(platformOrigin())));
   ctx.effect(() => ctx.webServer.register({
     kind: "exact",
     path: clientPrefix + "/entry.js",
@@ -294,42 +228,6 @@ function installPlatform(ctx) {
       }
     });
   }
-  function startLogin() {
-    if (browserTask) return browserState;
-    browserState = { state: "waiting", message: "\u8BF7\u5728\u6D4F\u89C8\u5668\u4E2D\u5B8C\u6210 HXSEC AI Platform \u767B\u5F55" };
-    browserTask = (async () => {
-      try {
-        const status = await refresh();
-        if (status.signed_in) throw new Error("\u8BF7\u5148\u9000\u51FA\u5F53\u524D VEXNAR \u8D26\u53F7");
-        const { chromium } = await import("playwright-core");
-        chrome = await chromium.launch({
-          channel: process.env.VEXNAR_LOGIN_BROWSER || "chrome",
-          headless: false,
-          ignoreDefaultArgs: ["--enable-automation"]
-        });
-        life.signal.throwIfAborted();
-        const context = await chrome.newContext();
-        const page = await context.newPage();
-        const proof = await capturePlatformLogin(context, page, platformOrigin(), life.signal);
-        const result = await account.login(proof);
-        await syncCatalog(await account.read());
-        browserState = { state: "done", message: "\u5DF2\u9A8C\u8BC1 HXSEC AI Platform \u8EAB\u4EFD" };
-        if (result.signed_in) console.log("vexnar: account-handoff");
-      } catch (error) {
-        const reason = messageOf(error);
-        browserState = {
-          state: "error",
-          message: reason.includes("Executable") ? "\u627E\u4E0D\u5230\u767B\u5F55\u6D4F\u89C8\u5668\uFF0C\u8BF7\u5B89\u88C5 Google Chrome\uFF0C\u6216\u8BBE\u7F6E VEXNAR_LOGIN_BROWSER" : recordOf(error).status ? reason : chrome ? "\u767B\u5F55\u672A\u5B8C\u6210\u3002\u8BF7\u5728\u5E73\u53F0\u7A97\u53E3\u5B8C\u6210\u9A8C\u8BC1\u540E\u91CD\u8BD5\u3002" : reason || "\u65E0\u6CD5\u6253\u5F00\u5E73\u53F0\u767B\u5F55"
-        };
-      } finally {
-        await chrome?.close().catch(() => {
-        });
-        chrome = void 0;
-        browserTask = void 0;
-      }
-    })();
-    return browserState;
-  }
   function route(suffix, handlers) {
     ctx.effect(() => ctx.webServer.register({
       kind: "exact",
@@ -362,27 +260,20 @@ function installPlatform(ctx) {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
     GET: () => ready ? account.status() : refresh(),
     DELETE: async () => {
-      if (browserTask) throw new PlatformError(409, "\u8BF7\u5173\u95ED\u5E73\u53F0\u767B\u5F55\u7A97\u53E3\u540E\u518D\u8BD5");
       await account.logout();
       return syncCatalog(await account.read());
     }
   });
-  route("/login", { POST: startLogin, GET: () => browserState });
-  route("/login/password", {
+  route("/login/token", {
     POST: async (req) => {
       const input = await readJson(req);
-      const result = await account.password(bodyText(input, "username"), bodyText(input, "password"));
-      if ("challenge" in result) return result;
-      return syncCatalog(await account.read());
+      await account.loginWithToken(bodyText(input, "access_token"));
+      const view = await refresh();
+      if (view.signed_in) console.log("vexnar: account-handoff");
+      return view;
     }
   });
-  route("/login/verify", {
-    POST: async (req) => {
-      const input = await readJson(req);
-      await account.verify(bodyText(input, "challenge"), bodyText(input, "code"));
-      return syncCatalog(await account.read());
-    }
-  });
+  route("/wallet", { GET: () => account.wallet() });
   route("/providers", {
     POST: async (req) => {
       const input = await readJson(req);
@@ -409,8 +300,6 @@ function installPlatform(ctx) {
     return () => {
       clearInterval(timer);
       life.abort();
-      void chrome?.close().catch(() => {
-      });
       void clearModelChannel().catch(() => {
       });
     };

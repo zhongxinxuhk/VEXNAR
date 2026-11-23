@@ -55,13 +55,9 @@ if (entry) {
     if (!(control instanceof HTMLInputElement)) throw new Error(`\u767B\u5F55\u8868\u5355\u7F3A\u5C11 ${name} \u5B57\u6BB5`);
     return control;
   };
-  const password = form("password-login");
-  const verify = form("verify-login");
-  const browser = node("browser-options");
-  const browserButton = node("browser-login");
+  const tokenForm = form("token-login");
   const retry = node("retry");
   const notice = node("notice");
-  let challenge;
   let running = false;
   const message = (text, error = false) => {
     notice.textContent = text;
@@ -80,14 +76,11 @@ if (entry) {
       retry.hidden = true;
       const account = await read("/account");
       if (present(account)) return;
-      const methods = await read("/methods");
-      challenge = void 0;
-      verify.hidden = true;
-      password.hidden = !methods.password;
-      browser.hidden = false;
-      node("methods").textContent = listOf(methods.methods);
-      if (account.reauth_required) message("\u8BF7\u91CD\u65B0\u9A8C\u8BC1\u5E73\u53F0\u8EAB\u4EFD\uFF0C\u4EE5\u521D\u59CB\u5316 VEXNAR \u7684\u8BBF\u95EE\u4EE4\u724C\u3002");
-      else message("");
+      message(account.reauth_required ? "\u8BF7\u4F7F\u7528\u8BBF\u95EE\u4EE4\u724C\u91CD\u65B0\u9A8C\u8BC1\u5E0C\u7075 AI \u8D26\u6237\u3002" : "");
+      void read("/methods").then((methods) => {
+        node("methods").textContent = listOf(methods.methods);
+      }).catch(() => {
+      });
     } catch (error) {
       retry.hidden = false;
       showError(error);
@@ -106,42 +99,16 @@ if (entry) {
       for (const button of entry.querySelectorAll("button")) button.disabled = false;
     }
   };
-  password.addEventListener("submit", (event) => {
+  tokenForm.addEventListener("submit", (event) => {
     event.preventDefault();
     void work(async () => {
-      message("\u6B63\u5728\u9A8C\u8BC1\u8D26\u53F7\u2026");
-      const data = Object.fromEntries(new FormData(password));
-      input(password, "password").value = "";
-      const response = await read("/login/password", "POST", data);
-      if (response.challenge) {
-        challenge = response.challenge;
-        password.hidden = true;
-        verify.hidden = false;
-        input(verify, "code").focus();
-        message("\u8BF7\u8F93\u5165\u5E73\u53F0\u4E24\u6B65\u9A8C\u8BC1\u7801\uFF0C\u6216\u4F7F\u7528\u5E73\u53F0\u7A97\u53E3\u5B8C\u6210\u9A8C\u8BC1\u3002");
-      } else if (!present(response)) await initialize();
+      message("\u6B63\u5728\u9A8C\u8BC1\u8BBF\u95EE\u4EE4\u724C\u5E76\u540C\u6B65\u6A21\u578B\u2026");
+      const control = input(tokenForm, "access_token");
+      const token = control.value;
+      control.value = "";
+      if (!present(await read("/login/token", "POST", { access_token: token }))) await initialize();
     });
   });
-  verify.addEventListener("submit", (event) => {
-    event.preventDefault();
-    void work(async () => {
-      message("\u6B63\u5728\u9A8C\u8BC1\u9A8C\u8BC1\u7801\u2026");
-      const code = input(verify, "code").value;
-      input(verify, "code").value = "";
-      if (!present(await read("/login/verify", "POST", { challenge, code }))) await initialize();
-    });
-  });
-  browserButton.addEventListener("click", () => void work(async () => {
-    let state = await read("/login", "POST", {});
-    while (state.state === "waiting") {
-      message(textOf(state.message));
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      state = await read("/login");
-    }
-    if (state.state === "done") await initialize();
-    else message(textOf(state.message) || "\u5E73\u53F0\u767B\u5F55\u672A\u5B8C\u6210\u3002", true);
-  }));
-  node("back").addEventListener("click", () => void work(initialize));
   retry.addEventListener("click", () => void work(initialize));
   void initialize();
 } else {
