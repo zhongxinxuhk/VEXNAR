@@ -696,8 +696,8 @@ function RuleEditor({
 const sdkTool = (key: string, description: string): ToolEntry => ({ key, description, system: true })
 
 const SDK_EXEC: ToolEntry[] = [
-  sdkTool('Bash', '在 shell 中执行命令'),
-  sdkTool('WebFetch', '发起 HTTP/HTTPS 请求（含代理支持）'),
+  sdkTool('Bash', '在 shell 中执行命令（dsh 运行时工具名 bash）'),
+  sdkTool('WebFetch', '发起 HTTP/HTTPS 请求（含代理支持；dsh 为 web_fetch）'),
   sdkTool('web_search', '网络搜索'),
   sdkTool('shell_open', '开启持久 PTY 交互会话'),
   sdkTool('shell_send', '向交互会话发送输入'),
@@ -707,9 +707,9 @@ const SDK_EXEC: ToolEntry[] = [
 ]
 
 const SDK_WRITE: ToolEntry[] = [
-  sdkTool('Write', '写入文件'),
-  sdkTool('Edit', '编辑文件（精确替换）'),
-  sdkTool('MultiEdit', '批量编辑文件')
+  sdkTool('Write', '写入文件（dsh 为 write）'),
+  sdkTool('Edit', '编辑文件（精确替换；dsh 为 edit / str_replace_editor）'),
+  sdkTool('MultiEdit', '批量编辑文件（dsh 为 edit / apply_patch）')
 ]
 
 const SDK_KEYS = new Set([...SDK_EXEC, ...SDK_WRITE].map((tool) => tool.key))
@@ -779,6 +779,7 @@ function ScopeDialog({
           </h2>
           <p className="vx-int-sheet-sub">
             只有启用的工具才进入规则匹配；其余工具直接放行。已选 {picked.size} 个。
+            名称按两套运行时对齐：Claude 风格的 Bash / Write 与 dsh 的 bash / write 互相等价。
           </p>
         </header>
 

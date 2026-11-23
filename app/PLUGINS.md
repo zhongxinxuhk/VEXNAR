@@ -38,6 +38,74 @@ pnpm run shop:update
 
 **注意**：新增 bundle 需要重启 VEXNAR 才生效；启用/禁用已安装插件是热生效。
 
+## 出厂预设：装了什么都写进 `extras.json`
+
+`pnpm run setup` 只认两份清单：`app/vexnar/extras.json`（第三方与运行时自带的
+bundle）和模板（`@deepseek-ai/dsh-base` / `dsh-web-app`）。两者之外的东西，换台
+机器重跑 setup 就会消失。所以预设必须覆盖**当前装着的全部 bundle**：
+
+```sh
+pnpm run plugins:check                       # 对照真实 profile 盘点，缺一个就退出 1
+pnpm run plugins:check -- --profile /path     # 指定别的 profile
+pnpm run test:preset                          # 清单与分类规则的自检
+```
+
+盘点把每个 bundle 归到一个来源：`template`（模板）、`own`（`@vexnar/*`）、
+`theme`（Claude Style）、`extras`（预设里的第三方包）、`runtime`（dsh 安装自带，
+预设里标 `"runtime": true`，只补 bundle 层、不写 spec）。出现 `unknown` 就是分叉：
+把它补进 `extras.json`。
+
+当前预设覆盖 extras 的 17 条：10 个第三方依赖（含 `dsh-plugin-shop`）与 7 个
+运行时自带的 `@deepseek-ai/dsh-*`（CUA、会话标题、思维链翻译、Codex 子代理、
+Forge、自动评审、插件市场）；皮肤 `dsh-claude-style` 由 setup 单独安装。
+
+## 皮肤与界面默认值：写进 bundle patch
+
+Claude Style 的设置页把用户改过的值写进 profile 的 patch 层（`profiles/vexnar/
+cordis.patch.yml`）。新机器没有那一层，皮肤会回到上游默认。`app/vexnar/
+cordis.patch.yml` 现在把选定的整套写成默认：
+
+```yaml
+- id: ui-skin-claude-style
+  name: dsh-claude-style
+  config:
+    brand: deepseek
+    statusMotion: wash
+    sodium: on
+    homeLayout: classic
+    homeRipple: true
+    searchStyle: icon
+    ongoingIndicator: ring
+    reasoningDisplay: stepped
+    sidebarLayout: compact
+```
+
+会话日志（`session-log-deepseek.enabled=false`）与对话视图（`ui-chat` 的
+`collapseTiming` / `foldedReplies` / `transcriptView`）也一并固化。bundle patch
+先应用、profile patch 后应用，所以用户自己改过的值仍然优先；想恢复出厂值，删掉
+profile patch 里对应的 `id` 行再重启即可。
+
+## 拦截规则在 dsh 运行时真的生效
+
+设置 → 拦截规则写的规则存在 core 的 meta 里，但**规则不会自己生效**：Go 引擎由
+`intercept.Interceptor` + `guard` 在 PreToolUse 上执行，dsh 运行时此前没有这个
+执行点。现在 `@vexnar/dsh-account` 注册了 `tools/pre-execute` 监听器
+（`account/src/intercept-guard.ts`）：
+
+- 每 2 秒把规则与拦截范围拉成快照，调用路径上只做内存匹配；
+- 判定顺序与 Go 一致：优先级降序、第一条命中、`string` 包含 / `regex` 匹配、
+  `tool_name` / `tool_input` 二选一；
+- `deny` 直接拦下并把规则文案回给模型；`allow` 跳过后续规则；
+- `ask` 写一条 pending 记录（`POST /api/intercept/pending`），在「拦截审批」里
+  点允许/拒绝后轮询到结果，超时按 `timeout_action` 收尾；
+- 每次判定写回 `/api/intercept/decisions`，历史页能看到规则战果。
+
+工具名两套命名都认：规则里写 `Bash` / `Write` / `Edit`，dsh 注册的是 `bash` /
+`write` / `edit`，匹配时大小写无关并走别名表（`MultiEdit` ↔ `edit` /
+`apply_patch`，`shell_open` ↔ `terminal_open`）。
+
+Go 回退模式（`VEXNAR_RUNTIME_MODE=go`）不挂这个监听器，避免同一次调用被判两遍。
+
 ## 首次同步
 
 `app/vexnar/cordis.patch.yml` 是 VEXNAR bundle 的配置。修改后重新执行

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { installPlatform, recordOf } from "./platform.js";
 import { registerYakHistoryTools } from "./yak-history-tools.js";
+import { registerInterceptGuard } from "./intercept-guard.js";
 const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "logo.png");
 let logoBytes = null;
 const settingsReads = /* @__PURE__ */ new Set([
@@ -153,31 +154,31 @@ function apply(ctx) {
         core_state: coreState
       };
     };
-    ctx.provide("vexnarCore", {
-      request: async (path, init = {}) => {
-        const app = await getCore();
-        if (!app) throw new Error("VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA");
-        const { handle } = app;
-        const requestInit = {
-          method: init.method ?? "GET",
-          headers: { "content-type": "application/json", ...init.headers ?? {} }
-        };
-        if (init.body !== void 0) requestInit.body = JSON.stringify(init.body);
-        const response = await handle(new Request(new URL(path, "http://127.0.0.1"), requestInit), true);
-        const text = await response.text();
-        let data = null;
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch {
-          data = { raw: text };
-        }
-        if (!response.ok) {
-          const message = data?.error ?? text ?? `HTTP ${response.status}`;
-          throw new Error(message);
-        }
-        return data;
+    const coreRequest = async (path, init = {}) => {
+      const app = await getCore();
+      if (!app) throw new Error("VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA");
+      const { handle } = app;
+      const requestInit = {
+        method: init.method ?? "GET",
+        headers: { "content-type": "application/json", ...init.headers ?? {} }
+      };
+      if (init.body !== void 0) requestInit.body = JSON.stringify(init.body);
+      const response = await handle(new Request(new URL(path, "http://127.0.0.1"), requestInit), true);
+      const text = await response.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = { raw: text };
       }
-    });
+      if (!response.ok) {
+        const message = data?.error ?? text ?? `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+      return data;
+    };
+    ctx.provide("vexnarCore", { request: coreRequest });
+    if (!goMode) registerInterceptGuard(ctx, coreRequest);
     ctx.effect(() => ctx.webServer.register({
       kind: "prefix",
       path: "/vexnar-api",

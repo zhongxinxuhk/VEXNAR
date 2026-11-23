@@ -35,6 +35,8 @@ const lib = join(here, 'lib')
 const hostEntries = [
   'billing',
   'index',
+  'intercept',
+  'intercept-guard',
   'platform',
   'platform-account',
   'login-page',

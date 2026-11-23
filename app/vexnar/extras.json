@@ -1,6 +1,6 @@
 {
   "preset": "vexnar-extras",
-  "$comment": "安装时固化的插件预设。setup-app-profile.ts 会 pnpm add 这里的每个 spec，并把 name 写进 profile 的 dsh.profile.bundles（排在皮肤与 @vexnar/app-bundle 之前）。新增/升级只改 spec；GitHub 包必须锁 commit。VEXNAR_EXTRAS=off 可整体跳过。",
+  "$comment": "安装时固化的插件预设。setup-app-profile.ts 会 pnpm add 这里的每个 spec，并把 name 写进 profile 的 dsh.profile.bundles（排在皮肤与 @vexnar/app-bundle 之前）。新增/升级只改 spec；GitHub 包必须锁 commit；dsh 安装自带的 bundle 标 \"runtime\": true（不写 spec，只补 bundle 层）。清单由 scripts/plugin-inventory.ts 对照实际 profile 核对。VEXNAR_EXTRAS=off 可整体跳过。",
   "bundles": [
     {
       "name": "dsh-agent-efficiency",
@@ -46,6 +46,46 @@
       "name": "dsh-planning-with-files",
       "spec": "dsh-planning-with-files@1.0.1",
       "note": "文件形式的多步计划"
+    },
+    {
+      "name": "dsh-plugin-shop",
+      "spec": "dsh-plugin-shop@0.9.4",
+      "note": "插件商店；侧栏 Plugin shop 与自更新"
+    },
+    {
+      "name": "@deepseek-ai/dsh-cua-bundle",
+      "runtime": true,
+      "note": "计算机操作（CUA）：截图与鼠标键盘控制"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-session-titles-bundle",
+      "runtime": true,
+      "note": "会话标题自动生成"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-cot-translation-bundle",
+      "runtime": true,
+      "note": "思维链翻译"
+    },
+    {
+      "name": "@deepseek-ai/dsh-subagent-codex",
+      "runtime": true,
+      "note": "Codex 子代理"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-forge-bundle",
+      "runtime": true,
+      "note": "Forge 创造模式"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-auto-review",
+      "runtime": true,
+      "note": "自动评审"
+    },
+    {
+      "name": "@deepseek-ai/dsh-experimental-plugin-market-bundle",
+      "runtime": true,
+      "note": "插件市场入口"
     }
   ]
 }

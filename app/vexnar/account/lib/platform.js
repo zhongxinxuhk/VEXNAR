@@ -104,7 +104,25 @@ function installPlatform(ctx) {
     const core = await import("./core-embedded.js");
     core.setModelCompletion(void 0);
   };
-  const syncCatalog = async (state) => {
+  const purgeAccountSecrets = async (state) => {
+    const refs = new Set(syncedProviders.size > 0 ? [...syncedProviders] : []);
+    for (const provider of catalog(state)) refs.add(provider.id);
+    for (const provider of state.providers) refs.add(provider.id);
+    for (const id of refs) await ctx.credentials.unset(credentialName(id)).catch(() => {
+    });
+    syncedProviders = /* @__PURE__ */ new Set();
+    lastCatalog = "";
+    lastState = void 0;
+    process.env.VEXNAR_MODEL = "";
+    await ctx.settings.replace("llm-pi-ai", { providers: {} });
+    await clearModelChannel().catch(() => {
+    });
+    setReady(false);
+  };
+  let secretEpoch = 0;
+  let catalogTail = Promise.resolve();
+  const applyCatalog = async (state, epoch) => {
+    if (epoch !== secretEpoch) return publicView(state);
     lastState = state;
     const providers = {};
     const present = /* @__PURE__ */ new Set();
@@ -133,6 +151,7 @@ function installPlatform(ctx) {
     }
     syncedProviders = present;
     const fingerprint = JSON.stringify(providers);
+    if (epoch !== secretEpoch) return publicView(state);
     if (fingerprint !== lastCatalog) {
       await ctx.settings.replace("llm-pi-ai", { providers });
       lastCatalog = fingerprint;
@@ -152,6 +171,22 @@ function installPlatform(ctx) {
     setReady(gateOpen(state));
     if (firstModel !== void 0) ensureModelChannel();
     return publicView(state);
+  };
+  const syncCatalog = (state) => {
+    const epoch = secretEpoch;
+    const run = catalogTail.then(() => applyCatalog(state, epoch));
+    catalogTail = run.catch(() => {
+    });
+    return run;
+  };
+  const signOut = async () => {
+    secretEpoch += 1;
+    await catalogTail.catch(() => {
+    });
+    const before = await account.read();
+    await purgeAccountSecrets(before);
+    await account.logout();
+    setReady(false);
   };
   const refresh = async () => syncCatalog(await account.read());
   const startupPaths = new Set(["entry.js", "ready", "methods", "account", "login/token"].map((path) => clientPrefix + "/" + path));
@@ -266,7 +301,7 @@ function installPlatform(ctx) {
       return account.renewWithToken(bodyText(input, "access_token"));
     },
     DELETE: async () => {
-      await account.logout();
+      await signOut();
       return syncCatalog(await account.read());
     }
   });
@@ -279,6 +314,30 @@ function installPlatform(ctx) {
       return view;
     }
   });
+  ctx.effect(() => ctx.webServer.register({
+    kind: "exact",
+    path: clientPrefix + "/signout",
+    handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req);
+      if (rejection) {
+        res.writeHead(rejection, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        return res.end(JSON.stringify({ error: "\u8BF7\u4ECE\u672C\u673A VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }));
+      }
+      if (req.method !== "GET" && req.method !== "POST") {
+        res.writeHead(405, { Allow: "GET, POST", "Cache-Control": "no-store" });
+        return res.end();
+      }
+      try {
+        await signOut();
+      } catch (error) {
+        const status = error instanceof PlatformError ? error.status : 502;
+        res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+        return res.end(JSON.stringify({ error: error instanceof PlatformError ? error.message : "\u9000\u51FA\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5" }));
+      }
+      res.writeHead(303, { Location: "/?signed-out=1", "Cache-Control": "no-store", Pragma: "no-cache" });
+      res.end();
+    }
+  }));
   route("/wallet", { GET: () => account.wallet() });
   route("/billing/options", { GET: () => billing.options() });
   route("/billing/quote", { POST: async (req) => billing.quote(await readJson(req)) });

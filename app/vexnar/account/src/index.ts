@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { installPlatform, recordOf, type PlatformContext } from './platform.js'
 import { registerYakHistoryTools } from './yak-history-tools.js'
+import { registerInterceptGuard } from './intercept-guard.js'
 
 const LOGO_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'logo.png')
 let logoBytes: Buffer | null = null
@@ -68,6 +69,8 @@ type AccountContext = PlatformContext & {
   tools: {
     register: (tool: ToolRegistration) => void
   }
+  /** cordis 事件：拦截规则挂在 `tools/pre-execute` 上。 */
+  on: (event: 'tools/pre-execute', listener: (...args: never[]) => unknown) => () => boolean
 }
 
 const BRAND_SCRIPT = `
@@ -192,31 +195,36 @@ export function apply(ctx: AccountContext): void {
     }
     // 同一进程内的领域调用面：工具插件（如 @vexnar/dsh-egress）直接走这里，
     // 不经过 /vexnar-api 的登录闸门，也不需要复制一份端口/token。
-    ctx.provide('vexnarCore', {
-      request: async (path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}) => {
-        const app = await getCore()
-        if (!app) throw new Error('VEXNAR 领域服务尚未就绪')
-        const { handle } = app
-        const requestInit: RequestInit = {
-          method: init.method ?? 'GET',
-          headers: { 'content-type': 'application/json', ...(init.headers ?? {}) }
-        }
-        if (init.body !== undefined) requestInit.body = JSON.stringify(init.body)
-        const response = await handle(new Request(new URL(path, 'http://127.0.0.1'), requestInit), true)
-        const text = await response.text()
-        let data: unknown = null
-        try {
-          data = text ? JSON.parse(text) : null
-        } catch {
-          data = { raw: text }
-        }
-        if (!response.ok) {
-          const message = (data as { error?: string })?.error ?? text ?? `HTTP ${response.status}`
-          throw new Error(message)
-        }
-        return data
+    const coreRequest = async (
+      path: string,
+      init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
+    ): Promise<unknown> => {
+      const app = await getCore()
+      if (!app) throw new Error('VEXNAR 领域服务尚未就绪')
+      const { handle } = app
+      const requestInit: RequestInit = {
+        method: init.method ?? 'GET',
+        headers: { 'content-type': 'application/json', ...(init.headers ?? {}) }
       }
-    })
+      if (init.body !== undefined) requestInit.body = JSON.stringify(init.body)
+      const response = await handle(new Request(new URL(path, 'http://127.0.0.1'), requestInit), true)
+      const text = await response.text()
+      let data: unknown = null
+      try {
+        data = text ? JSON.parse(text) : null
+      } catch {
+        data = { raw: text }
+      }
+      if (!response.ok) {
+        const message = (data as { error?: string } | null)?.error ?? text ?? `HTTP ${response.status}`
+        throw new Error(message)
+      }
+      return data
+    }
+    ctx.provide('vexnarCore', { request: coreRequest })
+    // 拦截规则只有一份（core 的 meta），但执行点有两个：go 回退模式由 Go 引擎的
+    // guard 做，TS 模式由这个监听器做。两套同时挂会把同一次调用判两遍。
+    if (!goMode) registerInterceptGuard(ctx, coreRequest)
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/vexnar-api',

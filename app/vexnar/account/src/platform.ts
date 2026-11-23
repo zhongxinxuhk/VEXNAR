@@ -31,6 +31,7 @@ import {
 } from './platform-account.js'
 import type {
   Account,
+  AccountView,
   AddProviderInput,
   ProviderModel,
   UpdateProviderInput
@@ -268,7 +269,45 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     core.setModelCompletion(undefined)
   }
 
-  const syncCatalog = async (state: Account) => {
+  /**
+   * 退出登录时把密钥真正删掉，而不是只把账号文件挪走。
+   *
+   * 三个地方各有一份：账号文件（access_token + providers[].key）、dsh 凭据库
+   * （每个提供方一个 `VEXNAR_<ID>_API_KEY` 引用）、llm-pi-ai 的提供方目录。
+   * 只删文件会让下一次请求仍然能从凭据库解析出 APIKEY，所以三份一起清：
+   *   - 先按退出前的账号目录列出全部凭据引用并 unset；
+   *   - 再把 llm-pi-ai 的 providers 置空并记住指纹，避免后台同步把它写回来；
+   *   - 最后清掉内存里的模型通道与默认模型选择。
+   */
+  const purgeAccountSecrets = async (state: Account): Promise<void> => {
+    const refs = new Set<string>(syncedProviders.size > 0 ? [...syncedProviders] : [])
+    for (const provider of catalog(state)) refs.add(provider.id)
+    // `catalog` 在未登录时可能为空，提供方 id 仍以账号文件为准再兜一层。
+    for (const provider of state.providers) refs.add(provider.id)
+    for (const id of refs) await ctx.credentials.unset(credentialName(id)).catch(() => {})
+    syncedProviders = new Set()
+    lastCatalog = ''
+    lastState = undefined
+    process.env.VEXNAR_MODEL = ''
+    await ctx.settings.replace('llm-pi-ai', { providers: {} })
+    await clearModelChannel().catch(() => {})
+    setReady(false)
+  }
+
+  /**
+   * 目录同步与退出登录互斥。
+   *
+   * 后台每 15 秒同步一次目录，登录、改提供方时也会同步；这些同步都带
+   * `await ctx.credentials.set(...)`。退出登录如果在中间插进来，一次还在飞行中的
+   * 旧同步就能把刚删掉的 APIKEY 写回凭据库——"点了退出，密钥又回来了"。
+   * 所以：每次同步带一个 epoch，退出时先 +1 再等队列跑空；epoch 过期的同步
+   * 不再写任何东西。所有同步串行执行，最后写入的一定是最新那份。
+   */
+  let secretEpoch = 0
+  let catalogTail: Promise<unknown> = Promise.resolve()
+
+  const applyCatalog = async (state: Account, epoch: number) => {
+    if (epoch !== secretEpoch) return publicView(state)
     lastState = state
     const providers: Record<string, LlmProviderSetting> = {}
     const present = new Set<string>()
@@ -297,6 +336,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     syncedProviders = present
 
     const fingerprint = JSON.stringify(providers)
+    if (epoch !== secretEpoch) return publicView(state)
     if (fingerprint !== lastCatalog) {
       await ctx.settings.replace('llm-pi-ai', { providers })
       lastCatalog = fingerprint
@@ -318,6 +358,26 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     // 加载内置 core 会等待存储初始化，账户校验只依赖本地身份和 dsh 设置。
     if (firstModel !== undefined) ensureModelChannel()
     return publicView(state)
+  }
+
+  /** 串行化入口：同一时刻只有一次目录写入，顺序由调用顺序决定。 */
+  const syncCatalog = (state: Account): Promise<AccountView> => {
+    const epoch = secretEpoch
+    const run = catalogTail.then(() => applyCatalog(state, epoch))
+    catalogTail = run.catch(() => {})
+    return run
+  }
+
+  /** 一条完整的退出流程：作废旧同步 → 删密钥 → 删账号文件 → 关门。 */
+  const signOut = async (): Promise<void> => {
+    secretEpoch += 1
+    // 等已经开始的同步跑完：它们要么写完，要么看到新 epoch 直接返回；
+    // 之后才开始删，删除后不会再有旧同步把它写回来。
+    await catalogTail.catch(() => {})
+    const before = await account.read()
+    await purgeAccountSecrets(before)
+    await account.logout()
+    setReady(false)
   }
 
   /** 一次刷新：读状态 → 同步目录 → 返回给浏览器的视图。 */
@@ -448,7 +508,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       return account.renewWithToken(bodyText(input, 'access_token'))
     },
     DELETE: async () => {
-      await account.logout()
+      await signOut()
       return syncCatalog(await account.read())
     }
   })
@@ -461,6 +521,33 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       return view
     }
   })
+  // 退出登录的浏览器入口：清完密钥后 303 回登录页。
+  // 用跳转而不是让页面自己 location.replace('/')，是因为浏览器可能还留着工作区的
+  // index 缓存；带 ?signed-out=1 的目标 URL 一定是一次新请求，且登录页会说明原因。
+  // GET 与 POST 都收：链接、表单、脚本都能用同一条路径，不存在"删一半"的中间态。
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact', path: clientPrefix + '/signout',
+    handler: async (req, res) => {
+      const rejection = ctx.connection.requestRejection(req)
+      if (rejection) {
+        res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+        return res.end(JSON.stringify({ error: '请从本机 VEXNAR 客户端访问' }))
+      }
+      if (req.method !== 'GET' && req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'GET, POST', 'Cache-Control': 'no-store' })
+        return res.end()
+      }
+      try {
+        await signOut()
+      } catch (error) {
+        const status = error instanceof PlatformError ? error.status : 502
+        res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+        return res.end(JSON.stringify({ error: error instanceof PlatformError ? error.message : '退出登录失败，请重试' }))
+      }
+      res.writeHead(303, { Location: '/?signed-out=1', 'Cache-Control': 'no-store', Pragma: 'no-cache' })
+      res.end()
+    }
+  }))
   route('/wallet', { GET: () => account.wallet() })
   route('/billing/options', { GET: () => billing.options() })
   route('/billing/quote', { POST: async (req) => billing.quote(await readJson(req)) })

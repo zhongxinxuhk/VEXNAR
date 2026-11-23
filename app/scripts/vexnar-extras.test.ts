@@ -18,16 +18,24 @@ const file = join(import.meta.dirname, '..', 'vexnar', 'extras.json')
 const extras = await readExtras(file)
 
 // ── 清单 ───────────────────────────────────────────────────────────────────
-assert.equal(extras.length, 9, `预置插件应为 9 个，实际 ${extras.length}`)
+assert.equal(extras.length, 17, `预置插件应为 17 个，实际 ${extras.length}`)
 assert.equal(new Set(extras.map((item) => item.name)).size, extras.length, '包名不能重复')
-assert.deepEqual(extrasSpecs(extras), extras.map((item) => item.spec), 'specs 应按清单顺序输出')
+assert.deepEqual(
+  extrasSpecs(extras),
+  extras.filter((item) => item.runtime !== true).map((item) => item.spec),
+  'specs 应按清单顺序输出，且跳过运行时自带的条目'
+)
 
 for (const item of extras) {
-  assert.ok(item.spec.length > 0, `${item.name} 缺 spec`)
-  if (item.spec.startsWith('github:')) {
+  if (item.runtime === true) {
+    assert.equal(item.spec, undefined, `${item.name} 是运行时自带，不能写 spec`)
+    continue
+  }
+  assert.ok((item.spec ?? '').length > 0, `${item.name} 缺 spec`)
+  if ((item.spec as string).startsWith('github:')) {
     assert.match(item.spec, /#[0-9a-f]{40}$/, `${item.name} 的 GitHub spec 必须锁 40 位 commit`)
   } else {
-    assert.ok(item.spec.startsWith(`${item.name}@`), `${item.name} 的 spec 必须以「包名@版本」开头：${item.spec}`)
+    assert.ok((item.spec as string).startsWith(`${item.name}@`), `${item.name} 的 spec 必须以「包名@版本」开头：${item.spec}`)
   }
 }
 
@@ -35,7 +43,8 @@ for (const item of extras) {
 for (const name of [
   'dsh-agent-efficiency', '@zhuifengqug/dsh-ant', '@zilliz/memsearch-dsh', 'dsh-purge-community',
   'dsh-craft-anything', 'dsh-infinite-gen-5', '@linfengqaqtat/dsh-scriptor-retrieval',
-  '@furongjun1999/dsh-memory', 'dsh-planning-with-files'
+  '@furongjun1999/dsh-memory', 'dsh-planning-with-files', 'dsh-plugin-shop',
+  '@deepseek-ai/dsh-cua-bundle', '@deepseek-ai/dsh-subagent-codex'
 ]) {
   assert.ok(extras.some((item) => item.name === name), `清单缺 ${name}`)
 }
