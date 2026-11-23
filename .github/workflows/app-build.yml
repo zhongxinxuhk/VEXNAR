@@ -138,7 +138,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/dsh-packaging/presets"
           cat > "$RUNNER_TEMP/dsh-packaging/presets/test.env" <<'EOF'
-          DSH_DESKTOP_APP_ID=com.deepseek.harness
+          DSH_DESKTOP_APP_ID=com.vexnar.harness
           DSH_DESKTOP_AUTO_UPDATE_ENV=test
           DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN=https://updates.invalid
           DSH_DESKTOP_MANDATORY_UPDATE_CONFIG='{"allowedAuthOrigins":["https://login.invalid"]}'
@@ -163,6 +163,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # 发版后要触发站点重建：Release 由 GITHUB_TOKEN 创建，GitHub 不会拿它去触发
+      # `release: published`，下载页只能靠这一步显式 dispatch（或等 6 小时的 cron）。
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -216,3 +219,8 @@ jobs:
               --notes-file "$RUNNER_TEMP/notes.md" \
               ./*.dmg ./*.exe ./*.tar.gz ./SHA256SUMS
           fi
+      - name: Refresh the download page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run website-pages.yml --ref main
