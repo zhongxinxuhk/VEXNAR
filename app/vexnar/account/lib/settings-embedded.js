@@ -33923,7 +33923,7 @@ function registerReadViews(api) {
     const taskId = c.req.query("task") ?? "";
     const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
     const before = Number(c.req.query("before") ?? 0) || 0;
-    const page = taskId === "" ? await store.activity.recent({ limit, before }) : await store.activity.history({ taskId, limit, before });
+    const page = await store.activity.recent({ taskId, limit, before });
     const items = page.items.map(activityDto);
     return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore });
   });

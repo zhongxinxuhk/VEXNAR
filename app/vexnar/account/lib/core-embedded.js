@@ -76092,7 +76092,7 @@ function registerReadViews(api2) {
     const taskId = c.req.query("task") ?? "";
     const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
     const before = Number(c.req.query("before") ?? 0) || 0;
-    const page = taskId === "" ? await store.activity.recent({ limit, before }) : await store.activity.history({ taskId, limit, before });
+    const page = await store.activity.recent({ taskId, limit, before });
     const items = page.items.map(activityDto);
     return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore });
   });
@@ -77228,6 +77228,24 @@ data: ${JSON.stringify(activityDto(row))}
     } catch (e) {
       return err(c, e);
     }
+  });
+  api2.get("/api/exploration/activity/history", async (c) => {
+    const taskId = c.req.query("task") ?? "";
+    const before = Number(c.req.query("before") ?? 0) || 0;
+    const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
+    const session = c.req.query("session") ?? "";
+    if (session && session !== "main" && session !== "plan" && !/^main:\d+$/.test(session) && !/^intent:\d+$/.test(session)) {
+      return c.json({ error: "bad session" }, 400);
+    }
+    if (!taskId) return c.json({ items: [], snapshot_cursor: 0, earliest_cursor: 0, has_more: false });
+    const result = await store.activity.history({ taskId, session, before, limit });
+    const items = result.items.map((row) => activityDto(row));
+    return c.json({
+      items,
+      snapshot_cursor: result.snapshot,
+      earliest_cursor: items.length ? items[0].seq : before,
+      has_more: result.hasMore
+    });
   });
   api2.get("/api/exploration/activity/:seq", async (c) => {
     try {
@@ -81361,40 +81379,6 @@ api.get("/api/exploration/tokens", async (c) => {
   if (!taskId) return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } });
   const result = await store.activity.tokenStats(taskId);
   return c.json({ workers: result.workers, sessions: result.sessions, total: result.total });
-});
-api.get("/api/exploration/activity/history", async (c) => {
-  const taskId = c.req.query("task") ?? "";
-  const before = Number(c.req.query("before") ?? 0) || 0;
-  const limit = Math.min(Number(c.req.query("limit") ?? 200) || 200, 500);
-  const session = c.req.query("session") ?? "";
-  if (session && session !== "main" && session !== "plan" && !/^main:\d+$/.test(session) && !/^intent:\d+$/.test(session)) {
-    return c.json({ error: "bad session" }, 400);
-  }
-  if (!taskId) return c.json({ items: [], snapshot_cursor: 0, earliest_cursor: 0, has_more: false });
-  const result = await store.activity.history({ taskId, session, before, limit });
-  const items = result.items.map((row) => ({
-    seq: Number(row.id),
-    ...row.node_id == null ? {} : { node_id: Number(row.node_id) },
-    ...row.worker ? { worker: row.worker } : {},
-    ts: String(row.created_at).replace(/\.\d+/, ""),
-    ...row.kind ? { kind: row.kind } : {},
-    ...row.tool ? { tool: row.tool } : {},
-    ...row.tool_use_id ? { tool_use_id: row.tool_use_id } : {},
-    is_error: Boolean(row.is_error),
-    summary: row.summary ?? "",
-    metadata: row.metadata ?? {},
-    ...row.input_tokens == null ? {} : { input_tokens: Number(row.input_tokens) },
-    ...row.output_tokens == null ? {} : { output_tokens: Number(row.output_tokens) },
-    ...row.cache_read_tokens == null ? {} : { cache_read_tokens: Number(row.cache_read_tokens) },
-    ...row.cache_write_tokens == null ? {} : { cache_write_tokens: Number(row.cache_write_tokens) },
-    ...row.main_seg == null ? {} : { main_seg: Number(row.main_seg) }
-  }));
-  return c.json({
-    items,
-    snapshot_cursor: result.snapshot,
-    earliest_cursor: items.length ? items[0].seq : before,
-    has_more: result.hasMore
-  });
 });
 var routeModules = [
   { load: () => Promise.resolve().then(() => (init_conversations(), conversations_exports)), scope: "conversations/chat" },

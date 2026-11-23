@@ -296,15 +296,14 @@ export function registerReadViews(api: Hono): void {
 
   // ── exploration activity list ───────────────────────────────────────────
   // No `task` → the station-wide feed (dsh overview's activity card); with a
-  // `task` → that task's activity. Both answer the same DTO, so every surface
-  // reads `seq`/`ts` instead of the raw store columns.
+  // `task` → 该任务的全部活动（planner / work#N / mainagent 都算，与 Go 的
+  // ActivityList(nil) 一致）。不能走 `activity.history` 的默认「只看 mainagent」
+  // 过滤：任务播报板要看到规划与执行步骤，否则纯引擎跑出来的任务永远是空板。
   api.get('/api/exploration/activity', async (c) => {
     const taskId = c.req.query('task') ?? ''
     const limit = Math.min(Number(c.req.query('limit') ?? 200) || 200, 500)
     const before = Number(c.req.query('before') ?? 0) || 0
-    const page = taskId === ''
-      ? await store.activity.recent({ limit, before })
-      : await store.activity.history({ taskId, limit, before })
+    const page = await store.activity.recent({ taskId, limit, before })
     const items = page.items.map(activityDto)
     return c.json({ items, snapshot: page.snapshot, cursor: page.snapshot, has_more: page.hasMore })
   })
