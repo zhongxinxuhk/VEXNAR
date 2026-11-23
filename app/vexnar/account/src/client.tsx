@@ -278,8 +278,27 @@ function AccountLauncher({ wide, openSettings }: { wide: boolean; openSettings: 
  * 这里刻意不列模型：模型列表属于「模型」页，个人资料只回答"我是谁、平台还通不通"。
  */
 export function AccountSection(): ReactNode {
-  const { account, error, onError } = useAccount()
+  const { account, error, onError, update } = useAccount()
   const [busy, setBusy] = useState(false)
+  const [renewal, setRenewal] = useState('')
+
+  const renew = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const accessToken = new FormData(form).get('access_token')
+    form.reset()
+    setBusy(true)
+    setRenewal('')
+    onError('')
+    try {
+      update(await request<Account>('/account', 'PATCH', { access_token: accessToken }))
+      setRenewal('访问令牌已更新')
+    } catch (reason) {
+      onError(reason)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const logout = async () => {
     setBusy(true)
@@ -324,6 +343,19 @@ export function AccountSection(): ReactNode {
       </div>)}
     </dl>
     <Wallet />
+    <details className="vxa-fold">
+      <summary className="vxa-fold-summary">更新平台访问令牌</summary>
+      <form className="vxa-fold-body" onSubmit={event => { void renew(event) }}>
+        <label className="vxa-field">
+          <span className="vxa-label">当前账户的访问令牌</span>
+          <input className="vxa-input" name="access_token" type="password" autoComplete="off"
+            spellCheck={false} required disabled={busy} />
+        </label>
+        <button type="submit" className="vxa-btn" disabled={busy}>验证并更新</button>
+        {renewal && <p className="vxa-hint" role="status">{renewal}</p>}
+      </form>
+    </details>
+    {error && <p className="vxa-error" role="alert">{error}</p>}
     <div className="vxa-panel">
       <span className="vxa-panel-title">HXSEC AI Platform</span>
       <div className="vxa-panel-meta">
@@ -334,7 +366,6 @@ export function AccountSection(): ReactNode {
     <div>
       <button type="button" className="vxa-btn" disabled={busy} onClick={() => void logout()}>退出登录</button>
     </div>
-    {error !== '' && <p className="vxa-error" role="alert">{error}</p>}
   </div>
 }
 

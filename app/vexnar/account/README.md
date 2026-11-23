@@ -24,11 +24,13 @@ DeepSeek API Key（一键填入）或任意 OpenAI 兼容接口，不必经过�
 「设置 → 个人资料」显示平台身份、模型目录、协议、访问令牌状态和平台返回的请求计数。
 左下角账户菜单显示希灵 AI 和 DeepSeek 余额，并打开各自的官方充值页。个人资料页显示
 希灵 AI 的充值方式与订阅套餐。订阅购买在希灵 AI 钱包中确认。
+当前希灵 AI 账户的访问令牌可以在个人资料页更新，原有模型配置继续可用。
 「设置 → 模型」提供 DeepSeek API Key 预设与自定义 OpenAI 兼容接口导入，并可移除已添加的提供方。
 
 | 接口 | 作用 |
 |---|---|
 | `GET /vexnar-api/platform/account` | 读取账号、凭据配置状态和模型目录 |
+| `PATCH /vexnar-api/platform/account` | 校验并更新当前账号的访问令牌 |
 | `GET /vexnar-api/platform/methods` | 读取平台启用的登录方式 |
 | `POST /vexnar-api/platform/login/token` | 校验平台访问令牌并同步模型 |
 | `GET /vexnar-api/platform/wallet` | 读取两边余额、平台充值方式和订阅 |
