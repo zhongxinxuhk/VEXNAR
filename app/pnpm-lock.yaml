@@ -412,6 +412,9 @@ importers:
       protobufjs:
         specifier: 7.6.6
         version: 7.6.6
+      qrcode-generator:
+        specifier: 2.0.4
+        version: 2.0.4
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -4942,6 +4945,9 @@ packages:
     peerDependenciesMeta:
       kerberos:
         optional: true
+
+  qrcode-generator@2.0.4:
+    resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
 
   quick-lru@5.1.1:
     resolution: {integrity: sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==}
@@ -10679,6 +10685,8 @@ snapshots:
       long: 5.3.2
 
   proxy-agent-negotiate@1.1.0: {}
+
+  qrcode-generator@2.0.4: {}
 
   quick-lru@5.1.1: {}
 

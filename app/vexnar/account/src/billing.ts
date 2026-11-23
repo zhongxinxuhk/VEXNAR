@@ -97,6 +97,16 @@ function safeCheckoutURL(value: unknown): string {
   throw new PlatformError(502, '支付渠道未返回有效的收银台地址')
 }
 
+/** ZPay supports GET with the same signed parameters as its submit.php form. */
+function epayCheckout(url: string, fields: Record<string, string>): BillingOrder['checkout'] {
+  const target = new URL(url)
+  if (!/(^|\.)(zpayz\.cn|z-pay\.cn)$/.test(target.hostname) || !target.pathname.endsWith('/submit.php')) {
+    return { url, fields }
+  }
+  for (const [name, value] of Object.entries(fields)) target.searchParams.set(name, value)
+  return { url, scanURL: target.href }
+}
+
 export function createBilling(readAccount: () => Promise<Account>) {
   const orders = new Map<string, OrderEntry>()
   const account = async (): Promise<Account> => {
@@ -129,8 +139,9 @@ export function createBilling(readAccount: () => Promise<Account>) {
       const row = record(record(item).plan)
       const title = text(row.title)
       const price = money(row.price_amount)
+      const quota = row.total_amount === 0 || positiveInt(row.total_amount) ? row.total_amount : null
       return row.enabled === true && positiveInt(row.id) && title && price
-        ? [{ id: row.id, title, price: Number(price), currency: text(row.currency) }] : []
+        ? [{ id: row.id, title, price: Number(price), currency: 'CNY' as const, quota }] : []
     })
   }
 
@@ -138,13 +149,27 @@ export function createBilling(readAccount: () => Promise<Account>) {
     const state = await account()
     const config = await configuration(state)
     const available = methods(config)
-    const subscriptions = available.some(method => method.subscriptions) ? await plans(state).catch(() => []) : []
+    const [subscriptions, status] = available.some(method => method.subscriptions)
+      ? await Promise.all([plans(state).catch(() => []), upstream(state, '/api/status').catch(() => undefined)])
+      : [[], undefined]
+    const settings = record(status?.data)
+    const perUnit = settings.quota_per_unit
+    const rate = settings.usd_exchange_rate
+    const quotaScale = positiveInt(perUnit) && typeof rate === 'number' && Number.isFinite(rate) && rate > 0
+      ? rate / perUnit : null
+    const amounts = [...new Set(array(config.amount_options).filter(positiveInt))]
+    const discounts = record(config.discount)
     return {
-      amounts: [...new Set(array(config.amount_options).filter(positiveInt))],
+      amounts,
+      discounts: Object.fromEntries(amounts.flatMap((amount) => {
+        const ratio = discounts[amount]
+        return typeof ratio === 'number' && ratio > 0 && ratio < 1 ? [[amount, ratio]] : []
+      })),
       methods: available.map(({ id, name, minimum, subscriptions, products }) => ({
         id, name, minimum, subscriptions, ...(products ? { products: products.map(({ id, name }) => ({ id, name })) } : {})
       })),
-      plans: subscriptions
+      plans: subscriptions,
+      quotaScale
     }
   }
 
@@ -156,7 +181,7 @@ export function createBilling(readAccount: () => Promise<Account>) {
       const plan = (await plans(state)).find(candidate => candidate.id === input.plan)
       if (!selected.subscriptions || !plan) throw new PlatformError(422, '此套餐或支付渠道当前不可用')
       return { provider, path: '/api/subscription/epay/pay', payment: { plan_id: plan.id, payment_method: selected.id },
-        quote: { total: money(plan.price), currency: 'CNY' } }
+        quote: { total: money(plan.price), currency: plan.currency } }
     }
     if (provider === 'creem') {
       const product = selected.products?.find(item => item.id === input.product)
@@ -212,7 +237,7 @@ export function createBilling(readAccount: () => Promise<Account>) {
         }
         const entry = orders.get(key)
         if (entry) entry.trade = trade
-        return { checkout: { url: safeCheckoutURL(upstreamOrder.url), fields }, canCheckStatus: true }
+        return { checkout: epayCheckout(safeCheckoutURL(upstreamOrder.url), fields), canCheckStatus: true }
       }
       const trade = text(data.order_id)
       const entry = orders.get(key)

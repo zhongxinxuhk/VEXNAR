@@ -77,6 +77,14 @@ function safeCheckoutURL(value) {
   }
   throw new PlatformError(502, "\u652F\u4ED8\u6E20\u9053\u672A\u8FD4\u56DE\u6709\u6548\u7684\u6536\u94F6\u53F0\u5730\u5740");
 }
+function epayCheckout(url, fields) {
+  const target = new URL(url);
+  if (!/(^|\.)(zpayz\.cn|z-pay\.cn)$/.test(target.hostname) || !target.pathname.endsWith("/submit.php")) {
+    return { url, fields };
+  }
+  for (const [name, value] of Object.entries(fields)) target.searchParams.set(name, value);
+  return { url, scanURL: target.href };
+}
 function createBilling(readAccount) {
   const orders = /* @__PURE__ */ new Map();
   const account = async () => {
@@ -107,16 +115,27 @@ function createBilling(readAccount) {
       const row = record(record(item).plan);
       const title = text(row.title);
       const price2 = money(row.price_amount);
-      return row.enabled === true && positiveInt(row.id) && title && price2 ? [{ id: row.id, title, price: Number(price2), currency: text(row.currency) }] : [];
+      const quota = row.total_amount === 0 || positiveInt(row.total_amount) ? row.total_amount : null;
+      return row.enabled === true && positiveInt(row.id) && title && price2 ? [{ id: row.id, title, price: Number(price2), currency: "CNY", quota }] : [];
     });
   };
   async function options() {
     const state = await account();
     const config = await configuration(state);
     const available = methods(config);
-    const subscriptions = available.some((method) => method.subscriptions) ? await plans(state).catch(() => []) : [];
+    const [subscriptions, status2] = available.some((method) => method.subscriptions) ? await Promise.all([plans(state).catch(() => []), upstream(state, "/api/status").catch(() => void 0)]) : [[], void 0];
+    const settings = record(status2?.data);
+    const perUnit = settings.quota_per_unit;
+    const rate = settings.usd_exchange_rate;
+    const quotaScale = positiveInt(perUnit) && typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate / perUnit : null;
+    const amounts = [...new Set(array(config.amount_options).filter(positiveInt))];
+    const discounts = record(config.discount);
     return {
-      amounts: [...new Set(array(config.amount_options).filter(positiveInt))],
+      amounts,
+      discounts: Object.fromEntries(amounts.flatMap((amount) => {
+        const ratio = discounts[amount];
+        return typeof ratio === "number" && ratio > 0 && ratio < 1 ? [[amount, ratio]] : [];
+      })),
       methods: available.map(({ id, name, minimum, subscriptions: subscriptions2, products }) => ({
         id,
         name,
@@ -124,7 +143,8 @@ function createBilling(readAccount) {
         subscriptions: subscriptions2,
         ...products ? { products: products.map(({ id: id2, name: name2 }) => ({ id: id2, name: name2 })) } : {}
       })),
-      plans: subscriptions
+      plans: subscriptions,
+      quotaScale
     };
   }
   async function price(state, input) {
@@ -138,7 +158,7 @@ function createBilling(readAccount) {
         provider,
         path: "/api/subscription/epay/pay",
         payment: { plan_id: plan.id, payment_method: selected.id },
-        quote: { total: money(plan.price), currency: "CNY" }
+        quote: { total: money(plan.price), currency: plan.currency }
       };
     }
     if (provider === "creem") {
@@ -196,7 +216,7 @@ function createBilling(readAccount) {
         }
         const entry2 = orders.get(key);
         if (entry2) entry2.trade = trade2;
-        return { checkout: { url: safeCheckoutURL(upstreamOrder.url), fields }, canCheckStatus: true };
+        return { checkout: epayCheckout(safeCheckoutURL(upstreamOrder.url), fields), canCheckStatus: true };
       }
       const trade = text(data.order_id);
       const entry = orders.get(key);

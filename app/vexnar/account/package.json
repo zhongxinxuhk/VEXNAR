@@ -33,11 +33,12 @@
   },
   "devDependencies": {
     "@grpc/grpc-js": "^1.14.7",
+    "@types/node": "^26.6.6",
     "@types/react": "^18.3.31",
     "esbuild": "^0.25.0",
     "protobufjs": "7.6.6",
-    "typescript": "^6.0.3",
-    "@types/node": "^26.6.6"
+    "qrcode-generator": "2.0.4",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "playwright-core": "^1.65.1"

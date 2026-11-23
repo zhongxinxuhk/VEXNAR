@@ -2,12 +2,21 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, Fragment, useEffect, useRef, useState } from 'react'
+import { createElement as h, Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import qrcode from 'qrcode-generator'
 import type { BillingOptions, BillingOrder, BillingQuote, BillingSelection, BillingStatus } from './billing-types.js'
 
 type API = <T>(path: string, method?: string, body?: object) => Promise<T>
 const errorText = (reason: unknown) => reason instanceof Error ? reason.message : String(reason)
+
+function planQuota(quota: number | null, scale: number | null): string {
+  if (quota === null) return '套餐额度待确认'
+  if (quota === 0) return '套餐额度不限'
+  if (scale === null) return `套餐额度 ${quota.toLocaleString('zh-CN')}`
+  const value = (quota * scale).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+  return `套餐额度 ${value} CNY`
+}
 
 export function AppDialog({ title, onClose, children, busy = false, narrow = false }: {
   title: string
@@ -67,15 +76,28 @@ function Cashier({ order, requestID, request, onPaid }: {
   const frame = useRef<HTMLIFrameElement>(null)
   const submitted = useRef(false)
   const name = `vexnar-payment-${requestID}`
+  const scanURL = order.checkout.scanURL
+  const qrImage = useMemo(() => {
+    if (!scanURL) return undefined
+    try {
+      const code = qrcode(0, 'M')
+      code.addData(scanURL)
+      code.make()
+      return code.createDataURL(5, 20)
+    } catch {
+      return undefined
+    }
+  }, [scanURL])
 
   useEffect(() => {
+    if (scanURL) return
     if (!submitted.current && order.checkout.fields && frame.current) {
       submitted.current = true
       sendToCashier(name, order.checkout)
     }
     const timer = window.setTimeout(() => setDelay(true), 8_000)
     return () => window.clearTimeout(timer)
-  }, [name, order])
+  }, [name, order, scanURL])
 
   useEffect(() => {
     if (!order.canCheckStatus) return
@@ -103,8 +125,15 @@ function Cashier({ order, requestID, request, onPaid }: {
   if (status === 'paid') return <p role="status" className="vxa-payment-success">支付成功，余额已刷新。</p>
   if (status === 'closed') return <p role="status" className="vxa-error">订单已关闭，请返回重新选择。</p>
   return <>
-    {!loaded && <Loading>正在加载支付收银台…</Loading>}
-    <iframe ref={frame} className="vxa-payment-frame" name={name} title="支付二维码或收银台"
+    {scanURL ? qrImage
+      ? <figure className="vxa-payment-qr">
+        <img src={qrImage} width={300} height={300} alt="ZPay 支付二维码" />
+        <figcaption>用手机扫码打开 ZPay 收银台付款</figcaption>
+      </figure>
+      : <p role="alert" className="vxa-error">支付二维码生成失败，请核对订单后重试。</p>
+      : <>
+      {!loaded && <Loading>正在加载支付收银台…</Loading>}
+      <iframe ref={frame} className="vxa-payment-frame" name={name} title="支付二维码或收银台"
       sandbox="allow-forms allow-scripts allow-same-origin"
       referrerPolicy="no-referrer"
       src={order.checkout.fields ? 'about:blank' : order.checkout.url}
@@ -114,7 +143,8 @@ function Cashier({ order, requestID, request, onPaid }: {
         } catch { /* the cross-origin checkout is isolated from VEXNAR */ }
         setLoaded(true)
       }} />
-    {delay && <p className="vxa-hint">收银台若仍空白，支付渠道可能限制了应用内展示。</p>}
+      {delay && <p className="vxa-hint">收银台若仍空白，支付渠道可能限制了应用内展示。</p>}
+    </>}
     {checkingFailed
       ? <p role="status" className="vxa-hint">暂未确认付款，请核对渠道结果，避免重复付款。</p>
       : order.canCheckStatus && <p role="status" className="vxa-hint">等待付款，到账后自动刷新。</p>}
@@ -206,19 +236,27 @@ export function RechargeDialog({ provider, request, onClose, onPaid }: {
               {config.plans.length > 0 && <button type="button" className="vxa-btn" aria-pressed={mode === 'subscription'}
                 onClick={() => setMode('subscription')}>购买订阅</button>}
             </div>
-            {mode === 'subscription' ? <div className="vxa-payment-options" role="group" aria-label="订阅套餐">
+            {mode === 'subscription' ? <div className="vxa-payment-options vxa-payment-plans" role="group" aria-label="订阅套餐">
               {config.plans.map(item => <button className="vxa-pay-option" key={item.id} type="button"
                 aria-pressed={plan === item.id} onClick={() => setPlan(item.id)}>
-                <strong>{item.title}</strong><span>{item.price} {item.currency}</span>
+                <strong>{item.title}</strong>
+                <span>{plan === item.id && activeQuote ? activeQuote.total : item.price.toFixed(2)} {item.currency}</span>
+                <span className="vxa-payment-benefit">{planQuota(item.quota, config.quotaScale)}</span>
               </button>)}
             </div> : channel?.products ? <div className="vxa-payment-options" role="group" aria-label="充值商品">
               {channel.products.map(item => <button className="vxa-pay-option" key={item.id} type="button"
                 aria-pressed={product === item.id} onClick={() => setProduct(item.id)}>{item.name}</button>)}
             </div> : <>
               <div className="vxa-payment-options" role="group" aria-label="预设充值金额">
-                {config.amounts.map(value => <button className="vxa-pay-option" key={value} type="button"
-                  disabled={value < (channel?.minimum ?? 1)} aria-pressed={amount === String(value)}
-                  onClick={() => setAmount(String(value))}>{value}</button>)}
+                {config.amounts.map(value => {
+                  const ratio = config.discounts[value]
+                  return <button className="vxa-pay-option" key={value} type="button"
+                    disabled={value < (channel?.minimum ?? 1)} aria-pressed={amount === String(value)}
+                    onClick={() => setAmount(String(value))}>
+                    <span>{value}</span>
+                    {ratio !== undefined && <span className="vxa-payment-benefit">{Number((ratio * 10).toFixed(2))} 折</span>}
+                  </button>
+                })}
               </div>
               <label className="vxa-field"><span className="vxa-label">充值金额</span>
                 <input className="vxa-input" type="text" inputMode="numeric" value={amount}

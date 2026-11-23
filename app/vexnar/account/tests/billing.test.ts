@@ -20,7 +20,7 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
     providers: []
   }
   const tradeNo = 'test-fixture-trade'
-  const paymentURL = 'https://checkout.example.test/submit.php'
+  const paymentURL = 'https://zpayz.cn/submit.php'
   let charged = '4.80'
   let upstreamOrders = 0
   let balanceStatus = 'pending'
@@ -35,13 +35,17 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
         success: true,
         data: {
           enable_online_topup: true, enable_stripe_topup: false, min_topup: 1, amount_options: [5, 10, 5, -1],
+          discount: { 5: 0.96, 10: 1, 20: 0.92 },
           pay_methods: [{ name: '支付宝', type: 'alipay', min_topup: '3' }, { name: 'Stripe', type: 'stripe' }]
         }
       })
     }
+    if (url.pathname === '/api/status') {
+      return Response.json({ success: true, data: { quota_per_unit: 500000, usd_exchange_rate: 2 } })
+    }
     if (url.pathname === '/api/subscription/plans') {
       return Response.json({ success: true, data: [{ plan: {
-        enabled: true, id: 2, price_amount: 20, currency: 'CNY', title: '开发套餐'
+        enabled: true, id: 2, price_amount: 20, currency: 'USD', title: '开发套餐', total_amount: 10000000
       } }] })
     }
     if (url.pathname === '/api/user/amount') {
@@ -53,8 +57,9 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
       const body = JSON.parse(String(init.body))
       paidBy = body.payment_method
       if (url.pathname === '/api/subscription/epay/pay') assert.equal(body.plan_id, 2)
-      return Response.json({ message: 'success', url: paymentURL, data: {
-        out_trade_no: tradeNo, money: body.plan_id ? '20.00' : charged, sign: 'test-sign', type: 'alipay'
+      return Response.json({ message: 'success', url: body.plan_id ? 'https://other.example.test/submit.php' : paymentURL, data: {
+        out_trade_no: tradeNo, money: body.plan_id ? '20.00' : charged, sign: 'test-sign', type: 'alipay',
+        name: '充值 + 额度', notify_url: 'https://example.test/notify'
       } })
     }
     assert.equal(url.pathname, '/api/user/topup/self')
@@ -66,8 +71,10 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
   const billing = createBilling(async () => account)
   const config = await billing.options()
   assert.deepEqual(config.amounts, [5, 10])
+  assert.deepEqual(config.discounts, { 5: 0.96 })
   assert.deepEqual(config.methods, [{ id: 'alipay', name: '支付宝', minimum: 3, subscriptions: true }])
-  assert.equal(config.plans[0]?.title, '开发套餐')
+  assert.deepEqual(config.plans, [{ id: 2, title: '开发套餐', price: 20, currency: 'CNY', quota: 10000000 }])
+  assert.equal(config.quotaScale, 0.000004)
 
   const selection = { kind: 'topup', method: 'alipay', amount: 5 }
   await assert.rejects(() => billing.quote({ ...selection, method: 'stripe' }), { status: 422 })
@@ -85,7 +92,14 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
   const [order, duplicate] = await Promise.all([billing.order(command), billing.order(command)])
   assert.deepEqual(order, duplicate)
   assert.equal(order.checkout.url, paymentURL)
-  assert.equal(order.checkout.fields?.out_trade_no, tradeNo)
+  assert.equal(order.checkout.fields, undefined)
+  assert.ok(order.checkout.scanURL)
+  const scan = new URL(order.checkout.scanURL)
+  assert.equal(scan.origin + scan.pathname, paymentURL)
+  assert.deepEqual(Object.fromEntries(scan.searchParams), {
+    out_trade_no: tradeNo, money: charged, sign: 'test-sign', type: 'alipay', name: '充值 + 额度',
+    notify_url: 'https://example.test/notify'
+  })
   assert.equal(upstreamOrders, 1)
   assert.equal(paidBy, 'alipay')
   await assert.rejects(() => billing.order({ ...command, amount: 10 }), { status: 409 })
@@ -95,8 +109,10 @@ test('configured recharge quotes, reconciles signed orders and polls by trade nu
 
   const subscription = { kind: 'subscription', method: 'alipay', plan: 2 }
   const subQuote = await billing.quote(subscription)
-  assert.equal(subQuote.total, '20.00')
-  await billing.order({ ...subscription, ...subQuote, request_id: '32345678-1234-1234-1234-123456789012' })
+  assert.deepEqual(subQuote, { total: '20.00', currency: 'CNY' })
+  const subOrder = await billing.order({ ...subscription, ...subQuote, request_id: '32345678-1234-1234-1234-123456789012' })
+  assert.equal(subOrder.checkout.fields?.out_trade_no, tradeNo)
+  assert.equal(subOrder.checkout.scanURL, undefined)
   assert.equal(upstreamOrders, 2)
 
   account.user_id = 43
