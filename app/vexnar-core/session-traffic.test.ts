@@ -192,6 +192,11 @@ check(
   JSON.stringify(afterStop.sessions?.map((row) => row.scope))
 )
 
+// 抓包单例在每个 scope 上开了回环监听；不关掉，Node 的事件循环不会退出，
+// `tsx --test` 就会永远挂在这个文件上。测试收尾显式释放。
+const { stopMitmProxy } = await import('./src/traffic-proxy/index.ts')
+stopMitmProxy()
+
 let passed = 0
 for (const r of results) {
   console.log(`[${r.ok ? 'PASS' : 'FAIL'}] ${r.name}  ${r.detail}`)
