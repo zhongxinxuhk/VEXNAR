@@ -23,8 +23,8 @@
 
 | 优先级 | 事项 | 当前证据与完成条件 |
 | --- | --- | --- |
-| P0 | 版本及交付范围 | 交付范围只有客户端：macOS arm64 的 dmg、Windows x64 的 exe，外加 VEXNAR 插件 / profile 包。版本从 `app-v0.0.1` 起由 [App CI](.github/workflows/app-build.yml) 自动延续，打包成功即发版。Go 服务、多平台二进制与 Docker 镜像不再发布。 |
-| P0 | App CI 和归档 | [App CI](.github/workflows/app-build.yml)已改为 pnpm 冻结安装、只装两个插件闭包，并在 checkout 后先跑数据守卫。打包完成后自动建 Release 并附 `SHA256SUMS`。 |
+| P0 | 版本及交付范围 | 交付范围只有客户端：macOS arm64 的 dmg、Windows x64 的 exe，外加 VEXNAR 插件 / profile 包。安装包内置覆盖层（四个插件 + 装好全部预置插件的 profile），装完即用。版本从 `app-v0.0.1` 起由 [App CI](.github/workflows/app-build.yml) 自动延续，打包成功即发版。Go 服务、多平台二进制与 Docker 镜像不再发布。 |
+| P0 | App CI 和归档 | [App CI](.github/workflows/app-build.yml) 已改为 pnpm 冻结安装、全量重建四个插件包、`check-built-artifacts.mjs` 逐个校验产物，并在 checkout 后先跑数据守卫。桌面任务把 `vexnar-desktop-overlay` 解到 `app/.desktop-overlay` 后由 `brand-desktop.mjs` 写进 `extraResources`，打包完成后自动建 Release 并附 `SHA256SUMS`。 |
 | P0 | 登录及客户端路径 | 用注明 dsh 版本和 Git 提交的构建，验证新 profile、旧 profile 与重启。通过客户端验证登录、设置、历史任务、流量记录及报告读取，记录数据实际来自内嵌 TS core 或显式 Go 服务。 |
 | P0 | 数据升级与恢复 | 用脱敏数据核对 PostgreSQL 导入前后的任务、资产、发现与历史流量，抽查代表性记录、校验和重启后读取，验证原库与备份可用。 |
 | P1 | 错误和状态展示 | 验证登录过期、模型配置错误、通知配置写入失败和后端不可用时的页面反馈，以及审批和审计记录读取。 |

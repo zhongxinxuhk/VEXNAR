@@ -14,6 +14,13 @@
 
 #### 新增
 
+- **安装包装好就是 VEXNAR**：桌面安装包内置覆盖层（`Resources/vexnar-overlay`）——
+  四个插件加一份已装好 `extras.json` 全部插件的 profile（含 `node_modules`）。
+  首启由 `apps/desktop/vexnar-bootstrap.js` 把 profile 落到
+  `~/.vexnar/profiles/desktop`、插件源码放到 `~/.vexnar/bundles/`、把清单里指向
+  构建机的 `file:` 路径改写成安装后的位置，然后才加载 dsh 主进程。用户不需要
+  装 Node、不需要 pnpm、不需要在源码工作区跑 `setup`。升级安装包时按覆盖层指纹
+  只替换 VEXNAR 自己的包，用户从插件面板装的第三方插件不受影响。
 - **拦截规则在 dsh 运行时真正生效**：`@vexnar/dsh-account` 注册
   `tools/pre-execute` 监听器，按 Go 的语义（优先级降序、首条命中、string/regex、
   tool_name/tool_input）判定每次工具调用。`deny` 直接拦下，`allow` 跳过后续规则，
@@ -29,6 +36,15 @@
 
 #### 修复
 
+- **安装包里不再缺插件**：打包任务过去只归档 `account/lib` 下的 `index.js` 与
+  `client.js`，同目录另外十三个宿主模块（平台账号、登录页、拦截守卫、yak 历史…）、
+  `core-embedded.js`、`settings-embedded.js` 全都没进包，`vexnar-egress` 更是从未
+  被构建。现在按目录归档，`check-built-artifacts.mjs` 以 `account/build.ts` 的
+  `hostEntries` 为准逐个校验产物；`@vexnar/core` 补上 `@vexnar/store` 依赖后，
+  精简安装也能构建 `build:embedded`（此前它在 CI 里根本跑不起来）。
+- **构建产物不再入库**：产物提交在仓库里、CI 又只重建其中两个包，剩下的直接吃
+  旧文件——这正是「装进去的是旧插件」的机制。现在打包前 `clean:outputs` 全量重建。
+- **`ensureProfile` 覆盖 egress**：改了 egress 但 profile 里仍是旧副本的问题修掉。
 - **访问令牌登录不再假报错**：已登录状态下粘贴令牌曾返回 409「请先退出当前
   VEXNAR 账号」——启动竞态、旧页面或第二个标签页都会让人撞上这个页面。现在同一
   账户直接更新令牌、不同账户切换账号；无效令牌的提示改成「访问令牌无效或已过期，

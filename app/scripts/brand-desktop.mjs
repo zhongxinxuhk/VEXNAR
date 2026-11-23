@@ -70,6 +70,21 @@ const TEXT_RULES = [
 
 const changed = []
 
+/** 安装包自带的 VEXNAR 覆盖层目录，由 scripts/prepare-desktop-overlay.mjs 生成。 */
+const OVERLAY = join(app, '.desktop-overlay')
+
+/**
+ * 在文本里插一次，重复跑不会插第二遍。
+ * 锚点找不到时直接失败：上游改过这一段就必须有人看一眼，不能静默漏掉。
+ */
+function insertOnce(rel, anchor, insertion) {
+  const text = read(rel)
+  if (text.includes(insertion.trimEnd())) return
+  if (!text.includes(anchor)) throw new Error(`brand: ${rel} 里找不到锚点 ${JSON.stringify(anchor)}，上游可能改过这一段`)
+  writeFileSync(join(dsh, rel), text.replace(anchor, anchor + insertion), 'utf8')
+  changed.push(rel)
+}
+
 function git(...args) {
   return execFileSync('git', ['-C', dsh, ...args], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
 }
@@ -88,6 +103,50 @@ function replaceAll(rel, from, to) {
     return
   }
   if (!text.includes(to)) throw new Error(`brand: ${rel} 里找不到 ${JSON.stringify(from)}，上游可能改过这一行`)
+}
+
+/**
+ * 把 VEXNAR 覆盖层塞进桌面安装包。
+ *
+ * 上游的 electron-builder 配置只打 `lib/main.js` 那几个文件和图标，装出来的
+ * 就是一个换名换图标的 DeepSeek Harness。三处改动缺一不可：
+ *
+ *   1. `vexnar-bootstrap.js` 拷进桌面包根，`package.json` 的 `main` 指向它——
+ *      它先把预装 profile 就位到 `~/.vexnar/profiles/desktop`，再加载真正的
+ *      `lib/main.js`；
+ *   2. `files` 带上这个文件（默认是按名字点着打的，不在名单里就不进 asar）；
+ *   3. `extraResources` 带上覆盖层目录，安装后落在 `Resources/vexnar-overlay`。
+ *
+ * 覆盖层由 scripts/prepare-desktop-overlay.mjs 生成。这里不在缺失时跳过：
+ * 照样写入 patch，让 electron-builder 打包时报错——比静默产出一个没有 VEXNAR
+ * 的空壳好得多。
+ */
+function applyOverlay() {
+  const bootstrap = join(app, 'desktop', 'vexnar-bootstrap.js')
+  const bootstrapTo = 'apps/desktop/vexnar-bootstrap.js'
+  copyFileSync(bootstrap, join(dsh, bootstrapTo))
+  changed.push(bootstrapTo)
+
+  const desktopManifest = 'apps/desktop/package.json'
+  const manifest = JSON.parse(read(desktopManifest))
+  if (manifest.main !== 'vexnar-bootstrap.js') {
+    manifest.main = 'vexnar-bootstrap.js'
+    writeFileSync(join(dsh, desktopManifest), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+    changed.push(desktopManifest)
+  }
+
+  insertOnce('apps/desktop/scripts/electron-builder-config.mjs',
+    "    files: [\n      'lib/main.js',\n",
+    "      'vexnar-bootstrap.js',\n")
+
+  insertOnce('apps/desktop/scripts/electron-builder-config.mjs',
+    '    extraResources: [\n',
+    `      { from: ${JSON.stringify(OVERLAY)}, to: 'vexnar-overlay' },\n`)
+
+  if (!existsSync(OVERLAY)) {
+    console.warn(`[!] 覆盖层尚未生成：${OVERLAY}`)
+    console.warn('    先执行 pnpm run overlay:prepare，否则安装包里没有 VEXNAR 的插件与配置')
+  }
 }
 
 function applyBrand() {
@@ -124,7 +183,10 @@ function applyBrand() {
     changed.push(to)
   }
 
-  // ── 5. 记录 + 自证 ───────────────────────────────────────────────────────
+  // ── 5. 覆盖层：安装包必须自带 VEXNAR 的插件与预装 profile ─────────────────
+  applyOverlay()
+
+  // ── 6. 记录 + 自证 ───────────────────────────────────────────────────────
   // 标记按并集累计：同一个工作树重复跑，前面已经改过的文件不会被漏记。
   const previous = existsSync(MARKER) ? JSON.parse(readFileSync(MARKER, 'utf8')).files ?? [] : []
   const tracked = new Set([...previous, ...changed])

@@ -34,7 +34,7 @@ permissions:
 jobs:
   app-bundle:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,6 +87,23 @@ jobs:
           name: vexnar-app-bundle
           path: ${{ runner.temp }}/vexnar-app-bundle.tar.gz
           if-no-files-found: error
+      - name: Prepare desktop overlay
+        working-directory: app
+        # 安装包要「装完就能用」：把 extras.json 里的插件全部装进一份 profile，
+        # 连同 VEXNAR 插件一起作为覆盖层随包发出去。用户首启不再联网重装一遍
+        # ——这正是上一版 dmg 装上去只有上游界面的原因。
+        run: |
+          pnpm run overlay:prepare
+          node -e "const m = require('./.desktop-overlay/overlay.json'); \
+            if (m.fileDeps.length !== 4) throw new Error('overlay 缺少 VEXNAR 本地依赖：' + m.fileDeps.length); \
+            if (!m.bundles.includes('@vexnar/app-bundle')) throw new Error('overlay 的 bundles 层没有 @vexnar/app-bundle'); \
+            console.log('overlay OK：' + m.bundles.length + ' 个 bundle，' + m.fileDeps.length + ' 个本地依赖')"
+          tar -czf "$RUNNER_TEMP/vexnar-desktop-overlay.tar.gz" -C . .desktop-overlay
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vexnar-desktop-overlay
+          path: ${{ runner.temp }}/vexnar-desktop-overlay.tar.gz
+          if-no-files-found: error
 
   desktop:
     if: startsWith(github.ref, 'refs/tags/app-v') || (github.event_name == 'workflow_dispatch' && inputs.desktop)
@@ -122,6 +139,19 @@ jobs:
           node -e "const {execFileSync} = require('node:child_process');
           const head = execFileSync('git', ['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
           if (head !== require('../upstream.lock.json').commit) throw new Error('dsh checkout differs from app/upstream.lock.json');"
+      - uses: actions/download-artifact@v4
+        with:
+          name: vexnar-desktop-overlay
+          path: ${{ runner.temp }}/overlay
+      - name: Unpack the VEXNAR overlay
+        working-directory: app
+        # 覆盖层必须到位再打补丁：brand 会把它的绝对路径写进 electron-builder 的
+        # extraResources，缺了它打出来的就是上游空壳。
+        run: |
+          test -s "$RUNNER_TEMP/overlay/vexnar-desktop-overlay.tar.gz"
+          tar -xzf "$RUNNER_TEMP/overlay/vexnar-desktop-overlay.tar.gz" -C .
+          test -f .desktop-overlay/overlay.json
+          du -sh .desktop-overlay
       - name: Apply the VEXNAR brand patch
         working-directory: app
         # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：
@@ -188,6 +218,15 @@ jobs:
           --out "$RUNNER_TEMP/notes.md"
       - uses: actions/download-artifact@v4
         with:
+          # 只取两个安装包（dsh-<target>-unsigned）。覆盖层有一千多兆，属于构建
+          # 中间物，不进 Release；`merge-multiple` 全部下载会把下面的 *.tar.gz
+          # 数量断言顶掉。
+          pattern: dsh-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: vexnar-app-bundle
           path: release-assets
           merge-multiple: true
       - name: Name assets after the release
