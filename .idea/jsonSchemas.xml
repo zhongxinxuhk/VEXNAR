@@ -52,6 +52,9 @@
                   <Item>
                     <option name="path" value="app/vexnar-store/package.json" />
                   </Item>
+                  <Item>
+                    <option name="path" value="app/package.json" />
+                  </Item>
                 </list>
               </option>
             </SchemaInfo>

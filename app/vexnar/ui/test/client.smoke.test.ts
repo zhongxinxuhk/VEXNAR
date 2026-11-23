@@ -126,7 +126,8 @@ test('apply registers every surface it owns', () => {
     // 抓包开关也挂在会话头部：它作用的是当前会话的抓包范围，与流量入口并列。
     'conversation.session.header.actions:vexnar-session-capture',
     'conversation.hero.options:vexnar-yak-history',
-    ...['overview', 'tasks', 'traffic']
+    // 四个领域页，按 PANELS 的注册顺序；代理池也是主面板，漏了它侧边栏就少一个入口。
+    ...['overview', 'tasks', 'traffic', 'egress']
       .flatMap((panel) => [`main:vexnar-${panel}`, `sidebar.panellist:vexnar-${panel}`]),
     ...['notify', 'intercept']
       .map((section) => `settings.section:vexnar-${section}`),
@@ -221,9 +222,24 @@ test('浮层挂到 body：设置弹窗的 transform 不能当它的容器', () =
   assert.ok(bundle.includes('box-sizing: border-box'), 'form controls need border-box, or 100% width overflows the drawer')
 })
 
+test('四页共用一套外壳与一套口径', () => {
+  // 设计层：四页都渲染 vx-ui-page，不再各自维护 padding 与标题字号。
+  assert.ok(bundle.includes('vx-ui-page'), 'the shared page shell must ship')
+  assert.ok(bundle.includes('vx-ui-kpi'), 'KPI cards come from the shared kit')
+  // 口径：概览与流量页读同一个键，代理池与概览读同一个键。
+  for (const key of ['traffic:totals', 'traffic:capture', 'proxy:state', 'tasks:summary']) {
+    assert.ok(bundle.includes(key), `shared query key ${key} must exist: it is what keeps two pages on one number`)
+  }
+  // 只有一个 HTTP 出口：错误类型与超时码都在，说明没有第二套 fetch 语义。
+  assert.ok(bundle.includes('ApiError'), 'the shared client must ship its error type')
+  assert.ok(bundle.includes('TIMEOUT'), 'the shared client must ship the timeout code')
+})
+
 test('the stylesheet only references tokens dsh actually defines', () => {
   for (const stale of ['--dsw-alias-bg-secondary', '--dsw-alias-border-secondary']) {
     assert.equal(bundle.includes(stale), false, `${stale} does not exist upstream; it would fall back to a hex literal`)
   }
   assert.ok(bundle.includes('vexnar-dsh-ui-styles'), 'stylesheet injection must ship in the bundle')
+  // --vx-muted 曾被引用 20 余次却从未定义，深色下退化成透明文本。
+  assert.ok(bundle.includes('--vx-muted: var(--vx-text-dim)'), 'the muted token must be defined, not just referenced')
 })

@@ -23,6 +23,8 @@ packages:
   # TypeScript 核心与存储
   - vexnar-core
   - vexnar-store
+  # Web 测试域：会话感知 HTTP 引擎（Policy / Session / Transport / Observer / Evidence）
+  - vexnar-web
   # P0 验证 spike
   - spike/*
 

@@ -21,7 +21,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { planLegacyBundles, readLegacyManifests } from './profile-migration.ts'
 import { extrasSpecs, mergeBundleLayer, readExtras } from './vexnar-extras.ts'
-import { appDir, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
+import { appDir, modernPython, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
 const require = createRequire(await realpath(bin))
@@ -129,4 +129,24 @@ last.dsh.profile.bundles = mergeBundleLayer({
   bundle
 })
 await writeFile(manifestPath, JSON.stringify(last, null, 2) + '\n')
+
+// ── 灵枢 python 侧的终止信号补丁 ─────────────────────────────────────────────
+// `@furongjun1999/dsh-memory` 的 md_cg/mcp_server.py 是裸的 `for line in sys.stdin:`
+// 主循环：终端 Ctrl-C / 宿主 SIGTERM 时阻塞读抛 KeyboardInterrupt 逃出 main()，
+// 于是 stderr 打一屏 Traceback（看着像崩溃）、sustain/cg 清理整段被跳过、退出码
+// 130（mcp-bridge 与 lingshu-bridge 只能按异常退出处理）。上游发布修复版前由
+// scripts/patch-md-cg-signals.py 就地补：首个信号优雅下线、第二个信号交还 SIG_DFL。
+// 必须在 pnpm add 之后跑——profile 的 node_modules 每次安装都会被整目录替换。
+// 失败不阻断安装：补不上只是回到旧行为，setup 不该因此失败。
+const python = modernPython()
+if (python) {
+  const patched = spawnSync(python, [join(appDir, 'scripts', 'patch-md-cg-signals.py')], {
+    env: runtimeEnv(), stdio: 'inherit'
+  })
+  if (patched.error) console.warn(`[vexnar] 灵枢信号补丁未运行：${patched.error.message}`)
+  else if (patched.status !== 0) console.warn('[vexnar] 灵枢信号补丁未完全应用（不影响使用，详见上方输出）')
+} else {
+  console.warn('[vexnar] 未找到 ≥3.10 的 Python，跳过灵枢信号补丁')
+}
+
 console.log('[vexnar] 隔离配置已就绪')

@@ -12,6 +12,8 @@ import { registerNotificationSettings } from './routes/notification-settings.ts'
 import { registerSettingsCatalog } from './routes/settings-catalog.ts'
 import { registerCatalogDefaults } from './catalog/register.ts'
 import { registerTaskDataManagement } from './routes/data-management.ts'
+import { webHttp } from './web.ts'
+import { runtimeMode } from './mode.ts'
 
 export const api = new Hono()
 registerSettingsCatalog(api)
@@ -20,6 +22,11 @@ registerNotificationSettings(api)
 // 代理池在 TS 内完整实现（节点/池/订阅/网关/对抗），先于任务域注册，
 // 让 /api/tasks/:id/proxy 命中自己的处理器。
 registerEgress(api)
+
+// Web 测试域：会话感知 HTTP 引擎（Policy/Session/Transport/Observer/Evidence）。
+// Harness 走 MCP（默认 127.0.0.1:8792/mcp）；这里的 REST 面给控制台与 CLI 用。
+api.all('/api/web', async (c) => (await webHttp(c.req.raw)) ?? c.json({ error: 'not found' }, 404))
+api.all('/api/web/*', async (c) => (await webHttp(c.req.raw)) ?? c.json({ error: 'not found' }, 404))
 
 // Exploration static routes (/findings/groups|export|asset-tree) must register
 // before the inline /api/exploration/findings/:id below, or Hono's first-match
@@ -623,13 +630,35 @@ const routeModules: Array<{ load: () => Promise<RouteModule>; scope: string }> =
   { load: () => import('./routes/auth.ts'), scope: 'auth/logs/system' },
   { load: () => import('./routes/gaps.ts'), scope: 'misc gap fill' },
 ]
+const failedModules: string[] = []
 for (const { load, scope } of routeModules) {
   try {
     const mod = await load()
     mod.register?.(api)
   } catch (error) {
+    failedModules.push(scope)
     console.error(`[vexnar] failed to load route module ${scope}:`, error)
   }
+}
+
+/**
+ * 启动自述：把「注册了多少条路由、哪些页面依赖的接口在不在、哪些模块没加载起来」
+ * 打成一行。客户端拿到 501 时，第一件事就是对照这行日志——没有它只能靠猜，
+ * 而"接口未实现"和"模块加载失败"在 HTTP 上长得一模一样。
+ */
+{
+  const paths = new Set(api.routes.map((route) => route.path))
+  const probe = [
+    '/api/traffic', '/api/traffic/hosts', '/api/traffic/capture',
+    '/api/tasks', '/api/tasks/summary', '/api/proxy/state', '/api/proxy/pools',
+    '/api/web/status'
+  ]
+  const missing = probe.filter((path) => !paths.has(path))
+  console.log(
+    `[vexnar] routes=${api.routes.length}` +
+    ` failed_modules=${failedModules.length === 0 ? 'none' : failedModules.join(',')}` +
+    ` missing_probe=${missing.length === 0 ? 'none' : missing.join(',')}`
+  )
 }
 
 /**
@@ -638,9 +667,16 @@ for (const { load, scope } of routeModules) {
  * 客户端现在由 TypeScript 自己回答领域接口（Go 默认不在环），漏掉的路由必须能一眼
  * 看出"是没迁过来"还是"参数不对"，所以带上路径、方法和迁移开关提示。
  */
-api.notFound((c) => c.json({
-  error: '该接口尚未在 TypeScript 侧实现',
-  path: c.req.path,
-  method: c.req.method,
-  hint: '需要旧 Go 后端对照时：VEXNAR_GO=on 启动它，并设 VEXNAR_GO_DATA=on 打开转发'
-}, 501))
+api.notFound((c) => {
+  // 文案只说"本地没这个路由"和"怎么修"。旧版提示里那句"用 VEXNAR_GO=on 起旧后端"
+  // 让界面看起来仍在依赖 Go，实际上 ts 模式（默认）下 Go 根本不在环——已删。
+  const goMode = runtimeMode() === 'go'
+  return c.json({
+    error: '该接口未在本地服务中注册',
+    path: c.req.path,
+    method: c.req.method,
+    hint: goMode
+      ? '当前是 go 回退模式：确认 Go 服务在线，或设 VEXNAR_RUNTIME_MODE=ts 走 TS 原生实现'
+      : '多半是客户端进程还跑着旧内核：重启 `pnpm web`，再看启动日志里的 routes=N / missing_probe'
+  }, 501)
+})

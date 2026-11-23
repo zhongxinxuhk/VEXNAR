@@ -339,32 +339,6 @@ body[data-ds-dark-theme] {
 .vx-ov-tone-amber { --vx-tone: var(--vx-chart-4); }
 .vx-ov-tone-red { --vx-tone: var(--vx-chart-5); }
 
-/* ── 领域面板外壳（任务/发现/设置各页共用） ───────────────────────────── */
-.vx-panel {
-  height: 100%;
-  overflow-y: auto;
-  padding: 22px 24px 40px;
-  /* 自己铺底：宿主容器未必跟着主题换背景，插件不能透出上一层的白。 */
-  background: var(--vx-surface);
-  color: var(--vx-text);
-  font-size: 13px;
-}
-
-.vx-panel-head { margin-bottom: 18px; }
-
-.vx-panel-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 660;
-  letter-spacing: -0.01em;
-}
-
-.vx-panel-desc {
-  margin: 3px 0 0;
-  font-size: 12px;
-  color: var(--vx-text-dim);
-}
-
 /* ── 概览整页 ─────────────────────────────────────────────────────────────
    只保留右上角的日期筛选；其余全部是数据区块。卡片 14px 圆角 + 顶部内高光，
    网格 12 列，窄窗口降为两列 / 单列。 */
@@ -3021,6 +2995,1257 @@ textarea.vx-int-prompt {
   .vx-int-modal { animation: none; }
   .vx-int-switch,
   .vx-int-switch > i { transition: none; }
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   控制台设计层（vx-ui-*）
+   ─────────────────────────────────────────────────────────────────────────
+   四页（概览 / 任务 / 流量 / 代理池）共用这一套外壳。之前的四套词汇
+   （vx-ov / vx-cat / vx-task / vx-yak）保留给尚未改造的区域，新页面只用这里。
+
+   三条硬规则：
+     1. 颜色一律走 --vx-* 桥，组件里不出现 hex，深色与换皮不需要第二份；
+     2. 间距是 4 的倍数，圆角只有 8/10/12 三档，避免"每页差一像素"；
+     3. 数字一律 tabular-nums，表格滚动时小数点不对齐会被一眼看出来。
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 补上历史欠账：--vx-muted 在旧样式里被引用 20 余次却从未定义，深色下会退化成
+   透明文本；--vx-code 是报文底色，之前靠 inline fallback 兜着。 */
+body {
+  --vx-muted: var(--vx-text-dim);
+  --vx-code: var(--vx-surface-sunken);
+}
+
+/* ── 页面骨架 ─────────────────────────────────────────────────────────── */
+.vx-ui-page {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  height: 100%;
+  padding: 18px 20px 40px;
+  overflow-y: auto;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.vx-ui-page,
+.vx-ui-page * { box-sizing: border-box; }
+
+.vx-ui-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.vx-ui-head-main { flex: 1; min-width: 0; }
+
+.vx-ui-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 660;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.vx-ui-desc {
+  margin: 3px 0 0;
+  max-width: 82ch;
+  color: var(--vx-text-dim);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.vx-ui-head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.vx-ui-statusline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--vx-surface-sunken) 58%, transparent);
+  font-size: 11px;
+  color: var(--vx-text-dim);
+}
+
+/* ── KPI ─────────────────────────────────────────────────────────────── */
+.vx-ui-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--vx-kpi-min, 148px), 1fr));
+  gap: 8px;
+}
+
+.vx-ui-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 12px 9px;
+  overflow: hidden;
+  border: 1px solid var(--vx-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(158deg, color-mix(in srgb, var(--vx-tone, transparent) 12%, transparent), transparent 62%),
+    color-mix(in srgb, var(--vx-surface) 90%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 38%, transparent);
+  color: var(--vx-text);
+  font: inherit;
+  text-align: start;
+  transition: transform 0.16s var(--vx-ease), border-color 0.16s var(--vx-ease), box-shadow 0.16s var(--vx-ease);
+}
+
+.vx-ui-kpi--action { cursor: pointer; }
+
+.vx-ui-kpi--action:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--vx-tone, var(--vx-border)) 45%, var(--vx-border));
+  box-shadow: 0 14px 26px -22px color-mix(in srgb, var(--vx-tone, #000) 90%, transparent);
+}
+
+.vx-ui-kpi--action:focus-visible {
+  outline: 2px solid var(--vx-accent);
+  outline-offset: 2px;
+}
+
+.vx-ui-kpi.is-active {
+  border-color: color-mix(in srgb, var(--vx-tone, var(--vx-border)) 60%, var(--vx-border));
+  background:
+    linear-gradient(158deg, color-mix(in srgb, var(--vx-tone, transparent) 20%, transparent), transparent 70%),
+    color-mix(in srgb, var(--vx-surface) 92%, transparent);
+}
+
+.vx-ui-kpi-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.vx-ui-kpi-label {
+  overflow: hidden;
+  color: var(--vx-text-dim);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-kpi-corner {
+  margin-inline-start: auto;
+  color: var(--vx-text-faint);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+.vx-ui-kpi-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ui-kpi-value em {
+  color: var(--vx-text-faint);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.vx-ui-kpi-hint {
+  display: -webkit-box;
+  min-height: 13px;
+  overflow: hidden;
+  color: var(--vx-text-faint);
+  font-size: 9.5px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* tone：一个变量驱动卡片渐变、Chip、进度条与状态点。 */
+.vx-ui-tone-neutral { --vx-tone: var(--vx-text-faint); }
+.vx-ui-tone-blue { --vx-tone: var(--vx-chart-1); }
+.vx-ui-tone-violet { --vx-tone: var(--vx-chart-2); }
+.vx-ui-tone-green { --vx-tone: var(--vx-chart-3); }
+.vx-ui-tone-amber { --vx-tone: var(--vx-chart-4); }
+.vx-ui-tone-red { --vx-tone: var(--vx-chart-5); }
+
+/* ── 区块 ─────────────────────────────────────────────────────────────── */
+.vx-ui-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--vx-border);
+  border-radius: 12px;
+  background: var(--vx-surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 26%, transparent);
+}
+
+.vx-ui-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--vx-border);
+  background: color-mix(in srgb, var(--vx-surface-sunken) 48%, transparent);
+}
+
+.vx-ui-card-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.vx-ui-card-title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.vx-ui-card-hint {
+  overflow: hidden;
+  color: var(--vx-text-faint);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-card-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-inline-start: auto;
+}
+
+.vx-ui-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  padding: 10px 12px 12px;
+}
+
+.vx-ui-card-body--scroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vx-ui-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  align-items: start;
+  gap: 10px;
+}
+
+.vx-ui-split-main,
+.vx-ui-split-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vx-ui-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ── 工具条 / 分段 ────────────────────────────────────────────────────── */
+.vx-ui-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--vx-surface-sunken) 52%, transparent);
+}
+
+.vx-ui-spacer { margin-inline-start: auto; }
+
+.vx-ui-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--vx-text) 5%, transparent);
+}
+
+.vx-ui-seg > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--vx-text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.14s var(--vx-ease), color 0.14s var(--vx-ease);
+}
+
+.vx-ui-seg > button em {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 9%, transparent);
+  color: var(--vx-text-faint);
+  font-size: 9px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ui-seg > button:hover { color: var(--vx-text); }
+
+.vx-ui-seg > button[aria-pressed="true"] {
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+}
+
+.vx-ui-seg > button:focus-visible {
+  outline: 2px solid var(--vx-accent);
+  outline-offset: 1px;
+}
+
+.vx-ui-lane { display: flex; align-items: center; gap: 8px; }
+
+/* ── 徽标 ─────────────────────────────────────────────────────────────── */
+.vx-ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 19px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--vx-tone, var(--vx-border)) 36%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-tone, transparent) 10%, transparent);
+  color: var(--vx-tone, var(--vx-text-dim));
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.vx-ui-chip-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.vx-ui-method {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--vx-tone, var(--vx-border)) 32%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--vx-tone, transparent) 12%, transparent);
+  color: var(--vx-tone, var(--vx-text-dim));
+  font-family: var(--vx-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.vx-ui-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--vx-tone, var(--vx-text-faint)) 14%, transparent);
+  color: var(--vx-tone, var(--vx-text-dim));
+  font-family: var(--vx-mono);
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 表格 ─────────────────────────────────────────────────────────────── */
+.vx-ui-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--vx-border);
+  border-radius: 9px;
+  background: var(--vx-surface);
+}
+
+.vx-ui-table {
+  width: 100%;
+  /* 固定布局：列宽由 col 的 width 决定，长主机名不会把表格撑出横向滚动条。
+     未声明宽度的列（通常是"路径"）平分剩余空间。 */
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11.5px;
+}
+
+.vx-ui-table th,
+.vx-ui-table td { min-width: 0; }
+
+.vx-ui-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--vx-border);
+  background: color-mix(in srgb, var(--vx-surface-sunken) 92%, var(--vx-surface));
+  color: var(--vx-text-faint);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-align: start;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vx-ui-table thead th[data-align="right"] { text-align: end; }
+.vx-ui-table thead th[data-align="center"] { text-align: center; }
+
+.vx-ui-table tbody td {
+  padding: 5px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 55%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.vx-ui-table tbody td[data-align="right"] { text-align: end; }
+.vx-ui-table tbody td[data-align="center"] { text-align: center; }
+.vx-ui-table tbody td.is-mono { font-family: var(--vx-mono); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.vx-ui-table tbody tr:last-child td { border-bottom: 0; }
+
+.vx-ui-table-wrap--dense .vx-ui-table tbody td { padding: 3px 8px; }
+.vx-ui-table-wrap--dense .vx-ui-table thead th { padding: 5px 8px; }
+
+.vx-ui-table tbody tr[data-clickable="true"] { cursor: pointer; }
+.vx-ui-table tbody tr:hover { background: color-mix(in srgb, var(--vx-surface-sunken) 68%, transparent); }
+
+/* 操作列粘在右侧：密集表格横向滚动时按钮仍然可点，不用先滚到底。 */
+.vx-ui-table th[data-sticky="right"],
+.vx-ui-table td[data-sticky="right"] {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--vx-surface);
+  box-shadow: inset 1px 0 0 var(--vx-border);
+}
+
+.vx-ui-table thead th[data-sticky="right"] {
+  z-index: 3;
+  background: color-mix(in srgb, var(--vx-surface-sunken) 92%, var(--vx-surface));
+}
+
+.vx-ui-table tbody tr:hover td[data-sticky="right"] {
+  background: color-mix(in srgb, var(--vx-surface-sunken) 68%, var(--vx-surface));
+}
+
+.vx-ui-table tbody tr[data-selected="true"] {
+  background: color-mix(in srgb, var(--vx-chart-1) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--vx-chart-1);
+}
+
+.vx-ui-th-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.vx-ui-th-btn > i { font-style: normal; opacity: 0.4; }
+.vx-ui-th-btn > i[data-dir="asc"],
+.vx-ui-th-btn > i[data-dir="desc"] { color: var(--vx-chart-1); opacity: 1; }
+.vx-ui-th-btn:focus-visible { outline: 2px solid var(--vx-accent); outline-offset: 2px; }
+
+.vx-ui-ellipsis {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vx-ui-cell-stack > strong {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* ── 空态 / 骨架 / 提示条 ─────────────────────────────────────────────── */
+.vx-ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 26px 12px;
+  color: var(--vx-text-faint);
+  text-align: center;
+}
+
+.vx-ui-empty svg { opacity: 0.4; }
+.vx-ui-empty strong { color: var(--vx-text-dim); font-size: 12px; font-weight: 600; }
+.vx-ui-empty small { max-width: 46ch; font-size: 10.5px; line-height: 1.5; }
+.vx-ui-empty-action { margin-top: 6px; }
+
+.vx-ui-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.vx-ui-skeleton > i {
+  display: block;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--vx-text) 5%, transparent) 25%,
+    color-mix(in srgb, var(--vx-text) 10%, transparent) 40%,
+    color-mix(in srgb, var(--vx-text) 5%, transparent) 55%
+  );
+  background-size: 300% 100%;
+  animation: vx-ov-shimmer 1.4s var(--vx-ease) infinite;
+}
+
+.vx-ui-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--vx-tone, var(--vx-border)) 38%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--vx-tone, transparent) 9%, transparent);
+  color: var(--vx-text);
+  font-size: 11px;
+}
+
+.vx-ui-banner-text { min-width: 0; flex: 1; }
+
+.vx-ui-banner-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--vx-text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vx-ui-banner-close:hover { background: color-mix(in srgb, var(--vx-text) 8%, transparent); }
+
+.vx-ui-banner strong { font-weight: 650; }
+
+.vx-ui-banner-link {
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--vx-tone, var(--vx-border)) 45%, transparent);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--vx-text);
+  font: inherit;
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.vx-ui-banner-link:hover { background: color-mix(in srgb, var(--vx-text) 8%, transparent); }
+
+/* ── 表单 ─────────────────────────────────────────────────────────────── */
+.vx-ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.vx-ui-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.vx-ui-field-label {
+  color: var(--vx-text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vx-ui-field-hint { color: var(--vx-text-faint); font-size: 9.5px; line-height: 1.45; }
+
+.vx-ui-input,
+.vx-ui-textarea {
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.vx-ui-input.is-mono,
+.vx-ui-textarea.is-mono { font-family: var(--vx-mono); font-size: 11px; }
+
+/* 下拉框按内容宽度排，不占满一行：工具条里一行能放下三个筛选器。 */
+.vx-ui-select {
+  width: auto;
+  min-width: 104px;
+  max-width: 220px;
+}
+
+.vx-ui-textarea { resize: vertical; }
+
+.vx-ui-input:focus-visible,
+.vx-ui-select:focus-visible,
+.vx-ui-textarea:focus-visible {
+  outline: none;
+  border-color: var(--vx-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vx-accent) 22%, transparent);
+}
+
+.vx-ui-input:disabled { opacity: 0.55; }
+
+.vx-ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 27px;
+  padding: 0 10px;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.13s var(--vx-ease), border-color 0.13s var(--vx-ease), color 0.13s var(--vx-ease);
+}
+
+.vx-ui-btn:hover:not(:disabled) {
+  border-color: var(--vx-accent);
+  background: color-mix(in srgb, var(--vx-surface-sunken) 70%, transparent);
+}
+
+.vx-ui-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.vx-ui-btn--sm { height: 23px; padding: 0 8px; font-size: 10.5px; }
+
+.vx-ui-btn--primary {
+  border-color: transparent;
+  background: var(--vx-text);
+  color: var(--vx-surface);
+  font-weight: 650;
+}
+
+.vx-ui-btn--primary:hover:not(:disabled) { background: var(--vx-text); opacity: 0.9; }
+
+.vx-ui-btn--ghost { border-color: transparent; background: transparent; color: var(--vx-text-dim); }
+.vx-ui-btn--ghost:hover:not(:disabled) { color: var(--vx-text); }
+
+.vx-ui-btn--danger {
+  border-color: color-mix(in srgb, var(--vx-negative) 38%, var(--vx-border));
+  color: var(--vx-negative);
+}
+
+.vx-ui-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--vx-negative) 8%, transparent); }
+
+.vx-ui-btn:focus-visible { outline: 2px solid var(--vx-accent); outline-offset: 2px; }
+
+.vx-ui-spin {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: vx-spin 0.7s linear infinite;
+}
+
+/* ── 指示器 ───────────────────────────────────────────────────────────── */
+.vx-ui-meter {
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 9%, transparent);
+}
+
+.vx-ui-meter > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s var(--vx-ease);
+}
+
+.vx-ui-bar {
+  display: flex;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
+}
+
+.vx-ui-bar > i { display: block; height: 100%; min-width: 2px; }
+.vx-ui-bar > i + i { margin-inline-start: 1px; }
+.vx-ui-bar--empty { opacity: 0.6; }
+
+.vx-ui-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+.vx-ui-kv > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 50%, transparent);
+  font-size: 11px;
+}
+
+.vx-ui-kv > div:last-child { border-bottom: 0; }
+.vx-ui-kv dt { flex: none; color: var(--vx-text-faint); font-size: 10.5px; }
+.vx-ui-kv dd { min-width: 0; margin: 0; overflow: hidden; text-align: end; text-overflow: ellipsis; }
+
+.vx-ui-kv code {
+  font-family: var(--vx-mono);
+  font-size: 10.5px;
+}
+
+/* ── 分页 ─────────────────────────────────────────────────────────────── */
+.vx-ui-pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  color: var(--vx-text-dim);
+  font-size: 10.5px;
+}
+
+.vx-ui-pager-total { color: var(--vx-text-faint); font-variant-numeric: tabular-nums; }
+.vx-ui-pager-page { min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ── 检查器（抽屉） ───────────────────────────────────────────────────── */
+.vx-ui-drawer-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.vx-ui-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, #000 32%, transparent);
+  cursor: pointer;
+  animation: vx-ov-fade 0.18s var(--vx-ease) both;
+}
+
+.vx-ui-drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 100vw;
+  height: 100%;
+  border-inline-start: 1px solid var(--vx-border);
+  background: var(--vx-surface);
+  box-shadow: -24px 0 60px -40px rgba(0, 0, 0, 0.6);
+  color: var(--vx-text);
+  font-size: 12px;
+  animation: vx-ui-slide 0.22s var(--vx-ease) both;
+}
+
+.vx-ui-drawer,
+.vx-ui-drawer * { box-sizing: border-box; }
+
+.vx-ui-drawer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--vx-border);
+  background: color-mix(in srgb, var(--vx-surface-sunken) 45%, transparent);
+}
+
+.vx-ui-drawer-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vx-ui-drawer-titles > strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-drawer-titles > span {
+  overflow: hidden;
+  color: var(--vx-text-faint);
+  font-family: var(--vx-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-drawer-meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.vx-ui-drawer-close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--vx-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--vx-text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vx-ui-drawer-close:hover { border-color: var(--vx-accent); color: var(--vx-text); }
+
+.vx-ui-drawer-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+}
+
+.vx-ui-drawer-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--vx-border);
+  background: color-mix(in srgb, var(--vx-surface-sunken) 45%, transparent);
+}
+
+.vx-ui-detail-tabs { display: flex; align-items: center; gap: 8px; }
+
+.vx-ui-code {
+  margin: 0;
+  padding: 9px 11px;
+  overflow: auto;
+  border: 1px solid var(--vx-border);
+  border-radius: 8px;
+  background: var(--vx-code);
+  color: var(--vx-text);
+  font-family: var(--vx-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ── 分布条 / 列表 / 事件 ─────────────────────────────────────────────── */
+.vx-ui-hbars { display: flex; flex-direction: column; gap: 6px; }
+
+.vx-ui-hbar {
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) minmax(50px, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--vx-text);
+  font: inherit;
+  font-size: 10.5px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.vx-ui-hbar--static { cursor: default; }
+.vx-ui-hbar:hover:not(.vx-ui-hbar--static) .vx-ui-hbar-label { color: var(--vx-chart-1); }
+
+.vx-ui-hbar-label {
+  overflow: hidden;
+  color: var(--vx-text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-hbar > i {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
+}
+
+.vx-ui-hbar > i > b {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--vx-chart-1);
+  transition: width 0.5s var(--vx-ease);
+}
+
+.vx-ui-hbar > em {
+  color: var(--vx-text-faint);
+  font-size: 9.5px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.vx-ui-list { display: flex; flex-direction: column; }
+
+.vx-ui-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 48%, transparent);
+  font-size: 10.5px;
+}
+
+.vx-ui-list-row:last-child { border-bottom: 0; }
+
+.vx-ui-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vx-ui-list-main code {
+  overflow: hidden;
+  font-family: var(--vx-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-list-main span { color: var(--vx-text-faint); font-size: 9.5px; }
+
+.vx-ui-list-row > em {
+  flex: none;
+  color: var(--vx-text-faint);
+  font-size: 9.5px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.vx-ui-events { display: flex; flex-direction: column; gap: 0; }
+
+.vx-ui-event {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--vx-border) 45%, transparent);
+  font-size: 10px;
+}
+
+.vx-ui-event:last-child { border-bottom: 0; }
+
+.vx-ui-event code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--vx-chart-1) 12%, transparent);
+  color: var(--vx-chart-1);
+  font-family: var(--vx-mono);
+  font-size: 9px;
+}
+
+.vx-ui-event span {
+  overflow: hidden;
+  color: var(--vx-text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-event em {
+  color: var(--vx-text-faint);
+  font-size: 9px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Web 引擎会话卡 ───────────────────────────────────────────────────── */
+.vx-ui-session-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 8px;
+}
+
+.vx-ui-session {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--vx-border);
+  border-radius: 10px;
+  background: var(--vx-surface);
+  color: var(--vx-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.14s var(--vx-ease), background 0.14s var(--vx-ease);
+}
+
+.vx-ui-session:hover { border-color: var(--vx-accent); }
+.vx-ui-session.is-active { border-color: var(--vx-chart-1); background: color-mix(in srgb, var(--vx-chart-1) 7%, transparent); }
+
+.vx-ui-session-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11.5px;
+}
+
+.vx-ui-session-top > strong {
+  overflow: hidden;
+  flex: 1;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-session-origin {
+  overflow: hidden;
+  color: var(--vx-text-faint);
+  font-family: var(--vx-mono);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-ui-session-meter {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vx-text) 8%, transparent);
+}
+
+.vx-ui-session-meter > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--vx-chart-1);
+}
+
+.vx-ui-session-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--vx-text-faint);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 成员勾选 ─────────────────────────────────────────────────────────── */
+.vx-ui-member-list { display: flex; flex-direction: column; gap: 5px; }
+
+.vx-ui-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--vx-border);
+  border-radius: 8px;
+  background: var(--vx-surface);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.13s var(--vx-ease), background 0.13s var(--vx-ease);
+}
+
+.vx-ui-member.is-on {
+  border-color: color-mix(in srgb, var(--vx-chart-3) 45%, var(--vx-border));
+  background: color-mix(in srgb, var(--vx-chart-3) 7%, transparent);
+}
+
+.vx-ui-member input { flex: none; accent-color: var(--vx-chart-3); }
+
+.vx-ui-member-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.vx-ui-member-main strong { font-size: 11.5px; font-weight: 600; }
+.vx-ui-member-main em {
+  overflow: hidden;
+  color: var(--vx-text-faint);
+  font-family: var(--vx-mono);
+  font-size: 9.5px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 杂项 ─────────────────────────────────────────────────────────────── */
+.vx-ui-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--vx-text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vx-ui-live > i {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--vx-text-faint);
+}
+
+.vx-ui-live.is-on { color: var(--vx-chart-3); }
+.vx-ui-live.is-on > i {
+  background: var(--vx-chart-3);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vx-chart-3) 22%, transparent);
+  animation: vx-ui-pulse 1.6s var(--vx-ease) infinite;
+}
+
+.vx-ui-muted { color: var(--vx-text-faint); }
+.vx-ui-bad { color: var(--vx-negative); font-weight: 600; }
+.vx-ui-ok { color: var(--vx-chart-3); font-weight: 600; }
+.vx-ui-mono-inline { font-family: var(--vx-mono); font-size: 11px; }
+.vx-ui-break { overflow-wrap: anywhere; word-break: break-all; }
+
+.vx-ui-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+@keyframes vx-ui-slide {
+  from { transform: translateX(24px); opacity: 0.4; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes vx-ui-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--vx-chart-3) 22%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--vx-chart-3) 6%, transparent); }
+}
+
+@media (max-width: 1180px) {
+  .vx-ui-split { grid-template-columns: minmax(0, 1fr); }
+  .vx-ui-split-rail { flex-direction: row; flex-wrap: wrap; }
+  .vx-ui-split-rail > * { flex: 1 1 240px; }
+}
+
+@media (max-width: 860px) {
+  .vx-ui-page { padding: 14px 14px 32px; }
+  .vx-ui-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vx-ui-head { flex-direction: column; gap: 8px; }
+  .vx-ui-head-actions { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-ui-kpi,
+  .vx-ui-meter > i,
+  .vx-ui-hbar > i > b,
+  .vx-ui-session { transition: none; }
+  .vx-ui-drawer,
+  .vx-ui-drawer-backdrop,
+  .vx-ui-skeleton > i,
+  .vx-ui-live.is-on > i { animation: none; }
 }
 `
 

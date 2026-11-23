@@ -25,11 +25,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
+import { request } from './data/client.ts'
+import { useQuery } from './data/query.ts'
+import { overviewSources } from './data/resources.ts'
+
 /* ══════════════════════════════════════════════════════════════════════════
    数据层
    ══════════════════════════════════════════════════════════════════════════ */
-
-const CORE_PATH = '/vexnar-api'
 
 function storeGet(key: string): string {
   try {
@@ -47,10 +49,9 @@ function storeSet(key: string, value: string): void {
   }
 }
 
-async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(CORE_PATH + path, { signal })
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return (await response.json()) as T
+/** 概览剩下的零散读接口也走统一 client：同一套超时与错误文案。 */
+async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, signal === undefined ? {} : { signal })
 }
 
 interface TaskRow {
@@ -88,12 +89,17 @@ interface Exchange {
   status?: number
 }
 
-/** `/api/traffic/capture`：会话发起的抓包态 + 最近流量样本。 */
+/**
+ * `/api/traffic/capture`：会话发起的抓包态 + 最近流量样本。
+ *
+ * 字段由 `data/resources.ts` 规范化成 camelCase（与流量页同一份模型），
+ * 这里只声明概览真正用到的部分。
+ */
 interface CaptureSummary {
   active?: boolean
-  sessions?: Array<{ conv_id?: number; scope?: string; source?: string; started_at?: number; items?: number; last_ts?: number }>
+  sessions?: Array<{ scope?: string; source?: string; startedAt?: number; items?: number; lastTs?: number }>
   total?: number
-  last_ts?: number
+  lastTs?: number
   recent?: Exchange[]
 }
 
@@ -199,20 +205,23 @@ function pick<T>(result: PromiseSettledResult<T>, fallback: T): T {
 }
 
 /** 一次概览抓取：全部接口并行，单个失败只降级那一块。 */
-async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; error: string }> {
+async function loadOverview(): Promise<{ data: OverviewData; error: string }> {
+  // 任务/流量/发现这三块走统一资源：命中缓存就复用，未命中才发请求。
+  // 这样概览与各领域页拿到的是**同一份**数字，而不是同一接口的两次解析。
   const settled = await Promise.allSettled([
-    getJson<{ tasks?: TaskRow[] }>('/api/tasks', signal),
-    getJson<Partial<SevCounts>>('/api/exploration/findings/stats', signal),
-    getJson<{ items?: FindingRow[] }>('/api/exploration/findings?page=1&limit=60', signal),
-    getJson<Record<string, number>>('/api/assets/counts', signal),
-    getJson<DayBucket[]>('/api/tokens/daily?days=365', signal),
-    getJson<CaptureSummary>('/api/traffic/capture', signal),
-    getJson<{ items?: ActivityRow[] }>('/api/exploration/activity?limit=14', signal),
-    getJson<{ agents?: Array<{ enabled?: boolean }> }>('/api/agents', signal),
-    getJson<{ servers?: Array<{ enabled?: boolean }> }>('/api/mcp', signal),
-    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools', signal),
-    getJson<{ hosts?: Array<{ host?: string; count?: number }> }>('/api/traffic/hosts', signal),
-    getJson<TaskSummaryPayload>('/api/tasks/summary?days=30', signal)
+    overviewSources.tasks().then((page) => ({ tasks: page.tasks as unknown as TaskRow[] })),
+    overviewSources.findings() as unknown as Promise<Partial<SevCounts>>,
+    getJson<{ items?: FindingRow[] }>('/api/exploration/findings?page=1&limit=60'),
+    getJson<Record<string, number>>('/api/assets/counts'),
+    getJson<DayBucket[]>('/api/tokens/daily?days=365'),
+    overviewSources.capture(),
+    getJson<{ items?: ActivityRow[] }>('/api/exploration/activity?limit=14'),
+    getJson<{ agents?: Array<{ enabled?: boolean }> }>('/api/agents'),
+    getJson<{ servers?: Array<{ enabled?: boolean }> }>('/api/mcp'),
+    getJson<{ tools?: Array<{ enabled?: boolean }> }>('/api/tools'),
+    overviewSources.hosts().then((hosts) => ({ hosts })),
+    overviewSources.summary(),
+    overviewSources.totals()
   ])
 
   // 只有主数据源（任务/发现/资产/Token）失败才算“数据不可用”。流量与活动流走 Go
@@ -232,6 +241,8 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
   const mcp = pick(settled[8] as PromiseSettledResult<{ servers?: Array<{ enabled?: boolean }> }>, {})
   const tools = pick(settled[9] as PromiseSettledResult<{ tools?: Array<{ enabled?: boolean }> }>, {})
   const hostRows = pick(settled[10] as PromiseSettledResult<{ hosts?: Array<{ host?: string; count?: number }> }>, {})
+  // 总量以 /api/traffic 的全量计数为准：与流量页 KPI 同一个字段（count）。
+  const totals = pick(settled[12] as PromiseSettledResult<{ total: number; archived: number; local: number; capturing: boolean }>, { total: 0, archived: 0, local: 0, capturing: false })
   // 聚合只是加速与统一口径：取不到时退回清单自算，界面不会因此变成 0。
   const summary = pick(settled[11] as PromiseSettledResult<TaskSummaryPayload>, {})
 
@@ -260,7 +271,7 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
       assets: assets !== null && typeof assets === 'object' ? assets : {},
       daily: Array.isArray(daily) ? daily : [],
       traffic: recent,
-      trafficTotal: Number(capture.total ?? 0),
+      trafficTotal: Number(totals.total ?? capture.total ?? 0),
       trafficHosts: (Array.isArray(hostRows.hosts) ? hostRows.hosts : [])
         .map((row) => ({ host: String(row?.host ?? ''), count: Number(row?.count ?? 0) }))
         .filter((row) => row.host !== '' && Number.isFinite(row.count)),
@@ -277,7 +288,7 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
       // collector's own switch and says nothing about an armed conversation.
       capture: capture.active === true || sessions.length > 0,
       captureSessions: sessions.length,
-      captureLastTs: Number(capture.last_ts ?? 0),
+      captureLastTs: Number((capture as { lastTs?: number; last_ts?: number }).lastTs ?? (capture as { last_ts?: number }).last_ts ?? 0),
       updated: Date.now()
     }
   }
@@ -285,43 +296,14 @@ async function loadOverview(signal: AbortSignal): Promise<{ data: OverviewData; 
 
 /** 概览数据；轮询在标签页隐藏时跳过，回到前台立刻补一次。 */
 function useOverview(intervalMs: number): { data: OverviewData; error: string; reload: () => void } {
-  const [data, setData] = useState<OverviewData>(EMPTY_DATA)
-  const [error, setError] = useState('')
-  const [nonce, setNonce] = useState(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    let alive = true
-    let busy = false
-
-    const load = async (): Promise<void> => {
-      if (busy || document.visibilityState === 'hidden') return
-      busy = true
-      try {
-        const next = await loadOverview(controller.signal)
-        if (!alive) return
-        setData(next.data)
-        setError(next.error)
-      } catch (reason) {
-        if (alive && !controller.signal.aborted) setError(String((reason as Error)?.message ?? reason))
-      } finally {
-        busy = false
-      }
-    }
-
-    void load()
-    const timer = window.setInterval(() => { void load() }, intervalMs)
-    const onVisible = (): void => { if (document.visibilityState === 'visible') void load() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      alive = false
-      controller.abort()
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [intervalMs, nonce])
-
-  return { data, error, reload: () => setNonce((value) => value + 1) }
+  // 轮询、隐藏暂停、卸载取消都由查询层统一处理（`useQuery` 的 pollMs）。
+  const result = useQuery('overview:composite', () => loadOverview(), { ttlMs: 0, pollMs: intervalMs })
+  const payload = result.data
+  return {
+    data: payload?.data ?? EMPTY_DATA,
+    error: payload?.error ?? result.error?.message ?? '',
+    reload: result.refresh
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

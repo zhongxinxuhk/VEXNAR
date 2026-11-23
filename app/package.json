@@ -18,7 +18,7 @@
     "go:build": "tsx scripts/vexnar-go.ts build",
     "go:stamp": "tsx scripts/vexnar-go.ts stamp",
     "build": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress run build && pnpm --filter @vexnar/core run build:embedded",
-    "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress --filter @vexnar/core run typecheck",
+    "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress --filter @vexnar/core --filter @vexnar/web run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
     "upstream:check": "tsx scripts/check-upstream.ts",
@@ -31,7 +31,9 @@
     "migrate:store": "tsx scripts/migrate-store.ts",
     "catalog:gen": "tsx scripts/gen-catalog-defaults.ts",
     "test:catalog": "tsx --test vexnar-core/test/catalog-register.test.ts",
-    "test:profile": "tsx --test scripts/profile-migration.test.ts"
+    "test:profile": "tsx --test scripts/profile-migration.test.ts",
+    "test:web": "pnpm --filter @vexnar/web run test",
+    "web:mcp": "pnpm --filter @vexnar/web run mcp"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.5",

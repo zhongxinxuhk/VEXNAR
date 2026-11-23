@@ -7354,25 +7354,25 @@ var require_path = __commonJS({
   "../../node_modules/.pnpm/@protobufjs+path@1.1.2/node_modules/@protobufjs/path/index.js"(exports) {
     "use strict";
     var path = exports;
-    var isAbsolute2 = (
+    var isAbsolute3 = (
       /**
        * Tests if the specified path is absolute.
        * @param {string} path Path to test
        * @returns {boolean} `true` if path is absolute
        */
-      path.isAbsolute = function isAbsolute3(path2) {
+      path.isAbsolute = function isAbsolute4(path2) {
         return /^(?:\/|\w+:)/.test(path2);
       }
     );
-    var normalize2 = (
+    var normalize3 = (
       /**
        * Normalizes the specified path.
        * @param {string} path Path to normalize
        * @returns {string} Normalized path
        */
-      path.normalize = function normalize3(path2) {
+      path.normalize = function normalize4(path2) {
         path2 = path2.replace(/\\/g, "/").replace(/\/{2,}/g, "/");
-        var parts = path2.split("/"), absolute = isAbsolute2(path2), prefix = "";
+        var parts = path2.split("/"), absolute = isAbsolute3(path2), prefix = "";
         if (absolute)
           prefix = parts.shift() + "/";
         for (var i = 0; i < parts.length; ) {
@@ -7393,12 +7393,12 @@ var require_path = __commonJS({
     );
     path.resolve = function resolve(originPath, includePath, alreadyNormalized) {
       if (!alreadyNormalized)
-        includePath = normalize2(includePath);
-      if (isAbsolute2(includePath))
+        includePath = normalize3(includePath);
+      if (isAbsolute3(includePath))
         return includePath;
       if (!alreadyNormalized)
-        originPath = normalize2(originPath);
-      return (originPath = originPath.replace(/(?:\/|^)[^/]+$/, "")).length ? normalize2(originPath + "/" + includePath) : includePath;
+        originPath = normalize3(originPath);
+      return (originPath = originPath.replace(/(?:\/|^)[^/]+$/, "")).length ? normalize3(originPath + "/" + includePath) : includePath;
     };
   }
 });
@@ -8214,13 +8214,13 @@ var require_converter = __commonJS({
       return gen;
     }
     converter.fromObject = function fromObject(mtype) {
-      var fields2 = mtype.fieldsArray;
+      var fields3 = mtype.fieldsArray;
       var gen = util.codegen(["d", "n"], mtype.name + "$fromObject")("if(d instanceof this.ctor)")("return d");
-      if (!fields2.length) return gen("return new this.ctor");
+      if (!fields3.length) return gen("return new this.ctor");
       gen("if(!util.isObject(d))")("throw TypeError(%j)", mtype.fullName + ": object expected")("if(n===undefined)n=0")("if(n>util.recursionLimit)")('throw Error("maximum nesting depth exceeded")');
       gen("var m=new this.ctor");
-      for (var i = 0; i < fields2.length; ++i) {
-        var field = fields2[i].resolve(), prop = util.safeProp(field.name);
+      for (var i = 0; i < fields3.length; ++i) {
+        var field = fields3[i].resolve(), prop = util.safeProp(field.name);
         if (field.map) {
           gen("if(d%s){", prop)("if(!util.isObject(d%s))", prop)("throw TypeError(%j)", field.fullName + ": object expected")("m%s={}", prop)("for(var ks=Object.keys(d%s),i=0;i<ks.length;++i){", prop);
           gen('if(ks[i]==="__proto__")')("util.makeProp(m%s,ks[i])", prop);
@@ -8285,14 +8285,14 @@ var require_converter = __commonJS({
       return gen;
     }
     converter.toObject = function toObject(mtype) {
-      var fields2 = mtype.fieldsArray.slice().sort(util.compareFieldsById);
-      if (!fields2.length)
+      var fields3 = mtype.fieldsArray.slice().sort(util.compareFieldsById);
+      if (!fields3.length)
         return util.codegen()("return {}");
       var gen = util.codegen(["m", "o", "q"], mtype.name + "$toObject")("if(!o)")("o={}")("if(q===undefined)q=0")("if(q>util.recursionLimit)")('throw Error("max depth exceeded")')("var d={}");
       var repeatedFields = [], mapFields = [], normalFields = [], i = 0;
-      for (; i < fields2.length; ++i)
-        if (!fields2[i].partOf)
-          (fields2[i].resolve().repeated ? repeatedFields : fields2[i].map ? mapFields : normalFields).push(fields2[i]);
+      for (; i < fields3.length; ++i)
+        if (!fields3[i].partOf)
+          (fields3[i].resolve().repeated ? repeatedFields : fields3[i].map ? mapFields : normalFields).push(fields3[i]);
       if (repeatedFields.length) {
         gen("if(o.arrays||o.defaults){");
         for (i = 0; i < repeatedFields.length; ++i) gen("d%s=[]", util.safeProp(repeatedFields[i].name));
@@ -8317,8 +8317,8 @@ var require_converter = __commonJS({
         gen("}");
       }
       var hasKs2 = false;
-      for (i = 0; i < fields2.length; ++i) {
-        var field = fields2[i], index = mtype._fieldsArray.indexOf(field), prop = util.safeProp(field.name);
+      for (i = 0; i < fields3.length; ++i) {
+        var field = fields3[i], index = mtype._fieldsArray.indexOf(field), prop = util.safeProp(field.name);
         if (field.map) {
           if (!hasKs2) {
             hasKs2 = true;
@@ -8616,9 +8616,9 @@ var require_type = __commonJS({
       i = 0;
       while (i < oneofs.length)
         oneofs[i++].resolve();
-      var fields2 = this.fieldsArray, i = 0;
-      while (i < fields2.length)
-        fields2[i++].resolve();
+      var fields3 = this.fieldsArray, i = 0;
+      while (i < fields3.length)
+        fields3[i++].resolve();
       return this;
     };
     Type.prototype._resolveFeaturesRecursive = function _resolveFeaturesRecursive(edition) {
@@ -9964,12 +9964,12 @@ var require_encoder = __commonJS({
     function encoder(mtype) {
       var gen = util.codegen(["m", "w", "q"], mtype.name + "$encode")("if(!w)")("w=Writer.create()")("if(q===undefined)q=0")("if(q>util.recursionLimit)")('throw Error("max depth exceeded")');
       var i, ref;
-      var fields2 = (
+      var fields3 = (
         /* initializes */
         mtype.fieldsArray.slice().sort(util.compareFieldsById)
       );
-      for (var i = 0; i < fields2.length; ++i) {
-        var field = fields2[i].resolve(), index = mtype._fieldsArray.indexOf(field), type = field.resolvedType instanceof Enum ? "int32" : field.type, wireType = types.basic[type];
+      for (var i = 0; i < fields3.length; ++i) {
+        var field = fields3[i].resolve(), index = mtype._fieldsArray.indexOf(field), type = field.resolvedType instanceof Enum ? "int32" : field.type, wireType = types.basic[type];
         ref = "m" + util.safeProp(field.name);
         if (field.map) {
           gen("if(%s!=null&&Object.hasOwnProperty.call(m,%j)){", ref, field.name)("for(var ks=Object.keys(%s),i=0;i<ks.length;++i){", ref)("w.uint32(%i).fork().uint32(%i).%s(ks[i])", (field.id << 3 | 2) >>> 0, 8 | types.mapKey[field.keyType], field.keyType);
@@ -24601,8 +24601,69 @@ var require_src3 = __commonJS({
 var import_grpc_js = __toESM(require_src3(), 1);
 var import_protobufjs = __toESM(require_protobufjs(), 1);
 import { constants, readFileSync } from "node:fs";
-import { lstat, open, realpath, stat } from "node:fs/promises";
-import { dirname, isAbsolute, normalize } from "node:path";
+import { lstat, open, realpath as realpath2, stat } from "node:fs/promises";
+import { dirname as dirname2, normalize as normalize2 } from "node:path";
+
+// src/yak-sources.ts
+import { chmod, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join, normalize } from "node:path";
+function fields(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+}
+function yakHistoryConfigPath() {
+  const configured = String(process.env.VEXNAR_YAK_HISTORY_CONFIG ?? "").trim();
+  if (configured) return configured;
+  const home = String(process.env.VEXNAR_HOME ?? "").trim() || String(process.env.DSH_HOME ?? "").trim() || join(homedir(), ".vexnar");
+  return join(home, "yak-history.json");
+}
+async function canonical(path) {
+  return realpath(path).catch(() => normalize(path));
+}
+async function normalizeRow(value) {
+  const row = fields(value);
+  if (!row) throw new Error("\u6765\u6E90\u5FC5\u987B\u662F\u5BF9\u8C61");
+  const name = String(row.name ?? "").trim();
+  if (!name) throw new Error("\u6765\u6E90\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A");
+  for (const key of ["workspace", "socket", "token_file"]) {
+    if (typeof row[key] !== "string" || !isAbsolute(row[key])) {
+      throw new Error(`${key} \u5FC5\u987B\u662F\u7EDD\u5BF9\u8DEF\u5F84`);
+    }
+  }
+  const projectID = Number(row.project_id);
+  if (!Number.isSafeInteger(projectID) || projectID <= 0) throw new Error("project_id \u5FC5\u987B\u662F\u6B63\u6574\u6570");
+  return {
+    name,
+    workspace: await canonical(String(row.workspace)),
+    socket: await canonical(String(row.socket)),
+    token_file: String(row.token_file),
+    project_id: projectID
+  };
+}
+async function readYakSources() {
+  const path = yakHistoryConfigPath();
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw new Error("Yak \u6D41\u91CF\u6765\u6E90\u914D\u7F6E\u4E0D\u53EF\u8BFB");
+  }
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error("Yak \u6D41\u91CF\u6765\u6E90\u914D\u7F6E\u4E0D\u662F\u5408\u6CD5 JSON");
+  }
+  if (!Array.isArray(raw)) throw new Error("Yak \u6D41\u91CF\u6765\u6E90\u914D\u7F6E\u5FC5\u987B\u662F\u6570\u7EC4");
+  const rows = [];
+  for (const item of raw) rows.push(await normalizeRow(item));
+  if (new Set(rows.map((row) => row.name)).size !== rows.length) throw new Error("\u6765\u6E90\u540D\u79F0\u91CD\u590D");
+  if (new Set(rows.map((row) => row.socket)).size !== rows.length) throw new Error("\u6765\u6E90 socket \u91CD\u590D");
+  return rows;
+}
+
+// src/yak-history.ts
 var HistoryError = class extends Error {
   constructor(status, message) {
     super(message);
@@ -24628,11 +24689,11 @@ var sorting = /* @__PURE__ */ new Set(["id", "status_code", "body_length", "crea
 var responseOptions = { headers: { "Cache-Control": "no-store" } };
 var wireFile = new URL("../lib/yak-history.proto", import.meta.url);
 var schema;
-function fields(value) {
+function fields2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value : void 0;
 }
 function readQuery(value) {
-  const body = fields(value);
+  const body = fields2(value);
   if (!body || !Object.entries(body).every(([key, item]) => strings.has(key) ? typeof item === "string" : key === "page" ? Number.isSafeInteger(item) : (key === "websocket" || key === "ascending") && typeof item === "boolean")) {
     throw new HistoryError(400, "\u65E0\u6548\u7684\u6D41\u91CF\u67E5\u8BE2");
   }
@@ -24662,34 +24723,25 @@ async function boundedFile(path, limit, privateFile = false) {
     await file.close();
   }
 }
-async function canonical(path) {
-  return realpath(path).catch(() => normalize(path));
+async function canonical2(path) {
+  return realpath2(path).catch(() => normalize2(path));
 }
-async function sources(path) {
-  if (!path) return [];
+async function sources() {
   try {
-    const raw = JSON.parse(await boundedFile(path, 64 << 10));
-    if (!Array.isArray(raw)) throw new Error("Invalid source list");
-    const result = [];
-    for (const value of raw) {
-      const row = fields(value);
-      if (!row || typeof row.name !== "string" || !row.name.trim() || typeof row.workspace !== "string" || !isAbsolute(row.workspace) || typeof row.socket !== "string" || !isAbsolute(row.socket) || typeof row.token_file !== "string" || !isAbsolute(row.token_file) || typeof row.project_id !== "number" || !Number.isSafeInteger(row.project_id) || row.project_id <= 0) {
-        throw new Error("Invalid source");
-      }
-      const workspace = await canonical(row.workspace);
-      const socket = await canonical(row.socket);
-      if (result.some((other) => other.name === row.name || other.workspace === workspace || other.socket === socket)) {
-        throw new Error("Duplicate source");
-      }
-      result.push({ name: row.name, workspace, socket, tokenFile: row.token_file, projectID: String(row.project_id) });
-    }
-    return result;
+    const rows = await readYakSources();
+    return rows.map((row) => ({
+      name: row.name,
+      workspace: row.workspace,
+      socket: row.socket,
+      tokenFile: row.token_file,
+      projectID: String(row.project_id)
+    }));
   } catch {
     throw new HistoryError(503, "Yak \u6D41\u91CF\u6765\u6E90\u914D\u7F6E\u4E0D\u53EF\u7528");
   }
 }
 async function sourceOf(rows, query) {
-  const workspace = query.workspace ? await canonical(query.workspace) : void 0;
+  const workspace = query.workspace ? await canonical2(query.workspace) : void 0;
   const row = workspace ? rows.find((item) => item.workspace === workspace && (!query.source || item.name === query.source)) : rows.find((item) => item.name === query.source);
   if (!row) {
     throw new HistoryError(409, workspace ? "\u6B64\u4F1A\u8BDD\u7684\u672C\u5730\u9879\u76EE\u6CA1\u6709\u914D\u7F6E\u5BF9\u5E94\u7684 Yak \u6D41\u91CF\u6765\u6E90" : "\u8BF7\u9009\u62E9\u5DF2\u914D\u7F6E\u7684 Yak \u6D41\u91CF\u6765\u6E90");
@@ -24698,7 +24750,7 @@ async function sourceOf(rows, query) {
 }
 async function localToken(source) {
   try {
-    const parent = await stat(dirname(source.socket));
+    const parent = await stat(dirname2(source.socket));
     const socket = await lstat(source.socket);
     if (!parent.isDirectory() || (parent.mode & 63) !== 0 || !socket.isSocket() || (socket.mode & 63) !== 0) {
       throw new Error("Invalid socket");
@@ -24805,7 +24857,7 @@ async function readLocalHistory(source, query) {
 async function handleYakHistory(request) {
   try {
     const query = readQuery(await request.json().catch(() => void 0));
-    const rows = await sources(process.env.VEXNAR_YAK_HISTORY_CONFIG);
+    const rows = await sources();
     if (query.action === "sources") return Response.json({ sources: rows.map((row) => row.name) }, responseOptions);
     const payload = await readLocalHistory(await sourceOf(rows, query), query);
     return Response.json(payload, responseOptions);

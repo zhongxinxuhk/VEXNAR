@@ -38,7 +38,12 @@ export async function allExchanges(): Promise<any[]> {
   const local = (await operations.writer.list('traffic_exchanges')) as any[]
   const seen = new Set(local.map((row) => String(row.id)))
   const archived = archivedExchanges().filter((row) => !seen.has(row.id))
-  return [...local, ...archived]
+  // 每行带上来源：界面上「这条是本机采集还是采集面归档」必须能分辨，
+  // 否则排查"为什么抓到了却查不到"时会误判。id 空间不重叠，来源只作标注。
+  return [
+    ...local.map((row) => ({ ...row, source: 'local' })),
+    ...archived.map((row) => ({ ...row, source: 'archive' }))
+  ]
 }
 
 async function listExchanges(query: Record<string, string | undefined>) {
@@ -74,7 +79,8 @@ export function exchangeDto(row: any) {
     url: String(row.url ?? ''),
     status: Number(row.status ?? 0),
     content_type: String(row.content_type ?? ''),
-    resp_len: Number(row.resp_len ?? 0)
+    resp_len: Number(row.resp_len ?? 0),
+    source: row.source === 'archive' ? 'archive' : 'local'
   }
 }
 

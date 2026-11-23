@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { YakSourcesEditor } from './yak-sources.js'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
 import {
@@ -399,6 +400,7 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
 
   return (
     <div className="vx-yak-history">
+      {!sessionId && <YakSourcesEditor onSaved={() => setRevision((value) => value + 1)} />}
       <form
         className="vx-yak-filters"
         onSubmit={(event) => {
@@ -463,7 +465,7 @@ export function YakHistory({ sessionId }: { sessionId?: string }) {
       </form>
 
       {sources.error && <p role="alert" className="vx-yak-alert">{sources.error}</p>}
-      {!sessionId && sources.data?.sources.length === 0 && <p className="vx-yak-hint">尚未配置 Yak 流量来源。</p>}
+      {!sessionId && sources.data?.sources.length === 0 && <p className="vx-yak-hint">尚未配置 Yak 流量来源：点上方「配置来源」填写工作区与内核 socket，或切到「本地采集」查看 VEXNAR 自己抓到的流量。</p>}
       {list.loading && <p role="status" className="vx-yak-hint">读取流量…</p>}
       {list.error && <p role="alert" className="vx-yak-alert">{list.error}</p>}
 

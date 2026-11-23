@@ -1,0 +1,34 @@
+{
+  "name": "@vexnar/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VEXNAR session-aware HTTP testing engine: policy gate, session vault, undici transport, response observer and evidence store, exposed as MCP tools",
+  "author": "xuzhongxin <xuzhongxin@sec.hn.cn> (https://github.com/zhongxinxuhk/VEXNAR)",
+  "repository": "https://github.com/zhongxinxuhk/VEXNAR",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "mcp": "tsx src/standalone.ts"
+  },
+  "dependencies": {
+    "parse5": "^7.2.1",
+    "tough-cookie": "^5.1.2",
+    "undici": "^7.16.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
+}

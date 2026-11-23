@@ -21,6 +21,8 @@
     "src/login-page.ts",
     "src/model-gateway.ts",
     "src/yak-history-tools.ts",
+    "src/yak-history.ts",
+    "src/yak-sources.ts",
     "build.ts",
     "tests"
   ]
