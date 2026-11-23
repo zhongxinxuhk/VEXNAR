@@ -121,13 +121,40 @@ function apply(ctx) {
   if (process.env.VEXNAR_RUNTIME_MODE === "go") registerYakHistoryTools(ctx);
   if (process.env.VEXNAR_CORE_EMBEDDED !== "0") {
     let core;
+    let coreState = "loading";
     const starting = import("./core-embedded.js").then((result) => {
       core = result;
+      coreState = "available";
       return result;
-    }, () => void 0);
-    const startup = Promise.race([starting, delay(4e3, void 0, { ref: false })]);
+    }, () => {
+      coreState = "failed";
+      return void 0;
+    });
+    const deadline = delay(4e3, void 0, { ref: false }).then(() => {
+      if (coreState === "loading") coreState = "timed_out";
+      return void 0;
+    });
+    const startup = Promise.race([starting, deadline]);
     const getCore = async () => core ?? await startup;
     const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === "go";
+    const diagnostics = () => {
+      const configuredStore = process.env.VEXNAR_STORE?.trim().toLowerCase();
+      const store = configuredStore === "json" || configuredStore === "postgres" ? configuredStore : "sqlite";
+      return {
+        ...core?.runtimeInfo?.() ?? {
+          mode: goMode ? "go" : "ts",
+          store,
+          started: false,
+          started_at: 0,
+          triggers: 0,
+          schedules: false,
+          store_locked: false,
+          engine: "unavailable",
+          task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2
+        },
+        core_state: coreState
+      };
+    };
     ctx.provide("vexnarCore", {
       request: async (path, init = {}) => {
         const app = await getCore();
@@ -176,19 +203,25 @@ function apply(ctx) {
           }
           const toolDocumentation = req.method === "PUT" && /^\/api\/tools\/[^/]+\/documentation$/.test(url.pathname) || req.method === "POST" && /^\/api\/tools\/[^/]+\/documentation\/reset$/.test(url.pathname);
           const configRoute = isClientMaintenance(req.method, url.pathname, goMode) || toolDocumentation || isNotificationSetting(req.method, url.pathname) || !goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname) || req.method === "GET" && isStoredDataRead(url.pathname, goMode);
-          const app = configRoute || nativeYakHistory ? void 0 : await getCore();
-          if (!configRoute && !nativeYakHistory && !app) {
+          const runtimeRead = req.method === "GET" && url.pathname === "/api/_runtime";
+          const app = configRoute || nativeYakHistory || runtimeRead ? void 0 : await getCore();
+          if (!configRoute && !nativeYakHistory && !runtimeRead && !app) {
             res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-            res.end(JSON.stringify({ error: "VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA" }));
+            res.end(JSON.stringify({ error: "VEXNAR \u9886\u57DF\u670D\u52A1\u5C1A\u672A\u5C31\u7EEA", core_state: coreState }));
             return;
           }
-          if (configRoute || nativeYakHistory || app?.isGoDataRequest(req.method, url.pathname)) {
+          if (configRoute || nativeYakHistory || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req);
             if (rejection) {
               res.writeHead(rejection, { "Content-Type": "application/json", "Cache-Control": "no-store" });
               res.end(JSON.stringify({ error: "\u8BF7\u4ECE\u5DF2\u767B\u5F55\u7684 VEXNAR \u5BA2\u6237\u7AEF\u8BBF\u95EE" }));
               return;
             }
+          }
+          if (runtimeRead) {
+            res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+            res.end(JSON.stringify(diagnostics()));
+            return;
           }
           const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : url.pathname === "/api/traffic/import/yakit" ? 16 * 1024 * 1024 : Infinity;
           const chunks = [];

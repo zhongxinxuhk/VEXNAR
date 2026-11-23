@@ -22,3 +22,14 @@ export function isGoDataRequest(method: string | undefined, pathname: string): b
  */
 export function setModelCompletion(next: ((messages: readonly ChatMessage[]) => Promise<string>) | undefined): void
 export function modelCompletionReady(): boolean
+export function runtimeInfo(): {
+  mode: 'ts' | 'go'
+  store: 'sqlite' | 'json' | 'postgres'
+  started: boolean
+  started_at: number
+  triggers: number
+  schedules: boolean
+  store_locked: boolean
+  engine: string
+  task_concurrency: number
+}
