@@ -30800,12 +30800,12 @@ var init_tools = __esm({
         },
         parse(output2) {
           const results = [];
-          const trimmed = output2.trim();
-          if (trimmed.startsWith("{")) {
+          const start = output2.indexOf("{");
+          if (start >= 0) {
             try {
-              const data = JSON.parse(trimmed);
+              const data = JSON.parse(output2.slice(start).trim());
               for (const row of data.results ?? []) results.push({ path: row.url ?? row.input?.FUZZ ?? "", status: Number(row.status ?? 0), size: Number(row.length ?? 0) });
-              return { results };
+              if (results.length > 0) return { results };
             } catch {
             }
           }
@@ -30898,9 +30898,9 @@ var init_tools = __esm({
               try {
                 const row = JSON.parse(text4);
                 if (row.host) hosts.push({ host: row.host, source: row.source ?? "" });
-                continue;
               } catch {
               }
+              continue;
             }
             hosts.push({ host: text4, source: "subfinder" });
           }
@@ -30911,7 +30911,7 @@ var init_tools = __esm({
         name: "nuclei",
         description: "\u6A21\u677F\u5316\u6F0F\u6D1E\u626B\u63CF",
         build(target, extra = {}) {
-          const args = ["-u", target, "-jsonl", "-silent", "-nc"];
+          const args = ["-u", target, "-jsonl", "-silent", "-nc", "-duc"];
           if (extra.tags) args.push("-tags", String(extra.tags));
           if (extra.severity) args.push("-severity", String(extra.severity));
           return { command: "nuclei", args };
@@ -31181,7 +31181,7 @@ import { spawn } from "node:child_process";
 function createRunner(options = {}) {
   const concurrency = Math.max(options.concurrency ?? 2, 1);
   const defaultTimeout = options.timeoutMs ?? 3e4;
-  const defaultMaxOutput = options.maxOutput ?? 64 * 1024;
+  const defaultMaxOutput = options.maxOutput ?? 1024 * 1024;
   let active = 0;
   const queue = [];
   async function acquire() {
