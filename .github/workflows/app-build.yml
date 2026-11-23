@@ -23,6 +23,10 @@ on:
         description: Build unsigned dsh desktop installers
         type: boolean
         default: true
+      publish:
+        description: Publish the installers as a release (version bumps automatically)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -145,33 +149,64 @@ jobs:
           path: app/dsh/apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.${{ matrix.ext }}
           if-no-files-found: error
 
-  release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/app-v')
+  publish:
+    # 打包成功就发版：版本号从 v0.0.1 起按补丁位自动延续，发行说明由提交历史生成。
+    # 手工 dispatch 时可以用 publish=false 只打包不发布；tag 触发时版本取该 tag。
+    if: needs.desktop.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.publish)
     needs: [app-bundle, desktop]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          # 版本号与发行说明都从本地标签和提交历史推出来，浅克隆看不到。
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve next version
+        id: version
+        run: node app/scripts/release.mjs version
+      - name: Generate release notes
+        run: >-
+          node app/scripts/release.mjs notes
+          --version "${{ steps.version.outputs.version }}"
+          --previous "${{ steps.version.outputs.previous }}"
+          --out "$RUNNER_TEMP/notes.md"
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
-      - name: Publish App release in this repository
+      - name: Name assets after the release
+        working-directory: release-assets
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # 两个安装包：macOS arm64 的 dmg 与 Windows x64 的 exe（macOS x64 不打包）。
+          test "$(ls *.dmg | wc -l)" -eq 1
+          test "$(ls *.exe | wc -l)" -eq 1
+          test "$(ls *.tar.gz | wc -l)" -eq 1
+          mv "$(ls *.dmg)" "VEXNAR-${VERSION}-mac-arm64.dmg"
+          mv "$(ls *.exe)" "VEXNAR-${VERSION}-win-x64.exe"
+          mv "$(ls *.tar.gz)" "vexnar-app-bundle-${VERSION}.tar.gz"
+          sha256sum ./*.dmg ./*.exe ./*.tar.gz > SHA256SUMS
+      - name: Publish release
         working-directory: release-assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          shopt -s nullglob
-          # 两个产物：macOS arm64 的 dmg 与 Windows x64 的 exe（macOS x64 已不打包）。
-          installers=(*.dmg *.exe)
-          test "${#installers[@]}" -eq 2
-          test -s vexnar-app-bundle.tar.gz
-          sha256sum vexnar-app-bundle.tar.gz "${installers[@]}" > SHA256SUMS
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" vexnar-app-bundle.tar.gz "${installers[@]}" SHA256SUMS --clobber
+          set -euo pipefail
+          # 重跑同一次构建会命中同一个 tag（release.mjs 会复用 HEAD 上的标签），
+          # 这时改成覆盖附件与说明，版本号不会被顶上去。
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ./* --clobber
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
           else
-            gh release create "$GITHUB_REF_NAME" vexnar-app-bundle.tar.gz "${installers[@]}" SHA256SUMS \
-              --verify-tag --title "VEXNAR App ${GITHUB_REF_NAME#app-v}" --prerelease --latest=false \
-              --notes 'Unsigned dsh desktop installers and the separate VEXNAR plugin/profile bundle.'
+            gh release create "$TAG" --target "$GITHUB_SHA" \
+              --title "VEXNAR 客户端 v${VERSION}" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              ./*.dmg ./*.exe ./*.tar.gz ./SHA256SUMS
           fi
