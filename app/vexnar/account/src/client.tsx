@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { createElement as h, Fragment, useEffect, useState } from 'react'
-import type { DragEvent, ReactNode } from 'react'
+import type { DragEvent, FormEvent, ReactNode } from 'react'
 import { installAccountStyles } from './styles.js'
 
 const api = '/vexnar-api/platform'
@@ -16,7 +16,7 @@ const platformProviderID = 'vexnar'
 
 type Retry = 'normal' | 'always'
 
-/** 一行模型：最小集是 id/显示名，其余与 pi-ai 的行同形，原样进 llm-pi-ai。 */
+/** 设置页和账号 API 共用的模型目录字段。 */
 interface ProviderModel {
   id: string
   name?: string
@@ -208,11 +208,14 @@ export function AccountSection(): ReactNode {
 
 /* ── 模型能力 ───────────────────────────────────────────────────────────── */
 
-/** 推理档位：与 dsh 原生模型编辑器列出的那几档一致（Off 之外的三档）。 */
+/** 推理档位与 dsh 模型配置一致，关闭档位由编辑器单独处理。 */
 const REASONING_LEVELS: readonly { level: string; label: string }[] = [
+  { level: 'minimal', label: '极低' },
   { level: 'low', label: '低' },
   { level: 'medium', label: '中' },
-  { level: 'high', label: '高' }
+  { level: 'high', label: '高' },
+  { level: 'xhigh', label: '极高' },
+  { level: 'max', label: '最大' }
 ]
 
 const INPUT_TYPES: readonly { id: string; label: string }[] = [
@@ -224,14 +227,12 @@ const INPUT_TYPES: readonly { id: string; label: string }[] = [
  * 一行模型的「能力」：输入类型、推理档位、上下文与输出上限。
  *
  * dsh 原生的模型编辑器有这几项，VEXNAR 的模型页以前只编辑 id 与显示名，
- * 手写提供方的模型就只能按适配器默认跑。这里把字段补齐——保存时原样写进
- * llm-pi-ai，不再经过任何裁剪。
+ * 手写提供方的模型就只能按适配器默认跑。账号插件保存这些字段并同步到 llm-pi-ai。
  */
 function ModelCapability(
   { model, disabled, onChange }: { model: ProviderModel; disabled: boolean; onChange: (next: ProviderModel) => void }
 ): ReactNode {
   const effortOn = model.reasoningEfforts !== undefined
-  const effortValue = (level: string): string => model.reasoningEfforts?.[level] ?? level
   const patch = (changes: Partial<ProviderModel>): void => { onChange({ ...model, ...changes }) }
 
   const toggleInput = (id: string, on: boolean): void => {
@@ -244,8 +245,8 @@ function ModelCapability(
 
   const setEffort = (level: string, value: string): void => {
     const next: Record<string, string | null> = { ...(model.reasoningEfforts ?? {}) }
-    // Off 档永远不发值：存 null，适配器据此知道「这一档什么都不带」。
-    next[level] = value.trim() === '' ? (level === 'off' ? null : level) : value.trim()
+    if (value.trim() === '') delete next[level]
+    else next[level] = value
     patch({ reasoningEfforts: next })
   }
 
@@ -284,9 +285,9 @@ function ModelCapability(
         {effortOn && REASONING_LEVELS.map((entry) => <input
           key={entry.level}
           className="vxa-input vxa-input-tiny"
-          value={effortValue(entry.level)}
+          value={model.reasoningEfforts?.[entry.level] ?? ''}
           aria-label={`推理档位 ${entry.label} 的上游取值`}
-          placeholder={entry.level}
+          placeholder="未启用"
           disabled={disabled}
           onChange={(event) => { setEffort(entry.level, event.target.value) }}
         />)}
@@ -400,7 +401,8 @@ function ModelCatalog(
               const name = event.target.value
               onChange(models.map((item, current) => {
                 if (current !== index) return item
-                return name.trim() === '' ? { id: item.id } : { id: item.id, name }
+                const { name: _previous, ...rest } = item
+                return name === '' ? rest : { ...rest, name }
               }))
             }}
           />
@@ -601,18 +603,37 @@ function ProviderEditor({ provider, busy, onCancel, onSave }: EditorProps): Reac
 
 interface AddProps {
   busy: boolean
+  error: string
+  onClearError: () => void
   onCancel: () => void
-  onSubmit: (input: { kind: 'deepseek' | 'custom'; name: string; base: string; key: string }) => void
+  onSubmit: (input: {
+    kind: 'deepseek' | 'custom'
+    name: string
+    base: string
+    key: string
+    models: ProviderModel[]
+  }) => void
 }
 
-function AddProviderCard({ busy, onCancel, onSubmit }: AddProps): ReactNode {
+function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }: AddProps): ReactNode {
   const [kind, setKind] = useState<'deepseek' | 'custom'>('deepseek')
   const [name, setName] = useState('')
   const [base, setBase] = useState('')
   const [key, setKey] = useState('')
+  const [models, setModels] = useState<ProviderModel[]>([])
   const [failure, setFailure] = useState('')
 
-  const submit = (): void => {
+  const changeKind = (next: typeof kind): void => {
+    if (next === kind) return
+    setKind(next)
+    setKey('')
+    setFailure('')
+    onClearError()
+  }
+
+  const submit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    onClearError()
     if (key.trim() === '') {
       setFailure('请输入 API 密钥。')
       return
@@ -621,25 +642,29 @@ function AddProviderCard({ busy, onCancel, onSubmit }: AddProps): ReactNode {
       setFailure('请填写名称与 API 地址。')
       return
     }
+    if (kind === 'custom' && models.some((model) => model.id.trim() === '')) {
+      setFailure('请填写每一行的模型 ID。')
+      return
+    }
     setFailure('')
-    onSubmit({ kind, name: name.trim(), base: base.trim(), key: key.trim() })
+    onSubmit({ kind, name: name.trim(), base: base.trim(), key: key.trim(), models: kind === 'custom' ? models : [] })
   }
 
-  return <div className="vxa-add-card">
+  return <form className="vxa-add-card" onSubmit={submit}>
     <div className="vxa-modes" role="group" aria-label="添加方式">
       <button
         type="button"
         className="vxa-mode"
         aria-pressed={kind === 'deepseek'}
         disabled={busy}
-        onClick={() => { setKind('deepseek') }}
+        onClick={() => { changeKind('deepseek') }}
       >DeepSeek 官方</button>
       <button
         type="button"
         className="vxa-mode"
         aria-pressed={kind === 'custom'}
         disabled={busy}
-        onClick={() => { setKind('custom') }}
+        onClick={() => { changeKind('custom') }}
       >自定义模型 API</button>
     </div>
 
@@ -666,10 +691,10 @@ function AddProviderCard({ busy, onCancel, onSubmit }: AddProps): ReactNode {
             disabled={busy}
             onChange={(event) => { setBase(event.target.value) }}
           />
-          <span className="vxa-hint">必须是完整的 http(s) 根地址，不能带查询串。</span>
+          <span className="vxa-hint">填写 OpenAI 兼容 API 根地址或完整的 chat/completions 地址。</span>
         </label>
       </>
-      : <span className="vxa-hint">DeepSeek 官方端点 https://api.deepseek.com/v1，只需填 API 密钥。</span>}
+      : <span className="vxa-hint">DeepSeek 官方端点 https://api.deepseek.com，只需填 API 密钥。</span>}
 
     <label className="vxa-field">
       <span className="vxa-label">API 密钥</span>
@@ -684,18 +709,22 @@ function AddProviderCard({ busy, onCancel, onSubmit }: AddProps): ReactNode {
         disabled={busy}
         onChange={(event) => { setKey(event.target.value) }}
       />
-      <span className="vxa-hint">保存前会读取一次上游模型列表；读不到就整笔拒绝，不会写入半套配置。</span>
     </label>
 
-    {failure !== '' && <p className="vxa-error" role="alert">{failure}</p>}
+    {kind === 'custom' && <>
+      <span className="vxa-hint">留空会读取上游模型列表。也可手动填写模型 ID，保存前会向第一个模型发送一条测试请求。</span>
+      <ModelCatalog models={models} disabled={busy} onChange={setModels} />
+    </>}
+
+    {(failure || error) !== '' && <p className="vxa-error" role="alert">{failure || error}</p>}
 
     <div className="vxa-editor-footer">
       <button type="button" className="vxa-btn" disabled={busy} onClick={onCancel}>取消</button>
-      <button type="button" className="vxa-btn-primary" disabled={busy} onClick={submit}>
+      <button type="submit" className="vxa-btn-primary" disabled={busy}>
         {busy ? '验证中…' : '添加'}
       </button>
     </div>
-  </div>
+  </form>
 }
 
 /* ── 模型页 ─────────────────────────────────────────────────────────────── */
@@ -731,6 +760,7 @@ export function ModelsSection(): ReactNode {
 
   const run = async (action: () => Promise<Account>) => {
     setBusy(true)
+    onError('')
     try {
       update(await action())
       return true
@@ -850,13 +880,16 @@ export function ModelsSection(): ReactNode {
       {adding
         ? <AddProviderCard
           busy={busy}
-          onCancel={() => { setAdding(false) }}
+          error={error}
+          onClearError={() => { onError('') }}
+          onCancel={() => { setAdding(false); onError('') }}
           onSubmit={(input) => {
             void run(() => request<Account>('/providers', 'POST', {
               kind: input.kind,
               name: input.name,
               base_url: input.base,
-              api_key: input.key
+              api_key: input.key,
+              models: input.models
             })).then((done) => { if (done) setAdding(false) })
           }}
         />
@@ -867,6 +900,7 @@ export function ModelsSection(): ReactNode {
           onClick={() => {
             setEditing(undefined)
             setConfirming(undefined)
+            onError('')
             setAdding(true)
           }}
         >
@@ -875,7 +909,7 @@ export function ModelsSection(): ReactNode {
         </button>}
     </div>
 
-    {error !== '' && <p className="vxa-error" role="alert">{error}</p>}
+    {!adding && error !== '' && <p className="vxa-error" role="alert">{error}</p>}
   </div>
 }
 

@@ -116,7 +116,10 @@ interface LlmProviderSetting {
   api: 'openai-responses' | 'openai-completions'
   baseURL: string
   apiKeyEnv: string
-  models: ProviderModel[]
+  models: Array<Omit<ProviderModel, 'inputTypes' | 'maxOutputTokens'> & {
+    input?: string[]
+    maxTokens?: number
+  }>
   retryPolicy?: { mode: 'always' }
 }
 
@@ -361,7 +364,11 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
         api: provider.id === 'vexnar' ? 'openai-responses' : 'openai-completions',
         baseURL: provider.base,
         apiKeyEnv: ref,
-        models: provider.models,
+        models: provider.models.map(({ inputTypes, maxOutputTokens, ...model }) => ({
+          ...model,
+          ...(inputTypes === undefined ? {} : { input: inputTypes }),
+          ...(maxOutputTokens === undefined ? {} : { maxTokens: maxOutputTokens })
+        })),
         // 只有「所有错误都重试」需要显式写入；normal 就是适配器自己的默认策略，
         // 写进去只会把默认值冻结在这一版代码上。
         ...provider.retry === 'always' ? { retryPolicy: { mode: 'always' as const } } : {}

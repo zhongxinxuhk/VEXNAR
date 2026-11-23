@@ -765,9 +765,12 @@ function AccountSection() {
   return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-head" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-avatar", "aria-hidden": "true" }, initials), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-profile-id" }, /* @__PURE__ */ (0, import_react.createElement)("h2", { className: "vxa-profile-name" }, displayName), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-profile-handle" }, "@", account.username)), /* @__PURE__ */ (0, import_react.createElement)("a", { className: "vxa-btn vxa-btn-ghost", href: platform + "/profile", target: "_blank", rel: "noreferrer" }, "\u7BA1\u7406\u5E73\u53F0\u8D26\u6237")), /* @__PURE__ */ (0, import_react.createElement)("dl", { className: "vxa-stats" }, stats.map(({ name, value }) => /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-stat", key: name }, /* @__PURE__ */ (0, import_react.createElement)("dt", null, name), /* @__PURE__ */ (0, import_react.createElement)("dd", null, value)))), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-panel-title" }, "HXSEC AI Platform"), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-panel-meta" }, /* @__PURE__ */ (0, import_react.createElement)("code", null, provider?.base ?? "https://api.sec.hn.cn/v1"), /* @__PURE__ */ (0, import_react.createElement)("a", { href: docs, target: "_blank", rel: "noreferrer" }, "API \u6587\u6863"))), /* @__PURE__ */ (0, import_react.createElement)("div", null, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: () => void logout() }, "\u9000\u51FA\u767B\u5F55")), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
 var REASONING_LEVELS = [
+  { level: "minimal", label: "\u6781\u4F4E" },
   { level: "low", label: "\u4F4E" },
   { level: "medium", label: "\u4E2D" },
-  { level: "high", label: "\u9AD8" }
+  { level: "high", label: "\u9AD8" },
+  { level: "xhigh", label: "\u6781\u9AD8" },
+  { level: "max", label: "\u6700\u5927" }
 ];
 var INPUT_TYPES = [
   { id: "text", label: "\u6587\u672C" },
@@ -775,7 +778,6 @@ var INPUT_TYPES = [
 ];
 function ModelCapability({ model, disabled, onChange }) {
   const effortOn = model.reasoningEfforts !== void 0;
-  const effortValue = (level) => model.reasoningEfforts?.[level] ?? level;
   const patch = (changes) => {
     onChange({ ...model, ...changes });
   };
@@ -788,7 +790,8 @@ function ModelCapability({ model, disabled, onChange }) {
   };
   const setEffort = (level, value) => {
     const next = { ...model.reasoningEfforts ?? {} };
-    next[level] = value.trim() === "" ? level === "off" ? null : level : value.trim();
+    if (value.trim() === "") delete next[level];
+    else next[level] = value;
     patch({ reasoningEfforts: next });
   };
   return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-capability-row" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-label" }, "\u8F93\u5165\u7C7B\u578B"), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-capability-values" }, INPUT_TYPES.map((entry) => /* @__PURE__ */ (0, import_react.createElement)("label", { key: entry.id, className: "vxa-check" }, /* @__PURE__ */ (0, import_react.createElement)(
@@ -816,9 +819,9 @@ function ModelCapability({ model, disabled, onChange }) {
     {
       key: entry.level,
       className: "vxa-input vxa-input-tiny",
-      value: effortValue(entry.level),
+      value: model.reasoningEfforts?.[entry.level] ?? "",
       "aria-label": `\u63A8\u7406\u6863\u4F4D ${entry.label} \u7684\u4E0A\u6E38\u53D6\u503C`,
-      placeholder: entry.level,
+      placeholder: "\u672A\u542F\u7528",
       disabled,
       onChange: (event) => {
         setEffort(entry.level, event.target.value);
@@ -935,7 +938,8 @@ function ModelCatalog({ models, disabled, onChange }) {
           const name = event.target.value;
           onChange(models.map((item, current) => {
             if (current !== index) return item;
-            return name.trim() === "" ? { id: item.id } : { id: item.id, name };
+            const { name: _previous, ...rest } = item;
+            return name === "" ? rest : { ...rest, name };
           }));
         }
       }
@@ -1102,13 +1106,23 @@ function ProviderEditor({ provider, busy, onCancel, onSave }) {
     }
   ), failure !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, failure), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn-primary", disabled: busy, onClick: submit }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58")));
 }
-function AddProviderCard({ busy, onCancel, onSubmit }) {
+function AddProviderCard({ busy, error, onClearError, onCancel, onSubmit }) {
   const [kind, setKind] = (0, import_react.useState)("deepseek");
   const [name, setName] = (0, import_react.useState)("");
   const [base, setBase] = (0, import_react.useState)("");
   const [key, setKey] = (0, import_react.useState)("");
+  const [models, setModels] = (0, import_react.useState)([]);
   const [failure, setFailure] = (0, import_react.useState)("");
-  const submit = () => {
+  const changeKind = (next) => {
+    if (next === kind) return;
+    setKind(next);
+    setKey("");
+    setFailure("");
+    onClearError();
+  };
+  const submit = (event) => {
+    event.preventDefault();
+    onClearError();
     if (key.trim() === "") {
       setFailure("\u8BF7\u8F93\u5165 API \u5BC6\u94A5\u3002");
       return;
@@ -1117,10 +1131,14 @@ function AddProviderCard({ busy, onCancel, onSubmit }) {
       setFailure("\u8BF7\u586B\u5199\u540D\u79F0\u4E0E API \u5730\u5740\u3002");
       return;
     }
+    if (kind === "custom" && models.some((model) => model.id.trim() === "")) {
+      setFailure("\u8BF7\u586B\u5199\u6BCF\u4E00\u884C\u7684\u6A21\u578B ID\u3002");
+      return;
+    }
     setFailure("");
-    onSubmit({ kind, name: name.trim(), base: base.trim(), key: key.trim() });
+    onSubmit({ kind, name: name.trim(), base: base.trim(), key: key.trim(), models: kind === "custom" ? models : [] });
   };
-  return /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-add-card" }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-modes", role: "group", "aria-label": "\u6DFB\u52A0\u65B9\u5F0F" }, /* @__PURE__ */ (0, import_react.createElement)(
+  return /* @__PURE__ */ (0, import_react.createElement)("form", { className: "vxa-add-card", onSubmit: submit }, /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-modes", role: "group", "aria-label": "\u6DFB\u52A0\u65B9\u5F0F" }, /* @__PURE__ */ (0, import_react.createElement)(
     "button",
     {
       type: "button",
@@ -1128,7 +1146,7 @@ function AddProviderCard({ busy, onCancel, onSubmit }) {
       "aria-pressed": kind === "deepseek",
       disabled: busy,
       onClick: () => {
-        setKind("deepseek");
+        changeKind("deepseek");
       }
     },
     "DeepSeek \u5B98\u65B9"
@@ -1140,7 +1158,7 @@ function AddProviderCard({ busy, onCancel, onSubmit }) {
       "aria-pressed": kind === "custom",
       disabled: busy,
       onClick: () => {
-        setKind("custom");
+        changeKind("custom");
       }
     },
     "\u81EA\u5B9A\u4E49\u6A21\u578B API"
@@ -1168,7 +1186,7 @@ function AddProviderCard({ busy, onCancel, onSubmit }) {
         setBase(event.target.value);
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u5FC5\u987B\u662F\u5B8C\u6574\u7684 http(s) \u6839\u5730\u5740\uFF0C\u4E0D\u80FD\u5E26\u67E5\u8BE2\u4E32\u3002"))) : /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "DeepSeek \u5B98\u65B9\u7AEF\u70B9 https://api.deepseek.com/v1\uFF0C\u53EA\u9700\u586B API \u5BC6\u94A5\u3002"), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5"), /* @__PURE__ */ (0, import_react.createElement)(
+  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u586B\u5199 OpenAI \u517C\u5BB9 API \u6839\u5730\u5740\u6216\u5B8C\u6574\u7684 chat/completions \u5730\u5740\u3002"))) : /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "DeepSeek \u5B98\u65B9\u7AEF\u70B9 https://api.deepseek.com\uFF0C\u53EA\u9700\u586B API \u5BC6\u94A5\u3002"), /* @__PURE__ */ (0, import_react.createElement)("label", { className: "vxa-field" }, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-label" }, "API \u5BC6\u94A5"), /* @__PURE__ */ (0, import_react.createElement)(
     "input",
     {
       className: "vxa-input vxa-input-mono",
@@ -1183,7 +1201,7 @@ function AddProviderCard({ busy, onCancel, onSubmit }) {
         setKey(event.target.value);
       }
     }
-  ), /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u4FDD\u5B58\u524D\u4F1A\u8BFB\u53D6\u4E00\u6B21\u4E0A\u6E38\u6A21\u578B\u5217\u8868\uFF1B\u8BFB\u4E0D\u5230\u5C31\u6574\u7B14\u62D2\u7EDD\uFF0C\u4E0D\u4F1A\u5199\u5165\u534A\u5957\u914D\u7F6E\u3002")), failure !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, failure), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn-primary", disabled: busy, onClick: submit }, busy ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u6DFB\u52A0")));
+  )), kind === "custom" && /* @__PURE__ */ (0, import_react.createElement)(import_react.Fragment, null, /* @__PURE__ */ (0, import_react.createElement)("span", { className: "vxa-hint" }, "\u7559\u7A7A\u4F1A\u8BFB\u53D6\u4E0A\u6E38\u6A21\u578B\u5217\u8868\u3002\u4E5F\u53EF\u624B\u52A8\u586B\u5199\u6A21\u578B ID\uFF0C\u4FDD\u5B58\u524D\u4F1A\u5411\u7B2C\u4E00\u4E2A\u6A21\u578B\u53D1\u9001\u4E00\u6761\u6D4B\u8BD5\u8BF7\u6C42\u3002"), /* @__PURE__ */ (0, import_react.createElement)(ModelCatalog, { models, disabled: busy, onChange: setModels })), (failure || error) !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, failure || error), /* @__PURE__ */ (0, import_react.createElement)("div", { className: "vxa-editor-footer" }, /* @__PURE__ */ (0, import_react.createElement)("button", { type: "button", className: "vxa-btn", disabled: busy, onClick: onCancel }, "\u53D6\u6D88"), /* @__PURE__ */ (0, import_react.createElement)("button", { type: "submit", className: "vxa-btn-primary", disabled: busy }, busy ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u6DFB\u52A0")));
 }
 function ModelsSection() {
   const { account, error, onError, update } = useAccount();
@@ -1202,6 +1220,7 @@ function ModelsSection() {
   const editable = account.providers.filter((provider) => provider.id !== platformProviderID);
   const run = async (action) => {
     setBusy(true);
+    onError("");
     try {
       update(await action());
       return true;
@@ -1301,15 +1320,21 @@ function ModelsSection() {
     AddProviderCard,
     {
       busy,
+      error,
+      onClearError: () => {
+        onError("");
+      },
       onCancel: () => {
         setAdding(false);
+        onError("");
       },
       onSubmit: (input) => {
         void run(() => request("/providers", "POST", {
           kind: input.kind,
           name: input.name,
           base_url: input.base,
-          api_key: input.key
+          api_key: input.key,
+          models: input.models
         })).then((done) => {
           if (done) setAdding(false);
         });
@@ -1324,12 +1349,13 @@ function ModelsSection() {
       onClick: () => {
         setEditing(void 0);
         setConfirming(void 0);
+        onError("");
         setAdding(true);
       }
     },
     /* @__PURE__ */ (0, import_react.createElement)(PlusIcon, { size: 14 }),
     "\u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546"
-  )), error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
+  )), !adding && error !== "" && /* @__PURE__ */ (0, import_react.createElement)("p", { className: "vxa-error", role: "alert" }, error));
 }
 function apply(ctx) {
   installAccountStyles();

@@ -60,6 +60,24 @@ before(async () => {
     if (req.headers.authorization !== 'Bearer sk-good') return json(res, 401, { error: 'bad key' })
     if (req.url === '/v1/models') return json(res, 200, { data: [{ id: 'm-1', name: 'Model One' }, { id: 'm-2' }] })
     if (req.url === '/custom/v1/models') return json(res, 200, { data: [{ id: 'c-1' }] })
+    if (req.url === '/official/models') return json(res, 200, { data: [{
+      id: 'deepseek-flash',
+      name: 'DeepSeek-V4.1-Flash',
+      context_window: 1048576,
+      max_output_tokens: 393216,
+      input_modalities: ['text', 'image'],
+      effort: { supported_levels: ['low', 'high', 'max'] }
+    }] })
+    if (req.url === '/completion-only/chat/completions' && req.method === 'POST') {
+      void (async () => {
+        const chunks: Uint8Array[] = []
+        for await (const chunk of req) chunks.push(chunk)
+        const body = JSON.parse(Buffer.concat(chunks).toString())
+        if (body.model !== 'manual-chat') return json(res, 400, { error: 'unknown model' })
+        json(res, 200, { choices: [{ message: { role: 'assistant', content: 'ok' } }] })
+      })()
+      return
+    }
     json(res, 404, { error: 'not found' })
   })
   const modelsPort = await listen(models)
@@ -105,7 +123,7 @@ before(async () => {
 
   process.env.VEXNAR_NEWAPI_PLATFORM = base
   process.env.VEXNAR_NEWAPI_API = modelsOrigin
-  process.env.VEXNAR_DEEPSEEK_API = `${modelsOrigin}/custom/v1`
+  process.env.VEXNAR_DEEPSEEK_API = `${modelsOrigin}/official`
 
   if (!upstream) upstream = modelsOrigin
   accounts = await mkdtemp(join(tmpdir(), 'vexnar-account-'))
@@ -184,6 +202,41 @@ test('用户可以接入自己的第三方 API', async () => {
   const deepseek = await account.addProvider({ kind: 'deepseek', api_key: 'sk-good' })
   assert.ok(deepseek.providers.some((provider) => provider.id === 'deepseek'))
   assert.equal(deepseek.providers.find((provider) => provider.id === 'deepseek')?.format, 'openai-completions')
+  assert.deepEqual(deepseek.providers.find((provider) => provider.id === 'deepseek')?.models, [{
+    id: 'deepseek-flash',
+    name: 'DeepSeek-V4.1-Flash',
+    contextWindow: 1048576,
+    maxOutputTokens: 393216,
+    inputTypes: ['text', 'image'],
+    reasoningEfforts: { low: 'low', high: 'high', max: 'max' }
+  }])
+})
+
+test('只提供对话接口的自定义 API 可以手动填写模型并验证', async () => {
+  const account = createPlatformAccount({ home: accounts })
+  const endpoint = {
+    kind: 'custom',
+    name: '手动配置',
+    base_url: `${upstream}/completion-only/chat/completions/`,
+    api_key: 'sk-good'
+  }
+  const before = await account.status()
+  await assert.rejects(() => account.addProvider(endpoint), /手动填写模型 ID/)
+  await assert.rejects(() => account.addProvider({ ...endpoint, models: [{ id: 'unknown' }] }), /HTTP 400/)
+  await assert.rejects(() => account.addProvider({
+    ...endpoint, api_key: 'sk-wrong', models: [{ id: 'manual-chat' }]
+  }), /HTTP 401/)
+  assert.deepEqual(await account.status(), before)
+
+  const models = [{ id: 'manual-chat', name: 'Manual Chat' }]
+  const added = await account.addProvider({ ...endpoint, models })
+  const provider = added.providers.find((entry) => entry.name === endpoint.name)
+  assert.ok(provider)
+  assert.equal(provider.base, `${upstream}/completion-only`)
+  assert.deepEqual(provider.models, models)
+  const updated = await account.updateProvider({ id: provider.id, api_key: 'sk-good' })
+  assert.deepEqual(updated.providers.find((entry) => entry.id === provider.id)?.models, models)
+  await account.removeProvider(provider.id)
 })
 
 test('编辑提供方：显示名称、模型目录与重试策略都落到本地', async () => {
