@@ -1307,6 +1307,29 @@ export function register(api: Hono) {
     }
   })
 
+  // ── 活动：分页历史（主会话 / 规划 / 单条意图）─────────────────────────────
+  //
+  // 必须排在 `/activity/:seq` 之前：Hono 按注册顺序匹配，`history` 会被当成
+  // seq 解析，历史面板只拿到 400 bad seq（旧代码把它放在 routes.ts 里，正好踩中）。
+  api.get('/api/exploration/activity/history', async (c) => {
+    const taskId = c.req.query('task') ?? ''
+    const before = Number(c.req.query('before') ?? 0) || 0
+    const limit = Math.min(Number(c.req.query('limit') ?? 200) || 200, 500)
+    const session = c.req.query('session') ?? ''
+    if (session && session !== 'main' && session !== 'plan' && !/^main:\d+$/.test(session) && !/^intent:\d+$/.test(session)) {
+      return c.json({ error: 'bad session' }, 400)
+    }
+    if (!taskId) return c.json({ items: [], snapshot_cursor: 0, earliest_cursor: 0, has_more: false })
+    const result = await store.activity.history({ taskId, session, before, limit })
+    const items = result.items.map((row: any) => activityDto(row))
+    return c.json({
+      items,
+      snapshot_cursor: result.snapshot,
+      earliest_cursor: items.length ? (items[0] as { seq: number }).seq : before,
+      has_more: result.hasMore
+    })
+  })
+
   // ── 活动：单步详情（懒加载 detail）───────────────────────────────────────
   api.get('/api/exploration/activity/:seq', async (c) => {
     try {
