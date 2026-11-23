@@ -24,8 +24,10 @@ const SESSION_DAYS = 30
 const CREDENTIAL_VERSION = 1
 const DEFAULT_PLATFORM = 'https://platform.sec.hn.cn'
 const DEFAULT_API = 'https://api.sec.hn.cn'
-const DEEPSEEK_BASE = 'https://api.deepseek.com/v1'
+const DEEPSEEK_BASE = 'https://api.deepseek.com'
 const REQUEST_TIMEOUT_MS = 20_000
+const modelInputTypes = new Set(['text', 'image'])
+const reasoningLevels = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
 
 /**
  * 账号层的数据形状。
@@ -39,10 +41,7 @@ const REQUEST_TIMEOUT_MS = 20_000
 /** 重试策略只有两档，见 `normalizeRetry`。 */
 export type RetryPolicy = 'normal' | 'always'
 
-/**
- * 一行模型：`id` 与显示名是 VEXNAR 自己的最小集，其余字段与 pi-ai 的行同形，
- * 原样写进 llm-pi-ai——模型页不该比 dsh 原生的模型编辑器少东西。
- */
+/** 账号与模型页的目录条目，由宿主转换成 llm-pi-ai 的模型配置。 */
 export interface ProviderModel {
   id: string
   name?: string
@@ -129,6 +128,7 @@ export interface AddProviderInput {
   name?: string
   base_url?: string
   retry?: string
+  models?: ProviderModel[]
 }
 
 export interface UpdateProviderInput {
@@ -158,6 +158,7 @@ interface ExchangeOptions {
   headers?: Record<string, string>
   body?: unknown
   timeout?: number
+  unavailable?: string
 }
 
 interface PendingChallenge {
@@ -294,7 +295,7 @@ function normalizeModel(model: unknown): ProviderModel | undefined {
   const normalized: ProviderModel = name && name !== id ? { id, name } : { id }
   const inputTypes = source?.inputTypes
   if (Array.isArray(inputTypes)) {
-    const kept = inputTypes.map((item) => text(item)).filter((item) => item !== '')
+    const kept = inputTypes.map(text).filter((item) => modelInputTypes.has(item))
     if (kept.length > 0) normalized.inputTypes = [...new Set(kept)]
   }
   const efforts = asRecord(source?.reasoningEfforts)
@@ -302,14 +303,14 @@ function normalizeModel(model: unknown): ProviderModel | undefined {
     const kept: Record<string, string | null> = {}
     for (const [level, value] of Object.entries(efforts)) {
       const key = text(level)
-      if (key === '') continue
-      if (value === null) kept[key] = null
+      if (!reasoningLevels.has(key)) continue
+      if (key === 'off' && value === null) kept[key] = null
       else {
         const wire = text(value)
         if (wire !== '') kept[key] = wire
       }
     }
-    if (Object.keys(kept).length > 0) normalized.reasoningEfforts = kept
+    if (Object.keys(kept).some((level) => level !== 'off')) normalized.reasoningEfforts = kept
   }
   const contextWindow = source?.contextWindow
   if (typeof contextWindow === 'number' && Number.isSafeInteger(contextWindow) && contextWindow > 0) {
@@ -474,7 +475,7 @@ async function exchange(method: string, endpoint: string, options: ExchangeOptio
     if (body !== undefined) init.body = body
     response = await fetch(endpoint, init)
   } catch {
-    throw fail(502, `无法连接 HXSEC AI Platform（${new URL(endpoint).host}）`)
+    throw fail(502, options.unavailable ?? `无法连接 HXSEC AI Platform（${new URL(endpoint).host}）`)
   }
   const raw = await response.text().catch(() => '')
   let data: unknown
@@ -521,20 +522,61 @@ function sameOriginURL(raw: unknown, label: string): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
 }
 
-async function readModels(base: string, key: string): Promise<ProviderModel[]> {
-  const result = await exchange('GET', `${base.replace(/\/+$/, '')}/models`, {
-    headers: { Authorization: `Bearer ${key}` }
-  }).catch(() => undefined)
-  const list = listOf(envelopeData(result?.data))
-  const models: ProviderModel[] = []
-  const seen = new Set<string>()
-  for (const item of list) {
-    const model = normalizeModel(item)
-    if (!model || seen.has(model.id)) continue
-    seen.add(model.id)
-    models.push(model)
+function customBase(raw: unknown): string {
+  const url = new URL(sameOriginURL(raw, 'OpenAI 兼容 API 地址'))
+  const path = url.pathname.replace(/\/+$/, '').replace(/\/(?:chat\/completions|models)$/, '')
+  return url.origin + path
+}
+
+function listedModel(item: unknown): ProviderModel | undefined {
+  const source = asRecord(item)
+  if (!source) return undefined
+  const levels = listOf(asRecord(source.effort)?.supported_levels).map(text)
+    .filter((level) => level !== 'off' && reasoningLevels.has(level))
+  return normalizeModel({
+    ...source,
+    inputTypes: source.inputTypes ?? source.input_modalities,
+    reasoningEfforts: source.reasoningEfforts ?? (levels.length === 0 ? undefined : Object.fromEntries(
+      levels.map((level) => [level, level])
+    )),
+    contextWindow: source.contextWindow ?? source.context_window,
+    maxOutputTokens: source.maxOutputTokens ?? source.max_output_tokens
+  })
+}
+
+function providerRequest(method: string, base: string, path: string, key: string, body?: unknown) {
+  return exchange(method, `${base.replace(/\/+$/, '')}${path}`, {
+    headers: { Authorization: `Bearer ${key}` },
+    body,
+    unavailable: '无法连接模型提供商，请检查 API 地址、网络和 TLS 配置'
+  })
+}
+
+function checkProviderReply(result: ExchangeResult, operation: string): void {
+  if (result.ok) return
+  if (result.status === 401 || result.status === 403) {
+    throw fail(422, `模型提供商拒绝访问（HTTP ${result.status}），请检查 API 密钥和权限`)
   }
-  return models
+  throw fail(422, `${operation}失败（HTTP ${result.status}），请检查 API 地址和上游服务`)
+}
+
+async function readModels(base: string, key: string): Promise<ProviderModel[]> {
+  const result = await providerRequest('GET', base, '/models', key)
+  if ([404, 405, 501].includes(result.status)) return []
+  checkProviderReply(result, '读取上游模型列表')
+  const list = Array.isArray(result.data) ? result.data : listOf(envelopeData(result.data))
+  return uniqueModels(list.map(listedModel).filter(defined))
+}
+
+async function verifyCustomModel(base: string, key: string, model: string): Promise<void> {
+  const result = await providerRequest('POST', base, '/chat/completions', key, {
+    model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 1, stream: false
+  })
+  checkProviderReply(result, '验证自定义模型')
+  const choice = asRecord(listOf(asRecord(result.data)?.choices)[0])
+  if (!asRecord(choice?.message)) {
+    throw fail(422, '自定义模型未返回 OpenAI 兼容的对话响应，请检查 API 地址和模型 ID')
+  }
 }
 
 /**
@@ -683,7 +725,7 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
         let key = text(asRecord(envelopeData(token.data))?.key)
         if (key !== '' && !key.startsWith('sk-')) key = `sk-${key}`
         if (key !== '') {
-          const models = await readModels(base, key)
+          const models = await readModels(base, key).catch(() => [])
           if (models.length > 0) {
             account.providers = [{ id: 'vexnar', name: 'HXSEC AI Platform', base, key, models }]
             break
@@ -789,15 +831,24 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
         provider.id = `custom-${randomID()}`
         provider.name = text(input.name)
         if (provider.name === '') throw fail(400, '请输入名称和有效的 OpenAI 兼容 API 根地址')
-        provider.base = sameOriginURL(input.base_url, 'OpenAI 兼容 API 根地址')
+        provider.base = customBase(input.base_url)
         break
       }
       default:
         throw fail(400, '未知的模型提供方')
     }
 
-    provider.models = uniqueModels(await readModels(provider.base, key))
-    if (provider.models.length === 0) throw fail(422, '无法读取模型列表，请检查 API 地址和 API Key')
+    if (input.kind === 'custom' && Array.isArray(input.models) && input.models.length > 0) {
+      provider.models = uniqueModels(input.models.map(normalizeModel).filter(defined))
+      const first = provider.models[0]
+      if (!first) throw fail(400, '请输入有效的模型 ID')
+      await verifyCustomModel(provider.base, key, first.id)
+    } else {
+      provider.models = await readModels(provider.base, key)
+      if (provider.models.length === 0) throw fail(422, input.kind === 'custom'
+        ? '上游未提供模型列表，请检查 API 地址或手动填写模型 ID'
+        : '上游未提供模型列表，请检查 API 地址')
+    }
 
     const account = await read()
     if (!gateOpen(account) || account.user_id !== current.user_id) {
@@ -829,7 +880,8 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
     if (current === undefined) throw fail(404, '模型提供方不存在')
 
     const key = text(input.api_key)
-    const base = text(input.base_url) === '' ? current.base : sameOriginURL(input.base_url, 'API 地址')
+    const base = text(input.base_url) === '' ? current.base
+      : id.startsWith('custom-') ? customBase(input.base_url) : sameOriginURL(input.base_url, 'API 地址')
     const name = text(input.name) || current.name
     const retry = normalizeRetry(input.retry)
     if (id === 'vexnar') {
@@ -841,9 +893,15 @@ export function createPlatformAccount(options: PlatformAccountOptions = {}): Pla
       ? uniqueModels(input.models.map(normalizeModel).filter(defined))
       : []
     if (key !== '' || base !== current.base) {
-      const discovered = await readModels(base, key === '' ? current.key : key)
-      if (discovered.length === 0) throw fail(422, '无法读取模型列表，请检查 API 地址和 API Key')
-      if (models.length === 0) models = uniqueModels(discovered)
+      const nextKey = key || current.key
+      const discovered = await readModels(base, nextKey)
+      if (discovered.length === 0) {
+        const first = (models.length > 0 ? models : current.models)[0]
+        if (!id.startsWith('custom-') || !first) throw fail(422, '上游未提供模型列表，请检查 API 地址')
+        await verifyCustomModel(base, nextKey, first.id)
+      } else if (models.length === 0) {
+        models = discovered
+      }
     }
     if (models.length === 0) models = current.models
     if (models.length === 0) throw fail(422, '模型目录不能为空')

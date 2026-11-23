@@ -6,8 +6,10 @@ const SESSION_DAYS = 30;
 const CREDENTIAL_VERSION = 1;
 const DEFAULT_PLATFORM = "https://platform.sec.hn.cn";
 const DEFAULT_API = "https://api.sec.hn.cn";
-const DEEPSEEK_BASE = "https://api.deepseek.com/v1";
+const DEEPSEEK_BASE = "https://api.deepseek.com";
 const REQUEST_TIMEOUT_MS = 2e4;
+const modelInputTypes = /* @__PURE__ */ new Set(["text", "image"]);
+const reasoningLevels = /* @__PURE__ */ new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 function asRecord(value) {
   return typeof value === "object" && value !== null ? value : void 0;
 }
@@ -86,7 +88,7 @@ function normalizeModel(model) {
   const normalized = name && name !== id ? { id, name } : { id };
   const inputTypes = source?.inputTypes;
   if (Array.isArray(inputTypes)) {
-    const kept = inputTypes.map((item) => text(item)).filter((item) => item !== "");
+    const kept = inputTypes.map(text).filter((item) => modelInputTypes.has(item));
     if (kept.length > 0) normalized.inputTypes = [...new Set(kept)];
   }
   const efforts = asRecord(source?.reasoningEfforts);
@@ -94,14 +96,14 @@ function normalizeModel(model) {
     const kept = {};
     for (const [level, value] of Object.entries(efforts)) {
       const key = text(level);
-      if (key === "") continue;
-      if (value === null) kept[key] = null;
+      if (!reasoningLevels.has(key)) continue;
+      if (key === "off" && value === null) kept[key] = null;
       else {
         const wire = text(value);
         if (wire !== "") kept[key] = wire;
       }
     }
-    if (Object.keys(kept).length > 0) normalized.reasoningEfforts = kept;
+    if (Object.keys(kept).some((level) => level !== "off")) normalized.reasoningEfforts = kept;
   }
   const contextWindow = source?.contextWindow;
   if (typeof contextWindow === "number" && Number.isSafeInteger(contextWindow) && contextWindow > 0) {
@@ -229,7 +231,7 @@ async function exchange(method, endpoint, options = {}) {
     if (body !== void 0) init.body = body;
     response = await fetch(endpoint, init);
   } catch {
-    throw fail(502, `\u65E0\u6CD5\u8FDE\u63A5 HXSEC AI Platform\uFF08${new URL(endpoint).host}\uFF09`);
+    throw fail(502, options.unavailable ?? `\u65E0\u6CD5\u8FDE\u63A5 HXSEC AI Platform\uFF08${new URL(endpoint).host}\uFF09`);
   }
   const raw = await response.text().catch(() => "");
   let data;
@@ -271,20 +273,58 @@ function sameOriginURL(raw, label) {
   }
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
-async function readModels(base, key) {
-  const result = await exchange("GET", `${base.replace(/\/+$/, "")}/models`, {
-    headers: { Authorization: `Bearer ${key}` }
-  }).catch(() => void 0);
-  const list = listOf(envelopeData(result?.data));
-  const models = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const item of list) {
-    const model = normalizeModel(item);
-    if (!model || seen.has(model.id)) continue;
-    seen.add(model.id);
-    models.push(model);
+function customBase(raw) {
+  const url = new URL(sameOriginURL(raw, "OpenAI \u517C\u5BB9 API \u5730\u5740"));
+  const path = url.pathname.replace(/\/+$/, "").replace(/\/(?:chat\/completions|models)$/, "");
+  return url.origin + path;
+}
+function listedModel(item) {
+  const source = asRecord(item);
+  if (!source) return void 0;
+  const levels = listOf(asRecord(source.effort)?.supported_levels).map(text).filter((level) => level !== "off" && reasoningLevels.has(level));
+  return normalizeModel({
+    ...source,
+    inputTypes: source.inputTypes ?? source.input_modalities,
+    reasoningEfforts: source.reasoningEfforts ?? (levels.length === 0 ? void 0 : Object.fromEntries(
+      levels.map((level) => [level, level])
+    )),
+    contextWindow: source.contextWindow ?? source.context_window,
+    maxOutputTokens: source.maxOutputTokens ?? source.max_output_tokens
+  });
+}
+function providerRequest(method, base, path, key, body) {
+  return exchange(method, `${base.replace(/\/+$/, "")}${path}`, {
+    headers: { Authorization: `Bearer ${key}` },
+    body,
+    unavailable: "\u65E0\u6CD5\u8FDE\u63A5\u6A21\u578B\u63D0\u4F9B\u5546\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u3001\u7F51\u7EDC\u548C TLS \u914D\u7F6E"
+  });
+}
+function checkProviderReply(result, operation) {
+  if (result.ok) return;
+  if (result.status === 401 || result.status === 403) {
+    throw fail(422, `\u6A21\u578B\u63D0\u4F9B\u5546\u62D2\u7EDD\u8BBF\u95EE\uFF08HTTP ${result.status}\uFF09\uFF0C\u8BF7\u68C0\u67E5 API \u5BC6\u94A5\u548C\u6743\u9650`);
   }
-  return models;
+  throw fail(422, `${operation}\u5931\u8D25\uFF08HTTP ${result.status}\uFF09\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u548C\u4E0A\u6E38\u670D\u52A1`);
+}
+async function readModels(base, key) {
+  const result = await providerRequest("GET", base, "/models", key);
+  if ([404, 405, 501].includes(result.status)) return [];
+  checkProviderReply(result, "\u8BFB\u53D6\u4E0A\u6E38\u6A21\u578B\u5217\u8868");
+  const list = Array.isArray(result.data) ? result.data : listOf(envelopeData(result.data));
+  return uniqueModels(list.map(listedModel).filter(defined));
+}
+async function verifyCustomModel(base, key, model) {
+  const result = await providerRequest("POST", base, "/chat/completions", key, {
+    model,
+    messages: [{ role: "user", content: "ping" }],
+    max_tokens: 1,
+    stream: false
+  });
+  checkProviderReply(result, "\u9A8C\u8BC1\u81EA\u5B9A\u4E49\u6A21\u578B");
+  const choice = asRecord(listOf(asRecord(result.data)?.choices)[0]);
+  if (!asRecord(choice?.message)) {
+    throw fail(422, "\u81EA\u5B9A\u4E49\u6A21\u578B\u672A\u8FD4\u56DE OpenAI \u517C\u5BB9\u7684\u5BF9\u8BDD\u54CD\u5E94\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u548C\u6A21\u578B ID");
+  }
 }
 function createPlatformAccount(options = {}) {
   const home = options.home || process.env.VEXNAR_HOME || process.env.DSH_HOME || join(homedir(), ".vexnar");
@@ -406,7 +446,7 @@ function createPlatformAccount(options = {}) {
         let key = text(asRecord(envelopeData(token.data))?.key);
         if (key !== "" && !key.startsWith("sk-")) key = `sk-${key}`;
         if (key !== "") {
-          const models = await readModels(base, key);
+          const models = await readModels(base, key).catch(() => []);
           if (models.length > 0) {
             account.providers = [{ id: "vexnar", name: "HXSEC AI Platform", base, key, models }];
             break;
@@ -500,14 +540,21 @@ function createPlatformAccount(options = {}) {
         provider.id = `custom-${randomID()}`;
         provider.name = text(input.name);
         if (provider.name === "") throw fail(400, "\u8BF7\u8F93\u5165\u540D\u79F0\u548C\u6709\u6548\u7684 OpenAI \u517C\u5BB9 API \u6839\u5730\u5740");
-        provider.base = sameOriginURL(input.base_url, "OpenAI \u517C\u5BB9 API \u6839\u5730\u5740");
+        provider.base = customBase(input.base_url);
         break;
       }
       default:
         throw fail(400, "\u672A\u77E5\u7684\u6A21\u578B\u63D0\u4F9B\u65B9");
     }
-    provider.models = uniqueModels(await readModels(provider.base, key));
-    if (provider.models.length === 0) throw fail(422, "\u65E0\u6CD5\u8BFB\u53D6\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u548C API Key");
+    if (input.kind === "custom" && Array.isArray(input.models) && input.models.length > 0) {
+      provider.models = uniqueModels(input.models.map(normalizeModel).filter(defined));
+      const first = provider.models[0];
+      if (!first) throw fail(400, "\u8BF7\u8F93\u5165\u6709\u6548\u7684\u6A21\u578B ID");
+      await verifyCustomModel(provider.base, key, first.id);
+    } else {
+      provider.models = await readModels(provider.base, key);
+      if (provider.models.length === 0) throw fail(422, input.kind === "custom" ? "\u4E0A\u6E38\u672A\u63D0\u4F9B\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u6216\u624B\u52A8\u586B\u5199\u6A21\u578B ID" : "\u4E0A\u6E38\u672A\u63D0\u4F9B\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740");
+    }
     const account = await read();
     if (!gateOpen(account) || account.user_id !== current.user_id) {
       throw fail(401, "VEXNAR \u767B\u5F55\u72B6\u6001\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u8BD5");
@@ -527,7 +574,7 @@ function createPlatformAccount(options = {}) {
     const current = account.providers.find((provider) => provider.id === id);
     if (current === void 0) throw fail(404, "\u6A21\u578B\u63D0\u4F9B\u65B9\u4E0D\u5B58\u5728");
     const key = text(input.api_key);
-    const base = text(input.base_url) === "" ? current.base : sameOriginURL(input.base_url, "API \u5730\u5740");
+    const base = text(input.base_url) === "" ? current.base : id.startsWith("custom-") ? customBase(input.base_url) : sameOriginURL(input.base_url, "API \u5730\u5740");
     const name = text(input.name) || current.name;
     const retry = normalizeRetry(input.retry);
     if (id === "vexnar") {
@@ -536,9 +583,15 @@ function createPlatformAccount(options = {}) {
     }
     let models = Array.isArray(input.models) ? uniqueModels(input.models.map(normalizeModel).filter(defined)) : [];
     if (key !== "" || base !== current.base) {
-      const discovered = await readModels(base, key === "" ? current.key : key);
-      if (discovered.length === 0) throw fail(422, "\u65E0\u6CD5\u8BFB\u53D6\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740\u548C API Key");
-      if (models.length === 0) models = uniqueModels(discovered);
+      const nextKey = key || current.key;
+      const discovered = await readModels(base, nextKey);
+      if (discovered.length === 0) {
+        const first = (models.length > 0 ? models : current.models)[0];
+        if (!id.startsWith("custom-") || !first) throw fail(422, "\u4E0A\u6E38\u672A\u63D0\u4F9B\u6A21\u578B\u5217\u8868\uFF0C\u8BF7\u68C0\u67E5 API \u5730\u5740");
+        await verifyCustomModel(base, nextKey, first.id);
+      } else if (models.length === 0) {
+        models = discovered;
+      }
     }
     if (models.length === 0) models = current.models;
     if (models.length === 0) throw fail(422, "\u6A21\u578B\u76EE\u5F55\u4E0D\u80FD\u4E3A\u7A7A");
