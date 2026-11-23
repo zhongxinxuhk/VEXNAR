@@ -35,6 +35,7 @@
     "test:web": "pnpm --filter @vexnar/web run test",
     "web:mcp": "pnpm --filter @vexnar/web run mcp",
     "plugins:check": "tsx scripts/plugin-inventory.ts",
+    "check:data": "tsx scripts/check-tracked-data.ts",
     "test:preset": "tsx --test scripts/vexnar-extras.test.ts scripts/plugin-inventory.test.ts"
   },
   "devDependencies": {

@@ -53,6 +53,11 @@ jobs:
             --filter @vexnar/dsh-account...
           pnpm run ui:build
           pnpm run account:build
+      - name: Check no runtime data is tracked
+        working-directory: app
+        # store（任务 / 漏洞 / 流量 / 会话）、日志、归档一旦进了索引，就会随
+        # clone 一起发出去；预设 Agent 与拦截规则是代码，不受这条限制。
+        run: pnpm run check:data
           for plugin in ui account; do
             test -s "vexnar/$plugin/lib/client.js"
             test -s "vexnar/$plugin/lib/index.js"

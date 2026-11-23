@@ -10,6 +10,29 @@ dsh/
 .vexnar-home/
 .dsh-home/
 
+# ── 运行时数据一律不入库 ───────────────────────────────────────────────
+# store（任务 / 漏洞 / 流量 / 会话 / Token 余额）、日志、抓包归档、角色扮演
+# 语料都是本机跑出来的东西，跟代码无关，也不该出现在别人的 clone 里。
+# 预设 Agent 与拦截规则不在这个黑名单里：它们是代码——
+#   Agent 名册   → vexnar/cordis.patch.yml 的 preset 行（另见 vexnar/extras.json）
+#   拦截规则     → vexnar-core/src/intercept-seed.ts 与 db/db.go 的内置种子
+# 所以这两类改起来照旧走 review，数据目录则永远不进 git。
+# 只锚在 app/ 根下：`data/` 若不加前导斜杠会连 vexnar/ui/src/data/ 这类源码目录一起吞掉。
+/data/
+/logs/
+/exports/
+/storages/
+/sessions/
+/transcripts/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.jsonl
+*.ndjson
+*.log
+*.dmg
+*.exe
+
 # Go 后端由 scripts/vexnar-go.mjs 按源码指纹编译到这里，可随时重建。
 .vexnar-bin/
 
