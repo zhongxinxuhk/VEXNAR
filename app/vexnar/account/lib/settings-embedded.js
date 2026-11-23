@@ -33418,6 +33418,57 @@ function registerInterceptSettings(api) {
   });
 }
 
+// src/routes/llm-profile.ts
+var MAX_RETRY_ATTEMPTS = 20;
+var MAX_RETRY_INTERVAL_MS = 36e5;
+function clampRule(rule) {
+  let attempts = Number(rule?.attempts ?? 0);
+  let intervalMs = Number(rule?.interval_ms ?? 0);
+  if (!Number.isFinite(attempts)) attempts = 0;
+  if (attempts < -1) attempts = -1;
+  if (attempts > MAX_RETRY_ATTEMPTS) attempts = MAX_RETRY_ATTEMPTS;
+  if (!Number.isFinite(intervalMs)) intervalMs = 0;
+  if (intervalMs < 0) intervalMs = 0;
+  if (intervalMs > MAX_RETRY_INTERVAL_MS) intervalMs = MAX_RETRY_INTERVAL_MS;
+  return { attempts, interval_ms: intervalMs };
+}
+function clampOverride(override) {
+  return { connect: clampRule(override?.connect), empty: clampRule(override?.empty), stream: clampRule(override?.stream) };
+}
+function readRetryOverride(row) {
+  if (row?.retry && typeof row.retry === "object") return clampOverride(row.retry);
+  return {
+    connect: { attempts: Number(row?.retry_connect_attempts ?? 0), interval_ms: Number(row?.retry_connect_interval_ms ?? 0) },
+    empty: { attempts: Number(row?.retry_empty_attempts ?? 0), interval_ms: Number(row?.retry_empty_interval_ms ?? 0) },
+    stream: { attempts: Number(row?.retry_stream_attempts ?? 0), interval_ms: Number(row?.retry_stream_interval_ms ?? 0) }
+  };
+}
+function profileDTO(row) {
+  const dto = {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    format: String(row.format ?? ""),
+    model: String(row.model ?? ""),
+    rate_per_second: Number(row.rate_per_second ?? 0),
+    rate_per_minute: Number(row.rate_per_minute ?? 0),
+    context_window_k: Number(row.context_window_k ?? 0),
+    thinking_type: String(row.thinking_type ?? ""),
+    reasoning_effort: String(row.reasoning_effort ?? ""),
+    is_default: Boolean(row.is_default),
+    priority: Number(row.priority ?? 0),
+    pool_exclude: Boolean(row.pool_exclude),
+    streaming: row.streaming == null ? true : Boolean(row.streaming),
+    max_tokens: Number(row.max_tokens ?? 0),
+    max_tokens_field: String(row.max_tokens_field ?? ""),
+    session_header_key: String(row.session_header_key ?? ""),
+    retry: readRetryOverride(row)
+  };
+  if (row.base_url != null && row.base_url !== "") dto.base_url = row.base_url;
+  if (row.proxy != null && row.proxy !== "") dto.proxy = row.proxy;
+  if (row.api_key_hint != null && row.api_key_hint !== "") dto.api_key_hint = row.api_key_hint;
+  return dto;
+}
+
 // src/routes/settings-catalog.ts
 function normalizeMcpTools(list) {
   if (!Array.isArray(list)) return [];
@@ -33431,13 +33482,7 @@ function normalizeMcpTools(list) {
 function registerSettingsCatalog(api) {
   api.get("/api/llm/profiles", async (c) => {
     const rows = await meta3.table("llmProfiles");
-    return c.json({
-      profiles: rows.map((row) => {
-        if (row.base_url != null) return row;
-        const { base_url, ...rest } = row;
-        return rest;
-      })
-    });
+    return c.json({ profiles: (Array.isArray(rows) ? rows : []).map(profileDTO) });
   });
   api.get("/api/tools", async (c) => {
     const rows = await meta3.table("tools");

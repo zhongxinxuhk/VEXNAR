@@ -41744,6 +41744,63 @@ var require_dist2 = __commonJS({
   }
 });
 
+// src/routes/llm-profile.ts
+function clampRule(rule) {
+  let attempts = Number(rule?.attempts ?? 0);
+  let intervalMs = Number(rule?.interval_ms ?? 0);
+  if (!Number.isFinite(attempts)) attempts = 0;
+  if (attempts < -1) attempts = -1;
+  if (attempts > MAX_RETRY_ATTEMPTS) attempts = MAX_RETRY_ATTEMPTS;
+  if (!Number.isFinite(intervalMs)) intervalMs = 0;
+  if (intervalMs < 0) intervalMs = 0;
+  if (intervalMs > MAX_RETRY_INTERVAL_MS) intervalMs = MAX_RETRY_INTERVAL_MS;
+  return { attempts, interval_ms: intervalMs };
+}
+function clampOverride(override) {
+  return { connect: clampRule(override?.connect), empty: clampRule(override?.empty), stream: clampRule(override?.stream) };
+}
+function readRetryOverride(row) {
+  if (row?.retry && typeof row.retry === "object") return clampOverride(row.retry);
+  return {
+    connect: { attempts: Number(row?.retry_connect_attempts ?? 0), interval_ms: Number(row?.retry_connect_interval_ms ?? 0) },
+    empty: { attempts: Number(row?.retry_empty_attempts ?? 0), interval_ms: Number(row?.retry_empty_interval_ms ?? 0) },
+    stream: { attempts: Number(row?.retry_stream_attempts ?? 0), interval_ms: Number(row?.retry_stream_interval_ms ?? 0) }
+  };
+}
+function profileDTO(row) {
+  const dto = {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    format: String(row.format ?? ""),
+    model: String(row.model ?? ""),
+    rate_per_second: Number(row.rate_per_second ?? 0),
+    rate_per_minute: Number(row.rate_per_minute ?? 0),
+    context_window_k: Number(row.context_window_k ?? 0),
+    thinking_type: String(row.thinking_type ?? ""),
+    reasoning_effort: String(row.reasoning_effort ?? ""),
+    is_default: Boolean(row.is_default),
+    priority: Number(row.priority ?? 0),
+    pool_exclude: Boolean(row.pool_exclude),
+    streaming: row.streaming == null ? true : Boolean(row.streaming),
+    max_tokens: Number(row.max_tokens ?? 0),
+    max_tokens_field: String(row.max_tokens_field ?? ""),
+    session_header_key: String(row.session_header_key ?? ""),
+    retry: readRetryOverride(row)
+  };
+  if (row.base_url != null && row.base_url !== "") dto.base_url = row.base_url;
+  if (row.proxy != null && row.proxy !== "") dto.proxy = row.proxy;
+  if (row.api_key_hint != null && row.api_key_hint !== "") dto.api_key_hint = row.api_key_hint;
+  return dto;
+}
+var MAX_RETRY_ATTEMPTS, MAX_RETRY_INTERVAL_MS;
+var init_llm_profile = __esm({
+  "src/routes/llm-profile.ts"() {
+    "use strict";
+    MAX_RETRY_ATTEMPTS = 20;
+    MAX_RETRY_INTERVAL_MS = 36e5;
+  }
+});
+
 // src/routes/settings-catalog.ts
 function normalizeMcpTools(list) {
   if (!Array.isArray(list)) return [];
@@ -41757,13 +41814,7 @@ function normalizeMcpTools(list) {
 function registerSettingsCatalog(api2) {
   api2.get("/api/llm/profiles", async (c) => {
     const rows = await meta3.table("llmProfiles");
-    return c.json({
-      profiles: rows.map((row) => {
-        if (row.base_url != null) return row;
-        const { base_url, ...rest } = row;
-        return rest;
-      })
-    });
+    return c.json({ profiles: (Array.isArray(rows) ? rows : []).map(profileDTO) });
   });
   api2.get("/api/tools", async (c) => {
     const rows = await meta3.table("tools");
@@ -41787,6 +41838,7 @@ var init_settings_catalog = __esm({
   "src/routes/settings-catalog.ts"() {
     "use strict";
     init_context2();
+    init_llm_profile();
   }
 });
 
@@ -43551,17 +43603,6 @@ function fail(c, error62) {
 async function jsonBody(c) {
   return c.req.json().catch(() => ({}));
 }
-function clampRule(rule) {
-  let attempts = Number(rule?.attempts ?? 0);
-  let intervalMs = Number(rule?.interval_ms ?? 0);
-  if (!Number.isFinite(attempts)) attempts = 0;
-  if (attempts < -1) attempts = -1;
-  if (attempts > MAX_RETRY_ATTEMPTS) attempts = MAX_RETRY_ATTEMPTS;
-  if (!Number.isFinite(intervalMs)) intervalMs = 0;
-  if (intervalMs < 0) intervalMs = 0;
-  if (intervalMs > MAX_RETRY_INTERVAL_MS) intervalMs = MAX_RETRY_INTERVAL_MS;
-  return { attempts, interval_ms: intervalMs };
-}
 function zeroRule() {
   return { attempts: 0, interval_ms: 0 };
 }
@@ -43571,9 +43612,6 @@ function zeroOverride() {
 function zeroPolicy() {
   return { connect: zeroRule(), empty: zeroRule(), stream: zeroRule(), breaker: zeroRule(), intent: zeroRule() };
 }
-function clampOverride(override) {
-  return { connect: clampRule(override?.connect), empty: clampRule(override?.empty), stream: clampRule(override?.stream) };
-}
 function clampPolicy(policy) {
   return {
     connect: clampRule(policy?.connect),
@@ -43581,14 +43619,6 @@ function clampPolicy(policy) {
     stream: clampRule(policy?.stream),
     breaker: clampRule(policy?.breaker),
     intent: clampRule(policy?.intent)
-  };
-}
-function readRetryOverride(row) {
-  if (row?.retry && typeof row.retry === "object") return clampOverride(row.retry);
-  return {
-    connect: { attempts: Number(row?.retry_connect_attempts ?? 0), interval_ms: Number(row?.retry_connect_interval_ms ?? 0) },
-    empty: { attempts: Number(row?.retry_empty_attempts ?? 0), interval_ms: Number(row?.retry_empty_interval_ms ?? 0) },
-    stream: { attempts: Number(row?.retry_stream_attempts ?? 0), interval_ms: Number(row?.retry_stream_interval_ms ?? 0) }
   };
 }
 function trimSuffix(value, suffix) {
@@ -43625,31 +43655,6 @@ async function saveSettings(next) {
   tables.settings = next;
   await meta3.save(tables);
   meta3.reload();
-}
-function profileDTO(row) {
-  const dto = {
-    id: String(row.id),
-    name: String(row.name ?? ""),
-    format: String(row.format ?? ""),
-    model: String(row.model ?? ""),
-    rate_per_second: Number(row.rate_per_second ?? 0),
-    rate_per_minute: Number(row.rate_per_minute ?? 0),
-    context_window_k: Number(row.context_window_k ?? 0),
-    thinking_type: String(row.thinking_type ?? ""),
-    reasoning_effort: String(row.reasoning_effort ?? ""),
-    is_default: Boolean(row.is_default),
-    priority: Number(row.priority ?? 0),
-    pool_exclude: Boolean(row.pool_exclude),
-    streaming: row.streaming == null ? true : Boolean(row.streaming),
-    max_tokens: Number(row.max_tokens ?? 0),
-    max_tokens_field: String(row.max_tokens_field ?? ""),
-    session_header_key: String(row.session_header_key ?? ""),
-    retry: readRetryOverride(row)
-  };
-  if (row.base_url != null && row.base_url !== "") dto.base_url = row.base_url;
-  if (row.proxy != null && row.proxy !== "") dto.proxy = row.proxy;
-  if (row.api_key_hint != null && row.api_key_hint !== "") dto.api_key_hint = row.api_key_hint;
-  return dto;
 }
 function buildProfileRecord(input2) {
   const retry = input2.retry ?? zeroOverride();
@@ -43842,61 +43847,6 @@ async function usageStats(days) {
   const daily = [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date) || a.profile_name.localeCompare(b.profile_name));
   return { by_profile: byProfileArr, daily };
 }
-async function dailyTokens(days) {
-  const rows = (await writer.list("activity")).filter((r) => r.kind === "result");
-  const cutoff = Date.now() / 1e3 - Math.max(days, 1) * 86400;
-  const buckets = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    const at = Number(row.created_unix ?? 0);
-    if (at < cutoff) continue;
-    const created = String(row.created_at ?? "");
-    if (!created) continue;
-    const day = new Date(created).toISOString().slice(0, 10);
-    const bucket = buckets.get(day) ?? { day, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0 };
-    bucket.input_tokens += Number(row.input_tokens ?? 0);
-    bucket.output_tokens += Number(row.output_tokens ?? 0);
-    bucket.cache_read_tokens += Number(row.cache_read_tokens ?? 0);
-    buckets.set(day, bucket);
-  }
-  return [...buckets.values()].sort((a, b) => a.day.localeCompare(b.day));
-}
-async function tokenStats(taskId) {
-  const emptyTotal = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
-  const task = (await writer.list("tasks")).find((t) => String(t.id) === String(taskId));
-  if (!task) return { workers: [], sessions: [], total: emptyTotal };
-  const expId = Number(task.exploration_id);
-  const rows = (await writer.list("activity")).filter((r) => Number(r.exploration_id) === expId && r.kind === "result");
-  const byWorker = /* @__PURE__ */ new Map();
-  const total = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
-  for (const row of rows) {
-    const worker = String(row.worker ?? "");
-    const entry = byWorker.get(worker) ?? { worker, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
-    for (const key of TOKEN_FIELDS) {
-      entry[key] += Number(row[key] ?? 0);
-      total[key] += Number(row[key] ?? 0);
-    }
-    byWorker.set(worker, entry);
-  }
-  const workers = [...byWorker.values()].sort((a, b) => {
-    if (a.worker === b.worker) return 0;
-    if (a.worker === "") return 1;
-    if (b.worker === "") return -1;
-    return String(a.worker).localeCompare(String(b.worker));
-  });
-  const intentIds = new Set(
-    (await writer.list("nodes")).filter((n) => Number(n.exploration_id) === expId && n.kind === "intent").map((n) => String(n.id))
-  );
-  const bySession = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    const key = row.worker === "mainagent" ? `main:${Number(row.main_seg ?? 0)}` : row.worker === "planner" ? "plan" : row.node_id != null && intentIds.has(String(row.node_id)) ? `intent:${row.node_id}` : "";
-    if (!key) continue;
-    const entry = bySession.get(key) ?? { session: key, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 };
-    for (const field of TOKEN_FIELDS) entry[field] += Number(row[field] ?? 0);
-    bySession.set(key, entry);
-  }
-  const sessions = [...bySession.values()].sort((a, b) => String(a.session).localeCompare(String(b.session)));
-  return { workers, sessions, total };
-}
 async function conversationTokens() {
   const conversations = await writer.list("conversations");
   const activities = await writer.list("conversation_activities");
@@ -44011,10 +43961,6 @@ async function minimalCompletion(opts) {
   return "(\u7A7A\u54CD\u5E94)";
 }
 function register5(api2) {
-  api2.get("/api/llm/profiles", async (c) => {
-    const rows = await listProfiles();
-    return c.json({ profiles: rows.map(profileDTO) });
-  });
   api2.post("/api/llm/profiles", async (c) => {
     const body = await jsonBody(c);
     try {
@@ -44349,32 +44295,19 @@ function register5(api2) {
       return c.json({ ok: false, error: String(error62?.message ?? error62) });
     }
   });
-  api2.get("/api/tokens/daily", async (c) => {
-    const days = Math.max(Number(c.req.query("days") ?? 30) || 30, 1);
-    return c.json(await dailyTokens(days));
-  });
   api2.get("/api/tokens/usage", async (c) => {
     const days = Number(c.req.query("days") ?? 365) || 365;
     return c.json(await usageStats(days));
   });
   api2.get("/api/tokens/conversations", async (c) => c.json(await conversationTokens()));
-  api2.get("/api/exploration/tokens", async (c) => {
-    const taskId = c.req.query("task") ?? "";
-    if (!taskId) {
-      return c.json({ workers: [], sessions: [], total: { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0 } });
-    }
-    return c.json(await tokenStats(taskId));
-  });
 }
-var writer, MAX_RETRY_ATTEMPTS, MAX_RETRY_INTERVAL_MS, TOKEN_FIELDS;
+var writer;
 var init_llm = __esm({
   "src/routes/llm.ts"() {
     "use strict";
     init_context2();
+    init_llm_profile();
     writer = operations.writer;
-    MAX_RETRY_ATTEMPTS = 20;
-    MAX_RETRY_INTERVAL_MS = 36e5;
-    TOKEN_FIELDS = ["input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens"];
   }
 });
 

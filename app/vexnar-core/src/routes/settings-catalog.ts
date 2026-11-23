@@ -4,6 +4,7 @@
 
 import type { Hono } from 'hono'
 import { meta } from '../context.ts'
+import { profileDTO } from './llm-profile.ts'
 
 export interface McpTool { name: string; description: string }
 
@@ -19,15 +20,10 @@ export function normalizeMcpTools(list: unknown): McpTool[] {
 
 /** Directories shared by the settings panels and the core router. */
 export function registerSettingsCatalog(api: Hono): void {
+  // 读写共用 ./llm-profile.ts 的 DTO：列表只给 api_key_hint，不把密钥发到页面。
   api.get('/api/llm/profiles', async (c) => {
     const rows = await meta.table<any[]>('llmProfiles')
-    return c.json({
-      profiles: rows.map((row) => {
-        if (row.base_url != null) return row
-        const { base_url, ...rest } = row
-        return rest
-      })
-    })
+    return c.json({ profiles: (Array.isArray(rows) ? rows : []).map(profileDTO) })
   })
   api.get('/api/tools', async (c) => {
     const rows = await meta.table<any[]>('tools')

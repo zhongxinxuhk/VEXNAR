@@ -265,8 +265,9 @@ export function apply(ctx: AccountContext): void {
             res.end(JSON.stringify(diagnostics()))
             return
           }
-          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 :
-            url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity
+          // `/api/traffic/import/yakit` 没有对应路由（Yakit 走会话捕获的 ingest），
+          // 留一条永远走不到的体积分支只会让人以为它存在。
+          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : Infinity
           const chunks: Buffer[] = []
           let size = 0
           // node 把正文按 Buffer 块交出来；Readable 的迭代器类型是 any，这里收窄。

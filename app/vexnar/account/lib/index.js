@@ -221,7 +221,7 @@ function apply(ctx) {
             res.end(JSON.stringify(diagnostics()));
             return;
           }
-          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : url.pathname === "/api/traffic/import/yakit" ? 16 * 1024 * 1024 : Infinity;
+          const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 : Infinity;
           const chunks = [];
           let size = 0;
           for await (const chunk of req) {

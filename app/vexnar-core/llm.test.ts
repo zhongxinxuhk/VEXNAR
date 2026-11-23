@@ -12,10 +12,18 @@ process.env.VEXNAR_STORE_ROOT = root
 
 const { Hono } = await import('hono')
 const { register } = await import('./src/routes/llm.ts')
+const { registerReadViews } = await import('./src/routes/read-views.ts')
+const { registerSettingsCatalog } = await import('./src/routes/settings-catalog.ts')
 const { operations } = await import('./src/context.ts')
 const writer = operations.writer
 
+// 这些路由各有唯一属主，和完整 core 的挂载顺序一致：
+//   · GET /api/llm/profiles  → registerSettingsCatalog（设置产物与 core 共用）
+//   · GET /api/tokens/daily  → registerReadViews
+//   · 其余 llm 路由          → llm.ts
 const app = new Hono()
+registerSettingsCatalog(app)
+registerReadViews(app)
 register(app)
 
 /** 自测用的极简请求器：body 缺省表示无请求体（仅 GET/DELETE）。 */
