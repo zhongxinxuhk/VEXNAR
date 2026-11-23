@@ -153,6 +153,13 @@ VEXNAR 使用 `app/.vexnar-home`（可用 `VEXNAR_HOME` 指定独立目录）和
 pnpm 依赖提供。已有的原版客户端和旧 `app/.dsh-home` 可以继续保留。
 账户配置见 [账户和模型](./vexnar/account/README.md)。
 
+## 运行时诊断
+
+已登录客户端可从 `GET /vexnar-api/api/_runtime` 查看运行时状态。
+`core_state` 表示模块加载状态，分别为 `loading`（加载中）、`available`（模块可用）、
+`failed`（加载失败）和 `timed_out`（超过启动等待时间）。`started` 表示运行时是否已经启动。
+诊断由 dsh 宿主回答，core 加载超时时仍可读取。
+
 ## 管理客户端数据
 
 - 在 **任务 → 归档记录** 查看、恢复或移除归档。运行中或排队的本地任务需先暂停才能归档。

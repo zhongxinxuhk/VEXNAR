@@ -153,13 +153,40 @@ export function apply(ctx: AccountContext): void {
   if (process.env.VEXNAR_RUNTIME_MODE === 'go') registerYakHistoryTools(ctx)
   if (process.env.VEXNAR_CORE_EMBEDDED !== '0') {
     let core: typeof import('./core-embedded.js') | undefined
+    let coreState: 'loading' | 'available' | 'failed' | 'timed_out' = 'loading'
     const starting = import('./core-embedded.js').then(result => {
       core = result
+      coreState = 'available'
       return result
-    }, () => undefined)
-    const startup = Promise.race([starting, delay(4_000, undefined, { ref: false })])
+    }, () => {
+      coreState = 'failed'
+      return undefined
+    })
+    const deadline = delay(4_000, undefined, { ref: false }).then(() => {
+      if (coreState === 'loading') coreState = 'timed_out'
+      return undefined
+    })
+    const startup = Promise.race([starting, deadline])
     const getCore = async () => core ?? await startup
     const goMode = process.env.VEXNAR_RUNTIME_MODE?.trim().toLowerCase() === 'go'
+    const diagnostics = () => {
+      const configuredStore = process.env.VEXNAR_STORE?.trim().toLowerCase()
+      const store = configuredStore === 'json' || configuredStore === 'postgres' ? configuredStore : 'sqlite'
+      return {
+        ...(core?.runtimeInfo?.() ?? {
+          mode: goMode ? 'go' : 'ts',
+          store,
+          started: false,
+          started_at: 0,
+          triggers: 0,
+          schedules: false,
+          store_locked: false,
+          engine: 'unavailable',
+          task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2
+        }),
+        core_state: coreState
+      }
+    }
     // 同一进程内的领域调用面：工具插件（如 @vexnar/dsh-egress）直接走这里，
     // 不经过 /vexnar-api 的登录闸门，也不需要复制一份端口/token。
     ctx.provide('vexnarCore', {
@@ -214,19 +241,26 @@ export function apply(ctx: AccountContext): void {
           const configRoute = isClientMaintenance(req.method, url.pathname, goMode) || toolDocumentation || isNotificationSetting(req.method, url.pathname) ||
             (!goMode && /^\/api\/intercept\/(?:rules|tool-config|judge)(?:\/|$)/.test(url.pathname)) ||
             (req.method === 'GET' && isStoredDataRead(url.pathname, goMode))
-          const app = configRoute || nativeYakHistory ? undefined : await getCore()
-          if (!configRoute && !nativeYakHistory && !app) {
+          // Diagnostics observes startup without waiting for the core or calling its request handler.
+          const runtimeRead = req.method === 'GET' && url.pathname === '/api/_runtime'
+          const app = configRoute || nativeYakHistory || runtimeRead ? undefined : await getCore()
+          if (!configRoute && !nativeYakHistory && !runtimeRead && !app) {
             res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
-            res.end(JSON.stringify({ error: 'VEXNAR 领域服务尚未就绪' }))
+            res.end(JSON.stringify({ error: 'VEXNAR 领域服务尚未就绪', core_state: coreState }))
             return
           }
-          if (configRoute || nativeYakHistory || app?.isGoDataRequest(req.method, url.pathname)) {
+          if (configRoute || nativeYakHistory || runtimeRead || app?.isGoDataRequest(req.method, url.pathname)) {
             const rejection = ctx.connection.requestRejection(req)
             if (rejection) {
               res.writeHead(rejection, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
               res.end(JSON.stringify({ error: '请从已登录的 VEXNAR 客户端访问' }))
               return
             }
+          }
+          if (runtimeRead) {
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify(diagnostics()))
+            return
           }
           const limit = readingYakHistory ? 8192 : toolDocumentation ? 65536 :
             url.pathname === '/api/traffic/import/yakit' ? 16 * 1024 * 1024 : Infinity

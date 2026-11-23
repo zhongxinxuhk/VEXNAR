@@ -82082,6 +82082,7 @@ async function ensureInterceptRulesSeeded(loadRows = process.env.VEXNAR_CLIENT_S
 // src/embedded.ts
 await init_runtime();
 init_gateway();
+await init_runtime();
 var migration = null;
 function migrateOnce() {
   migration ??= ensureInterceptRulesSeeded().then(
@@ -82104,6 +82105,7 @@ export {
   isDataPlaneRequest,
   isGoDataRequest,
   modelCompletionReady,
+  runtimeInfo,
   setModelCompletion
 };
 /*! Bundled license information:
