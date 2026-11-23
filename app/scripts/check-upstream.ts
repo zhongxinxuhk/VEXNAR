@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url'
 const here = dirname(fileURLToPath(import.meta.url))
 const app = join(here, '..')
 const dsh = join(app, 'dsh')
+const brandMarker = join(app, '.vexnar-brand.json')
 const lock = JSON.parse(readFileSync(join(app, 'upstream.lock.json'), 'utf8'))
 
 const failures: string[] = []
@@ -43,7 +44,15 @@ if (existsSync(join(dsh, '.git'))) {
   const head = git(['rev-parse', 'HEAD'])
   ok('upstream commit matches lock', head === lock.commit, `HEAD ${head} != ${lock.commit} (${lock.tag})`)
   const dirty = git(['status', '--porcelain'])
-  ok('upstream tree is pristine', dirty === '', `local modifications:\n${dirty}`)
+  // 品牌补丁会就地改一批文件（见 scripts/brand-desktop.mjs），改了哪些记在
+  // app/.vexnar-brand.json；只有这份清单里的改动算正常，别的手改照样失败。
+  const brand = existsSync(brandMarker) ? JSON.parse(readFileSync(brandMarker, 'utf8')) as { files?: string[] } : {}
+  const branded = new Set(brand.files ?? [])
+  const unexpected = dirty.split('\n').filter(Boolean)
+    .map(line => line.slice(2).trim().replace(/^"|"$/gu, ''))
+    .filter(path => !branded.has(path))
+  ok('upstream tree only differs by the VEXNAR brand patch', unexpected.length === 0,
+    `unexpected local modifications:\n${unexpected.join('\n')}\n(run app/scripts/brand-desktop.mjs, or revert)`)
 
   const tagCommit = git(['rev-list', '-n', '1', lock.tag])
   ok('lock tag resolves to lock commit', tagCommit === lock.commit, `${lock.tag} -> ${tagCommit}`)
