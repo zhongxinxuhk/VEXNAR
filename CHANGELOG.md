@@ -14,13 +14,16 @@
 
 #### 新增
 
-- **安装包装好就是 VEXNAR**：桌面安装包内置覆盖层（`Resources/vexnar-overlay`）——
-  四个插件加一份已装好 `extras.json` 全部插件的 profile（含 `node_modules`）。
-  首启由 `apps/desktop/vexnar-bootstrap.js` 把 profile 落到
-  `~/.vexnar/profiles/desktop`、插件源码放到 `~/.vexnar/bundles/`、把清单里指向
-  构建机的 `file:` 路径改写成安装后的位置，然后才加载 dsh 主进程。用户不需要
-  装 Node、不需要 pnpm、不需要在源码工作区跑 `setup`。升级安装包时按覆盖层指纹
-  只替换 VEXNAR 自己的包，用户从插件面板装的第三方插件不受影响。
+- **桌面壳换成自己的，DeepSeek 登录门禁没了**：安装包原来打的是 vendored 上游
+  的 Electron 壳，它有 DeepSeek 平台的 `needsWelcome()` 门禁——没登录就只弹
+  「欢迎使用 / 登录 / 添加 API Key」，根本走不到 VEXNAR 的 web UI。现在
+  `app/desktop/main.ts` 是主进程（与 `pnpm run desktop` 同一条路径：起
+  `dsh web --profile vexnar` 再开窗），登录由 `@vexnar/dsh-account` 接管；
+  `pnpm run desktop:prepare` 把四个插件、装好全部 extras 的 profile、以及
+  `@deepseek-ai/dsh` 运行时一起放进 `Resources/app`，用户机器不需要 Node/pnpm/联网。
+- **打包后自动跑启动冒烟**：CI 打完安装包用包内资源真启动一次客户端
+  （`scripts/smoke-desktop.ts`），断言 profile 落盘、运行时能跑、日志里有
+  `[vexnar]`、首页 2xx/3xx 且没被 DeepSeek 登录页接管。构建绿不等于装完能用。
 - **拦截规则在 dsh 运行时真正生效**：`@vexnar/dsh-account` 注册
   `tools/pre-execute` 监听器，按 Go 的语义（优先级降序、首条命中、string/regex、
   tool_name/tool_input）判定每次工具调用。`deny` 直接拦下，`allow` 跳过后续规则，

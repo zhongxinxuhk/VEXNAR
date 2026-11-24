@@ -54,6 +54,12 @@ vexnar-egress/index.js
 # 品牌补丁记录：check-upstream 用它区分「品牌补丁」与「有人手改 vendored 代码」。
 .vexnar-brand.json
 
-# 桌面安装包的覆盖层：plugin 源码 + 预装 profile 的打包中间产物，
-# 由 `pnpm run overlay:prepare` 生成，随时可重建（体积几百 MB）。
+# 桌面安装包的中间产物，全部可重建（合计一两个 G）：
+#   desktop-resources/  plugin 源码 + 预装 profile + dsh 运行时（desktop:prepare）
+#   desktop/dist/       主进程 bundle（desktop:build）
+#   dist-desktop/       electron-builder 输出
+#   .desktop-overlay/   旧版覆盖层方案，文件名保留以免旧工作区误提交
 .desktop-overlay/
+desktop-resources/
+desktop/dist/
+dist-desktop/

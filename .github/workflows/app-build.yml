@@ -87,23 +87,6 @@ jobs:
           name: vexnar-app-bundle
           path: ${{ runner.temp }}/vexnar-app-bundle.tar.gz
           if-no-files-found: error
-      - name: Prepare desktop overlay
-        working-directory: app
-        # 安装包要「装完就能用」：把 extras.json 里的插件全部装进一份 profile，
-        # 连同 VEXNAR 插件一起作为覆盖层随包发出去。用户首启不再联网重装一遍
-        # ——这正是上一版 dmg 装上去只有上游界面的原因。
-        run: |
-          pnpm run overlay:prepare
-          node -e "const m = require('./.desktop-overlay/overlay.json'); \
-            if (m.fileDeps.length !== 4) throw new Error('overlay 缺少 VEXNAR 本地依赖：' + m.fileDeps.length); \
-            if (!m.bundles.includes('@vexnar/app-bundle')) throw new Error('overlay 的 bundles 层没有 @vexnar/app-bundle'); \
-            console.log('overlay OK：' + m.bundles.length + ' 个 bundle，' + m.fileDeps.length + ' 个本地依赖')"
-          tar -czf "$RUNNER_TEMP/vexnar-desktop-overlay.tar.gz" -C . .desktop-overlay
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vexnar-desktop-overlay
-          path: ${{ runner.temp }}/vexnar-desktop-overlay.tar.gz
-          if-no-files-found: error
 
   desktop:
     if: startsWith(github.ref, 'refs/tags/app-v') || (github.event_name == 'workflow_dispatch' && inputs.desktop)
@@ -114,90 +97,60 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: macos-15, target: mac-arm64, script: 'package:desktop:mac:arm64:unsigned', ext: dmg }
-          - { runner: windows-2022, target: win-x64, script: 'package:desktop:win:x64:unsigned', ext: exe }
+          - { runner: macos-15, flag: '--mac', ext: dmg, target: mac-arm64 }
+          - { runner: windows-2022, flag: '--win', ext: exe, target: win-x64 }
     env:
       DSH_TELEMETRY_DISABLED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Fetch pinned dsh source
-        shell: bash
-        run: bash app/scripts/fetch-dsh.sh
       - uses: pnpm/action-setup@v5
         with:
-          package_json_file: app/dsh/package.json
+          package_json_file: app/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: pnpm
-          cache-dependency-path: app/dsh/pnpm-lock.yaml
-      - name: Verify dsh checkout matches the App bundle lock
-        working-directory: app/dsh
-        run: >-
-          node -e "const {execFileSync} = require('node:child_process');
-          const head = execFileSync('git', ['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-          if (head !== require('../upstream.lock.json').commit) throw new Error('dsh checkout differs from app/upstream.lock.json');"
-      - uses: actions/download-artifact@v4
-        with:
-          name: vexnar-desktop-overlay
-          # 相对 workspace 落地，不用 $RUNNER_TEMP：Windows runner 上它是
-          # `D:\a\_temp`，拼进 Git Bash 的 tar 参数后整段被当成转义吃掉，
-          # 报「Failed to open '/overlay/…'」。
-          path: overlay
-      - name: Unpack the VEXNAR overlay
-        shell: bash
-        # 覆盖层必须到位再打补丁：brand 会把它的绝对路径写进 electron-builder 的
-        # extraResources，缺了它打出来的就是上游空壳。
-        #
-        # 解到短目录而不是工作区内：profile 的 node_modules 里最长的一条相对路径
-        # 有 232 字符，落在 `D:\a\VEXNAR\VEXNAR\app\` 下会越过 Windows 的 260
-        # 字符上限。`VEXNAR_OVERLAY` 把这个位置告诉 brand。
-        run: |
-          set -euo pipefail
-          if [ "$RUNNER_OS" = "Windows" ]; then target='C:/ov'; else target="$RUNNER_TEMP/ov"; fi
-          rm -rf "$target" && mkdir -p "$target"
-          tar -xzf overlay/vexnar-desktop-overlay.tar.gz -C "$target"
-          test -f "$target/.desktop-overlay/overlay.json"
-          echo "VEXNAR_OVERLAY=$target/.desktop-overlay" >> "$GITHUB_ENV"
-          node -e "const {readdirSync} = require('node:fs'); console.log('overlay:', readdirSync(process.argv[1]).join(', '))" "$target/.desktop-overlay"
-      - name: Apply the VEXNAR brand patch
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Install app dependencies
         working-directory: app
-        # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：
-        # productName / 产物前缀 / .app 目录名 / 桌面文案 / 图标 / CLI 命令 / home 目录。
-        # 改了哪些文件记在 app/.vexnar-brand.json，upstream:check 据此放宽到「只差品牌补丁」。
-        run: pnpm run brand:desktop
-      - name: Install dsh workspace dependencies
-        working-directory: app/dsh
+        # electron 的二进制要真下下来：它就是安装包里的运行时。
         run: pnpm install --frozen-lockfile
-      - name: Write unsigned packaging preset
+      - name: Build plugins and desktop main process
+        working-directory: app
+        run: |
+          pnpm run clean:outputs
+          pnpm run build
+          node scripts/check-built-artifacts.mjs
+          pnpm run desktop:build
+      - name: Prepare packaged resources
+        working-directory: app
+        # 装两份东西：extras.json 的全部插件（profile）与 dsh 运行时。装完安装包里
+        # 就齐了——用户机器上不需要 Node、不需要 pnpm、不需要联网。
+        run: pnpm run desktop:prepare
+      - name: Package installer
+        working-directory: app
+        run: pnpm exec electron-builder --config electron-builder.config.mjs ${{ matrix.flag }} --publish never
+      - name: Smoke test the packaged app
         shell: bash
-        # Windows 的 --unsigned 分支照样要读一份打包配置（macOS 的 --unsigned 用内置
-        # 本地默认，不读文件），而上游把 .env.windows 放在 git-ignored 的 vendored 树里。
-        # 用它自己的 CI 入口：DSH_PACKAGING_PRESET + DSH_PACKAGING_CONFIG_DIR，配置写在
-        # runner 临时目录，仓库和 app/dsh 都不留第二个 .env。
-        # 两个 origin 用 RFC 2606 的 .invalid：unsigned 产物不做更新/登录检查，
-        # 填一个真域名反而会让人以为它会联网。
+        working-directory: app
+        # 拿安装包里的资源真启动一次：profile 落盘、dsh 运行时能跑、VEXNAR 插件
+        # 加载、首页是 VEXNAR 的。构建绿不等于装完能用，这一步才算。
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/dsh-packaging/presets"
-          cat > "$RUNNER_TEMP/dsh-packaging/presets/test.env" <<'EOF'
-          DSH_DESKTOP_APP_ID=com.vexnar.harness
-          DSH_DESKTOP_AUTO_UPDATE_ENV=test
-          DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN=https://updates.invalid
-          DSH_DESKTOP_MANDATORY_UPDATE_CONFIG='{"allowedAuthOrigins":["https://login.invalid"]}'
-          EOF
-      - name: Build unsigned desktop installer
-        working-directory: app/dsh
-        env:
-          DSH_PACKAGING_PRESET: test
-          DSH_PACKAGING_CONFIG_DIR: ${{ runner.temp }}/dsh-packaging
-        run: pnpm run ${{ matrix.script }}
+          target=$(find dist-desktop -type d -path '*esources/app' -print -quit)
+          if [ -z "$target" ]; then
+            echo "安装包里找不到 Resources/app"
+            ls -R dist-desktop | head -40
+            exit 1
+          fi
+          echo "smoke target: $target"
+          pnpm exec tsx scripts/smoke-desktop.ts "$target"
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-${{ matrix.target }}-unsigned
-          path: app/dsh/apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts/*.${{ matrix.ext }}
+          name: vexnar-desktop-${{ matrix.target }}
+          path: dist-desktop/*.${{ matrix.ext }}
           if-no-files-found: error
 
   publish:
@@ -231,7 +184,7 @@ jobs:
           # 只取两个安装包（dsh-<target>-unsigned）。覆盖层有一千多兆，属于构建
           # 中间物，不进 Release；`merge-multiple` 全部下载会把下面的 *.tar.gz
           # 数量断言顶掉。
-          pattern: dsh-*
+          pattern: vexnar-desktop-*
           path: release-assets
           merge-multiple: true
       - uses: actions/download-artifact@v4
