@@ -150,7 +150,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: vexnar-desktop-${{ matrix.target }}
-          path: dist-desktop/*.${{ matrix.ext }}
+          # upload-artifact 的 path 相对 **workspace 根**，不认上面的
+          # working-directory: app——写 dist-desktop/* 它会说找不到文件。
+          path: app/dist-desktop/*.${{ matrix.ext }}
           if-no-files-found: error
 
   publish:
