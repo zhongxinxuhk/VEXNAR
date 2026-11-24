@@ -532,6 +532,28 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       return view
     }
   })
+  // 账号密码登录：直接打网关的 /api/user/login，用户在客户端里就能登，不必先去
+  // 网页生成访问令牌。开启两步验证的账号会先拿到一个 challenge，登录页再要一次验证码。
+  route('/login/password', {
+    POST: async (req) => {
+      const input = await readJson(req)
+      const result = await account.password(bodyText(input, 'username'), bodyText(input, 'password'))
+      // 挑战不是账号视图：原样回给登录页，由它切到验证码输入。
+      if ('challenge' in result) return result
+      const view = await refresh()
+      if (view.signed_in) console.log('vexnar: account-handoff')
+      return view
+    }
+  })
+  route('/login/verify', {
+    POST: async (req) => {
+      const input = await readJson(req)
+      await account.verify(bodyText(input, 'challenge'), bodyText(input, 'code'))
+      const view = await refresh()
+      if (view.signed_in) console.log('vexnar: account-handoff')
+      return view
+    }
+  })
   // 退出登录的浏览器入口：清完密钥后 303 回登录页。
   // 用跳转而不是让页面自己 location.replace('/')，是因为浏览器可能还留着工作区的
   // index 缓存；带 ?signed-out=1 的目标 URL 一定是一次新请求，且登录页会说明原因。

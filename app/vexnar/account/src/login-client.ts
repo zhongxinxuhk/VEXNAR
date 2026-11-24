@@ -151,6 +151,67 @@ if (entry) {
       })
     })
 
+    /**
+     * 账号密码登录：走网关的 /api/user/login。开启两步验证的账号先拿到 challenge，
+     * 这时把密码表单换成验证码输入，验证通过后同样落到工作区。
+     */
+    const passwordForm = node<HTMLFormElement>('password-login')
+    const verifyForm = node<HTMLFormElement>('verify-login')
+    let challenge = ''
+
+    const field = (form: HTMLFormElement, name: string): string => {
+      const control = form.elements.namedItem(name)
+      return control instanceof HTMLInputElement ? control.value : ''
+    }
+
+    if (passwordForm !== null) {
+      passwordForm.addEventListener('submit', event => {
+        event.preventDefault()
+        const form = passwordForm
+        void work(async () => {
+          const username = field(form, 'username').trim()
+          const secret = field(form, 'password')
+          if (username === '' || secret === '') {
+            message('请填写账号与密码。', 'error')
+            return
+          }
+          message('正在登录…', 'busy')
+          const result = await read('/login/password', 'POST', { username, password: secret })
+          const pending = typeof result.challenge === 'string' ? result.challenge : ''
+          if (pending !== '') {
+            challenge = pending
+            form.hidden = true
+            if (verifyForm !== null) {
+              verifyForm.hidden = false
+              const code = verifyForm.elements.namedItem('code')
+              if (code instanceof HTMLInputElement) code.focus()
+            }
+            message('需要两步验证码才能完成登录。')
+            return
+          }
+          if (!present(result)) message('登录未完成，请检查账号与密码。', 'error')
+        })
+      })
+    }
+
+    if (verifyForm !== null) {
+      verifyForm.addEventListener('submit', event => {
+        event.preventDefault()
+        const form = verifyForm
+        void work(async () => {
+          const code = field(form, 'code').trim()
+          if (code === '') {
+            message('请输入验证码。', 'error')
+            return
+          }
+          message('正在验证…', 'busy')
+          if (!present(await read('/login/verify', 'POST', { challenge, code }))) {
+            message('验证码不正确或已过期。', 'error')
+          }
+        })
+      })
+    }
+
     if (reveal !== null) {
       reveal.addEventListener('click', () => {
         const shown = token.type === 'text'
