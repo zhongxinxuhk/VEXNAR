@@ -146,7 +146,20 @@ function installRuntime() {
   const dir = join(out, 'runtime')
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   writeFileSync(join(dir, 'package.json'), `${JSON.stringify({ name: 'vexnar-dsh-runtime', private: true, type: 'module' }, undefined, 2)}\n`)
-  writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - .\n')
+  // pnpm 在 CI 下会拦未批准的构建脚本（koffi / node-pty 是原生模块，
+  // dsh-subprocess-local 的 postinstall 还要生成 spawn helper）。不写这份白名单，
+  // 安装直接以 ERR_PNPM_IGNORED_BUILDS 失败。
+  writeFileSync(join(dir, 'pnpm-workspace.yaml'), `packages:
+  - .
+
+allowBuilds:
+  esbuild: true
+  koffi: true
+  node-pty: true
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': false
+  protobufjs: false
+`)
   log(`安装 dsh 运行时 @deepseek-ai/dsh@${version}`)
   const install = spawnSync('pnpm', ['add', `@deepseek-ai/dsh@${version}`], { cwd: dir, stdio: 'inherit', env: { ...process.env, CI: '1' } })
   if (install.error) throw install.error
