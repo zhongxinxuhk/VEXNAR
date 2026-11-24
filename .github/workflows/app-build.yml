@@ -142,16 +142,26 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: vexnar-desktop-overlay
-          path: ${{ runner.temp }}/overlay
+          # 相对 workspace 落地，不用 $RUNNER_TEMP：Windows runner 上它是
+          # `D:\a\_temp`，拼进 Git Bash 的 tar 参数后整段被当成转义吃掉，
+          # 报「Failed to open '/overlay/…'」。
+          path: overlay
       - name: Unpack the VEXNAR overlay
-        working-directory: app
+        shell: bash
         # 覆盖层必须到位再打补丁：brand 会把它的绝对路径写进 electron-builder 的
         # extraResources，缺了它打出来的就是上游空壳。
+        #
+        # 解到短目录而不是工作区内：profile 的 node_modules 里最长的一条相对路径
+        # 有 232 字符，落在 `D:\a\VEXNAR\VEXNAR\app\` 下会越过 Windows 的 260
+        # 字符上限。`VEXNAR_OVERLAY` 把这个位置告诉 brand。
         run: |
-          test -s "$RUNNER_TEMP/overlay/vexnar-desktop-overlay.tar.gz"
-          tar -xzf "$RUNNER_TEMP/overlay/vexnar-desktop-overlay.tar.gz" -C .
-          test -f .desktop-overlay/overlay.json
-          du -sh .desktop-overlay
+          set -euo pipefail
+          if [ "$RUNNER_OS" = "Windows" ]; then target='C:/ov'; else target="$RUNNER_TEMP/ov"; fi
+          rm -rf "$target" && mkdir -p "$target"
+          tar -xzf overlay/vexnar-desktop-overlay.tar.gz -C "$target"
+          test -f "$target/.desktop-overlay/overlay.json"
+          echo "VEXNAR_OVERLAY=$target/.desktop-overlay" >> "$GITHUB_ENV"
+          node -e "const {readdirSync} = require('node:fs'); console.log('overlay:', readdirSync(process.argv[1]).join(', '))" "$target/.desktop-overlay"
       - name: Apply the VEXNAR brand patch
         working-directory: app
         # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：

@@ -70,8 +70,16 @@ const TEXT_RULES = [
 
 const changed = []
 
-/** 安装包自带的 VEXNAR 覆盖层目录，由 scripts/prepare-desktop-overlay.mjs 生成。 */
-const OVERLAY = join(app, '.desktop-overlay')
+/**
+ * 安装包自带的 VEXNAR 覆盖层目录，由 scripts/prepare-desktop-overlay.mjs 生成。
+ *
+ * 允许外部指定（`VEXNAR_OVERLAY`）：Windows runner 的 260 字符路径上限算不住
+ * 覆盖层——profile 的 node_modules 里最长相对路径就有 232 字符，落在
+ * `D:\a\VEXNAR\VEXNAR\app\` 下必然溢出，只能在短目录里解压。
+ */
+const OVERLAY = process.env.VEXNAR_OVERLAY
+  ? resolve(process.env.VEXNAR_OVERLAY)
+  : join(app, '.desktop-overlay')
 
 /**
  * 按 `marker` 判断这一行是否已经写过：写过就把它换成新内容，没写过才插到锚点后面。
