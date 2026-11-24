@@ -27,7 +27,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -86,6 +86,17 @@ if (check.status !== 0) {
 }
 
 /**
+ * `extras.json` 的 `spec` 是喂给 `pnpm add` 的完整说明符（`name@version` 或
+ * `github:owner/repo#sha`），而 manifest 的 `dependencies` 需要的是「值」那半边。
+ * 直接把整串当版本号写进去会变成 `pkg@pkg@1.2.3`，pnpm 报
+ * ERR_PNPM_SPEC_NOT_SUPPORTED_BY_ANY_RESOLVER。
+ */
+function dependencySpec(item) {
+  const prefix = `${item.name}@`
+  return item.spec.startsWith(prefix) ? item.spec.slice(prefix.length) : item.spec
+}
+
+/**
  * 装一份 profile：VEXNAR 四个包 + `vexnar/extras.json` 里的全部插件。
  *
  * 这里不调 `vexnar.ts setup`：setup 走 `runtimeBin()` 解析 dsh 运行时，要求
@@ -98,7 +109,10 @@ if (check.status !== 0) {
  */
 function installProfile() {
   const extras = JSON.parse(readFileSync(join(app, 'vexnar', 'extras.json'), 'utf8')).bundles
-    .filter(item => item.runtime !== true)
+  // `runtime: true` 的条目由 dsh 安装自带，只补 bundle 层、不写依赖——与
+  // setup-app-profile.ts 的规则一致。连 bundle 层一起丢掉的话，用户首启会少了
+  // CUA、会话标题、思维链翻译、Codex 子代理、Forge、自动评审、插件市场这七个入口。
+  const installed = extras.filter(item => item.runtime !== true)
   const profileDir = join(home, 'profiles', profileName)
   mkdirSync(profileDir, { recursive: true, mode: 0o700 })
 
@@ -110,7 +124,7 @@ function installProfile() {
     // 与 setup-app-profile.ts 的 theme 规格保持一致。
     'dsh-claude-style': '^0.21.6'
   }
-  for (const item of extras) dependencies[item.name] = item.spec
+  for (const item of installed) dependencies[item.name] = dependencySpec(item)
 
   const manifest = {
     name: 'vexnar-profile',
@@ -138,7 +152,7 @@ function installProfile() {
   // 用户改过的值（皮肤面板写这里）。
   writeFileSync(join(profileDir, 'cordis.patch.yml'), '# 用户覆盖层，默认值见 @vexnar/app-bundle 的 cordis.patch.yml\n[]\n', { mode: 0o600 })
 
-  log(`安装预装插件：${extras.length} 个 extras + 4 个 VEXNAR 包`)
+  log(`安装预装插件：${installed.length} 个依赖 + ${extras.length - installed.length} 个运行时自带 bundle`)
   const install = spawnSync('pnpm', ['install'], { cwd: profileDir, stdio: 'inherit', env: { ...process.env, CI: '1' } })
   if (install.error) throw install.error
   if (install.status !== 0) {
@@ -169,6 +183,12 @@ if (!existsSync(join(profileSource, 'package.json'))) {
 
 log(`复制 profile：${profileSource}`)
 copyTree(profileSource, join(out, 'profile'), PROFILE_IGNORE)
+
+// 临时 home 只为了跑 pnpm，profile 已经复制到 out/profile，留着会跟着进安装包
+// （默认就落在 out/ 里，几百兆的重复内容）。
+if (home !== profileSource && home.startsWith(out + sep)) {
+  rmSync(home, { recursive: true, force: true })
+}
 
 // profile 的 patch 层是用户自己的配置，跟着一起走；pnpm 的 lock 与 workspace
 // 声明留着，用户之后自己在插件面板装插件时 pnpm 能就地增量（不必重装全部）。
