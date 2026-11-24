@@ -57,6 +57,14 @@ const SKIP_SEGMENTS = new Set(['test', 'tests', '__tests__', 'example', 'example
 
 const log = (message) => console.log(`[desktop] ${message}`)
 
+/**
+ * Windows 上 pnpm 是 `pnpm.cmd`，Node 直接 spawn 会 ENOENT——执行 .cmd 必须经过
+ * shell。参数里没有空格与通配符，走 shell 是安全的。
+ */
+const PNPM = process.platform === 'win32'
+  ? { file: 'pnpm.cmd', shell: true }
+  : { file: 'pnpm', shell: false }
+
 /** 复制目录，按名字过滤。 */
 function copyTree(from, to, ignore = COPY_IGNORE) {
   cpSync(from, to, {
@@ -131,7 +139,7 @@ function installProfile() {
   writeFileSync(join(profileDir, 'cordis.patch.yml'), '# 用户覆盖层，默认值见 @vexnar/app-bundle 的 cordis.patch.yml\n[]\n', { mode: 0o600 })
 
   log(`安装预装插件：${installed.length} 个依赖 + ${extras.length - installed.length} 个运行时自带 bundle`)
-  const install = spawnSync('pnpm', ['install'], { cwd: profileDir, stdio: 'inherit', env: { ...process.env, CI: '1' } })
+  const install = spawnSync(PNPM.file, ['install'], { cwd: profileDir, stdio: 'inherit', shell: PNPM.shell, env: { ...process.env, CI: '1' } })
   if (install.error) throw install.error
   if (install.status !== 0) {
     console.error('[desktop] profile 安装失败；离线环境用 --reuse-profile 指向一份已装好的 profile')
@@ -161,7 +169,7 @@ allowBuilds:
   protobufjs: false
 `)
   log(`安装 dsh 运行时 @deepseek-ai/dsh@${version}`)
-  const install = spawnSync('pnpm', ['add', `@deepseek-ai/dsh@${version}`], { cwd: dir, stdio: 'inherit', env: { ...process.env, CI: '1' } })
+  const install = spawnSync(PNPM.file, ['add', `@deepseek-ai/dsh@${version}`], { cwd: dir, stdio: 'inherit', shell: PNPM.shell, env: { ...process.env, CI: '1' } })
   if (install.error) throw install.error
   if (install.status !== 0) {
     console.error('[desktop] 运行时安装失败')
