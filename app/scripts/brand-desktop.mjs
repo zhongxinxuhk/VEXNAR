@@ -64,6 +64,15 @@ const TEXT_RULES = [
   { file: 'apps/desktop/scripts/electron-builder-config.mjs', ...ARTIFACT_PREFIX },
   // macOS 的 --unsigned 走内置本地默认（不读打包配置），bundle id 在这里改。
   { file: 'apps/desktop/scripts/desktop-package-environment.mjs', from: "DSH_DESKTOP_APP_ID: 'com.deepseek.harness'", to: "DSH_DESKTOP_APP_ID: 'com.vexnar.harness'" },
+  // 桌面壳不拦人：上游的 welcome 窗口认的是 DeepSeek 平台凭证（OAuth + PKCE 走
+  // /auth_init → /dsh/authorize → /oauth/callback → /auth_exchange），VEXNAR 的
+  // 登录在中转站，两边协议不通。门禁关掉，进入工作区后由 @vexnar/dsh-account
+  // 的登录页接管——它支持访问令牌与账号密码两种登录。
+  {
+    file: 'apps/desktop/src/welcome-api.ts',
+    from: '  return !authentication.loggedIn && !authentication.hasApiKey',
+    to: '  // VEXNAR：桌面壳不做登录门禁，登录由 @vexnar/dsh-account 接管。\n  void authentication\n  return false'
+  },
   { file: 'packages/util/home-paths/src/index.ts', from: "DSH_HOME_DIR_NAME = '.dsh'", to: "DSH_HOME_DIR_NAME = '.vexnar'" },
   { file: 'packages/experimental/liveshare/src/host/share-host.ts', from: "join(homedir(), '.dsh')", to: "join(homedir(), '.vexnar')" }
 ]

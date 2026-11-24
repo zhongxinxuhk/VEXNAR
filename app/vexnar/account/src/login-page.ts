@@ -97,6 +97,7 @@ button.primary{
 button.primary:hover{transform:translateY(-1px);box-shadow:0 11px 24px rgba(7,90,77,.28)}
 button.primary:active{transform:none}
 button:disabled{opacity:.6;cursor:wait;transform:none;box-shadow:none}
+form[hidden]{display:none}
 button.ghost{width:100%;min-height:44px;border:1px solid #b9cfca;border-radius:11px;background:#fff;
   color:var(--brand-strong);font:inherit;font-weight:600;cursor:pointer}
 button.ghost:hover{background:#f3faf8}
@@ -146,6 +147,31 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;back
       <p>使用希灵 AI 账户访问 VEXNAR。</p>
     </header>
     <p id="notice" class="status" role="status" aria-live="polite" data-state="busy">正在检查账户状态…</p>
+    <form id="password-login" novalidate>
+      <label class="field" for="account-name">希灵 AI 账号
+        <small>网关注册的邮箱或用户名</small>
+      </label>
+      <div class="input">
+        <input id="account-name" name="username" autocomplete="username" spellcheck="false" required>
+      </div>
+      <label class="field" for="account-secret">密码
+        <small>开启两步验证时会再要一次验证码</small>
+      </label>
+      <div class="input">
+        <input id="account-secret" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="primary" type="submit">账号密码登录</button>
+    </form>
+    <form id="verify-login" novalidate hidden>
+      <label class="field" for="verify-code">两步验证码
+        <small>打开验证器 App，输入 6 位数字</small>
+      </label>
+      <div class="input">
+        <input id="verify-code" name="code" inputmode="numeric" autocomplete="one-time-code" required>
+      </div>
+      <button class="primary" type="submit">验证并登录</button>
+    </form>
+    <div class="divider">或使用访问令牌</div>
     <form id="token-login" novalidate>
       <label class="field" for="token-input">平台访问令牌
         <small>在希灵 AI「个人设置 → 访问令牌」创建，名称用 <code>VERNAX-随机 UUID</code></small>
@@ -158,7 +184,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;back
       <button class="primary" type="submit">使用访问令牌登录</button>
     </form>
     <div class="divider">或</div>
-    <a class="online" id="online" href="${origin}/login" target="_blank" rel="noopener noreferrer">在希灵 AI 网页完成登录</a>
+    <a class="online" id="online" href="${origin}/console/token" target="_blank" rel="noopener noreferrer">在希灵 AI 生成访问令牌</a>
     <p id="methods" class="methods"></p>
     <details>
       <summary>没有访问令牌？</summary>
