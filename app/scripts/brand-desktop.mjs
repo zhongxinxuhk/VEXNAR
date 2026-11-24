@@ -73,6 +73,21 @@ const TEXT_RULES = [
     from: '  return !authentication.loggedIn && !authentication.hasApiKey',
     to: '  // VEXNAR：桌面壳不做登录门禁，登录由 @vexnar/dsh-account 接管。\n  void authentication\n  return false'
   },
+  // 读不到欢迎态不该让应用打不开。上游把 `readWelcomeState()` 当成 openInitialWindow
+  // 的第一步，任何非 2xx（host 刚重启、cookie 过期、settings 描述超时）都会直接崩，
+  // 用户只看到「应用无法启动或已意外停止」。门禁已经关掉了，这里的数据只用来定主题
+  // 与语言，给一组安全默认值即可。
+  {
+    file: 'apps/desktop/src/main.ts',
+    from: '    const state = await readWelcomeState()',
+    to: [
+      '    // VEXNAR：欢迎态读不到就走默认值，不能因此拒绝启动。',
+      '    const state = await readWelcomeState().catch(() => ({',
+      '      loggedIn: false, hasApiKey: false, writable: true, localePreference: null,',
+      "      themePreference: 'system' as const,",
+      '    }))'
+    ].join('\n')
+  },
   { file: 'packages/util/home-paths/src/index.ts', from: "DSH_HOME_DIR_NAME = '.dsh'", to: "DSH_HOME_DIR_NAME = '.vexnar'" },
   { file: 'packages/experimental/liveshare/src/host/share-host.ts', from: "join(homedir(), '.dsh')", to: "join(homedir(), '.vexnar')" }
 ]
