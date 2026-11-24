@@ -3,11 +3,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 
-export const appDir = resolve(import.meta.dirname, '..')
+/**
+ * VEXNAR 的应用目录：插件源码、运行时依赖、预装 profile 都在它下面。
+ *
+ * 源码里跑就是 `app/`；安装包里由桌面主进程用 `VEXNAR_APP_DIR` 指到
+ * `Contents/Resources/app`。这个变量必须在加载本模块**之前**设好——主进程
+ * 用动态 import 就是为了它。
+ */
+export const appDir = process.env.VEXNAR_APP_DIR
+  ? resolve(process.env.VEXNAR_APP_DIR)
+  : resolve(import.meta.dirname, '..')
+
+/** 是否跑在安装包里：决定数据目录与受管资源的位置。 */
+export const packaged = Boolean(process.env.VEXNAR_APP_DIR)
+
 export const profileName = 'vexnar'
 export const bundleFiles: Record<string, string[]> = {
   '@vexnar/app-bundle': ['cordis.patch.yml'],
@@ -16,10 +29,22 @@ export const bundleFiles: Record<string, string[]> = {
   // egress 排在最后：它的产物是单文件 index.js，缺了就不该拿 profile 里的旧副本凑数。
   '@vexnar/dsh-egress': ['index.js']
 }
+/**
+ * 安装包里各 bundle 的源目录（相对 {@link appDir}）。profile 清单里的 `file:`
+ * 依赖指向这里，`ensureProfile` 也按它把安装包里的产物同步进 profile。
+ */
+export const bundleSources: Record<string, string> = {
+  '@vexnar/app-bundle': 'vexnar',
+  '@vexnar/dsh-ui': 'vexnar/ui',
+  '@vexnar/dsh-account': 'vexnar/account',
+  '@vexnar/dsh-egress': 'vexnar-egress'
+}
+
 const binPart = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 
 export function runtimeBin(): string {
-  const candidates = [process.env.VEXNAR_RUNTIME, appDir, join(appDir, 'dsh')]
+  // `runtime` 是安装包里的布局（`Resources/app/runtime`），其余是源码工作区的几种。
+  const candidates = [process.env.VEXNAR_RUNTIME, appDir, join(appDir, 'runtime'), join(appDir, 'dsh')]
     .filter((value): value is string => Boolean(value))
   for (const directory of candidates) {
     const bin = resolve(directory, binPart)
@@ -43,7 +68,10 @@ function contains(parent: string, child: string): boolean {
 }
 
 export function vexnarHome(): string {
-  const proposed = resolve(process.env.VEXNAR_HOME || join(appDir, '.vexnar-home'))
+  // 安装包里数据目录必须落在用户主目录：`Contents/Resources` 可能是只读的
+  // （/Applications、Program Files），升级安装包还会整个替换。
+  const fallback = packaged ? join(homedir(), '.vexnar') : join(appDir, '.vexnar-home')
+  const proposed = resolve(process.env.VEXNAR_HOME || fallback)
   const home = canonical(proposed)
   const configHome = process.env.APPDATA || process.env.XDG_CONFIG_HOME || join(homedir(), '.config')
   const originalHomes = [
@@ -61,8 +89,10 @@ export function vexnarHome(): string {
 }
 
 function readToken(name: string): string {
+  // 源码工作区的令牌放在仓库 data/ 下；安装包里没有那个目录，改为数据目录。
+  const base = packaged ? join(vexnarHome(), 'data') : join(appDir, '..', 'data')
   try {
-    return readFileSync(join(appDir, '..', 'data', name), 'utf8').trim()
+    return readFileSync(join(base, name), 'utf8').trim()
   } catch {
     return ''
   }
@@ -158,7 +188,8 @@ export function runtimeEnv(): Record<string, string> {
     ...inherited,
     ...(python ? { MDCG_PYTHON: process.env.MDCG_PYTHON?.trim() || python } : {}),
     VEXNAR_HOME: home,
-    VEXNAR_TRAFFIC_DIR: process.env.VEXNAR_TRAFFIC_DIR || join(appDir, '..', 'data', 'traffic'),
+    VEXNAR_TRAFFIC_DIR: process.env.VEXNAR_TRAFFIC_DIR
+      || (packaged ? join(home, 'traffic') : join(appDir, '..', 'data', 'traffic')),
     VEXNAR_LOOPBACK_ADAPTER: 'vexnar-loopback',
     DSH_HOME: home,
     DSH_AGENTS_HOME: join(home, 'agents'),
@@ -190,6 +221,23 @@ export function ensureProfile(): void {
     })
   })
   if (!missing && !stale) return
+  if (packaged) {
+    // 安装包里没有 pnpm，也不该要求用户装：直接拿安装目录的产物覆盖 profile 里的
+    // 副本。升级安装包后第一次启动就走这条路，插件随之更新。
+    for (const [name, files] of Object.entries(bundleFiles)) {
+      const relative = bundleSources[name]
+      if (relative === undefined) continue
+      for (const file of files) {
+        const from = join(appDir, relative, file)
+        if (!existsSync(from)) continue
+        const to = join(modulePath(name), file)
+        if (existsSync(to) && readFileSync(to).equals(readFileSync(from))) continue
+        mkdirSync(dirname(to), { recursive: true, mode: 0o700 })
+        copyFileSync(from, to)
+      }
+    }
+    return
+  }
   const result = spawnSync('pnpm', ['install', missing ? '--frozen-lockfile' : '--force'], {
     cwd: profile, env: runtimeEnv(), stdio: 'inherit'
   })

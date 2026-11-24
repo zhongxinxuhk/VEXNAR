@@ -339,23 +339,32 @@ WebStorm 的 MCP 端点（`127.0.0.1:64542/stream`，项目路径 `app`）不在
 
 仓库的 **App build** 工作流在 `app/`、品牌 Logo 或工作流文件发生变更时对 PR 和
 `main` 推送运行。它用 pnpm 锁文件安装依赖、**全量重建四个插件包**（ui / account /
-egress / core-embedded）并逐个校验产物，然后产出两份归档：
-
-- `vexnar-app-bundle`：编译后的插件、profile patch 与上游版本锁，给源码工作区用；
-- `vexnar-desktop-overlay`：**安装包自带的覆盖层**——四个插件加一份装好全部
-  `extras.json` 插件的 profile（含 `node_modules`），约 500 MB。
+egress / core-embedded）、逐个校验产物，再把 `vexnar-app-bundle.tar.gz` 归给源码工作区。
 
 在 **Actions → App build → Run workflow** 保持 `desktop` 勾选，会额外编译 macOS
-Apple Silicon 与 Windows x64 的无签名安装包。工作流使用 `scripts/fetch-dsh.sh`
-校验上游 commit，`scripts/brand-desktop.mjs` 把 vendored 上游改成 VEXNAR Harness
-并把覆盖层塞进 `Resources/vexnar-overlay`。
+Apple Silicon 与 Windows x64 的未签名安装包。打包走的是**本仓库自己的桌面壳**：
 
-**装完就能用**：安装包启动时先跑 `apps/desktop/vexnar-bootstrap.js`，把预装 profile
-落到 `~/.vexnar/profiles/desktop`、把插件源码放到 `~/.vexnar/bundles/`，再把清单里
-指向构建机的 `file:` 路径改写成安装后的位置，最后才加载 dsh 的主进程。用户不需要
-装 Node、不需要 pnpm、不需要在源码工作区跑 `setup`。
+| 层 | 内容 | 生成方式 |
+| --- | --- | --- |
+| `app.asar` | `desktop/dist/main.js`（Electron 主进程） | `pnpm run desktop:build` |
+| `Resources/app/vexnar/` | VEXNAR bundle（cordis 补丁 + ui + account） | `pnpm run build` |
+| `Resources/app/vexnar-egress/` | 出口工具插件 | 同上 |
+| `Resources/app/profile/` | 装好 `extras.json` 全部插件的 profile（含 node_modules） | `pnpm run desktop:prepare` |
+| `Resources/app/runtime/` | `@deepseek-ai/dsh` 及其依赖（`dsh web` 运行时） | 同上 |
 
-推送 `app-v<版本>` 标签（例如 `app-v0.1.0`）会在当前 VEXNAR 仓库发布预发行版，
-附带两个平台的安装包、`vexnar-app-bundle.tar.gz` 和 `SHA256SUMS`（覆盖层是构建
-中间物，不进 Release）。Go 服务继续使用 `v*` 标签发布，App 预发行版不会成为仓库的
-Latest Release。
+**为什么不用 vendored 上游的桌面壳**：上游那个有 DeepSeek 平台的登录门禁
+（`needsWelcome()`），没登录只弹「欢迎使用 / 登录 / 添加 API Key」，根本走不到
+VEXNAR 的 web UI。`desktop/main.ts` 直接起 `dsh web --profile vexnar` 再开窗，登录
+由 `@vexnar/dsh-account` 接管。
+
+**装完就能用**：首启由主进程把 `Resources/app/profile` 复制到
+`~/.vexnar/profiles/vexnar`，并把清单里指向构建机的 `file:` 路径改写成安装后的位置。
+用户不需要 Node、不需要 pnpm、不需要跑 `setup`。
+
+打包之后工作流会跑 `scripts/smoke-desktop.ts`：拿安装包里的资源真启动一次，断言
+profile 落盘、运行时能跑、VEXNAR 插件加载（日志里有 `[vexnar]`）、首页返回 2xx/3xx
+且没被 DeepSeek 登录页接管。构建绿不等于装完能用，这一步才算。
+
+推送 `app-v<版本>` 标签（例如 `app-v0.0.5`）会在当前 VEXNAR 仓库发布预发行版，
+附带两个平台的安装包、`vexnar-app-bundle.tar.gz` 和 `SHA256SUMS`。Go 服务继续使用
+`v*` 标签发布，App 预发行版不会成为仓库的 Latest Release。

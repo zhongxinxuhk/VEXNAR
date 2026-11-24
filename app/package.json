@@ -21,6 +21,10 @@
     "clean:outputs": "node scripts/clean-build-outputs.mjs",
     "check:artifacts": "node scripts/check-built-artifacts.mjs",
     "overlay:prepare": "node scripts/prepare-desktop-overlay.mjs",
+    "desktop:build": "node desktop/build.mjs",
+    "desktop:prepare": "node scripts/prepare-desktop-app.mjs",
+    "desktop:smoke": "tsx scripts/smoke-desktop.ts",
+    "desktop:package": "node desktop/build.mjs && electron-builder --config electron-builder.config.mjs",
     "typecheck": "pnpm --filter @vexnar/dsh-ui --filter @vexnar/dsh-account --filter @vexnar/dsh-egress --filter @vexnar/core --filter @vexnar/web run typecheck",
     "ui:build": "pnpm --filter @vexnar/dsh-ui run build",
     "account:build": "pnpm --filter @vexnar/dsh-account run build",
@@ -46,6 +50,7 @@
     "@deepseek-ai/dsh": "0.2.2-rc.5",
     "@types/node": "^26.6.6",
     "electron": "44.7.0",
+    "electron-builder": "^26.18.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "zod": "4.6.7"

@@ -42,3 +42,5 @@ allowBuilds:
   node-pty: true
   '@google/genai': false
   protobufjs: false
+  # Windows 安装包要用它生成 NSIS 辅助程序；只在打包机上跑。
+  electron-winstaller: true
