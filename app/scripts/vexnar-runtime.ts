@@ -238,8 +238,10 @@ export function ensureProfile(): void {
     }
     return
   }
-  const result = spawnSync('pnpm', ['install', missing ? '--frozen-lockfile' : '--force'], {
-    cwd: profile, env: runtimeEnv(), stdio: 'inherit'
+  // Windows 上是 pnpm.cmd，spawn 不带 shell 会 ENOENT。
+  const windows = process.platform === 'win32'
+  const result = spawnSync(windows ? 'pnpm.cmd' : 'pnpm', ['install', missing ? '--frozen-lockfile' : '--force'], {
+    cwd: profile, env: runtimeEnv(), stdio: 'inherit', shell: windows
   })
   if (result.status !== 0) throw new Error('无法更新 VEXNAR 插件，请重新执行 pnpm run setup')
 }
