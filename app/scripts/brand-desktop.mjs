@@ -77,6 +77,19 @@ const TEXT_RULES = [
   // 的第一步，任何非 2xx（host 刚重启、cookie 过期、settings 描述超时）都会直接崩，
   // 用户只看到「应用无法启动或已意外停止」。门禁已经关掉了，这里的数据只用来定主题
   // 与语言，给一组安全默认值即可。
+  // 第二处阻塞：客户端的 locale 服务通过 IPC 拿语言偏好，同样走 welcome backend 的
+  // `settings/describe`。它一失败，`@deepseek-ai/dsh-client-locale` 就 failed，依赖
+  // locale 的 sidebar / layout / 快捷键全部 pending，web boot 报
+  // 「3 required entries did not activate」——窗口白了。读不到就跟系统。
+  {
+    file: 'apps/desktop/src/main.ts',
+    from: '    return { languages: systemLanguages, preference: await welcomeBackend.readLocalePreference() }',
+    to: [
+      '    // VEXNAR：语言偏好读不到就跟随系统，不能让客户端的 locale 服务起不来。',
+      '    const preference = await welcomeBackend.readLocalePreference().catch(() => null)',
+      '    return { languages: systemLanguages, preference }'
+    ].join('\n')
+  },
   {
     file: 'apps/desktop/src/main.ts',
     from: '    const state = await readWelcomeState()',
