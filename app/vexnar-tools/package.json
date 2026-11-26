@@ -17,11 +17,14 @@
   ],
   "scripts": {
     "build": "node build.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "esbuild": "^0.25.0",
+    "hono": "^4.13.19",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
 }

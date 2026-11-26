@@ -22,7 +22,7 @@ export const inject = ['tools', 'vexnarCore'] as const
 export interface CoreBridge {
   request(
     path: string,
-    init?: { method?: string; body?: unknown; headers?: Record<string, string> }
+    init?: { method?: string; body?: unknown; headers?: Record<string, string>; response?: 'json' | 'base64' }
   ): Promise<unknown>
 }
 
@@ -105,14 +105,109 @@ export function registerTool(
   })
 }
 
+const trafficSearchSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    host: { type: 'string', description: 'Host 子串，例如 example.com。' },
+    method: { type: 'string', description: 'HTTP 方法，精确匹配，例如 GET / POST。' },
+    q: { type: 'string', description: '关键字；匹配 host/url/method/content-type/status；本地行还匹配内联正文（归档只索引元数据）。' },
+    status: { type: 'string', description: '状态过滤：精确码 404，或 2xx/4xx 范围。' },
+    resp_min: { type: 'integer', minimum: 0, description: '响应长度下限（字节）。' },
+    resp_max: { type: 'integer', minimum: 0, description: '响应长度上限（字节）。' },
+    sort: { type: 'string', enum: ['ts', 'status', 'resp_len'], description: '排序字段，默认 ts。' },
+    order: { type: 'string', enum: ['asc', 'desc'], description: '排序方向，默认 desc。' },
+    page: { type: 'integer', minimum: 0, description: '页码，从 0 开始。' },
+    size: { type: 'integer', minimum: 1, maximum: 500, description: '每页条数，默认 100，最大 500。' }
+  }
+}
+
+const trafficGetSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id'],
+  properties: {
+    id: { type: 'string', description: 'traffic_search 返回的 exchange id。' }
+  }
+}
+
+const trafficBlobSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['hash'],
+  properties: {
+    hash: { type: 'string', pattern: '^[0-9a-fA-F]{64}$', description: '正文 SHA256（64 位十六进制，大小写均可）。' }
+  }
+}
+
+/** 只把白名单字段写进 query，避免工具参数变成任意 core 路由代理。 */
+function trafficQuery(args: Record<string, unknown>, keys: readonly string[]): string {
+  const query = new URLSearchParams()
+  for (const key of keys) {
+    const value = args[key]
+    if (value === undefined || value === null) continue
+    const text = String(value).trim()
+    if (text !== '') query.set(key, text)
+  }
+  return query.toString()
+}
+
+function requiredText(args: Record<string, unknown>, key: string): string {
+  const value = String(args[key] ?? '').trim()
+  if (value === '') throw new Error(`${key} 不能为空`)
+  return value
+}
+
 /**
- * 插件入口。
+ * 插件入口：注册只读流量三件套。
  *
- * P1-1 先保留空实现：领域工具注册在 P1-2 起接入。保留这个函数而不是让入口只导出
- * 常量，是为了让 dsh 真正完成 `tools`/`vexnarCore` 注入并在后续增量里直接扩展。
+ * 三条路径都对应 core 已有路由，过滤字段与 `/api/traffic` 的 query 完全一致；
+ * 不提供任意 URL 或任意路径调用。
  *
  * @param ctx - 已注入 tools 与 vexnarCore 的插件上下文。
  */
 export function apply(ctx: ToolContext): void {
-  void ctx
+  registerTool(
+    ctx,
+    'traffic_search',
+    '搜索已采集流量，支持 host/method/关键字/状态码/响应长度过滤；结果带 source=local|archive。',
+    trafficSearchSchema,
+    async args => await ctx.vexnarCore.request(
+      `/api/traffic?${trafficQuery(args, ['host', 'method', 'q', 'status', 'resp_min', 'resp_max', 'sort', 'order', 'page', 'size'])}`
+    )
+  )
+
+  registerTool(
+    ctx,
+    'traffic_get',
+    '按 exchange id 读取单条流量的原始请求与响应文本。',
+    trafficGetSchema,
+    async args => {
+      const id = requiredText(args, 'id')
+      const raw = await ctx.vexnarCore.request(`/api/traffic/exchange?${trafficQuery({ id }, ['id'])}`)
+      return typeof raw === 'object' && raw !== null ? { id, ...(raw as Record<string, unknown>) } : raw
+    }
+  )
+
+  registerTool(
+    ctx,
+    'traffic_blob',
+    '按 SHA256 读取超限正文；返回 base64 数据与字节数，供调用方解码保存。',
+    trafficBlobSchema,
+    async args => {
+      const hash = requiredText(args, 'hash').toLowerCase()
+      if (!/^[0-9a-f]{64}$/u.test(hash)) throw new Error('hash 必须是 64 位十六进制')
+      const blob = await ctx.vexnarCore.request(
+        `/api/traffic/blob?${trafficQuery({ hash }, ['hash'])}`,
+        { response: 'base64' }
+      ) as { base64: string; bytes: number; content_type: string }
+      return {
+        hash,
+        bytes: blob.bytes,
+        content_type: blob.content_type,
+        encoding: 'base64',
+        data: blob.base64
+      }
+    }
+  )
 }

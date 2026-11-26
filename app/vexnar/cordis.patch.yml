@@ -52,8 +52,8 @@
         taskIdEnv: VEXNAR_TASK_ID
 
 # ── Domain tools (TS, in-process) ─────────────────────────────────────────
-# P1-1 只装注入面与 registerTool 骨架；P1-2 起流量/finding/复测/web 工具在这里
-# 注册，全部走同进程的 vexnarCore，不再新增端口。旧 profile 没装该包时跳过。
+# P1-2 已注册只读流量三件套；capture/finding/复测/web 工具从 P1-3 起继续在这里注册，
+# 全部走同进程的 vexnarCore，不再新增端口。旧 profile 没装该包时跳过。
 - insert:
     - id: vexnar-tools
       name: '@vexnar/dsh-tools'
