@@ -208,6 +208,23 @@ function applyOverlay() {
 }
 
 function applyBrand() {
+  // ── 0. 发行版号 ──────────────────────────────────────────────────────────
+  // `DSH_CLIENT_VERSION` 由上游从 dsh/package.json 的 version 推出，那是上游自己的
+  // 构建号（0.2.2-rc.5）。用户在「关于与更新」里看到的必须是本仓库的发行版号，所以
+  // 发版构建时把这份 version 改写成 release 版本（`VEXNAR_RELEASE_VERSION`，CI 由
+  // scripts/release.mjs version 给出）；本地开发不设这个变量就保持上游原样。
+  const releaseVersion = process.env.VEXNAR_RELEASE_VERSION?.trim()
+  if (releaseVersion !== undefined && releaseVersion !== '') {
+    const manifestPath = 'package.json'
+    const manifest = JSON.parse(read(join(dsh, manifestPath)))
+    if (manifest.version !== releaseVersion) {
+      manifest.version = releaseVersion
+      writeFileSync(join(dsh, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+      changed.push(manifestPath)
+      console.log(`  ~ dsh/package.json version → ${releaseVersion}`)
+    }
+  }
+
   // ── 1. 品牌字符串（用户可见的文案与 .app 目录名） ──────────────────────────
   const files = git('ls-files', '--', ...SCOPE)
     .split('\n')

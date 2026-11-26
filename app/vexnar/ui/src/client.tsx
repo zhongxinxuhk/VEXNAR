@@ -2,7 +2,7 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { createElement as h, useCallback, useEffect, useState } from 'react'
+import { createElement as h, useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { installStyles } from './styles.js'
 import { OverviewPanel } from './overview.js'
@@ -1077,63 +1077,137 @@ function TasksPanel() {
 function AboutSettings() {
   const [info, setInfo] = useState<{ version: string; platform: string } | null>(null)
   const [check, setCheck] = useState<Record<string, any> | null>(null)
+  const [progress, setProgress] = useState<Record<string, any> | null>(null)
   const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState('')
   const [error, setError] = useState('')
+  const alive = useRef(true)
 
-  useEffect(() => {
-    let alive = true
-    void callApi('/platform/update/info')
-      .then((value) => { if (alive) setInfo(value as { version: string; platform: string }) })
-      .catch((reason: unknown) => { if (alive) setError(reason instanceof Error ? reason.message : String(reason)) })
-    return () => { alive = false }
-  }, [])
+  useEffect(() => () => { alive.current = false }, [])
 
   const run = useCallback(async () => {
     setBusy(true)
     setError('')
+    setNote('')
     try {
-      setCheck(await callApi('/platform/update/check?refresh=1') as Record<string, any>)
+      const value = await callApi('/platform/update/check?refresh=1')
+      if (alive.current) setCheck(value as Record<string, any>)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      if (alive.current) setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
-      setBusy(false)
+      if (alive.current) setBusy(false)
     }
   }, [])
 
+  useEffect(() => {
+    void callApi('/platform/update/info')
+      .then((value) => { if (alive.current) setInfo(value as { version: string; platform: string }) })
+      .catch((reason: unknown) => { if (alive.current) setError(reason instanceof Error ? reason.message : String(reason)) })
+    // 打开设置就问一次：用户不该先点一下才看到自己是不是最新版。
+    void run()
+  }, [run])
+
+  const download = useCallback(async () => {
+    setError('')
+    setNote('')
+    try {
+      setProgress(await callApi('/platform/update/download', 'POST') as Record<string, any>)
+      for (;;) {
+        await new Promise(resolve => setTimeout(resolve, 800))
+        if (!alive.current) return
+        const state = await callApi('/platform/update/progress') as Record<string, any>
+        setProgress(state)
+        if (state.phase === 'ready') { setNote('安装包已下载并通过校验，可以安装。'); return }
+        if (state.phase === 'failed') { setError(String(state.error ?? '下载失败，请重试')); return }
+      }
+    } catch (reason) {
+      if (alive.current) setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }, [])
+
+  const install = useCallback(async () => {
+    setError('')
+    try {
+      const result = await callApi('/platform/update/install', 'POST') as Record<string, any>
+      setNote(String(result.message ?? '已开始安装'))
+    } catch (reason) {
+      if (alive.current) setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }, [])
+
+  const version = info?.version ?? ''
+  const latest = typeof check?.latest === 'string' ? check.latest : null
+  // 「已是最新版」只在发行版号真的相等时成立；开发模式（dev）或对不上号时
+  // 不能谎报最新，退到「开发模式」胶囊。
+  const upToDate = check !== null && latest !== null && version === latest && check.available !== true
+  const available = check !== null && check.available === true && latest !== null
+  const phase = typeof progress?.phase === 'string' ? progress.phase : ''
+  const total = typeof progress?.total === 'number' ? progress.total : 0
+  const received = typeof progress?.received === 'number' ? progress.received : 0
+  const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((received / total) * 100))) : 0
   const published = typeof check?.publishedAt === 'string' ? new Date(check.publishedAt) : null
   const size = typeof check?.asset?.size === 'number' && check.asset.size > 0
     ? `${(check.asset.size / 1024 / 1024).toFixed(0)} MB` : ''
 
-  return h(PanelShell, { title: '关于与更新', desc: '版本号与 GitHub 正式发行版' },
-    h('div', { className: 'vx-card' },
-      h('div', { className: 'vx-head' }, h('span', { className: 'vx-title' }, '当前版本')),
-      h('div', { className: 'vx-ui-statusline' }, info === null ? '读取中…' : `VEXNAR Harness ${info.version}`),
-      info === null ? null : h('div', { className: 'vx-meta vx-meta--faint' }, info.platform)),
-    h('div', { className: 'vx-card' },
-      h('div', { className: 'vx-head' },
-        h('span', { className: 'vx-title' }, '在线更新'),
-        h('button', { type: 'button', onClick: () => void run(), 'aria-busy': busy }, busy ? '检查中…' : '检查更新')),
-      check === null
-        ? h('div', { className: 'vx-ui-statusline' }, '点「检查更新」从 GitHub 取最新正式发行版。')
-        : h('div', null,
-          h('div', { className: 'vx-ui-statusline' },
-            check.error !== undefined ? String(check.error)
-              : check.latest === null ? 'GitHub 上还没有正式发行版'
-                : check.available ? `有新版本 ${check.latest}`
-                  // 构建版本（`0.2.2-rc.5.test.<日期>.<序号>`）与发行版号不同源，不能直接比大小；
-                  // 没把握时只说「最新发行版是哪个」，不谎报「已是最新」。
-                  : `最新正式发行版 ${check.latest}`),
-          published === null ? null : h('div', { className: 'vx-meta vx-meta--faint' },
-            `发布于 ${published.toLocaleString()}`),
-          check.asset === null ? null : h('div', null,
-            size === '' ? null : h('div', { className: 'vx-meta vx-meta--faint' }, `${check.asset.name} · ${size}`),
-            h('button', {
-              type: 'button',
-              onClick: () => { window.open(String(check.asset.url), '_blank', 'noopener') }
-            }, '下载安装包')),
-          check.tag === null ? null : h('div', { className: 'vx-meta vx-meta--faint' },
-            h('a', { href: String(check.page), target: '_blank', rel: 'noreferrer noopener' }, `查看 ${check.tag} 发行说明`)))),
-    error === '' ? null : h('div', { className: 'vx-failed' }, error))
+  const pill = error !== '' && check === null ? ['vx-pill--warn', '检查失败']
+    : check === null ? ['vx-pill--idle', busy ? '检查中' : '未检查']
+      : latest === null ? ['vx-pill--idle', '暂无发行版']
+        : upToDate ? ['vx-pill--ok', '已是最新版']
+          : available ? ['vx-pill--new', `可更新到 ${latest}`]
+            : ['vx-pill--idle', '开发模式']
+
+  return h(PanelShell, { title: '关于与更新', desc: '版本、正式发行版与应用内更新' },
+    h('div', { className: 'vx-about' },
+      h('section', { className: 'vx-about-card' },
+        h('img', { className: 'vx-about-mark', src: '/vexnar-brand/logo.png', alt: '' }),
+        h('div', { className: 'vx-about-id' },
+          h('div', { className: 'vx-about-name' }, 'VEXNAR Harness'),
+          h('div', { className: 'vx-about-ver' }, version === '' ? '读取中…' : `v${version}`),
+          h('div', { className: 'vx-about-sub' }, info === null ? '' : info.platform)),
+        h('span', { className: `vx-pill ${pill[0]}` }, pill[1])),
+      h('section', { className: 'vx-about-card vx-about-card--panel' },
+        h('div', { className: 'vx-about-head' },
+          h('div', null,
+            h('div', { className: 'vx-about-title' }, '在线更新'),
+            h('div', { className: 'vx-about-sub' }, '从 GitHub 正式发行版检查并安装')),
+          h('button', {
+            type: 'button', className: 'vx-about-btn', 'aria-busy': busy,
+            onClick: () => void run()
+          }, busy ? '检查中…' : '检查更新')),
+        check === null
+          ? h('div', { className: 'vx-about-line' }, busy ? '正在查询最新发行版…' : '打开本页时会自动检查一次。')
+          : h('div', null,
+            typeof check.error === 'string' && check.error !== ''
+              ? h('div', { className: 'vx-about-line vx-about-line--bad' }, check.error)
+              : latest === null
+                ? h('div', { className: 'vx-about-line' }, 'GitHub 上还没有正式发行版。')
+                : upToDate
+                  ? h('div', { className: 'vx-about-ok' },
+                    h('span', { className: 'vx-about-check', 'aria-hidden': 'true' }, '✓'),
+                    h('span', null, `已是最新版 v${latest}`))
+                  : h('div', null,
+                    h('div', { className: 'vx-about-verline' },
+                      h('strong', null, `v${latest}`),
+                      published === null ? null : h('span', { className: 'vx-about-sub' },
+                        `发布于 ${published.toLocaleString('zh-CN', { hour12: false })}`),
+                      size === '' ? null : h('span', { className: 'vx-about-sub' }, check.asset.name + ` · ${size}`)),
+                    phase === 'downloading' || phase === 'verifying'
+                      ? h('div', { className: 'vx-about-progress' },
+                        h('div', { className: 'vx-about-bar' }, h('i', { style: { width: `${phase === 'verifying' ? 100 : pct}%` } })),
+                        h('div', { className: 'vx-about-sub' },
+                          phase === 'verifying' ? '正在校验安装包…' : `正在下载 ${pct}%（${(received / 1024 / 1024).toFixed(0)} / ${(total / 1024 / 1024).toFixed(0)} MB）`))
+                      : h('div', { className: 'vx-about-actions' },
+                        phase === 'ready'
+                          ? h('button', { type: 'button', className: 'vx-about-btn vx-about-btn--primary', onClick: () => void install() }, '立即安装')
+                          : h('button', { type: 'button', className: 'vx-about-btn vx-about-btn--primary', onClick: () => void download() }, '下载并安装'),
+                        check.tag === null ? null : h('a', {
+                          className: 'vx-about-link', href: String(check.page), target: '_blank', rel: 'noreferrer noopener'
+                        }, `查看 ${check.tag} 发行说明`))),
+            note === '' ? null : h('div', { className: 'vx-about-line' }, note),
+            error === '' ? null : h('div', { className: 'vx-about-line vx-about-line--bad' }, error),
+            h('p', { className: 'vx-about-foot' },
+              '安装包未做代码签名；安装时系统可能提示“未验证的开发者”，按系统提示允许即可。'))),
+    error !== '' && check === null ? h('div', { className: 'vx-failed' }, error) : null))
 }
 
 function NotifySettings() {

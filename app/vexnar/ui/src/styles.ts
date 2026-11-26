@@ -4475,6 +4475,84 @@ body[data-ds-dark-theme] {
   .vx-pkt-pair { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ── 关于与更新 ──────────────────────────────────────────────────────────
+   与设置里其它卡片同一套变量与圆角；只补三样这里独有的东西：品牌行、
+   状态胶囊、下载进度条。深色主题不需要单独写，全部走 --vx-* 变量。 */
+.vx-about { display: grid; gap: 12px; margin: 8px 0; }
+.vx-about-card {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 16px 18px; border: 1px solid var(--vx-border);
+  border-radius: var(--vx-radius); background: var(--vx-surface);
+  box-shadow: var(--vx-elevation);
+}
+.vx-about-card--panel { display: block; }
+.vx-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+  padding: 4px 11px; border-radius: 999px; border: 1px solid transparent;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.vx-pill--ok {
+  color: var(--dsw-static-green-600, #128a4f);
+  background: color-mix(in srgb, var(--dsw-static-green-500, #22c55e) 12%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-static-green-500, #22c55e) 34%, transparent);
+}
+.vx-pill--new { color: #1d4ed8; background: rgba(37, 99, 235, 0.10); border-color: rgba(37, 99, 235, 0.26); }
+.vx-pill--idle { color: var(--vx-text-dim); background: var(--vx-surface-sunken); border-color: var(--vx-border); }
+.vx-pill--warn {
+  color: var(--vx-negative);
+  background: color-mix(in srgb, var(--vx-negative) 10%, transparent);
+  border-color: color-mix(in srgb, var(--vx-negative) 30%, transparent);
+}
+body[data-ds-dark-theme] .vx-pill--new { color: #93b4ff; background: rgba(96, 165, 250, 0.16); border-color: rgba(96, 165, 250, 0.3); }
+.vx-about-mark { width: 44px; height: 44px; object-fit: contain; border-radius: 12px; }
+.vx-about-id { display: grid; gap: 2px; min-width: 0; }
+.vx-about-name { font-size: 14px; font-weight: 650; letter-spacing: 0.01em; }
+.vx-about-ver {
+  font-family: var(--vx-mono); font-size: 13px; color: var(--vx-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.vx-about-sub { font-size: 12px; color: var(--vx-text-faint); font-variant-numeric: tabular-nums; }
+.vx-about-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vx-about-title { font-size: 13px; font-weight: 600; }
+.vx-about-line { margin-top: 10px; font-size: 12.5px; color: var(--vx-text-dim); }
+.vx-about-line--bad { color: var(--vx-negative); }
+.vx-about-verline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; }
+.vx-about-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+.vx-about-ok {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+  padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 550;
+  color: var(--dsw-static-green-600, #128a4f);
+  background: color-mix(in srgb, var(--dsw-static-green-500, #22c55e) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-static-green-500, #22c55e) 34%, transparent);
+}
+.vx-about-check {
+  display: grid; place-items: center; width: 18px; height: 18px; border-radius: 999px;
+  background: var(--dsw-static-green-500, #22c55e); color: #fff; font-size: 11px; line-height: 1;
+}
+.vx-about-btn {
+  height: 30px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--vx-border-strong); background: var(--vx-surface);
+  color: var(--vx-text); font: inherit; font-size: 12.5px; transition: background var(--vx-dur-fast) var(--vx-ease);
+}
+.vx-about-btn:hover { background: var(--vx-surface-sunken); }
+.vx-about-btn--primary {
+  border-color: transparent; background: #1f5eff; color: #fff; font-weight: 600;
+}
+.vx-about-btn--primary:hover { background: #1a52e0; }
+.vx-about-link { font-size: 12.5px; color: #2563eb; text-decoration: none; }
+.vx-about-link:hover { text-decoration: underline; }
+.vx-about-progress { margin-top: 12px; display: grid; gap: 6px; }
+.vx-about-bar {
+  height: 8px; border-radius: 999px; overflow: hidden; background: var(--vx-surface-sunken);
+  border: 1px solid var(--vx-border);
+}
+.vx-about-bar > i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #1747d6, #3b82f6);
+  transition: width 0.25s var(--vx-ease);
+}
+.vx-about-foot { margin: 12px 0 0; font-size: 11.5px; color: var(--vx-text-faint); }
+
 `
 
 /** Inject the stylesheet once. Returns a disposer that removes it. */
