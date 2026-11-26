@@ -101,7 +101,7 @@ dsh agent loop（唯一循环）
 ### P0 可观测性：先让“当前 harness 是什么”可回答
 
 **阶段目标**：不靠读代码和猜，能用一个接口/命令列出：模式、存储路径、agent 名册、工具数、MCP server、监听端口、profile bundle。  
-**阶段状态**：`[~] 进行中`（P0-0～P0-2、P0-4 完成，P0-3 待开始）
+**阶段状态**：`[x] 已完成`（P0-0～P0-4；无 8792 断言按依赖留到 P1-6）
 
 #### P0-0 建立台账与基线快照
 
@@ -153,14 +153,21 @@ dsh agent loop（唯一循环）
 
 #### P0-3 干净 profile 启动冒烟
 
-- 状态：`[ ] 待开始`
+- 状态：`[x] 已完成`
 - 分支：`refactor/harness-smoke`
-- 动作：新增 `app/scripts/smoke-harness.ts`：临时 `VEXNAR_HOME` → `setup` → 启动 core → 断言 8 个 preset、至少 10 个可调用领域工具、无 8792 监听（P1 后）。
+- 动作：新增 `app/scripts/smoke-harness.ts`：临时 `VEXNAR_HOME` → `setup` → 启动 core → 断言 8 个 preset、至少 10 个已启用且绑定 agent 的领域工具；默认关闭 extras/theme，`--full` 才装预置插件；`--check` 可单独校验 patch 的 preset 集合。
 - 验收：
-  - 干净 home 下脚本退出码 0，并打印实际 tool/preset 列表。
-  - 故意删掉一个 preset 时脚本退出码非 0（负向用例）。
+  - `pnpm exec tsx scripts/smoke-harness.ts` 在干净 home 下退出码 0，并打印实际 preset/tool 列表。已执行。
+  - 故意删掉 `preset-vexnar-goals` 的副本执行 `--check`，退出码 1。已执行。
+  - 单文件 `tsc --noEmit ... scripts/smoke-harness.ts` 退出码 0；`git diff --check` 退出码 0。已执行。
+  - “无 8792 监听”断言：**未核验**，按依赖留到 P1-6 完成后补。
+- 证据：
+  - 分支 `refactor/harness-smoke`；提交 `81e513db1`；合并 `49b93355d`。
+  - 干净临时 home：`setup` 0.5s；presets `8/8`（goals/planner/main/worker/auto/pentest/reporter/retester）；core `agents total=0`、`tools total=61 enabled=61 bound=60`、`mcp total=3 enabled=3`、SQLite store；Web MCP 监听随机端口（非 8792）；`SMOKE PASS 8 presets / tools 61/61（bound 60）`。
+  - 负向自检：删一个 preset 后读到 `7/8`，检查器拒绝；外部 `--check /tmp/vexnar-smoke-corrupt.yml` → 退出码 1，`缺少 preset: vexnar-goals；preset 数 7 != 8`。
 - 依赖：P0-1；P1-6 完成后才能断言“无 8792”。
 - 风险：`setup` 会联网装 profile，CI 上要允许离线缓存；否则标记为“本机冒烟”，不塞进默认门禁。
+- 备注：工具断言口径是 `topology.tools.enabled/bound`（已注册且绑定 agent），未通过 dsh 实际调用工具；`--full` 未跑（联网 extras），默认只做本机结构冒烟。
 
 #### P0-4 文档口径对齐
 
@@ -556,6 +563,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-26 | P0-1 `/api/_topology` | 待开始 → 已完成 | 提交 `42a55ee2c`；合并 `121034d04`；core 测试 29/29；curl 未核验（未起常驻进程） |
 | 2026-11-26 | P0-2 拓扑 CLI | 待开始 → 已完成 | 提交 `572438ebd`；合并 `3295f4d9b`；表格 + `--json` 均已跑；tsc 0；test:preset 2/2 |
 | 2026-11-26 | P0-4 文档口径对齐 | 待开始 → 已完成 | 提交 `40eae6027`；合并 `9f60d373e`；链接 0 缺失；旧口径关键词无命中；纯文档未跑运行时测试 |
+| 2026-11-26 | P0-3 干净 profile 启动冒烟 | 待开始 → 已完成 | 提交 `81e513db1`；合并 `49b93355d`；smoke 退出 0（8/8 presets，tools 61/61，bound 60）；删 preset 副本 `--check` 退出 1；8792 断言未核验（P1-6） |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -563,8 +571,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 7. 下一步（按顺序）
 
-1. **P0-3**：干净 profile 启动冒烟（“无 8792”断言待 P1-6 后补）。
-2. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
-3. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
+1. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
+2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
+3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
 **当前阻塞**：D1-D5 需要拍板；P1 实现不能先于 D4，P3 不能先于 D5，P4 不能先于 D1。
