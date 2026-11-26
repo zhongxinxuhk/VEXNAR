@@ -20,6 +20,7 @@
     "src/platform-account.ts",
     "src/update.ts",
     "src/update-install.ts",
+    "src/support.ts",
     "src/login-page.ts",
     "src/intercept.ts",
     "src/intercept-guard.ts",
