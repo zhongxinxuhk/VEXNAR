@@ -31,7 +31,7 @@ export const TEMPLATE_BUNDLES: readonly string[] = [
 ]
 
 /** VEXNAR 自己的包：由 setup 用 file: 依赖装上，也不进 extras 清单。 */
-export const OWN_BUNDLES: readonly string[] = ['@vexnar/app-bundle', '@vexnar/dsh-ui', '@vexnar/dsh-account', '@vexnar/dsh-egress']
+export const OWN_BUNDLES: readonly string[] = ['@vexnar/app-bundle', '@vexnar/dsh-ui', '@vexnar/dsh-account', '@vexnar/dsh-egress', '@vexnar/dsh-tools']
 
 export interface ProfileManifest {
   dependencies?: Record<string, string>

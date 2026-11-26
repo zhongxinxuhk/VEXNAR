@@ -51,6 +51,21 @@
         tokenEnv: VEXNAR_API_TOKEN
         taskIdEnv: VEXNAR_TASK_ID
 
+# ── Domain tools (TS, in-process) ─────────────────────────────────────────
+# P1-1 只装注入面与 registerTool 骨架；P1-2 起流量/finding/复测/web 工具在这里
+# 注册，全部走同进程的 vexnarCore，不再新增端口。旧 profile 没装该包时跳过。
+- insert:
+    - id: vexnar-tools
+      name: '@vexnar/dsh-tools'
+      disabled: !!js >-
+        (() => {
+          const profile = ctx.get('profileContext')
+          if (!profile) return true
+          const { existsSync } = process.getBuiltinModule('node:fs')
+          const { join } = process.getBuiltinModule('node:path')
+          return !existsSync(join(profile.dir, 'node_modules', '@vexnar', 'dsh-tools', 'index.js'))
+        })()
+
 # ── Domain tools ──────────────────────────────────────────────────────────
 # `vexnar-web` 是常驻的：会话感知 HTTP 引擎由 core 在启动时拉起（127.0.0.1:8792），
 # 令牌与 core 同源（VEXNAR_WEB_MCP_TOKEN 优先，其次启动器注入的桌面令牌）。

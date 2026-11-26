@@ -50,6 +50,7 @@ node_modules
 vexnar/ui/lib/
 vexnar/account/lib/
 vexnar-egress/index.js
+vexnar-tools/index.js
 
 # 品牌补丁记录：check-upstream 用它区分「品牌补丁」与「有人手改 vendored 代码」。
 .vexnar-brand.json

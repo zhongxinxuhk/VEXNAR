@@ -77,6 +77,11 @@ const packages = [
     name: '@vexnar/dsh-egress',
     artifacts: ['vexnar-egress/index.js'],
     sources: { 'vexnar-egress/index.js': 'vexnar-egress/index.ts' }
+  },
+  {
+    name: '@vexnar/dsh-tools',
+    artifacts: ['vexnar-tools/index.js'],
+    sources: { 'vexnar-tools/index.js': 'vexnar-tools/index.ts' }
   }
 ]
 

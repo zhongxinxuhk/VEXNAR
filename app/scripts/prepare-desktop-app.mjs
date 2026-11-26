@@ -9,6 +9,7 @@
  *
  *   vexnar/          VEXNAR bundle（cordis 补丁 + ui + account，含 core-embedded）
  *   vexnar-egress/   出口工具插件
+ *   vexnar-tools/    领域工具插件（P1-1 骨架）
  *   profile/         装好 extras.json 全部插件的 profile（含 node_modules）
  *   runtime/         `@deepseek-ai/dsh` 及其依赖，提供 `dsh web` 命令
  *
@@ -92,7 +93,7 @@ function dependencySpec(item) {
 }
 
 /**
- * 装一份 profile：VEXNAR 四个包 + `vexnar/extras.json` 里的全部插件。
+ * 装一份 profile：VEXNAR 五个包 + `vexnar/extras.json` 里的全部插件。
  *
  * 不调 `vexnar.ts setup`：setup 走 `runtimeBin()` 解析 dsh 运行时，要求打包机把
  * 整个 app/ 依赖装齐。这里只需要 pnpm。
@@ -113,6 +114,7 @@ function installProfile() {
     '@vexnar/dsh-ui': `file:${join(out, 'vexnar', 'ui')}`,
     '@vexnar/dsh-account': `file:${join(out, 'vexnar', 'account')}`,
     '@vexnar/dsh-egress': `file:${join(out, 'vexnar-egress')}`,
+    '@vexnar/dsh-tools': `file:${join(out, 'vexnar-tools')}`,
     'dsh-claude-style': '^0.21.6'
   }
   for (const item of installed) dependencies[item.name] = dependencySpec(item)
@@ -195,7 +197,7 @@ rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 
 // ── 2. 插件源 ────────────────────────────────────────────────────────────
-for (const name of ['vexnar', 'vexnar-egress']) {
+for (const name of ['vexnar', 'vexnar-egress', 'vexnar-tools']) {
   log(`复制 ${name}`)
   copyTree(join(app, name), join(out, name))
 }

@@ -23,7 +23,8 @@ const app = join(dirname(fileURLToPath(import.meta.url)), '..')
 const targets = [
   'vexnar/ui/lib',
   'vexnar/account/lib',
-  'vexnar-egress/index.js'
+  'vexnar-egress/index.js',
+  'vexnar-tools/index.js'
 ]
 
 for (const target of targets) {
