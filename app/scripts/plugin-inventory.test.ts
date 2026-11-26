@@ -53,6 +53,7 @@ assert.equal(row('@vexnar/app-bundle')?.source, 'own')
 assert.deepEqual(inventory.missing, [], '全部已装 bundle 都应在预设里')
 assert.ok(TEMPLATE_BUNDLES.every((name) => name.startsWith('@deepseek-ai/dsh-')), '模板 bundle 应是官方包')
 assert.ok(OWN_BUNDLES.includes('@vexnar/app-bundle'))
+assert.ok(OWN_BUNDLES.includes('@vexnar/dsh-egress'), 'egress 是 VEXNAR 自己的 bundle，不应被报成预设缺口')
 
 // 装了但预设没带：必须报出来，而不是静默当成"用户自己装的"。
 const leaked = scanProfile({
