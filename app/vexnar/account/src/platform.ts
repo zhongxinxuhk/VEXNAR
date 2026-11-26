@@ -680,6 +680,25 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       res.end()
     }
   }))
+  // 登录页的可导航地址。
+  //
+  // 桌面端把 `dsh-app://app/` 的 `/`、`/index.html`、`/assets/*` 直接从打包进应用的
+  // 前端 dist 里读走（`serveWebDocument`），根本不会到宿主来，`tapIndex` 的登录页换壳
+  // 在桌面端永远不会执行；只有其它路径才转发给宿主。所以登录页必须有一个"能被
+  // location.replace 导航过去"的地址，这条路由就是它。
+  //
+  // 它是登录前的界面，不能要求先通过 carrier 认证（否则未登录的人连登录页都打不开）；
+  // 只校验回环地址，避免被非本机页面借道。
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact', path: clientPrefix + '/login',
+    handler: async (req, res) => {
+      if (req.method !== 'GET') { res.writeHead(405, { Allow: 'GET' }); return res.end() }
+      const address = req.socket.remoteAddress ?? ''
+      if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)) { res.writeHead(403); return res.end() }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY' })
+      res.end(loginPage(platformOrigin()))
+    }
+  }))
   route('/wallet', { GET: () => account.wallet() })
   route('/billing/options', { GET: () => billing.options() })
   route('/billing/quote', { POST: async (req) => billing.quote(await readJson(req)) })
