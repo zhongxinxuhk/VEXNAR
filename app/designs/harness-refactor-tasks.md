@@ -101,7 +101,7 @@ dsh agent loop（唯一循环）
 ### P0 可观测性：先让“当前 harness 是什么”可回答
 
 **阶段目标**：不靠读代码和猜，能用一个接口/命令列出：模式、存储路径、agent 名册、工具数、MCP server、监听端口、profile bundle。  
-**阶段状态**：`[~] 进行中`（P0-0、P0-1、P0-2 完成，P0-3 待开始）
+**阶段状态**：`[~] 进行中`（P0-0～P0-2、P0-4 完成，P0-3 待开始）
 
 #### P0-0 建立台账与基线快照
 
@@ -164,13 +164,21 @@ dsh agent loop（唯一循环）
 
 #### P0-4 文档口径对齐
 
-- 状态：`[ ] 待开始`
+- 状态：`[x] 已完成`
 - 分支：`docs/harness-docs-align`
 - 动作：
   1. 修根 `README.md` 与 `app/README.md` 的架构描述冲突（Go 单体 vs dsh + TS core）。
   2. 修根 `AGENTS.md` 的“已移除桌面客户端”与 `app/desktop` 并存的矛盾。
   3. 在 `app/designs/vexnar-harness-refactor-v1.md` 顶部加一行“执行状态看 `harness-refactor-tasks.md`”。
-- 验收：三处文档不再互相否证；`rg "已移除|no longer ships"` 的结果与代码树一致。
+- 验收：三处文档不再互相否证；`rg "已移除|no longer ships"` 的结果与代码树一致。已执行。
+- 证据：
+  - 分支 `docs/harness-docs-align`；提交 `40eae6027`；合并 `9f60d373e`。
+  - 根 `README.md`：默认栈改为 dsh + `vexnar-core`（SQLite），Go/PostgreSQL 与 `web/` 标为回退/兼容栈；安装段补 `app/` 默认路径；桌面壳明确为 `app/desktop`。
+  - `app/README.md`：边界改为默认以 core SQLite 为准；模型留在 dsh 进程；构建/typecheck 覆盖补 `@vexnar/web`，并修正“全员 TypeScript”与 `scripts/tsconfig.json` 门禁表述。
+  - `AGENTS.md`：桌面客户端段改为 dsh 宿主 + `app/desktop` 现状、Go 为回退；typecheck 覆盖补 `@vexnar/dsh-egress` 与 `@vexnar/web`。
+  - `app/designs/vexnar-harness-refactor-v1.md` 顶部已指向 `harness-refactor-tasks.md`。
+  - `git diff --check` 退出码 0；本地 Markdown 链接检查 0 缺失；`grep` 旧口径关键词无命中；`app/desktop`、`desktop:build`、`desktop:package` 与 typecheck 五项均与代码树一致。
+  - 未运行运行时测试（纯文档改动）。
 - 依赖：无。
 - 风险：文档改动不要顺手改行为；只改口径。
 
@@ -547,6 +555,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-26 | P0-0 建立台账 | 待开始 → 已完成 | 本文件；提交 `db561a499`；合并 `b7d01816d` |
 | 2026-11-26 | P0-1 `/api/_topology` | 待开始 → 已完成 | 提交 `42a55ee2c`；合并 `121034d04`；core 测试 29/29；curl 未核验（未起常驻进程） |
 | 2026-11-26 | P0-2 拓扑 CLI | 待开始 → 已完成 | 提交 `572438ebd`；合并 `3295f4d9b`；表格 + `--json` 均已跑；tsc 0；test:preset 2/2 |
+| 2026-11-26 | P0-4 文档口径对齐 | 待开始 → 已完成 | 提交 `40eae6027`；合并 `9f60d373e`；链接 0 缺失；旧口径关键词无命中；纯文档未跑运行时测试 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -555,8 +564,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 ## 7. 下一步（按顺序）
 
 1. **P0-3**：干净 profile 启动冒烟（“无 8792”断言待 P1-6 后补）。
-2. **P0-4**：文档口径对齐；无依赖，可与 P0-3 并行。
-3. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
-4. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
+2. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
+3. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 
 **当前阻塞**：D1-D5 需要拍板；P1 实现不能先于 D4，P3 不能先于 D5，P4 不能先于 D1。
