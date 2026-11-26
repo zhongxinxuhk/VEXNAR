@@ -21,6 +21,7 @@ import type { Socket } from 'node:net'
 import { loginPage, workspaceSessionScript } from './login-page.js'
 import { createBilling } from './billing.js'
 import { checkForUpdate, currentVersion, resetUpdateCache } from './update.js'
+import { downloadState, downloadUpdate, installUpdate } from './update-install.js'
 import { createModelCompletion } from './model-channel.js'
 import {
   catalog,
@@ -610,6 +611,22 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       return await checkForUpdate()
     }
   })
+  // 下载在宿主进程里跑，POST 只负责启动并立刻返回当前状态；设置页随后轮询
+  // `/update/progress`，避免几百 MB 的安装包把一次 HTTP 请求挂住。
+  route('/update/download', {
+    POST: async () => {
+      const check = await checkForUpdate()
+      if (check.asset === null) {
+        throw new PlatformError(400, check.error ?? '当前平台没有可下载的安装包')
+      }
+      // downloadUpdate 自己把成功/失败写进模块状态；这里吞掉未处理的 rejection，
+      // 状态由进度接口返回，前端无需依赖 POST 的最终结果。
+      void downloadUpdate(check.asset).catch(() => undefined)
+      return downloadState()
+    }
+  })
+  route('/update/progress', { GET: () => downloadState() })
+  route('/update/install', { POST: () => installUpdate() })
   route('/account', {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
     GET: () => ready === true ? account.status() : refresh(),
