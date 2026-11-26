@@ -111,7 +111,10 @@
 - id: ui-skin-claude-style
   name: dsh-claude-style
   config:
+    # 品牌：标记图由 @vexnar/dsh-account 注入（把皮肤的 DeepSeek 鲸鱼换成 VEXNAR logo），
+    # 这里只定名字与整体配色方案。
     brand: deepseek
+    brandName: VEXNAR
     statusMotion: wash
     sodium: on
     homeLayout: classic
