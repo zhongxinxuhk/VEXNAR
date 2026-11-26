@@ -101,7 +101,7 @@ dsh agent loop（唯一循环）
 ### P0 可观测性：先让“当前 harness 是什么”可回答
 
 **阶段目标**：不靠读代码和猜，能用一个接口/命令列出：模式、存储路径、agent 名册、工具数、MCP server、监听端口、profile bundle。  
-**阶段状态**：`[~] 进行中`（P0-0、P0-1 完成，P0-2 待开始）
+**阶段状态**：`[~] 进行中`（P0-0、P0-1、P0-2 完成，P0-3 待开始）
 
 #### P0-0 建立台账与基线快照
 
@@ -135,14 +135,21 @@ dsh agent loop（唯一循环）
 
 #### P0-2 拓扑 CLI
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-observability`
+- 状态：`[x] 已完成`
+- 分支：`refactor/harness-topology-cli`
 - 动作：新增 `app/scripts/harness-topology.ts`，读取 profile `package.json` + core 的 `/api/_topology`（或直接读 SQLite），打印一张人类可读表；支持 `--json`。
 - 验收：
-  - 在 `app/` 下 `pnpm exec tsx scripts/harness-topology.ts` 能列出：profile bundles、presets、工具数、agent keys、MCP servers、存储路径、端口。
-  - `--json` 输出可被 `jq` 解析。
+  - 在 `app/` 下 `pnpm exec tsx scripts/harness-topology.ts` 能列出：profile bundles、presets、工具数、agent keys、MCP servers、存储路径、端口。已执行。
+  - `--json` 输出可被 `jq` 解析。已执行。
+- 证据：
+  - 分支 `refactor/harness-topology-cli`；提交 `572438ebd`；合并 `3295f4d9b`。
+  - `pnpm exec tsx scripts/harness-topology.ts` → `bundles=24 layer=21 presets=8`；`agents total=10 enabled=10 run_artifacts=2`；`tools total=62 enabled=62 bound=60`；`mcp total=4 enabled=3`；SQLite `.../.vexnar-home/vexnar/store/vexnar.sqlite`。
+  - `pnpm exec tsx scripts/harness-topology.ts --json | jq -e ...` → `source=store`、`presets=8`、`agents=10`、`tools=62`、`mcp=4`。
+  - `tsc --noEmit ... scripts/harness-topology.ts` → 退出码 0；`pnpm run test:preset` → `tests 2 / pass 2 / fail 0`。
+  - `--url http://127.0.0.1:1 --json` → 退出码 0，`source=store` 且 `http_error` 记录回退原因。
 - 依赖：P0-1。
 - 风险：不要复制 store 的读逻辑；优先调用 P0-1 的接口，进程未启动时再读 SQLite。
+- 备注：dsh web 把 core 嵌在同一进程，没有稳定的 8790 监听可探测；默认直接调用 P0-1 同一个 `topology()`，显式 `--url` 时才先走 HTTP。顺带修正 `@vexnar/dsh-egress` 的自有 bundle 归类，避免盘点误报预设缺口。
 
 #### P0-3 干净 profile 启动冒烟
 
@@ -539,6 +546,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 |---|---|---|---|
 | 2026-11-26 | P0-0 建立台账 | 待开始 → 已完成 | 本文件；提交 `db561a499`；合并 `b7d01816d` |
 | 2026-11-26 | P0-1 `/api/_topology` | 待开始 → 已完成 | 提交 `42a55ee2c`；合并 `121034d04`；core 测试 29/29；curl 未核验（未起常驻进程） |
+| 2026-11-26 | P0-2 拓扑 CLI | 待开始 → 已完成 | 提交 `572438ebd`；合并 `3295f4d9b`；表格 + `--json` 均已跑；tsc 0；test:preset 2/2 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -546,8 +554,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 7. 下一步（按顺序）
 
-1. **P0-2**：拓扑 CLI，开发/排查时不用手写 sqlite 查询。
-2. **P0-3**：干净 profile 启动冒烟（“无 8792”断言待 P1-6 后补）。
+1. **P0-3**：干净 profile 启动冒烟（“无 8792”断言待 P1-6 后补）。
+2. **P0-4**：文档口径对齐；无依赖，可与 P0-3 并行。
 3. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
 4. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 
