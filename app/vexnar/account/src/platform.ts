@@ -22,6 +22,7 @@ import { loginPage, workspaceSessionScript } from './login-page.js'
 import { createBilling } from './billing.js'
 import { checkForUpdate, currentVersion, resetUpdateCache } from './update.js'
 import { downloadState, downloadUpdate, installUpdate } from './update-install.js'
+import { deviceFacts, supportUrl } from './support.js'
 import { createModelCompletion } from './model-channel.js'
 import {
   catalog,
@@ -519,7 +520,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   // 未登录时整个工作区换成登录页：没有半登录状态，也没有"能动但全是空数据"的控制台。
   ctx.effect(() => ctx.webServer.tapIndex(html => ready === true
     ? html.replace('</head>', workspaceSessionScript + '</head>')
-    : loginPage(platformOrigin())))
+    : loginPage(platformOrigin(), supportUrl(deviceFacts(currentVersion())))))
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact', path: clientPrefix + '/entry.js',
@@ -713,7 +714,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       const address = req.socket.remoteAddress ?? ''
       if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)) { res.writeHead(403); return res.end() }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY' })
-      res.end(loginPage(platformOrigin()))
+      res.end(loginPage(platformOrigin(), supportUrl(deviceFacts(currentVersion()))))
     }
   }))
   route('/wallet', { GET: () => account.wallet() })

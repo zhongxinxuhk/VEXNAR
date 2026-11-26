@@ -41,6 +41,7 @@ const hostEntries = [
   'platform-account',
   'update',
   'update-install',
+  'support',
   'login-page',
   'login-client',
   'model-channel',

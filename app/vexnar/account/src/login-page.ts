@@ -2,6 +2,8 @@
 // Repository: https://github.com/zhongxinxuhk/VEXNAR
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { API_SERVICES, API_STATUS, HARNESS_DOCS } from './support.js'
+
 const script = '/vexnar-api/platform/entry.js'
 export const workspaceSessionScript = `<script defer src="${script}"></script>`
 
@@ -21,10 +23,13 @@ export const workspaceSessionScript = `<script defer src="${script}"></script>`
  *      改版只动外观与排布，不动这些 id 和字段名；访问令牌入口收进「使用访问令牌」
  *      折叠区，保留给没有密码登录条件的环境。
  *
+ * 右上角四个入口是外链：产品文档 / API Services / API 状态 / 支持中心（飞书问卷，
+ * 带上设备序列号、Harness 版本与运行环境三个预填值，用户不用手抄）。
+ *
  * 账号密码走 `/login/password`（网关 `/api/user/login`），与主账号是同一套身份；
  * 开启两步验证的账号会切到验证码表单。
  */
-export const loginPage = (origin: string): string => `<!doctype html>
+export const loginPage = (origin: string, support: string): string => `<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'self'">
@@ -160,9 +165,10 @@ button.ghost{height:38px;border:1px solid #dbe3ee;border-radius:10px;background:
     <span class="word">VEXNAR</span><span class="rule"></span><span class="sub">Harness</span>
   </div>
   <nav class="links">
-    <a href="${origin}/docs" target="_blank" rel="noreferrer noopener">产品文档</a>
-    <a href="${origin}/api" target="_blank" rel="noreferrer noopener">API</a>
-    <a href="${origin}/support" target="_blank" rel="noreferrer noopener">支持中心</a>
+    <a href="${HARNESS_DOCS}" target="_blank" rel="noreferrer noopener">产品文档</a>
+    <a href="${API_SERVICES}" target="_blank" rel="noreferrer noopener">API Services</a>
+    <a href="${API_STATUS}" target="_blank" rel="noreferrer noopener">API</a>
+    <a href="${support.replace(/&/gu, '&amp;')}" target="_blank" rel="noreferrer noopener">支持中心</a>
   </nav>
 </header>
 <div class="stage">
