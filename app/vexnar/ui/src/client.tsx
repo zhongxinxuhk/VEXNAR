@@ -1175,6 +1175,43 @@ const PLUGIN_TABS = [
   { id: 'vexnar-plugin-mcp', label: 'MCP server', order: 30, component: McpTab }
 ]
 
+
+/**
+ * 客户端侧的门禁。
+ *
+ * 桌面端从 `dsh-app://app/` 直接加载打包好的前端 dist，`/` 不会经过宿主的
+ * `tapIndex`，所以「未登录就把首页换成登录页」那套在桌面端永远不触发——退出登录后
+ * 界面还在，左下角还会周期性跳「连接成功」。这里由插件自己在页面里问门禁：
+ * 只要宿主的 `/ready` 不是 true，就把整个窗口导航到登录页路由
+ * （`/vexnar-api/platform/login`，该路径会被桌面协议转发到宿主，能正常显示）。
+ */
+function installSessionGate(): () => void {
+  let stopped = false
+  const onLoginPage = (): boolean => location.pathname.endsWith('/vexnar-api/platform/login')
+  const check = async (): Promise<void> => {
+    if (stopped || document.hidden || onLoginPage()) return
+    try {
+      const response = await fetch('/vexnar-api/platform/ready', { cache: 'no-store' })
+      if (!response.ok) return
+      const value = await response.json() as { ready?: unknown }
+      if (value.ready !== true && !stopped) location.replace('/vexnar-api/platform/login')
+    } catch {
+      // 传输失败不改界面：断网不该把人踢出正在看的页面。
+    }
+  }
+  const timer = window.setInterval(() => void check(), 5_000)
+  const onVisible = (): void => { void check() }
+  window.addEventListener('focus', onVisible)
+  document.addEventListener('visibilitychange', onVisible)
+  void check()
+  return () => {
+    stopped = true
+    window.clearInterval(timer)
+    window.removeEventListener('focus', onVisible)
+    document.removeEventListener('visibilitychange', onVisible)
+  }
+}
+
 export function apply(ctx: {
   slots?: {
     inject: (name: string, register: () => unknown) => void
@@ -1232,6 +1269,7 @@ export function apply(ctx: {
   slots.inject('conversation.hero.brand.mark', () =>
     slots.register({ name: 'conversation.hero.brand.mark' }, HeroLogo))
   ctx.effect?.(() => installSkinBrandGuard())
+  ctx.effect?.(() => installSessionGate())
   ctx.effect?.(() => installHeroSlogan())
   ctx.effect?.(() => installPermissionWarning())
 }
