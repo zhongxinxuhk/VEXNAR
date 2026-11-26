@@ -26,6 +26,7 @@ import {
   createPlatformAccount,
   gateOpen,
   PlatformError,
+  signedIn,
   platformOrigin,
   publicView
 } from './platform-account.js'
@@ -39,6 +40,21 @@ import type {
 
 const clientPrefix = '/vexnar-api/platform'
 const maxBody = 16 * 1024
+
+/**
+ * 这次读取是不是「文件读不到 / 读坏」，应当按读失败处理而不是按退出登录。
+ *
+ * `createPlatformAccount().read()` 在文件缺失、内容为空、JSON 解析失败时都会退回
+ * 一个空账号；空账号与「用户主动退出」在形状上一样，所以只能看上一次的有效状态：
+ * 上一次是登录态、这一次连 `user_id` 都没有，就当作读失败。
+ *
+ * @param last - 上一次成功应用的账号；从未读到过时为 undefined。
+ * @param next - 本次读取的结果。
+ * @returns 应当保留上一次的登录状态时为 true。
+ */
+export function keepsSessionOnUnreadable(last: Account | undefined, next: Account): boolean {
+  return last !== undefined && gateOpen(last) && next.user_id === 0 && next.providers.length === 0
+}
 
 /**
  * dsh 的 webServer 路由：`exact` 原样匹配路径，`prefix` 还匹配 `path/...`。
@@ -240,13 +256,25 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   let channelLoading = false
   const life = new AbortController()
   const activeSockets = new Set<Socket>()
+  /** 已经为「门禁关闭」写过诊断的路径：同一轮关闭不刷屏。 */
+  const closedNotice = new Set<string>()
   const setReady = (value: boolean): void => {
+    if (value) closedNotice.clear()
     ready = value
     if (!ready) {
       for (const socket of activeSockets) socket.destroy()
       activeSockets.clear()
     }
   }
+
+  /**
+   * 一次「账号文件读不到 / 读坏」的读取会退回空账号。它不该被当成退出登录：
+   * 空账号会把提供方与密钥一起清掉，门禁也会在页面已经加载完之后突然关上，
+   * 用户看到的就是「workspace create failed: … HTTP 401」这类与真实原因无关的报错。
+   *
+   * 真正的过期是同一份账号（`user_id`、`expires_at` 都在）时间过了；那种情况照常关门。
+   */
+  const unreadableState = (state: Account): boolean => keepsSessionOnUnreadable(lastState, state)
 
   /**
    * 把账号里的提供方写进 llm-pi-ai：baseURL 指向真实上游，apiKeyEnv 指向本插件
@@ -319,6 +347,11 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
 
   const applyCatalog = async (state: Account, epoch: number) => {
     if (epoch !== secretEpoch) return publicView(state)
+    if (unreadableState(state)) {
+      // 上一次读取有效、这一次读成空账户：按「读失败」处理，保留已经登录的状态。
+      console.warn('[vexnar] 账号文件读不到或已损坏，保留上一次的有效登录状态')
+      return publicView(lastState!)
+    }
     lastState = state
     const providers: Record<string, LlmProviderSetting> = {}
     const present = new Set<string>()
@@ -365,7 +398,13 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
         await ctx.agentDefaultModel.saveSelection({ provider: firstID, model: fallback.id })
       }
     }
-    setReady(gateOpen(state))
+    // 门禁只在两种情形关闭：账号真的过期/需要重新验证，或显式退出登录。
+    // 关的时候留一行日志，免得之后只能从界面的 401 反推。
+    const open = gateOpen(state)
+    if (!open && ready) {
+      console.warn(`[vexnar] 账号门禁关闭：${signedIn(state) ? '凭据版本过旧，需要重新验证' : '登录已过期，请重新登录'}`)
+    }
+    setReady(open)
     // 加载内置 core 会等待存储初始化，账户校验只依赖本地身份和 dsh 设置。
     if (firstModel !== undefined) ensureModelChannel()
     return publicView(state)
@@ -409,7 +448,15 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       const result = admit.call(this, request)
       if ('rejection' in result) return result
       const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
-      if (!ready && !startupPaths.has(path)) return { rejection: 401 }
+      if (!ready && !startupPaths.has(path)) {
+        // 不是每一条被拒的请求都值得写日志，但一条都不写就只能从界面上的
+        // 「HTTP 401」猜原因。按路径去重，每轮关闭每条路径只报一次。
+        if (!closedNotice.has(path)) {
+          closedNotice.add(path)
+          console.warn(`[vexnar] 门禁拒绝 ${request.method ?? '?'} ${path}（未登录或登录已过期）`)
+        }
+        return { rejection: 401 }
+      }
       const socket = request.socket
       if (request.headers.upgrade?.toLowerCase() === 'websocket' && socket && !activeSockets.has(socket)) {
         activeSockets.add(socket)

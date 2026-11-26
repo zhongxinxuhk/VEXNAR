@@ -242,6 +242,14 @@ if (entry) {
       checking = false
     }
   }
-  setInterval(checkSession, 10_000)
+  /**
+   * 工作区页每 5 秒问一次门禁：登录过期后立刻回登录页，而不是让页面留在
+   * 「界面还在、每个动作都 401」的僵尸状态里（那种状态下新建工作区只会弹
+   * 「workspace create failed: … HTTP 401」）。
+   */
+  setInterval(checkSession, 5_000)
   document.addEventListener('visibilitychange', checkSession)
+  // 窗口重新获得焦点、从往返缓存恢复时也查一次：切回来第一眼就该是正确的页面。
+  window.addEventListener('focus', checkSession)
+  window.addEventListener('pageshow', checkSession)
 }
