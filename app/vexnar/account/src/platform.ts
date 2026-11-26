@@ -254,12 +254,15 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   let lastState: Account | undefined
   let channelInstalled = false
   let channelLoading = false
+  /** 默认工作区是否已经尝试过初始化：门禁重新打开时复位。 */
+  let workspaceBootstrapped = false
   const life = new AbortController()
   const activeSockets = new Set<Socket>()
   /** 已经为「门禁关闭」写过诊断的路径：同一轮关闭不刷屏。 */
   const closedNotice = new Set<string>()
   const setReady = (value: boolean): void => {
     if (value) closedNotice.clear()
+    else workspaceBootstrapped = false
     ready = value
     if (!ready) {
       for (const socket of activeSockets) socket.destroy()
@@ -306,6 +309,33 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     channelInstalled = false
     const core = await import('./core-embedded.js')
     core.setModelCompletion(undefined)
+  }
+
+  /**
+   * 首次进入时先在进程内把默认工作区建好。
+   *
+   * 上游客户端在首页发现「既没有工作区也没有会话」时会自己调
+   * `workspace/initializeDefault`。那条调用走 HTTP，落在一个刚启动、门禁还没
+   * 判定完的进程上就会被拒，界面于是退回「请先选择工作区」：用户必须先手动挑
+   * 一个目录，而挑目录同样要调 `workspace/create`，于是同一个 401 再弹一次
+   * 「无法打开文件夹」。
+   *
+   * 这里在自己的进程里调同一个远程方法（不经过 HTTP）：页面无论什么时候来问，
+   * 默认工作区都已经在列表里，上游的 `restoreSelection` 会直接连它，不再走
+   * 创建分支，也就不需要用户先选目录。
+   */
+  const ensureDefaultWorkspace = (): void => {
+    if (workspaceBootstrapped) return
+    workspaceBootstrapped = true
+    const peer = ctx.connection.createPeer({ principal: { kind: 'owner' } })
+    void ctx.typertGateway.invoke({
+      namespace: 'workspace', method: 'initializeDefault', args: {},
+      signal: AbortSignal.timeout(20_000), peer
+    }).catch(() => {
+      // 精简 profile 里没有 workspace 控制器，或系统取不到「文档」目录。两者都不该
+      // 变成启动失败；下一次门禁打开时再试一次。
+      workspaceBootstrapped = false
+    }).finally(() => { void peer.dispose() })
   }
 
   /**
@@ -405,6 +435,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       console.warn(`[vexnar] 账号门禁关闭：${signedIn(state) ? '凭据版本过旧，需要重新验证' : '登录已过期，请重新登录'}`)
     }
     setReady(open)
+    if (open) ensureDefaultWorkspace()
     // 加载内置 core 会等待存储初始化，账户校验只依赖本地身份和 dsh 设置。
     if (firstModel !== undefined) ensureModelChannel()
     return publicView(state)
@@ -434,9 +465,9 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   const refresh = async () => syncCatalog(await account.read())
 
   // The pinned carrier routes Workspace RPC and stream upgrades through the
-  // same Host admission. Keep the carrier's origin/cookie checks for every route.
-  const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login/token']
-    .map(path => clientPrefix + '/' + path))
+  // same Host admission. Tampering here with a blanket 401 is what turned a
+  // startup race into "workspace create failed … HTTP 401", so the gate now
+  // only observes: the carrier keeps owning cookie/token admission.
   ctx.effect(() => {
     // cordis 把追踪代理背后的真实服务实例挂在 `Symbol.for('cordis.original')` 上。
     const ORIGINAL: unique symbol = Symbol.for('cordis.original')
@@ -447,15 +478,17 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     const guarded = function (this: ConnectionSlice, request: IncomingMessage): PeerAdmission {
       const result = admit.call(this, request)
       if ('rejection' in result) return result
-      const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
-      if (!ready && !startupPaths.has(path)) {
-        // 不是每一条被拒的请求都值得写日志，但一条都不写就只能从界面上的
-        // 「HTTP 401」猜原因。按路径去重，每轮关闭每条路径只报一次。
+      if (!ready) {
+        // 门禁关着时数据面照常交给上游 carrier 判定（它的 cookie/token 校验仍然有效）。
+        // 这里只留一行诊断：以前这一层直接回 401，桌面端在账号还没读完时发出的
+        // `workspace/initializeDefault` 被拒，界面就退回"请先选择工作区"，用户只能
+        // 手动挑目录，而那条创建请求同样 401 —— 与真实原因（没登录）毫无关系的
+        // "无法打开文件夹"。按路径去重，每轮关闭每条路径只报一次。
+        const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
         if (!closedNotice.has(path)) {
           closedNotice.add(path)
-          console.warn(`[vexnar] 门禁拒绝 ${request.method ?? '?'} ${path}（未登录或登录已过期）`)
+          console.warn(`[vexnar] 门禁关着，放行给上游 carrier 判定 ${request.method ?? '?'} ${path}`)
         }
-        return { rejection: 401 }
       }
       const socket = request.socket
       if (request.headers.upgrade?.toLowerCase() === 'websocket' && socket && !activeSockets.has(socket)) {
