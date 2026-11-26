@@ -236,7 +236,7 @@ export function apply(ctx: AccountContext): void {
     // 不经过 /vexnar-api 的登录闸门，也不需要复制一份端口/token。
     const coreRequest = async (
       path: string,
-      init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
+      init: { method?: string; body?: unknown; headers?: Record<string, string>; response?: 'json' | 'base64' } = {}
     ): Promise<unknown> => {
       const app = await getCore()
       if (!app) throw new Error('VEXNAR 领域服务尚未就绪')
@@ -247,6 +247,23 @@ export function apply(ctx: AccountContext): void {
       }
       if (init.body !== undefined) requestInit.body = JSON.stringify(init.body)
       const response = await handle(new Request(new URL(path, 'http://127.0.0.1'), requestInit), true)
+      if (init.response === 'base64') {
+        const buffer = Buffer.from(await response.arrayBuffer())
+        if (!response.ok) {
+          const text = buffer.toString('utf8')
+          let message = text || `HTTP ${response.status}`
+          try {
+            const parsed = text ? JSON.parse(text) as { error?: string } : null
+            if (parsed?.error) message = parsed.error
+          } catch { /* 非 JSON 错误正文按原文返回 */ }
+          throw new Error(message)
+        }
+        return {
+          base64: buffer.toString('base64'),
+          bytes: buffer.length,
+          content_type: response.headers.get('content-type') ?? 'application/octet-stream'
+        }
+      }
       const text = await response.text()
       let data: unknown = null
       try {
