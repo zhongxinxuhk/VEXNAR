@@ -121,6 +121,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # 版本号要从本地标签推：浅克隆看不到 tag，会把发行版号算成 0.0.1。
+          fetch-depth: 0
           persist-credentials: false
       - name: Fetch pinned dsh source
         shell: bash
@@ -162,8 +164,15 @@ jobs:
           test -f "$target/.desktop-overlay/overlay.json"
           echo "VEXNAR_OVERLAY=$target/.desktop-overlay" >> "$GITHUB_ENV"
           node -e "const {readdirSync} = require('node:fs'); console.log('overlay:', readdirSync(process.argv[1]).join(', '))" "$target/.desktop-overlay"
+      - name: Resolve the release version
+        id: release
+        # 安装包里的「关于与更新」显示发行版号（0.0.12），不是上游的构建号
+        # （0.2.2-rc.5）。publish 作业随后用同一份算法算 tag，两边必须一致。
+        run: node app/scripts/release.mjs version
       - name: Apply the VEXNAR brand patch
         working-directory: app
+        env:
+          VEXNAR_RELEASE_VERSION: ${{ steps.release.outputs.version }}
         # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：
         # productName / 产物前缀 / .app 目录名 / 桌面文案 / 图标 / CLI 命令 / home 目录。
         # 改了哪些文件记在 app/.vexnar-brand.json，upstream:check 据此放宽到「只差品牌补丁」。
