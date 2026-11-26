@@ -194,7 +194,7 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1 完成，P1-2～P1-8 待开始）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1、P1-2 完成，P1-3～P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -219,18 +219,27 @@ dsh agent loop（唯一循环）
 
 #### P1-2 只读流量三件套
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
-- 动作：注册 `traffic_search`、`traffic_get`、`traffic_blob`，分别映射：
-  - `GET /api/traffic`
-  - `GET /api/traffic/exchange`
-  - `GET /api/traffic/blob`
+- 状态：`[x] 已完成`（工具契约测试通过；dsh 会话内实测未核验）
+- 分支：`refactor/harness-tool-plane-p1-2`
+- 动作：
+  1. 注册 `traffic_search`，只透传 `GET /api/traffic` 已支持的 `host/method/q/status/resp_min/resp_max/sort/order/page/size`；返回 core 的 DTO（含 `source=local|archive`）。
+  2. 注册 `traffic_get`，映射 `GET /api/traffic/exchange?id=...`，回填请求的 id。
+  3. 注册 `traffic_blob`，映射 `GET /api/traffic/blob?hash=...`；`vexnarCore.request` 增加 `response: 'base64'` 分支，避免二进制正文被当 JSON 读坏。
+  4. 不提供任意路径/URL 参数；工具面只有这三条固定路由。
 - 验收：
-  - 会话里 `traffic_search(host=...)` 返回 local + archive 合并结果，行上有 `source`。
-  - `traffic_get(id)` 能取到正文；`traffic_blob(hash)` 能取到超限正文。
-  - 未登记路径返回 404，不变成任意 API 代理。
+  - 工具处理器 + 真实 core 路由（临时 SQLite + 临时归档索引）集成测试：`host=shared.test` 同时返回 `local-1:local` 与 `arch-1:archive`；`q=history` 命中归档 URL；`status=2xx` 命中两行。
+  - `traffic_get` 能取本地与归档两侧原文；`traffic_blob` 能还原 300 KiB 超限正文（base64 解码后字节数与内容一致）。
+  - 传入 `path=/api/secret` 不会改变目标路由；工具名集合精确为三条。dsh 会话内“未登记工具返回 404”未核验（当前没有可用的 dsh 模型会话）。
+  - **未核验**：会话里实际调用工具；本任务只验证到工具处理器与真实 core 路由。
+- 证据：任务提交 `ac15626ce`；合并 `c98384668`；8 files changed, 421 insertions(+), 12 deletions(-)。
+  - `pnpm --filter @vexnar/dsh-tools run typecheck` → 0；`pnpm --filter @vexnar/dsh-tools run test` → 6/6（含真实 core 路由集成）。
+  - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0。
+  - `pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm --filter @vexnar/core exec tsx traffic.test.ts` → 17/17。
+  - `pnpm test:preset` → 2/2，`plugin inventory: 13 checks passed`；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`；这里的 tools 是 core 目录统计，不等于 dsh 插件工具数。
+- 备注：`q` 只匹配本地行的内联正文；归档行只有索引元数据，不能承诺按归档正文搜索。`traffic_blob` 走 base64 通道，二进制不经过 JSON 文本。
+- 风险：base64 有约 33% 体积膨胀，超大 blob 仍可能受工具结果上限约束；dsh 实际会话调用与原生工具名校验未核验。
 - 依赖：P1-1。
-- 风险：`traffic_search` 的参数语义要与 `traffic-history.ts` 的过滤字段对齐，不能另造一套。
 
 #### P1-3 `capture_control`
 
@@ -623,6 +632,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | M-2 应用内更新路由级回归 | 新增 → 已完成 | 提交 `f07712ea8`；合并 `b49723371`；路由测试 5/5；全量账户测试 53/53 |
 | 2026-11-27 | D4 领域工具面形态 | 待拍板 → 已拍板（A） | 选 `ctx.tools.register` 进程内注册；经 `vexnarCore.request` 直连 core；无第二 MCP 端口 |
 | 2026-11-27 | P1-1 `@vexnar/dsh-tools` 骨架 | 待开始 → 已完成 | 提交 `3f00328a8`；合并 `c4d3a898b`；包 build/全量 typecheck 0；产物 4/23；smoke 8 presets、tools 61/61 |
+| 2026-11-27 | P1-2 只读流量三件套 | 待开始 → 已完成（契约测试通过；会话实测未核验） | 提交 `ac15626ce`；合并 `c98384668`；tools test 6/6（local+archive+blob）；account 59/59；core traffic 17/17；smoke 8 presets/tools 61/61 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -630,7 +640,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-2**：在已落地的 `@vexnar/dsh-tools` 骨架上注册只读流量三件套；先核对 `/api/traffic` 的过滤字段。
+1. **P1-3**：注册 `capture_control`，映射 `GET/POST /api/traffic/capture`；先把 start/stop 的 scope 与端口生命周期钉住。
 2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
