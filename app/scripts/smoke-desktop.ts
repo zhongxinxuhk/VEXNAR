@@ -46,7 +46,8 @@ const required = [
   'node_modules/@vexnar/dsh-account/lib/client.js',
   'node_modules/@vexnar/dsh-account/lib/core-embedded.js',
   'node_modules/@vexnar/dsh-ui/lib/client.js',
-  'node_modules/@vexnar/dsh-egress/index.js'
+  'node_modules/@vexnar/dsh-egress/index.js',
+  'node_modules/@vexnar/dsh-tools/index.js'
 ]
 for (const file of required) {
   if (!existsSync(join(profile, file))) fail(`profile 里缺少 ${file}`)

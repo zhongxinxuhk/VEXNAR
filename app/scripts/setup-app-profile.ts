@@ -53,7 +53,7 @@ await writeFile(manifestPath, JSON.stringify(first, null, 2) + '\n')
 
 const bundleRoot = process.env.VEXNAR_BUNDLES || process.env.VEXNAR_DSH_BUNDLES
 const vxDir = bundleRoot ? resolve(bundleRoot, 'app', 'vexnar') : join(appDir, 'vexnar')
-const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account'), join(appDir, 'vexnar-egress')].map(dir => `file:${dir}`)
+const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account'), join(appDir, 'vexnar-egress'), join(appDir, 'vexnar-tools')].map(dir => `file:${dir}`)
 
 // ── Extras preset ───────────────────────────────────────────────────────────
 // `app/vexnar/extras.json` 是安装时固化的插件预设：插件商店装的 bundle 只写当前

@@ -26,8 +26,9 @@ export const bundleFiles: Record<string, string[]> = {
   '@vexnar/app-bundle': ['cordis.patch.yml'],
   '@vexnar/dsh-ui': ['lib/index.js', 'lib/client.js'],
   '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/billing.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js', 'lib/settings-embedded.js', 'lib/yak-history.js', 'lib/yak-history.proto', 'lib/yak-history.NOTICES.txt'],
-  // egress 排在最后：它的产物是单文件 index.js，缺了就不该拿 profile 里的旧副本凑数。
-  '@vexnar/dsh-egress': ['index.js']
+  // egress 与 tools 都是单文件 index.js；缺产物时不该拿 profile 里的旧副本凑数。
+  '@vexnar/dsh-egress': ['index.js'],
+  '@vexnar/dsh-tools': ['index.js']
 }
 /**
  * 安装包里各 bundle 的源目录（相对 {@link appDir}）。profile 清单里的 `file:`
@@ -37,7 +38,8 @@ export const bundleSources: Record<string, string> = {
   '@vexnar/app-bundle': 'vexnar',
   '@vexnar/dsh-ui': 'vexnar/ui',
   '@vexnar/dsh-account': 'vexnar/account',
-  '@vexnar/dsh-egress': 'vexnar-egress'
+  '@vexnar/dsh-egress': 'vexnar-egress',
+  '@vexnar/dsh-tools': 'vexnar-tools'
 }
 
 const binPart = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')

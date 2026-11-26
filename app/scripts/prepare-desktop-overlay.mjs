@@ -11,6 +11,7 @@
  *
  *   <out>/vexnar/             VEXNAR bundle（cordis 补丁 + 两个客户端插件）
  *   <out>/vexnar-egress/      出口工具插件
+ *   <out>/vexnar-tools/       领域工具插件（P1-1 骨架）
  *   <out>/profile/            预装好的 profile（含 node_modules，插件全在里面）
  *   <out>/overlay.json        来源清单：这些 file: 依赖原本指向哪里
  *
@@ -60,7 +61,8 @@ const BUNDLE_PATHS = {
   '@vexnar/app-bundle': 'vexnar',
   '@vexnar/dsh-ui': 'vexnar/ui',
   '@vexnar/dsh-account': 'vexnar/account',
-  '@vexnar/dsh-egress': 'vexnar-egress'
+  '@vexnar/dsh-egress': 'vexnar-egress',
+  '@vexnar/dsh-tools': 'vexnar-tools'
 }
 
 function log(message) {
@@ -97,7 +99,7 @@ function dependencySpec(item) {
 }
 
 /**
- * 装一份 profile：VEXNAR 四个包 + `vexnar/extras.json` 里的全部插件。
+ * 装一份 profile：VEXNAR 五个包 + `vexnar/extras.json` 里的全部插件。
  *
  * 这里不调 `vexnar.ts setup`：setup 走 `runtimeBin()` 解析 dsh 运行时，要求
  * 打包机把整个 app/ 依赖装齐（含 electron）。打包任务只需要 pnpm，直接写
@@ -121,6 +123,7 @@ function installProfile() {
     '@vexnar/dsh-ui': `file:${join(out, 'vexnar', 'ui')}`,
     '@vexnar/dsh-account': `file:${join(out, 'vexnar', 'account')}`,
     '@vexnar/dsh-egress': `file:${join(out, 'vexnar-egress')}`,
+    '@vexnar/dsh-tools': `file:${join(out, 'vexnar-tools')}`,
     // 与 setup-app-profile.ts 的 theme 规格保持一致。
     'dsh-claude-style': '^0.21.6'
   }
@@ -166,7 +169,7 @@ rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 
 // ── 2. VEXNAR 插件源：安装后仍要能读到 cordis 补丁与 extras 清单 ──────────
-for (const name of ['vexnar', 'vexnar-egress']) {
+for (const name of ['vexnar', 'vexnar-egress', 'vexnar-tools']) {
   log(`复制 ${name}`)
   copyTree(join(app, name), join(out, name))
 }
@@ -201,7 +204,7 @@ for (const name of ['package.json', 'cordis.patch.yml', 'pnpm-workspace.yaml', '
 
 // ── 4. 来源清单：bootstrap 靠它把 file: 绝对路径改写成安装后的位置 ─────────
 // 路径不从打包机算：`--reuse-profile` 指向别的 checkout 时那样算出来的相对路径
-// 毫无意义。VEXNAR 四个包在 overlay 里的位置是固定的，按名字给。
+// 毫无意义。VEXNAR 五个包在 overlay 里的位置是固定的，按名字给。
 const manifest = JSON.parse(readFileSync(join(out, 'profile', 'package.json'), 'utf8'))
 const fileDeps = Object.entries(manifest.dependencies ?? {})
   .filter(([, spec]) => typeof spec === 'string' && spec.startsWith('file:'))
