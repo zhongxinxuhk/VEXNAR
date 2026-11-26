@@ -526,7 +526,54 @@ dsh agent loop（唯一循环）
 
 ---
 
-## 5. 依赖关系
+## 5. 杂项修复
+
+> 不属于 P0–P5 阶段任务的独立问题；仍按“一个问题一条分支、门禁实际跑过、`--no-ff` 合并”记录。
+
+### M-1 应用内更新模块入库
+
+- 状态：`[x] 已完成`
+- 分支：`chore/account-update-install`
+- 问题：`platform.ts` 的应用内更新路由引用未跟踪的 `src/update-install.ts`，干净 checkout 无法编译。
+- 动作：把 `update-install.ts`、对应单测、`build.ts` host 入口和两份 tsconfig 边界一起提交；不改路由行为。
+- 验收命令（从 `cb443286d` 建的 detached worktree 内）：
+
+  ```bash
+  cd app
+  pnpm install --frozen-lockfile
+  pnpm --filter @vexnar/dsh-account run typecheck
+  pnpm --filter @vexnar/dsh-account run build
+  ./node_modules/.bin/tsx --test vexnar/account/tests/*.test.ts
+  ```
+
+- 输出摘要：`pnpm install` 退出码 0；`typecheck` 退出码 0；`build` 退出码 0，输出 `built @vexnar/dsh-account -> lib/*.js (15 host modules) + lib/client.js (139995 bytes)`；账户测试 `tests 48 / pass 48 / fail 0`。临时验证 worktree 已删除。
+- 证据：任务提交 `7e17ff707`；合并 `cb443286d`；5 files changed, 303 insertions(+)。
+- 备注：模块在合并前是工作区未跟踪文件；本次只补入库，不调整更新策略。
+
+### M-2 应用内更新路由级回归
+
+- 状态：`[x] 已完成`
+- 分支：`test/account-update-route-tests`
+- 问题：下载、进度、安装三个路由只有模块级测试，路由层没有回归。
+- 动作：新增 `app/vexnar/account/tests/platform-update-routes.test.ts`，用假 ctx 装 `installPlatform`，用假 `fetch` 提供 Release、安装包和 `SHA256SUMS`；下载目录落在临时 `HOME`。
+- 验收命令（在 `main` 合并后的工作树内）：
+
+  ```bash
+  cd app
+  ./node_modules/.bin/tsx --test vexnar/account/tests/platform-update-routes.test.ts
+  pnpm --filter @vexnar/dsh-account run typecheck
+  pnpm --filter @vexnar/dsh-account run build
+  ./node_modules/.bin/tsx --test vexnar/account/tests/*.test.ts
+  ```
+
+- 输出摘要：路由测试 `tests 5 / pass 5 / fail 0`；`typecheck` 退出码 0；`build` 退出码 0；全量账户测试 `tests 53 / pass 53 / fail 0`。全量测试前先 `build`，因为 `yak-history`/`yak-sources` 用例读取 `lib/` 产物。
+- 关键断言：无当前平台资产时 `/update/download` 返回 400，且 `/update/progress` 仍为 `idle`；下载启动后轮询到 `ready`，`verified=true` 且文件在临时 `HOME`；没有就绪包时 `/update/install` 返回 `started=false` 并拒绝起安装进程。
+- 证据：任务提交 `f07712ea8`；合并 `b49723371`；1 file changed, 254 insertions(+)。
+- 备注：测试不联网、不写真实用户目录；下载成功用例在 darwin/win32 执行，Linux 因无官方安装包自动跳过；本次 macOS 实跑 5/5 通过。
+
+---
+
+## 6. 依赖关系
 
 ```text
 P0-0（台账）
@@ -555,7 +602,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ---
 
-## 6. 进度日志
+## 7. 进度日志
 
 | 日期 | 任务 | 状态变化 | 证据 |
 |---|---|---|---|
@@ -564,12 +611,14 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-26 | P0-2 拓扑 CLI | 待开始 → 已完成 | 提交 `572438ebd`；合并 `3295f4d9b`；表格 + `--json` 均已跑；tsc 0；test:preset 2/2 |
 | 2026-11-26 | P0-4 文档口径对齐 | 待开始 → 已完成 | 提交 `40eae6027`；合并 `9f60d373e`；链接 0 缺失；旧口径关键词无命中；纯文档未跑运行时测试 |
 | 2026-11-26 | P0-3 干净 profile 启动冒烟 | 待开始 → 已完成 | 提交 `81e513db1`；合并 `49b93355d`；smoke 退出 0（8/8 presets，tools 61/61，bound 60）；删 preset 副本 `--check` 退出 1；8792 断言未核验（P1-6） |
+| 2026-11-27 | M-1 应用内更新模块入库 | 新增 → 已完成 | 提交 `7e17ff707`；合并 `cb443286d`；干净 checkout typecheck/build 退出 0；账户测试 48/48 |
+| 2026-11-27 | M-2 应用内更新路由级回归 | 新增 → 已完成 | 提交 `f07712ea8`；合并 `b49723371`；路由测试 5/5；全量账户测试 53/53 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
 ---
 
-## 7. 下一步（按顺序）
+## 8. 下一步（按顺序）
 
 1. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
 2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
