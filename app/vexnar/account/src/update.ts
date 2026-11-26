@@ -91,7 +91,9 @@ export function compareVersions(left: string, right: string): number {
   const b = parseVersion(right)
   if (a === undefined || b === undefined) return 0
   for (let index = 0; index < 3; index += 1) {
-    if (a[index] !== b[index]) return a[index] < b[index] ? -1 : 1
+    const left = a[index] ?? 0
+    const right = b[index] ?? 0
+    if (left !== right) return left < right ? -1 : 1
   }
   return 0
 }

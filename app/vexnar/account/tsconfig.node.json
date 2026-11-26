@@ -18,6 +18,7 @@
     "src/index.ts",
     "src/platform.ts",
     "src/platform-account.ts",
+    "src/update.ts",
     "src/login-page.ts",
     "src/intercept.ts",
     "src/intercept-guard.ts",

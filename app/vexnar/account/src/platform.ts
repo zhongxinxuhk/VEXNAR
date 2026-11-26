@@ -249,7 +249,16 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   loginClient.catch(() => {})
   const account = createPlatformAccount()
   const billing = createBilling(account.read)
-  let ready = false
+  /**
+   * 门禁状态。
+   *
+   * `undefined` = 还没读完第一份账号：这份进程刚起来，没有可依据的登录态，
+   * 一律放行（桌面端在这一瞬间就会建默认工作区，拒了它整页就退回“先选目录”）。
+   * `true` = 登录态有效，`false` = 确定的未登录/已过期——后两种是确定的，
+   * 必须真的关门：只换首页 HTML 而不拦接口，会让已经加载的页面在退出登录后
+   * 继续“看着是登录的”，左下角还隔几秒跳一次“连接成功”。
+   */
+  let ready: boolean | undefined = undefined
   let lastCatalog = ''
   let syncedProviders = new Set<string>()
   let lastState: Account | undefined
@@ -466,9 +475,9 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   const refresh = async () => syncCatalog(await account.read())
 
   // The pinned carrier routes Workspace RPC and stream upgrades through the
-  // same Host admission. Tampering here with a blanket 401 is what turned a
-  // startup race into "workspace create failed … HTTP 401", so the gate now
-  // only observes: the carrier keeps owning cookie/token admission.
+  // same Host admission. Keep the carrier's origin/cookie checks for every route.
+  const startupPaths = new Set(['entry.js', 'ready', 'methods', 'account', 'login/token']
+    .map(path => clientPrefix + '/' + path))
   ctx.effect(() => {
     // cordis 把追踪代理背后的真实服务实例挂在 `Symbol.for('cordis.original')` 上。
     const ORIGINAL: unique symbol = Symbol.for('cordis.original')
@@ -479,17 +488,14 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     const guarded = function (this: ConnectionSlice, request: IncomingMessage): PeerAdmission {
       const result = admit.call(this, request)
       if ('rejection' in result) return result
-      if (!ready) {
-        // 门禁关着时数据面照常交给上游 carrier 判定（它的 cookie/token 校验仍然有效）。
-        // 这里只留一行诊断：以前这一层直接回 401，桌面端在账号还没读完时发出的
-        // `workspace/initializeDefault` 被拒，界面就退回"请先选择工作区"，用户只能
-        // 手动挑目录，而那条创建请求同样 401 —— 与真实原因（没登录）毫无关系的
-        // "无法打开文件夹"。按路径去重，每轮关闭每条路径只报一次。
-        const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
+      const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
+      // 只有“确定关着”才拒。`undefined` 是启动后尚未读完账号的瞬间，放行。
+      if (ready === false && !startupPaths.has(path)) {
         if (!closedNotice.has(path)) {
           closedNotice.add(path)
-          console.warn(`[vexnar] 门禁关着，放行给上游 carrier 判定 ${request.method ?? '?'} ${path}`)
+          console.warn(`[vexnar] 门禁拒绝 ${request.method ?? '?'} ${path}（未登录或登录已过期）`)
         }
+        return { rejection: 401 }
       }
       const socket = request.socket
       if (request.headers.upgrade?.toLowerCase() === 'websocket' && socket && !activeSockets.has(socket)) {
@@ -510,7 +516,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   })
 
   // 未登录时整个工作区换成登录页：没有半登录状态，也没有"能动但全是空数据"的控制台。
-  ctx.effect(() => ctx.webServer.tapIndex(html => ready
+  ctx.effect(() => ctx.webServer.tapIndex(html => ready === true
     ? html.replace('</head>', workspaceSessionScript + '</head>')
     : loginPage(platformOrigin())))
 
@@ -590,7 +596,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
     }))
   }
 
-  route('/ready', { GET: () => ({ ready }) })
+  route('/ready', { GET: () => ({ ready: ready === true }) })
   route('/methods', { GET: () => account.methods() })
   // 设置页「关于与更新」：版本号在宿主机侧读（打包时写进应用的构建版本），
   // 在线更新在宿主机侧查 GitHub——渲染进程里直接跨域请求 api.github.com 既多一份
@@ -606,7 +612,7 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
   })
   route('/account', {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
-    GET: () => ready ? account.status() : refresh(),
+    GET: () => ready === true ? account.status() : refresh(),
     PATCH: async (req) => {
       const input = await readJson(req)
       return account.renewWithToken(bodyText(input, 'access_token'))
@@ -708,5 +714,5 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
       void clearModelChannel().catch(() => {})
     }
   })
-  return () => ready
+  return () => ready === true
 }
