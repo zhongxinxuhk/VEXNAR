@@ -23,14 +23,19 @@ app/                          # WebStorm 工程根（项目名 app）
 ├─ package.json               # pnpm scripts：setup / web / desktop / build / typecheck
 ├─ .idea/runConfigurations/   # npm 类型运行配置，package manager=pnpm（无 shell）
 ├─ dsh/                       # 上游源码（gitignored，fetch-dsh.sh 拉取）
-├─ scripts/                   # 全部 .ts，由 tsx 执行
+├─ scripts/                   # TypeScript 为主；构建/打包辅助含 .mjs/.sh
 │  ├─ fetch-dsh.sh            # 固定 tag 拉取/校验上游
 │  ├─ vexnar.ts               # VEXNAR CLI
 │  ├─ vexnar-runtime.ts       # 解析独立运行时与设置
 │  ├─ vexnar-web.ts           # web 启动器（隔离 home / 端口 3099）
-│  ├─ vexnar-desktop.ts       # 桌面启动器（Electron 主进程）
+│  ├─ vexnar-desktop.ts       # 源码桌面启动器（Electron 主进程）
 │  ├─ setup-app-profile.ts    # 安装 VEXNAR bundle 和客户端插件
 │  └─ ide-mcp.ts              # JetBrains IDE MCP 直连客户端
+├─ desktop/                   # 打包桌面壳：Electron 主进程 + build.mjs
+├─ vexnar-core/               # 默认数据面：路由 / store / 引擎 / 任务队列
+├─ vexnar-store/              # SQLite / JSON / PG store
+├─ vexnar-web/                # 会话感知 HTTP 引擎
+├─ vexnar-egress/             # 出口工具插件
 ├─ vexnar-mcp/                # @vexnar/dsh-vexnar-mcp：MCP 注册插件（index.ts → index.js）
 └─ vexnar/
    ├─ cordis.patch.yml        # provider + MCP + 品牌/账户的 profile 覆盖层
@@ -42,9 +47,10 @@ app/                          # WebStorm 工程根（项目名 app）
    │  └─ lib/                 # 构建产物（宿主模块 + client.js + core-embedded.js）
 ```
 
-## 语言与构建：全员 TypeScript
+## 语言与构建：运行时与插件用 TypeScript
 
-`app/` 下不再有手写的 `.js` / `.mjs`：脚本、测试、插件源码、构建脚本都是 TypeScript。
+默认运行时代码、插件源码、测试与构建脚本以 TypeScript 为主；仓库仍保留少量打包/启动辅助的
+`.mjs` / `.js`（如 `scripts/*.mjs`、`app/desktop/vexnar-bootstrap.js`），它们不构成第二套运行时。
 
 | 位置 | 怎么执行 | 为什么 |
 |---|---|---|
@@ -53,8 +59,8 @@ app/                          # WebStorm 工程根（项目名 app）
 | `vexnar/{ui,account}/src/*.ts`（宿主半边）、`vexnar-mcp/index.ts` | `pnpm run build` 生成 `lib/*.js` / `index.js` 后由 dsh 加载 | dsh 从 profile 的 `node_modules` 里 import 插件；Node 对 `node_modules` **不擦类型**（`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`），所以入口必须是真 JS |
 | `website/`（见 `website/`） | `vite` / `node --test` / `node scripts/prerender.ts` | vite 自己处理 TS；prerender 与测试用 Node 原生擦类型 |
 
-`pnpm run typecheck` 检查 `@vexnar/dsh-ui`、`@vexnar/dsh-account`、`@vexnar/dsh-egress` 和 `@vexnar/core`。
-启动脚本可单独运行 `pnpm exec tsc -p scripts/tsconfig.json` 检查。
+`pnpm run typecheck` 检查 `@vexnar/dsh-ui`、`@vexnar/dsh-account`、`@vexnar/dsh-egress`、`@vexnar/core` 和 `@vexnar/web`。
+启动脚本可用单文件 `pnpm exec tsc --noEmit ... <file>` 检查；全量 `scripts/tsconfig.json` 还包含测试文件，当前不作为门禁。
 
 ## 包管理器：只用 pnpm
 
@@ -299,7 +305,7 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 | `pnpm install` | `app/` | — | 全 workspace 一次装完，先跑这个 |
 | `VEXNAR Web` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_HOME=app/.vexnar-home` |
 | `VEXNAR Desktop` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
-| `Plugin bundles build` | `app/package.json` | `build` | 产出 ui + account 两个 `lib/client.js` |
+| `Plugin bundles build` | `app/package.json` | `build` | 产出 ui / account / egress 的构建物与内嵌 core |
 | `UI cards build` | `app/package.json` | `ui:build` | 只重建卡片 bundle |
 | `Setup app profile` | `app/package.json` | `setup` | 安装 UI/账户插件并写 profile patch |
 | `Upstream check` | `app/package.json` | `upstream:check` | 上游边界 + 包管理器边界断言 |
@@ -307,7 +313,7 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 启动器自动注入：`data/mcp.token` → `VEXNAR_MCP_TOKEN`，`data/desktop.token`（缺省
 `devtoken`）→ `VEXNAR_DESKTOP_TOKEN`。
 
-首次顺序：`Setup app profile` → 启 Go（`VEXNAR_DESKTOP_TOKEN=devtoken`）→ `VEXNAR Web`。
+首次顺序：`Setup app profile` → `VEXNAR Web`（默认 SQLite，不需要 Go；只有 `VEXNAR_RUNTIME_MODE=go` 才需要先启 Go）。
 
 ## IDE MCP
 
@@ -330,9 +336,11 @@ WebStorm 的 MCP 端点（`127.0.0.1:64542/stream`，项目路径 `app`）不在
 
 ## 边界
 
-- 不把 Go 的会话/任务真相复制到 dsh：dsh session 是客户端本地状态，任务、漏洞、
-  流量、资产以 Go 的 PostgreSQL 为准。
-- 不在 app 里另建模型目录：模型来自 `GET /api/desktop/openai/v1/models`。
+- 不把 Go 的会话/任务真相复制到 dsh：dsh session 是客户端本地状态；默认任务、漏洞、
+  流量、资产以 `vexnar-core` 的 SQLite 为准，Go/PostgreSQL 只在回退模式或历史归档里使用，
+  不能把两边同时当成权威。
+- 模型目录与推理在 dsh 进程内：账号插件写 provider catalog 并注册 `setModelCompletion`；
+  不新增模型网关、loopback OpenAI 端点或第二套模型目录。
 - 上游 `dsh/` 保持 MIT 原样；本目录 VEXNAR 自写文件带 AGPL 头。
 
 ## GitHub Actions 编译

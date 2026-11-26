@@ -12,7 +12,7 @@
 
 **AI 自主渗透测试系统** · LLM 多 Agent 驱动的攻击面探索与漏洞验证
 
-<sub>Go 单体后端 · PostgreSQL 双图 · Next.js Web 控制台 · TypeScript 客户端控制台</sub>
+<sub>默认：dsh + TypeScript 核心（SQLite） · 回退：Go 单体 + PostgreSQL · Go 控制台：Next.js · 桌面壳：Electron（app/）</sub>
 
 <br />
 
@@ -27,6 +27,9 @@
 [项目仓库](https://github.com/zhongxinxuhk/VEXNAR) · [快速安装](#安装) · [截图预览](#截图预览) · [技术架构](#系统技术架构)
 
 </div>
+
+> **运行栈现状（2026-11-26）**：默认入口是 `app/` 的 dsh + `vexnar-core`（TypeScript / SQLite）。
+> Go 单体 + PostgreSQL 与 `web/` Next.js 控制台是回退/兼容栈；两条栈共享领域模型，但默认数据面不是 Go/PostgreSQL。
 
 ---
 
@@ -237,7 +240,17 @@ flowchart LR
 
 ## 安装
 
-> 依赖数据库 **PostgreSQL**；探索需配置 **LLM**（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`，也可在 UI 里配）。
+默认客户端是 `app/` 工作区（dsh + TypeScript 核心，SQLite），不需要 PostgreSQL：
+
+```sh
+cd app
+pnpm install
+pnpm run build
+pnpm run setup
+pnpm run web        # 或 pnpm run desktop
+```
+
+> 下面方式一至五安装的是 **Go 单体回退栈**与 `web/` Next.js 控制台：依赖 **PostgreSQL**；探索需配置 **LLM**（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`，也可在 UI 里配）。
 
 ### 方式一：一键安装脚本（推荐）
 
@@ -443,16 +456,19 @@ server {
   它的数据面默认由 `vexnar-core` 原生回答，`VEXNAR_RUNTIME_MODE=go` 时才回退给 Go 服务。
 - **Go Web 控制台 `web/`**：可独立部署，或由 Go 以 `-tags embedui` 内嵌成单二进制界面。
 
-原 Electron 客户端（`apps/desktop`）与旧 Tauri 壳（`desktop/`）已于 2026-11-21 移除。
+旧 Electron 客户端（`apps/desktop`）与旧 Tauri 壳（`desktop/`）已于 2026-11-21 移除；
+当前桌面壳是 `app/desktop`，由 `pnpm run desktop` 启动，围绕本机 dsh web 进程开窗，不是旧客户端的恢复。
 
-Go 服务仍是长期的数据面后端，对外提供两类接口：
+默认数据面由 `vexnar-core` 回答；Go 服务是回退数据面与兼容工具后端，仅在显式 Go 模式
+（`VEXNAR_RUNTIME_MODE=go`）或部署 Go/`web/` 控制台时接管领域 API，对外提供两类接口：
 
 - **MCP Server**（`/mcp`，Streamable HTTP）：任务、漏洞、流量、资产、报告、技能等领域工具。
 - **模型访问不在 Go 服务里**：供应商目录与密钥留在 dsh 进程，账户插件通过 `setModelCompletion`
   注册一个**进程内**函数，推理不开第二个监听。旧 `/api/desktop/*` 只作为外部客户端的兼容面保留
   （仅 loopback + token，未设 token 时关闭）。
 
-客户端打包、签名与自动更新的产物不属于本仓库的发布内容；仓库只保留源码与构建脚本。
+旧客户端产物不再发布；当前 `app/desktop` 桌面壳的源码、构建与打包脚本仍在本仓库
+（`pnpm run desktop:build` / `desktop:package`），发布渠道按 App 预发行版处理。
 
 ### 手动漏洞复测
 
@@ -479,7 +495,11 @@ Go 服务仍是长期的数据面后端，对外提供两类接口：
 
 ## 系统技术架构
 
-VEXNAR 是一套 **LLM 多 agent 驱动的自主渗透系统**：Go 单体后端（内嵌 Next.js 前端）+ PostgreSQL，agent 能力由 [`norma`](https://github.com/Autumn-27/norma) SDK 提供（`agentcore` / `tool` / `permission` / `harness` / `memory` / `transcript`）。核心是**双图架构**，以及围绕它的两条自主性机制：**worker 间过程级信息交换**与 **planner 多轮共享 todolist 稳定攻击链路**。
+> **本节描述 Go 回退栈。** 默认运行栈（`app/` 的 dsh + `vexnar-core`）见 [客户端控制台](#客户端控制台)
+> 与 [app/README](app/README.md)；只有 `VEXNAR_RUNTIME_MODE=go` 或部署 Go/`web/` 控制台时，
+> 下面这套 Go + PostgreSQL 才是活动数据面。
+
+在 Go 回退栈中，VEXNAR 是一套 **LLM 多 agent 驱动的自主渗透系统**：Go 单体后端（内嵌 Next.js 前端）+ PostgreSQL，agent 能力由 [`norma`](https://github.com/Autumn-27/norma) SDK 提供（`agentcore` / `tool` / `permission` / `harness` / `memory` / `transcript`）。核心是**双图架构**，以及围绕它的两条自主性机制：**worker 间过程级信息交换**与 **planner 多轮共享 todolist 稳定攻击链路**。
 
 ### 总体分层
 

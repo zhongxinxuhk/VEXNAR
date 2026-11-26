@@ -1,5 +1,8 @@
 # VEXNAR Harness 重构评估报告
 
+> **执行状态看台账**：本报告是 2026-11-23 的审计/评估快照，不记录任务完成状态；
+> 当前进度、证据与下一步以 [`harness-refactor-tasks.md`](./harness-refactor-tasks.md) 为准。
+
 > 设计台账：2026-11-23 · v1 · 轨道=重构 · 审计材料=`app/vexnar-core`（23.6k 行）+ `app/vexnar-store`（4.4k 行）+ `app/vexnar-egress` + `app/vexnar/{account,ui}` + `app/vexnar/cordis.patch.yml` + 仓库根 Go 侧（`agent/`·`server/`·`traffic/`·`db/`）+ 运行数据快照（`.vexnar-home/vexnar/store/vexnar.sqlite`、`data/traffic/_index/index.sqlite`、`profiles/vexnar/package.json`）· 独立评审 **存疑 9 项已全部回修（1 项经复核为评审误读，补全路径消歧）**
 >
 > 审计范围按需求方提问收敛为一条业务链：**会话 → 调用抓包 → 代理池通过 → 漏洞复测 → 落库**。六层其余部分只记录与这条链相关的现状。
