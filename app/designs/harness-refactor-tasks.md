@@ -89,10 +89,10 @@ dsh agent loop（唯一循环）
 | D1 | 唯一 agent 循环归谁 | A. dsh 唯一循环；B. core engine 为自主执行器、dsh 只做 UI | **A**：core engine 降为确定性工具执行器，触发器/定时任务改成创建 dsh 会话 | 待拍板 | P4 全部 |
 | D2 | `web/` Next 控制台去留 | A. 保留并继续维护；B. 冻结只读；C. 删除 | **B**：先冻结，禁止新功能；等 P5 再决定删除 | 待拍板 | P5-3 |
 | D3 | Go 服务终局 | A. 只读归档保留一个版本周期；B. P3 后彻底移除 | **A**：先只读，P5 再评估移除 | 待拍板 | P3-3、P3-4 |
-| D4 | 领域工具面形态 | A. `ctx.tools.register` 进程内注册；B. 保留一个 HTTP MCP；C. 继续多 MCP | **A**：符合 `AGENTS.md` 单端口约束，复用 `vexnarCore.request` | 待拍板 | P1 全部 |
+| D4 | 领域工具面形态 | A. `ctx.tools.register` 进程内注册；B. 保留一个 HTTP MCP；C. 继续多 MCP | **A**：符合 `AGENTS.md` 单端口约束，复用 `vexnarCore.request` | 已拍板（A） | P1 全部 |
 | D5 | 唯一写库 | A. SQLite 单写；B. PG 单写；C. 继续双写 | **A**：与 `STORAGE-ARCHITECTURE.md` 的 M4 方向一致 | 待拍板 | P3 全部 |
 
-> 决策没有落定之前，P1/P3/P4/P5 的实现任务不启动；P0 可观测性不受决策影响，先做。
+> D4 于 2026-11-27 拍板选 A：领域工具面用 `ctx.tools.register` 进程内注册，经 `vexnarCore.request` 直连 core，不再保留第二个 MCP 端口。P1-1 已按此落地。D1/D2/D3/D5 未落定前，P3/P4/P5 的实现任务不启动；P0 可观测性不受决策影响，先做。
 
 ---
 
@@ -194,19 +194,27 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[ ] 待开始`（依赖 D4）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1 完成，P1-2～P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
-- 状态：`[ ] 待开始`
+- 状态：`[x] 已完成`
 - 分支：`refactor/harness-tool-plane`
 - 动作：
   1. 新增 `app/vexnar-tools/`：`package.json`、`index.ts`、`build.ts`、`tsconfig.json`。
   2. `inject: ['tools', 'vexnarCore']`；实现 `registerTool(name, description, schema, handler)`。
   3. 构建产物 `index.js`，由 profile 以 `file:` 依赖加载。
   4. 加入 `app/pnpm-workspace.yaml`、`app/package.json` 的 build/typecheck 链。
-- 验收：`pnpm --filter @vexnar/dsh-tools run build` 生成 `index.js`；`pnpm typecheck` 覆盖该包。
-- 依赖：D4 = A。
+- 验收：
+  - `pnpm --filter @vexnar/dsh-tools run build` → `built @vexnar/dsh-tools -> index.js`，退出码 0。
+  - `pnpm typecheck` → 6 个包（ui/account/egress/tools/core/web）全部退出码 0。
+  - `pnpm run build` → tools/egress/ui/account 与 core embedded 均重建成功。
+  - `pnpm run check:artifacts` → `4 个 bundle / 23 个文件`，退出码 0。
+  - 临时 `VEXNAR_HOME` 执行 `setup-app-profile.ts` → 退出码 0；profile 依赖为 `@vexnar/dsh-tools file:/…/app/vexnar-tools`，`node_modules/@vexnar/dsh-tools/index.js` 存在，`cordis.patch.yml` 已含 `vexnar-tools` 行。
+  - `./node_modules/.bin/tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，退出码 0。
+  - `pnpm run test:preset` → `tests 2 / pass 2 / fail 0`；`plugin inventory: 13 checks passed`。
+- 证据：任务提交 `3f00328a8`；合并 `c4d3a898b`；18 files changed, 238 insertions(+), 16 deletions(-)。
+- 备注：P1-1 只落插件入口、`tools`/`vexnarCore` 注入、`registerTool` 助手和 profile 装载；`apply` 暂不注册领域工具，P1-2 起接入。dsh 会话内的实际工具调用未核验，留给 P1-2/P1-7。
 - 风险：dsh 从 `node_modules` 加载插件，入口必须是真 JS；构建脚本要像 `vexnar-egress/build.ts` 一样稳定。
 
 #### P1-2 只读流量三件套
@@ -613,6 +621,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-26 | P0-3 干净 profile 启动冒烟 | 待开始 → 已完成 | 提交 `81e513db1`；合并 `49b93355d`；smoke 退出 0（8/8 presets，tools 61/61，bound 60）；删 preset 副本 `--check` 退出 1；8792 断言未核验（P1-6） |
 | 2026-11-27 | M-1 应用内更新模块入库 | 新增 → 已完成 | 提交 `7e17ff707`；合并 `cb443286d`；干净 checkout typecheck/build 退出 0；账户测试 48/48 |
 | 2026-11-27 | M-2 应用内更新路由级回归 | 新增 → 已完成 | 提交 `f07712ea8`；合并 `b49723371`；路由测试 5/5；全量账户测试 53/53 |
+| 2026-11-27 | D4 领域工具面形态 | 待拍板 → 已拍板（A） | 选 `ctx.tools.register` 进程内注册；经 `vexnarCore.request` 直连 core；无第二 MCP 端口 |
+| 2026-11-27 | P1-1 `@vexnar/dsh-tools` 骨架 | 待开始 → 已完成 | 提交 `3f00328a8`；合并 `c4d3a898b`；包 build/全量 typecheck 0；产物 4/23；smoke 8 presets、tools 61/61 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -620,8 +630,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
+1. **P1-2**：在已落地的 `@vexnar/dsh-tools` 骨架上注册只读流量三件套；先核对 `/api/traffic` 的过滤字段。
 2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
-**当前阻塞**：D1-D5 需要拍板；P1 实现不能先于 D4，P3 不能先于 D5，P4 不能先于 D1。
+**当前阻塞**：D1/D2/D3/D5 需要拍板；P1 已按 D4=A 启动，P3 不能先于 D5，P4 不能先于 D1。
