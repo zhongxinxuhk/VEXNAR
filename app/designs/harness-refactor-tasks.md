@@ -101,7 +101,7 @@ dsh agent loop（唯一循环）
 ### P0 可观测性：先让“当前 harness 是什么”可回答
 
 **阶段目标**：不靠读代码和猜，能用一个接口/命令列出：模式、存储路径、agent 名册、工具数、MCP server、监听端口、profile bundle。  
-**阶段状态**：`[~] 进行中`（P0-0 完成，P0-1 待开始）
+**阶段状态**：`[~] 进行中`（P0-0、P0-1 完成，P0-2 待开始）
 
 #### P0-0 建立台账与基线快照
 
@@ -114,18 +114,24 @@ dsh agent loop（唯一循环）
 
 #### P0-1 `GET /api/_topology`
 
-- 状态：`[ ] 待开始`
+- 状态：`[x] 已完成`
 - 分支：`refactor/harness-observability`
 - 动作：
   1. 新增 `app/vexnar-core/src/topology.ts`，聚合 `runtimeInfo()`、`storeRoot()`、`meta` 中的 `agents/tools/mcp/settings`、Web 引擎配置、`VEXNAR_*` 模式开关。
   2. 在 `app/vexnar-core/src/routes.ts` 注册 `GET /api/_topology`，只读，不启动 Web 引擎、不触发后台循环。
   3. 输出稳定 JSON：`{ runtime, store, agents, tools, mcp, web, listeners, env }`，字段顺序固定，便于快照测试。
 - 验收：
-  - `curl -s http://127.0.0.1:8790/api/_topology | jq .` 返回上述字段。
-  - 新增 `topology.test.ts`：临时 `VEXNAR_HOME` 下断言 agent 数、工具数、mcp server 名、store 路径。
-  - `pnpm --filter @vexnar/core run typecheck` 退出码 0。
+  - `curl -s http://127.0.0.1:8790/api/_topology | jq .` 返回上述字段。**未核验**：未启动常驻 core（避免占用 8792），改由路由层断言覆盖。
+  - 新增 `topology.test.ts`：临时 `VEXNAR_HOME` 下断言 agent 数、工具数、mcp server 名、store 路径。已执行。
+  - `pnpm --filter @vexnar/core run typecheck` 退出码 0。已执行。
+- 证据：
+  - 分支 `refactor/harness-observability`；提交 `42a55ee2c`；合并 `121034d04`。
+  - `./node_modules/.bin/tsx --test topology.test.ts` → `topology.test.ts: 18 assertions passed`（含 `api.request('/api/_topology')` 返回 200、字段与 token 排除断言）。
+  - `pnpm --filter @vexnar/core run typecheck` → 退出码 0。
+  - `pnpm --filter @vexnar/core run test` → `tests 29` / `pass 29` / `fail 0`。首次运行缺 `account/lib` 与 `core-embedded.js`，执行 `pnpm run build` 后全绿；与本次改动无关。
 - 依赖：无。
 - 风险：不要在 `/api/_topology` 里调用 `webRuntime()`，否则会把 8792 端口拉起来，违背“只读”语义。
+- 备注：接口只读 meta 与环境，不启动 Web 引擎、不开监听；`env` 不含 token / DSN。
 
 #### P0-2 拓扑 CLI
 
@@ -532,7 +538,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 日期 | 任务 | 状态变化 | 证据 |
 |---|---|---|---|
 | 2026-11-26 | P0-0 建立台账 | 待开始 → 已完成 | 本文件；提交 `db561a499`；合并 `b7d01816d` |
-| 2026-11-26 | P0-1 `/api/_topology` | 未开始 | 下一步 |
+| 2026-11-26 | P0-1 `/api/_topology` | 待开始 → 已完成 | 提交 `42a55ee2c`；合并 `121034d04`；core 测试 29/29；curl 未核验（未起常驻进程） |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -540,8 +546,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 7. 下一步（按顺序）
 
-1. **P0-1**：先加 `/api/_topology`，让当前组合面可观测；这是后续所有验收的底座。
-2. **P0-2**：拓扑 CLI，开发/排查时不用手写 sqlite 查询。
+1. **P0-2**：拓扑 CLI，开发/排查时不用手写 sqlite 查询。
+2. **P0-3**：干净 profile 启动冒烟（“无 8792”断言待 P1-6 后补）。
 3. **P1-1**：等 D4 确认后，建 `@vexnar/dsh-tools`，先落只读三件套。
 4. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 
