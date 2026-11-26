@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * 登录门禁的两条边界。
+ * 登录门禁的三条边界。
  *
- * 1. 门禁关着时，`/api/*` 会被 `connection.admit` 拒成 401——这正是界面上
- *    「workspace create failed: … transport failure for /api/workspace/create: HTTP 401」
- *    的来源。登录用的启动路径必须仍然放行，否则页面连「登录过期」都问不到。
+ * 1. 门禁不再改写 `connection.admit`：以前门禁关着时把 `/api/*` 一律拒成 401，
+ *    桌面端在账号还没读完时发出的 `workspace/initializeDefault` 被拒，界面就退回
+ *    「请先选择工作区」，用户手动挑目录时同一个 401 又变成「无法打开文件夹」。
+ *    认证继续由上游 carrier 的 cookie/token 负责，门禁只负责换掉首页 HTML。
  * 2. 账号文件读不到或读坏时不能当成退出登录：空账号会把提供方与密钥清掉，
  *    并把已经打开的工作区变成「每个动作都 401」的僵尸页面。
+ * 3. 门禁一打开就在进程内把默认工作区建好，页面不必先让用户选目录。
  */
 import assert from 'node:assert/strict'
 import { mkdtemp, writeFile } from 'node:fs/promises'
@@ -71,6 +73,8 @@ const unreadable = {
 } as unknown as AccountShape
 
 const disposers: Array<() => void> = []
+const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+const invokes: Array<{ namespace: string; method: string }> = []
 let home = ''
 let admit: ((request: unknown) => { peer?: unknown; rejection?: number }) | undefined
 
@@ -98,9 +102,17 @@ before(async () => {
       currentSelection: () => ({ provider: 'vexnar', model: 'deepsec-flash' }),
       async saveSelection() {}
     },
-    typertGateway: { async invoke() { return {} } },
+    typertGateway: {
+      async invoke(request: { namespace: string; method: string }) {
+        invokes.push({ namespace: request.namespace, method: request.method })
+        return { workspace: { workspaceId: 'default' } }
+      }
+    },
     webServer: {
-      register() { return () => {} },
+      register(route: { path: string; handler: (req: unknown, res: unknown) => unknown }) {
+        routes.set(route.path, route.handler)
+        return () => {}
+      },
       tapIndex() { return () => {} }
     }
   }
@@ -121,14 +133,41 @@ const request = (url: string, method = 'POST'): Record<string, unknown> => ({
   socket: { remoteAddress: '127.0.0.1' }
 })
 
-test('未登录时 /api/* 被门禁拒成 401，登录路径仍放行', () => {
-  assert.ok(admit, 'installPlatform 应当替换 connection.admit')
-  // 没有账号文件：门禁是关的，工作区 RPC 一律 401（客户端把它显示成 transport failure）。
-  assert.deepEqual(admit(request('/api/workspace/create')), { rejection: 401 })
-  assert.deepEqual(admit(request('/api/session/create')), { rejection: 401 })
-  // 登录页自己的入口不能被自己的门禁挡住，否则「登录已过期」都问不出来。
+/** 调一条插件自己注册的 JSON 路由，返回解析后的正文。 */
+async function callRoute(path: string, method = 'GET'): Promise<Record<string, unknown>> {
+  const handler = routes.get(path)
+  assert.ok(handler, `缺少路由 ${path}`)
+  return await new Promise((resolve, reject) => {
+    const res = {
+      status: 0,
+      writeHead(status: number) { this.status = status; return this },
+      end(body?: string) {
+        try { resolve(body === undefined ? {} : JSON.parse(body) as Record<string, unknown>) }
+        catch (error) { reject(error as Error) }
+      }
+    }
+    Promise.resolve(handler({ url: path, method, headers: {}, socket: { remoteAddress: '127.0.0.1' } }, res))
+      .catch(reject)
+  })
+}
+
+test('门禁关着时也不再把 /api/* 拒成 401', () => {
+  assert.ok(admit, 'installPlatform 应当保留 connection.admit 的包装')
+  // 没有账号文件：上一层的判定必须是"没有拒绝"，否则桌面端建默认工作区时只会
+  // 拿到一个与真实原因无关的 401。
+  assert.equal(admit(request('/api/workspace/create')).rejection, undefined)
+  assert.equal(admit(request('/api/session/create')).rejection, undefined)
   assert.equal(admit(request('/vexnar-api/platform/ready', 'GET')).rejection, undefined)
-  assert.equal(admit(request('/vexnar-api/platform/entry.js', 'GET')).rejection, undefined)
+})
+
+test('账号有效时在进程内预建默认工作区', async () => {
+  invokes.length = 0
+  await writeFile(join(home, 'vexnar-account.json'), JSON.stringify(signedIn()), 'utf8')
+  // 读一次账号即触发目录同步与门禁打开；页面来问的时候默认工作区应当已经建好。
+  await callRoute('/vexnar-api/platform/account')
+  const bootstrapped = invokes.filter(entry =>
+    entry.namespace === 'workspace' && entry.method === 'initializeDefault')
+  assert.equal(bootstrapped.length, 1, '门禁打开后应当调用一次 workspace/initializeDefault')
 })
 
 test('账号文件读坏按读失败处理，不当成退出登录', () => {
