@@ -20,6 +20,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Socket } from 'node:net'
 import { loginPage, workspaceSessionScript } from './login-page.js'
 import { createBilling } from './billing.js'
+import { checkForUpdate, currentVersion, resetUpdateCache } from './update.js'
 import { createModelCompletion } from './model-channel.js'
 import {
   catalog,
@@ -591,6 +592,18 @@ export function installPlatform(ctx: PlatformContext): () => boolean {
 
   route('/ready', { GET: () => ({ ready }) })
   route('/methods', { GET: () => account.methods() })
+  // 设置页「关于与更新」：版本号在宿主机侧读（打包时写进应用的构建版本），
+  // 在线更新在宿主机侧查 GitHub——渲染进程里直接跨域请求 api.github.com 既多一份
+  // CORS 依赖，也会把 token 选起的代理环境暴露给页面。
+  route('/update/info', {
+    GET: () => ({ version: currentVersion(), platform: `${process.platform}-${process.arch}` })
+  })
+  route('/update/check', {
+    GET: async (req) => {
+      if (new URL(req.url ?? '/', 'http://127.0.0.1').searchParams.get('refresh') === '1') resetUpdateCache()
+      return await checkForUpdate()
+    }
+  })
   route('/account', {
     // 打开设置时读取已保存的账户视图，凭据和模型配置由后台同步及写操作维护。
     GET: () => ready ? account.status() : refresh(),

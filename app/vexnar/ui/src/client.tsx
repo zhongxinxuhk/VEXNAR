@@ -1066,6 +1066,76 @@ function TasksPanel() {
       : h(FindingsTab, { scope, onScope: setScope, onOpen: setFindingID }))
 }
 
+/**
+ * 设置最下面那一节：版本号与在线更新。
+ *
+ * 版本号不在前端猜：宿主机侧读打包时写进应用的 `DSH_CLIENT_VERSION`（开发模式是
+ * `dev`）。在线更新也只做「查 GitHub 正式发行版 + 给直链」——安装包是未签名的
+ * exe/dmg，自己替换正在运行的程序在 Windows 上会被文件锁挡住，在 macOS 上会破坏
+ * 包签名，交给系统下载更靠谱。
+ */
+function AboutSettings() {
+  const [info, setInfo] = useState<{ version: string; platform: string } | null>(null)
+  const [check, setCheck] = useState<Record<string, any> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    void callApi('/platform/update/info')
+      .then((value) => { if (alive) setInfo(value as { version: string; platform: string }) })
+      .catch((reason: unknown) => { if (alive) setError(reason instanceof Error ? reason.message : String(reason)) })
+    return () => { alive = false }
+  }, [])
+
+  const run = useCallback(async () => {
+    setBusy(true)
+    setError('')
+    try {
+      setCheck(await callApi('/platform/update/check?refresh=1') as Record<string, any>)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
+  const published = typeof check?.publishedAt === 'string' ? new Date(check.publishedAt) : null
+  const size = typeof check?.asset?.size === 'number' && check.asset.size > 0
+    ? `${(check.asset.size / 1024 / 1024).toFixed(0)} MB` : ''
+
+  return h(PanelShell, { title: '关于与更新', desc: '版本号与 GitHub 正式发行版' },
+    h('div', { className: 'vx-card' },
+      h('div', { className: 'vx-head' }, h('span', { className: 'vx-title' }, '当前版本')),
+      h('div', { className: 'vx-ui-statusline' }, info === null ? '读取中…' : `VEXNAR Harness ${info.version}`),
+      info === null ? null : h('div', { className: 'vx-meta vx-meta--faint' }, info.platform)),
+    h('div', { className: 'vx-card' },
+      h('div', { className: 'vx-head' },
+        h('span', { className: 'vx-title' }, '在线更新'),
+        h('button', { type: 'button', onClick: () => void run(), 'aria-busy': busy }, busy ? '检查中…' : '检查更新')),
+      check === null
+        ? h('div', { className: 'vx-ui-statusline' }, '点「检查更新」从 GitHub 取最新正式发行版。')
+        : h('div', null,
+          h('div', { className: 'vx-ui-statusline' },
+            check.error !== undefined ? String(check.error)
+              : check.latest === null ? 'GitHub 上还没有正式发行版'
+                : check.available ? `有新版本 ${check.latest}`
+                  // 构建版本（`0.2.2-rc.5.test.<日期>.<序号>`）与发行版号不同源，不能直接比大小；
+                  // 没把握时只说「最新发行版是哪个」，不谎报「已是最新」。
+                  : `最新正式发行版 ${check.latest}`),
+          published === null ? null : h('div', { className: 'vx-meta vx-meta--faint' },
+            `发布于 ${published.toLocaleString()}`),
+          check.asset === null ? null : h('div', null,
+            size === '' ? null : h('div', { className: 'vx-meta vx-meta--faint' }, `${check.asset.name} · ${size}`),
+            h('button', {
+              type: 'button',
+              onClick: () => { window.open(String(check.asset.url), '_blank', 'noopener') }
+            }, '下载安装包')),
+          check.tag === null ? null : h('div', { className: 'vx-meta vx-meta--faint' },
+            h('a', { href: String(check.page), target: '_blank', rel: 'noreferrer noopener' }, `查看 ${check.tag} 发行说明`)))),
+    error === '' ? null : h('div', { className: 'vx-failed' }, error))
+}
+
 function NotifySettings() {
   return h(PanelShell, { title: '通知推送', desc: '渠道与投递' }, h(NotifyPage))
 }
@@ -1087,7 +1157,9 @@ const PANELS = [
 // 的「设置 → Agent 预设」一处；再开一节 VEXNAR 的 Agent 管理就是第二份真相。
 const SETTINGS = [
   { id: 'vexnar-notify', label: '通知推送', order: 43, component: NotifySettings },
-  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings }
+  { id: 'vexnar-intercept', label: '拦截规则', order: 44, component: InterceptSettings },
+  // 放最后：这是「关于」，不是日常要改的设置。
+  { id: 'vexnar-about', label: '关于与更新', order: 90, component: AboutSettings }
 ]
 
 /**

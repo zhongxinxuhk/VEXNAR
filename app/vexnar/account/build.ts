@@ -39,6 +39,7 @@ const hostEntries = [
   'intercept-guard',
   'platform',
   'platform-account',
+  'update',
   'login-page',
   'login-client',
   'model-channel',
