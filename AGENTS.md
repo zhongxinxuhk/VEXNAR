@@ -93,8 +93,9 @@ service keeps the domain API and MCP tools; it is not a model relay.
 
 ## One port per process
 
-VEXNAR is one dsh process plus one Go service. Every extra listener is another thing to firewall,
-another token to leak, and another port a user has to reason about.
+VEXNAR runs as one dsh process; when the Go fallback is enabled it adds exactly one Go service.
+Every extra listener is another thing to firewall, another token to leak, and another port a user
+has to reason about.
 
 - Allowed listeners: the dsh web server the user started (`127.0.0.1:<its port>`) and the Go service
   on its own configured address. Nothing else.
@@ -121,24 +122,27 @@ triggers, auth and the model channel live in one process.
   `./node_modules/.bin/tsx --test <file>.test.ts` (plain `node` cannot resolve the store's `.ts`
   imports).
 
-## Clients are external agents; the Go service is their tool backend
+## Clients: dsh is the host; Go is the fallback backend
 
-This repository no longer ships a first-party desktop client. The Electron client under
-`apps/desktop` and the legacy Tauri shell under `desktop/` were removed on 2026-11-21; the app is
-being rebuilt on an external agent framework in its own repository.
+The default client path is the in-repo dsh workspace (`app/`): `vexnar-core` answers the
+data-plane routes, SQLite is the default store, and the dsh web server hosts the UI. `app/desktop`
+is the current Electron shell around that same local dsh process. The old first-party client trees
+(`apps/desktop`, `desktop/`) were removed on 2026-11-21; do not restore them or treat them as the
+current desktop path.
 
-- The Go service is the durable product: task engine, findings, traffic evidence, assets,
-  reports and conversation storage live here.
-- Clients consume it through one surface: the MCP server (tools and domain data). Model access is
-  not part of that surface inside this product — the dsh process owns it (see above). UI-only
-  state belongs to the client.
-- Do not add a feature that only exists in a client while the Go service has no equivalent tool,
-  API, persistence or test coverage.
+- The Go service remains the fallback data/tool backend: task engine, findings, traffic evidence,
+  assets, reports and conversation storage are still available there for `VEXNAR_RUNTIME_MODE=go`
+  and for the Go/`web/` console deployment.
+- Default clients consume `vexnar-core` routes; in Go mode they can consume the Go MCP server
+  (`/mcp`, tools and domain data). Model access is not part of either backend surface inside this
+  product — the dsh process owns it (see above). UI-only state belongs to the client.
+- Do not add a feature that only exists in a client while the active runtime (core or Go) has no
+  equivalent tool, API, persistence or test coverage.
 - The legacy `/api/desktop/*` namespace stays as the compatibility surface for out-of-tree
   clients: loopback-only, token-guarded, and disabled when its token is unset. Nothing inside dsh
   may use it for its own inference — that would be the helper gateway this repository forbids.
-- Client code, packaging, signing and auto-update belong to the client repository. This
-  repository keeps the Go service, the web console and the deployment assets.
+- The current `app/desktop` shell's source, build and packaging scripts stay in this repository.
+  Release artifacts follow the App pre-release channel; do not reintroduce the removed client trees.
 
 ## `app/` uses pnpm only
 
@@ -156,7 +160,8 @@ being rebuilt on an external agent framework in its own repository.
   the other, and `pnpm run <script>` inside that worktree fails with
   `ERR_PNPM_UNSAFE_TASK_RUN_STATE_PATH`. Run `pnpm install --frozen-lockfile` in that worktree; do
   not link it to a sibling checkout.
-- `pnpm typecheck` in `app/` covers `@vexnar/dsh-ui`, `@vexnar/dsh-account` and `@vexnar/core`. A
+- `pnpm typecheck` in `app/` covers `@vexnar/dsh-ui`, `@vexnar/dsh-account`, `@vexnar/dsh-egress`,
+  `@vexnar/core` and `@vexnar/web`. A
   package whose `tsconfig.json` `include` names a couple of files is not a gate: `@vexnar/core`
   compiled two route files and reported success while `auth.ts`, `server.ts` and most of
   `src/routes/` were never type-checked. Widen the program to `src/**/*.ts` instead of adding files
