@@ -235,7 +235,9 @@ if (entry) {
     checking = true
     try {
       const session = await read('/ready')
-      if (!session.ready) location.replace('/')
+      // 带一个一次性查询串：桌面端可能缓存了上一次的工作区外壳，直接跳 `/` 会命中
+      // 缓存里的旧页面，于是退出登录后界面还“看着是登录的”。
+      if (!session.ready) location.replace('/?_=' + String(Date.now()))
     } catch {
       // A temporary transport outage does not discard the current view.
     } finally {

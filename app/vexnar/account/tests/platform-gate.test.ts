@@ -133,6 +133,12 @@ const request = (url: string, method = 'POST'): Record<string, unknown> => ({
   socket: { remoteAddress: '127.0.0.1' }
 })
 
+/** 过一遍被包装的 connection.admit；断言只在安装失败时触发。 */
+function guard(url: string, method = 'POST'): { peer?: unknown; rejection?: number } {
+  assert.ok(admit, 'installPlatform 应当保留 connection.admit 的包装')
+  return admit(request(url, method))
+}
+
 /** 调一条插件自己注册的 JSON 路由，返回解析后的正文。 */
 async function callRoute(path: string, method = 'GET'): Promise<Record<string, unknown>> {
   const handler = routes.get(path)
@@ -151,20 +157,25 @@ async function callRoute(path: string, method = 'GET'): Promise<Record<string, u
   })
 }
 
-test('门禁关着时也不再把 /api/* 拒成 401', () => {
-  assert.ok(admit, 'installPlatform 应当保留 connection.admit 的包装')
-  // 没有账号文件：上一层的判定必须是"没有拒绝"，否则桌面端建默认工作区时只会
-  // 拿到一个与真实原因无关的 401。
-  assert.equal(admit(request('/api/workspace/create')).rejection, undefined)
-  assert.equal(admit(request('/api/session/create')).rejection, undefined)
-  assert.equal(admit(request('/vexnar-api/platform/ready', 'GET')).rejection, undefined)
+test('未判定时放行，判定为未登录后 /api/* 真的回 401', async () => {
+  // 刚启动、还没读完第一份账号：放行，桌面端在这一瞬间建默认工作区不能被拒。
+  assert.equal(guard('/api/workspace/create').rejection, undefined)
+  // 读一次账号（文件不存在）→ 确定没登录，门禁必须真的关门：只换首页 HTML 不够，
+  // 已加载的页面会继续“看着是登录的”，退出登录也回不到登录页。
+  await callRoute('/vexnar-api/platform/account')
+  assert.deepEqual(guard('/api/workspace/create'), { rejection: 401 })
+  assert.deepEqual(guard('/api/session/create'), { rejection: 401 })
+  // 登录页自己的入口不能被自己的门禁挡住，否则“登录已过期”都问不出来。
+  assert.equal(guard('/vexnar-api/platform/ready', 'GET').rejection, undefined)
+  assert.equal(guard('/vexnar-api/platform/entry.js', 'GET').rejection, undefined)
 })
 
-test('账号有效时在进程内预建默认工作区', async () => {
+test('账号有效时开门，并在进程内预建默认工作区', async () => {
   invokes.length = 0
   await writeFile(join(home, 'vexnar-account.json'), JSON.stringify(signedIn()), 'utf8')
   // 读一次账号即触发目录同步与门禁打开；页面来问的时候默认工作区应当已经建好。
   await callRoute('/vexnar-api/platform/account')
+  assert.equal(guard('/api/workspace/create').rejection, undefined)
   const bootstrapped = invokes.filter(entry =>
     entry.namespace === 'workspace' && entry.method === 'initializeDefault')
   assert.equal(bootstrapped.length, 1, '门禁打开后应当调用一次 workspace/initializeDefault')
