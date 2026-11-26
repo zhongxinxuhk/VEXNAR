@@ -42,6 +42,12 @@ api.get('/api/_runtime', async (c) => {
   return c.json(runtimeInfo())
 })
 
+// 组合面快照：只读 meta 与环境，不启动 Web 引擎、不开监听。
+api.get('/api/_topology', async (c) => {
+  const { topology } = await import('./topology.ts')
+  return c.json(await topology())
+})
+
 api.get('/api/settings', async (c) => c.json(await meta.table('settings')))
 
 api.post('/api/tasks', async (c) => {
