@@ -73,6 +73,16 @@ type AccountContext = PlatformContext & {
   on: (event: 'tools/pre-execute', listener: (...args: never[]) => unknown) => () => boolean
 }
 
+/**
+ * 工作区页（含「门禁」首页）的品牌补丁。
+ *
+ * 皮肤 dsh-claude-style 画品牌标记只认自己那套 CSS 变量：`--dsh-claude-image-deepseek-mark`
+ * 是 DeepSeek 的鲸鱼（`brand: deepseek` 时到处用它），`--dsh-claude-custom-mark` 是
+ * 读者自定义的标记。两者都在 `body[data-dsh-claude-style]` 上声明，所以必须写在
+ * body 的内联样式上才能盖住，写在 html 上会被 body 的声明遮住。
+ *
+ * 皮肤会在重绘时自己写回这些属性/变量，所以除了首次应用还要盯住它的改动。
+ */
 const BRAND_SCRIPT = `
 (() => {
   const updateTitle = () => {
@@ -81,6 +91,35 @@ const BRAND_SCRIPT = `
   };
   updateTitle();
   new MutationObserver(updateTitle).observe(document.head, { childList: true, subtree: true, characterData: true });
+
+  // ── 品牌标记：上游的徽标全部换成 VEXNAR 的 logo ──────────────────────────
+  // 皮肤只画自己那套变量：deepseek-mark（账号头像、品牌卡片）与
+  // claude-mark-clay（首页/门禁页正文旁的那个标记、首页布局预览）。
+  // --dsh-claude-image-claude-mark 不动：那个变量在皮肤里是装饰用的蒙版。
+  const LOGO = '/vexnar-brand/logo.png';
+  const MARK = 'url("' + LOGO + '")';
+  const paintMark = () => {
+    const body = document.body;
+    if (body === null) return;
+    for (const host of [document.documentElement, body]) {
+      host.style.setProperty('--dsh-claude-image-deepseek-mark', MARK);
+      host.style.setProperty('--dsh-claude-image-claude-mark-clay', MARK);
+      host.style.setProperty('--dsh-claude-custom-mark', MARK);
+      host.style.setProperty('--dsh-claude-custom-mark-ratio', '1');
+    }
+    // 空字符串属性也是属性：皮肤的 [data-dsh-claude-custom-mark] 规则据此生效。
+    if (!body.hasAttribute('data-dsh-claude-custom-mark')) body.setAttribute('data-dsh-claude-custom-mark', '');
+    body.removeAttribute('data-dsh-claude-custom-mark-none');
+    // 留了 tint 就走 mask（把 logo 当单色蒙版），那不是我们要的效果。
+    body.removeAttribute('data-dsh-claude-custom-tint');
+  };
+  paintMark();
+  new MutationObserver(paintMark).observe(document.documentElement, {
+    childList: true, subtree: true,
+    attributes: true,
+    attributeFilter: ['data-dsh-claude-style', 'data-dsh-claude-brand', 'data-dsh-claude-custom-mark',
+      'data-dsh-claude-custom-mark-none', 'data-dsh-claude-custom-tint', 'style']
+  });
 })();
 `
 
@@ -380,23 +419,27 @@ export function apply(ctx: AccountContext): void {
     })
   )
 
-  ctx.effect(() =>
-    ctx.webServer.register({
-      kind: 'exact',
-      path: '/vexnar-brand/favicon.png',
-      handler: async (_req, res) => {
-        try {
-          logoBytes ??= await readFile(LOGO_PATH)
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'image/png')
-          res.setHeader('Cache-Control', 'public, max-age=86400')
-          res.end(logoBytes)
-        } catch (error) {
-          res.statusCode = 404
-          res.end('logo not found')
+  // 两个名字指向同一张图：`favicon.png` 是图标位（页面 head / manifest），
+  // `logo.png` 是品牌标记位（工作区皮肤画的标记）。
+  for (const name of ['favicon.png', 'logo.png']) {
+    ctx.effect(() =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: `/vexnar-brand/${name}`,
+        handler: async (_req, res) => {
+          try {
+            logoBytes ??= await readFile(LOGO_PATH)
+            res.statusCode = 200
+            res.setHeader('Content-Type', 'image/png')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            res.end(logoBytes)
+          } catch (error) {
+            res.statusCode = 404
+            res.end('logo not found')
+          }
         }
-      }
-    })
-  )
+      })
+    )
+  }
 
 }
