@@ -21,7 +21,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { planLegacyBundles, readLegacyManifests } from './profile-migration.ts'
 import { extrasSpecs, mergeBundleLayer, readExtras } from './vexnar-extras.ts'
-import { appDir, modernPython, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
+import { appDir, bundleFiles, bundleSources, modernPython, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
 const require = createRequire(await realpath(bin))
@@ -53,7 +53,25 @@ await writeFile(manifestPath, JSON.stringify(first, null, 2) + '\n')
 
 const bundleRoot = process.env.VEXNAR_BUNDLES || process.env.VEXNAR_DSH_BUNDLES
 const vxDir = bundleRoot ? resolve(bundleRoot, 'app', 'vexnar') : join(appDir, 'vexnar')
-const addons = [vxDir, join(vxDir, 'ui'), join(vxDir, 'account'), join(appDir, 'vexnar-egress'), join(appDir, 'vexnar-tools')].map(dir => `file:${dir}`)
+/**
+ * 每个 VEXNAR bundle 的源目录。
+ *
+ * 以前这里是手写数组，新加一个 bundle（`@vexnar/dsh-tools`）时容易只改
+ * `bundleFiles`（启动时会校验 profile 依赖）却忘了这一行，结果 `pnpm run setup`
+ * 报「成功」，下一次启动却直接抛「插件清单不完整」。现在从 `bundleSources`
+ * 推导：加 bundle 只改 `vexnar-runtime.ts` 一处。
+ *
+ * `vexnar/` 下的三个包跟随 `vxDir`（安装包里是覆盖层解出来的目录），其余跟随
+ * `appDir`，与覆盖层的目录布局一致。
+ */
+const ownDir = (name: string): string => {
+  const relative = bundleSources[name]
+  if (relative === undefined) throw new Error(`setup: 未知的 VEXNAR bundle ${name}`)
+  if (name === '@vexnar/app-bundle') return vxDir
+  if (relative.startsWith('vexnar/')) return join(vxDir, relative.slice('vexnar/'.length))
+  return join(appDir, relative)
+}
+const addons = Object.keys(bundleSources).map(name => `file:${ownDir(name)}`)
 
 // ── Extras preset ───────────────────────────────────────────────────────────
 // `app/vexnar/extras.json` 是安装时固化的插件预设：插件商店装的 bundle 只写当前
@@ -81,6 +99,16 @@ const installed = spawnSync('pnpm', ['add', '--force', ...addons, ...theme, ...e
 })
 if (installed.error) throw installed.error
 if (installed.status !== 0) process.exit(installed.status ?? 1)
+
+// `pnpm add` 说成功不等于依赖真的写进去了：profile 里只要有任何一个 bundle 缺
+// `file:` 依赖，启动时的 `ensureProfile` 都会拒绝启动。这里当场校验并报出缺了
+// 哪个包，而不是等用户下次 `dsh web` 才看到一句「插件清单不完整」。
+const installedManifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Manifest
+const missingBundles = Object.keys(bundleFiles)
+  .filter(name => !(installedManifest.dependencies?.[name] ?? '').startsWith('file:'))
+if (missingBundles.length > 0) {
+  throw new Error(`setup: profile 依赖缺少 VEXNAR bundle：${missingBundles.join(', ')}（源目录见 bundleSources）`)
+}
 
 // ── Legacy homes ────────────────────────────────────────────────────────────
 // Bundles the previous data directory lists are reinstalled one by one, so a
