@@ -194,7 +194,7 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-3 完成，P1-4～P1-8 待开始）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-4 完成，P1-5～P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -270,12 +270,28 @@ dsh agent loop（唯一循环）
 
 #### P1-4 finding 写入与证据绑定
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
-- 动作：注册 `report_finding`（`POST /api/exploration/findings`）、`bind_finding_traffic`（先确认 core 路由；没有就补一条最小路由）。
-- 验收：会话里上报一条 finding，`findings` 计数 +1；绑定后 `finding_traffic_bindings` 有可解析的 snapshot。
+- 状态：`[x] 已完成`（真实 core 路由与工具处理器通过；dsh 会话内实测未核验）
+- 分支：`refactor/harness-tool-plane-p1-4`
+- 动作：
+  1. 注册 `report_finding`：固定 `POST /api/exploration/findings`，白名单字段 `task_id/vulnclass/name/severity/summary/evidence/intent_id/worker/asset_ids`；本地拒绝非法 severity、空 evidence 和非正整数 id。
+  2. 核对绑定路由：core 只有 `GET /api/exploration/findings/:id/traffic`、`/traffic/export`、`/:bindingId/body`，**没有 POST 绑定路由**；Go 侧的实现在 `server/finding_traffic.go`。本次补了等价的最小 `POST /api/exploration/findings/:id/traffic`（body `traffic_refs`）。
+  3. `bind_finding_traffic` 只接受数字 finding_id 和 `traffic_refs[{traffic_id,role,note}]`；core 按 ID 从本地 `traffic_exchanges` / 归档索引解析真实流量，落 `traffic_evidence_snapshots` 与 `finding_traffic_bindings`，并在一次 `writer.commit` 中提交。
+  4. 本地大正文从 blob 还原；归档流量按组装文本拆回 head/body；重复快照不新增 binding、不覆盖已有 role/note，只有实际新增才 bump `evidence_version`。响应去掉原始 `req_head/resp_head`，并带 `written/added`。
+- 验收：
+  - 工具处理器 + 真实 core 路由：`report_finding` 后 `findings` 行数 +1；`bind_finding_traffic` 后 `finding_traffic_bindings` 与 `traffic_evidence_snapshots` 各 +1，snapshot 的 `source_traffic_id` 指向真实流量、`method=GET`、响应正文 hash 为 64 位。
+  - GET `/api/exploration/findings/:id/traffic` 能读回同一条 binding；返回 snapshot 不含 `req_head/resp_head`。
+  - 重复绑定同一 traffic_id 返回 `added=0`，binding 仍只有一条，原 `role=proof` / note 未被新角色覆盖；绑定不存在的 traffic_id 返回 404，不新增行。
+  - `traffic_refs` 去重按首次出现；空数组、非数字 finding_id、非法 role/空 traffic_id 在工具本地拒绝。
+  - **未核验**：dsh 会话内实际调用；本次验证到工具处理器与真实 core 路由。
+- 证据：任务提交 `03fe79b0d`；合并 `5ff12f13f`；6 files changed, 508 insertions(+), 11 deletions(-)。
+  - `pnpm --filter @vexnar/dsh-tools run typecheck` → 0；`pnpm --filter @vexnar/dsh-tools run test` → 12/12（含 `finding-tools.test.ts` 端到端绑定）。
+  - `pnpm --filter @vexnar/core exec tsx traffic.test.ts` → 17/17；`pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0。
+  - `pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm test:preset` → 2/2（inventory 13 checks）；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，`routes=361`；构建后的插件注册 6 个工具：`bind_finding_traffic,capture_control,report_finding,traffic_blob,traffic_get,traffic_search`。
+  - 合并后在 `main` 复跑 tools test → 12/12；core traffic → 17/17。
+- 备注：本次只补 Go 的 POST 补绑；Go 的 PATCH/DELETE/PUT order 仍未迁到 TS，P1-4 不涉及编辑已有绑定。`report_finding` 需要显式 `task_id`，因为 dsh 工具上下文没有 Go 的 RunInfo；调用方从当前任务读取，不能猜。归档流量的正文若在 Go blob 中，TS 侧只拿索引里可读的组装文本，不等同逐字节复制。
+- 风险：绑定只接受数字 finding_id；归档正文依赖采集面索引可读，缺失时会明确 404，不会写空 snapshot。实际 dsh 会话内的模型调用仍未核验。
 - 依赖：P1-1。
-- 风险：`bind_finding_traffic` 当前只有目录行，没有确认的可调用路由；先查 `routes/exploration.ts`，没有就作为 P1-4b 补路由，不硬编。
 
 #### P1-5 Web 六工具并入同一插件
 
@@ -650,6 +666,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | P1-1 `@vexnar/dsh-tools` 骨架 | 待开始 → 已完成 | 提交 `3f00328a8`；合并 `c4d3a898b`；包 build/全量 typecheck 0；产物 4/23；smoke 8 presets、tools 61/61 |
 | 2026-11-27 | P1-2 只读流量三件套 | 待开始 → 已完成（契约测试通过；会话实测未核验） | 提交 `ac15626ce`；合并 `c98384668`；tools test 6/6（local+archive+blob）；account 59/59；core traffic 17/17；smoke 8 presets/tools 61/61 |
 | 2026-11-27 | P1-3 `capture_control` | 待开始 → 已完成（真实 core 生命周期通过；会话实测未核验） | 提交 `6c6f82928`；合并 `3184e57f7`；tools test 8/8；core session-traffic 18/18；start 建 active/端口，stop 释放端口 |
+| 2026-11-27 | P1-4 finding 写入与证据绑定 | 待开始 → 已完成（真实 core 路由通过；会话实测未核验） | 提交 `03fe79b0d`；合并 `5ff12f13f`；tools test 12/12；补 POST findings/:id/traffic；finding +1、snapshot/binding 可读、重复绑定不增行 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -657,7 +674,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-4**：注册 `report_finding` 与 `bind_finding_traffic`；先确认 `/api/exploration/findings` 与流量绑定路由，没有就补最小路由。
+1. **P1-5**：把 6 个 Web 工具切到 core 的 `/api/web/*`，与现有 MCP 版做同 fixture 对比。
 2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
