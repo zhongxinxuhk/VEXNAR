@@ -30,6 +30,10 @@
 
 > **运行栈现状（2026-11-26）**：默认入口是 `app/` 的 dsh + `vexnar-core`（TypeScript / SQLite）。
 > Go 单体 + PostgreSQL 与 `web/` Next.js 控制台是回退/兼容栈；两条栈共享领域模型，但默认数据面不是 Go/PostgreSQL。
+>
+> **目录划分（2026-11-28）**：`app/` 是 VEXNAR Harness（dsh + TypeScript）；旧 Go 单体、`web/` 控制台、
+> `build.sh` / `start.sh` / `Dockerfile` / compose 全部收进了 `VEXNAR/`。下面没特别说明的 Go 侧命令，
+> 都先在仓库根 `cd VEXNAR` 再执行。
 
 ---
 
@@ -299,6 +303,7 @@ cp config.example.json config.json   # 填好 database 连接
 ### 方式四：从源码编译单二进制
 
 ```bash
+cd VEXNAR
 # 1) 前端静态导出
 cd web && npm ci && npm run build:static && cd ..
 # 2) 拷进内嵌目录
@@ -379,6 +384,7 @@ cp -r <解压目录>/skills ./ && cp <解压目录>/vexnar ./
 
 ```bash
 git pull
+cd VEXNAR
 cd web && npm ci && npm run build:static && cd ..
 cp -r web/out server/webui/dist
 CGO_ENABLED=0 go build -tags embedui -o vexnar ./cmd/vexnar
@@ -483,12 +489,12 @@ server {
 ### 本地运行与测试
 
 ```bash
-./dev.sh    # 后端(:8787) + 流量代理(:8788) + 前端 next dev(:5173) → http://localhost:5173
+cd VEXNAR && ./dev.sh    # 后端(:8787) + 流量代理(:8788) + 前端 next dev(:5173) → http://localhost:5173
 ```
 
-- 后端：`go run ./cmd/vexnar`（不带 `-tags embedui` 则不内嵌前端）
-- 前端：`cd web && npm run dev`（`/api` 反代到后端，带热更新）
-- 测试：`go test ./...`
+- 后端：`cd VEXNAR && go run ./cmd/vexnar`（不带 `-tags embedui` 则不内嵌前端）
+- 前端：`cd VEXNAR/web && npm run dev`（`/api` 反代到后端，带热更新）
+- 测试：`cd VEXNAR && go test ./...`
 - Mock 预览（无后端）：`cd web && NEXT_PUBLIC_MOCK=1 npm run dev`
 
 ---

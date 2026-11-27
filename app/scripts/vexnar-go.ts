@@ -42,8 +42,13 @@ export type GoService = {
 
 type Log = (line: string) => void
 
-/** Go 源码所在的仓库根；打包后没有它时只认 VEXNAR_GO_BIN。 */
+/** 仓库根：`data/`、`jwt.key` 这类运行状态仍跟着 app，不随源码搬走。 */
 const repoRoot = resolve(appDir, '..')
+/**
+ * 旧 Go 产品的源码根。2026-11 起 Go 侧整体收进 `VEXNAR/`，与 dsh Harness 的
+ * `app/` 分开。`go.mod` 的 module 路径不变，所以包内 import 一行都不用改。
+ */
+const goRoot = join(repoRoot, 'VEXNAR')
 const goSourceDirs = ['cmd', 'server', 'agent', 'traffic', 'egress', 'db', 'intercept', 'notify', 'selfupdate',
   'sidequestion', 'mcphttp', 'mcpserver', 'llmrec', 'llmpool', 'evidence', 'report', 'enrich',
   'vulnclass', 'capability', 'guard', 'config']
@@ -53,7 +58,7 @@ const defaultPort = 8787
 const goPort = () => Number(process.env.VEXNAR_GO_PORT || defaultPort)
 
 const git = (args: string[]): string => {
-  const result = spawnSync('git', args, { cwd: repoRoot, encoding: 'utf8' })
+  const result = spawnSync('git', args, { cwd: goRoot, encoding: 'utf8' })
   return result.status === 0 ? result.stdout.trim() : ''
 }
 
@@ -62,7 +67,7 @@ const git = (args: string[]): string => {
  * 折进去，这样"改了代码但没提交"也会重编，不会用到上一次的二进制。
  */
 export function goSourceStamp() {
-  if (!existsSync(join(repoRoot, 'go.mod'))) return ''
+  if (!existsSync(join(goRoot, 'go.mod'))) return ''
   const head = git(['rev-parse', '--short', 'HEAD']) || 'nogit'
   const dirty = git(['status', '--porcelain', '--', '*.go', 'go.mod', 'go.sum'])
   if (dirty === '') return `go-${head}`
@@ -71,7 +76,7 @@ export function goSourceStamp() {
     const path = line.slice(3).trim()
     if (!path.endsWith('.go')) continue
     try {
-      hash.update(path).update(readFileSync(join(repoRoot, path)))
+      hash.update(path).update(readFileSync(join(goRoot, path)))
     } catch {
       hash.update(path).update('missing')
     }
@@ -95,7 +100,7 @@ function mtimeStamp() {
       else if (entry.name.endsWith('.go')) newest = Math.max(newest, statSync(path).mtimeMs)
     }
   }
-  for (const dir of goSourceDirs) walk(join(repoRoot, dir))
+  for (const dir of goSourceDirs) walk(join(goRoot, dir))
   return newest === 0 ? '' : `go-m${Math.floor(newest)}`
 }
 
@@ -187,7 +192,7 @@ export function ensureGoBinary(stamp: string, log: Log = console.log): string {
   mkdirSync(dirname(binary), { recursive: true })
   log(`[vexnar] 编译 Go 后端（${stamp}）…`)
   const build = spawnSync('go', ['build', '-ldflags', `-X main.version=${stamp}`, '-o', binary, './cmd/vexnar'], {
-    cwd: repoRoot, stdio: 'inherit'
+    cwd: goRoot, stdio: 'inherit'
   })
   if (build.status !== 0) throw new Error('Go 后端编译失败，见上方输出')
   writeFileSync(prepared, `${stamp}\n`)
