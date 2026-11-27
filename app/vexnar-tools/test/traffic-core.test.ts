@@ -4,7 +4,7 @@
 
 /**
  * 工具面到真实 core 路由的契约：用临时 SQLite + 临时归档索引启动一份 Hono
- * app，再把 `@vexnar/dsh-tools` 的三条工具接到它上面。
+ * app，再把 `@vexnar/dsh-tools` 的流量工具接到它上面。
  *
  * 这里不启动 dsh，也不经过 HTTP 端口；桥的形状与 `@vexnar/dsh-account` 的
  * `vexnarCore.request` 一致（JSON 走 text，blob 走 base64）。目的是钉住四件
@@ -110,7 +110,7 @@ async function run(name: string, args: Record<string, unknown>): Promise<any> {
 }
 
 test('流量三件套能读真实 local + archive，并还原 blob', async () => {
-  assert.deepEqual([...registered.keys()].sort(), ['capture_control', 'traffic_blob', 'traffic_get', 'traffic_search'])
+  assert.deepEqual([...registered.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search'])
 
   const list = await run('traffic_search', { host: 'shared.test', size: 10, path: '/api/secret' })
   assert.equal(list.total, 2)
