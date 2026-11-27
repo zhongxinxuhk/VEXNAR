@@ -52,8 +52,9 @@
         taskIdEnv: VEXNAR_TASK_ID
 
 # ── Domain tools (TS, in-process) ─────────────────────────────────────────
-# P1-4 已注册只读流量三件套、capture_control、report_finding 与 bind_finding_traffic；
-# finding/复测/web 工具继续在这里注册，全部走同进程的 vexnarCore，不再新增端口。旧 profile 没装该包时跳过。
+# P1-5 已注册 6 个 web_* 工具（固定映射到 /api/web/*），以及只读流量三件套、
+# capture_control、report_finding 与 bind_finding_traffic；复测等工具继续在这里注册，
+# 全部走同进程的 vexnarCore，不再新增端口。旧 profile 没装该包时跳过。
 - insert:
     - id: vexnar-tools
       name: '@vexnar/dsh-tools'

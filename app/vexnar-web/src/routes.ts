@@ -89,7 +89,12 @@ export async function handleWebHttp(
     const action = String(tail[2] ?? '')
     if (!sessionId) return json({ error: '缺少 session_id' }, 400)
 
-    if (!action && method === 'GET') return json(engine.inspect(sessionId, {}, agentSession))
+    if (!action && method === 'GET') {
+      const rawLimit = Number(url.searchParams.get('limit') ?? 0)
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 200) : undefined
+      const requestId = String(url.searchParams.get('request_id') ?? '').trim() || undefined
+      return json(engine.inspect(sessionId, { limit, requestId }, agentSession))
+    }
     if (action === 'requests' && method === 'POST') {
       const outcome = await engine.execute(sessionId, {
         method: String(body.method ?? 'GET'),
@@ -119,7 +124,11 @@ export async function handleWebHttp(
       }, agentSession))
     }
     if (action === 'control' && method === 'POST') {
-      const session = engine.control(sessionId, String(body.action ?? '') as never, {
+      const controlAction = String(body.action ?? '')
+      if (!['pause', 'resume', 'close', 'reset_budget'].includes(controlAction)) {
+        return json({ error: 'action 只能是 pause、resume、close 或 reset_budget' }, 400)
+      }
+      const session = engine.control(sessionId, controlAction as 'pause' | 'resume' | 'close' | 'reset_budget', {
         budget: body.budget === undefined ? undefined : Number(body.budget)
       }, agentSession)
       return json({ session })

@@ -202,6 +202,86 @@ const bindFindingTrafficSchema: ToolSchema = {
   }
 }
 
+const webSessionCreateSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['origin'],
+  properties: {
+    origin: { type: 'string', description: '授权目标，单个站点，例如 https://target.example。' },
+    label: { type: 'string', maxLength: 120, description: '人类可读名字。' },
+    request_budget: { type: 'integer', minimum: 1, maximum: 5000, description: '本会话请求预算，默认取策略上限。' },
+    auth_profile_id: { type: 'string', maxLength: 120, description: '服务端定义的身份配置 id（推荐）。' },
+    auth: { type: 'object', additionalProperties: { type: 'string' }, description: '显式身份头，只写 Vault，不回显。' },
+    adversarial: { type: 'boolean', description: '开启对抗升级（需平台授权与 origin 白名单）。' }
+  }
+}
+
+const WEB_METHODS = ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+const webRequestExecuteSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['session_id', 'path'],
+  properties: {
+    session_id: { type: 'string', description: 'web_session_create 返回的会话 id。' },
+    method: { type: 'string', enum: [...WEB_METHODS], description: '默认 GET。' },
+    path: { type: 'string', description: '相对路径或同源绝对 URL。' },
+    headers: { type: 'object', additionalProperties: { type: 'string' }, description: '额外请求头。' },
+    body: { type: 'string', maxLength: 262144, description: '请求正文，最大 256 KiB。' },
+    approved_write: { type: 'boolean', description: '写方法必须显式 true。' },
+    aggressive: { type: 'boolean', description: '标记为攻击性测试（需策略授权）。' },
+    evade: { type: 'boolean', description: '本次启用对抗升级（需会话已开对抗模式）。' },
+    test_case_id: { type: 'string', maxLength: 120, description: '测试用例 id。' },
+    parent_request_id: { type: 'string', maxLength: 120, description: '父请求 id。' },
+    note: { type: 'string', maxLength: 500, description: '备注。' }
+  }
+}
+
+const webResponseAnalyzeSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['session_id', 'request_id'],
+  properties: {
+    session_id: { type: 'string', description: '会话 id。' },
+    request_id: { type: 'string', description: '要分析的请求 id。' },
+    baseline_request_id: { type: 'string', maxLength: 120, description: 'diff 模式的基线请求。' },
+    mode: { type: 'string', enum: ['structure', 'diff', 'auto'], description: '默认 auto。' }
+  }
+}
+
+const webSessionInspectSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['session_id'],
+  properties: {
+    session_id: { type: 'string', description: '会话 id。' },
+    include: { type: 'string', enum: ['history', 'stats', 'both'], description: '默认 both。' },
+    limit: { type: 'integer', minimum: 1, maximum: 200, description: '历史条数，默认 20。' },
+    request_id: { type: 'string', maxLength: 120, description: '只查一条请求。' }
+  }
+}
+
+const webEvasionReportSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['session_id'],
+  properties: {
+    session_id: { type: 'string', description: '会话 id。' },
+    test_case_id: { type: 'string', maxLength: 120, description: '只看该测试用例。' },
+    limit: { type: 'integer', minimum: 1, maximum: 500, description: '读取的交换记录上限，默认 300。' }
+  }
+}
+
+const webSessionControlSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['session_id', 'action'],
+  properties: {
+    session_id: { type: 'string', description: '会话 id。' },
+    action: { type: 'string', enum: ['pause', 'resume', 'close', 'reset_budget'], description: '会话动作。' },
+    budget: { type: 'integer', minimum: 1, maximum: 5000, description: 'reset_budget 的新预算。' }
+  }
+}
+
 /** core 的 capture scope 只接受这种 host chat session id。 */
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u
 
@@ -221,6 +301,71 @@ function requiredText(args: Record<string, unknown>, key: string): string {
   const value = String(args[key] ?? '').trim()
   if (value === '') throw new Error(`${key} 不能为空`)
   return value
+}
+
+/** Web 引擎按 agentSession 隔离会话；不能退化成可以跨会话的 `local`。 */
+const WEB_AGENT_SESSION = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/u
+const WEB_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,159}$/u
+
+function webAgentSession(execution: ToolExecution): string {
+  const raw = String(execution.agent?.session?.id ?? '').trim()
+  if (raw === '') return 'dsh'
+  if (!WEB_AGENT_SESSION.test(raw)) throw new Error('当前 dsh 会话 id 不能作为 Web agent session')
+  return raw
+}
+
+function webSessionId(args: Record<string, unknown>): string {
+  const value = requiredText(args, 'session_id')
+  if (!WEB_SESSION_ID.test(value)) throw new Error('session_id 格式不合法')
+  return value
+}
+
+function webHeaders(execution: ToolExecution): Record<string, string> {
+  return { 'x-vexnar-session': webAgentSession(execution) }
+}
+
+function optionalText(args: Record<string, unknown>, key: string, maxLength: number): string | undefined {
+  const value = String(args[key] ?? '').trim()
+  if (value === '') return undefined
+  if (value.length > maxLength) throw new Error(`${key} 过长`)
+  return value
+}
+
+function optionalInteger(args: Record<string, unknown>, key: string, min: number, max: number): number | undefined {
+  if (args[key] === undefined || args[key] === null || String(args[key]).trim() === '') return undefined
+  const value = Number(args[key])
+  if (!Number.isInteger(value) || value < min || value > max) throw new Error(`${key} 必须是 ${min}..${max} 的整数`)
+  return value
+}
+
+function stringRecord(args: Record<string, unknown>, key: string): Record<string, string> | undefined {
+  const value = args[key]
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`${key} 必须是字符串对象`)
+  const out: Record<string, string> = {}
+  for (const [name, item] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof item !== 'string') throw new Error(`${key}.${name} 必须是字符串`)
+    out[name] = item
+  }
+  return out
+}
+
+/** 与 MCP 的 publicPolicy 保持同一组字段，避免把内部策略整包透给模型。 */
+function publicWebPolicy(value: unknown): Record<string, unknown> {
+  const policy = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+  return {
+    allowed_origins: Array.isArray(policy.allowedOrigins) ? policy.allowedOrigins : [],
+    allow_private_network: policy.allowPrivateNetwork === true,
+    max_requests_per_session: Number(policy.maxRequestsPerSession ?? 0),
+    max_requests_per_window: Number(policy.maxRequestsPerWindow ?? 0),
+    window_seconds: Number(policy.windowSeconds ?? 0),
+    min_interval_ms: Number(policy.minIntervalMs ?? 0),
+    max_response_bytes: Number(policy.maxResponseBytes ?? 0),
+    request_timeout_ms: Number(policy.requestTimeoutMs ?? 0),
+    allow_write: policy.allowWrite === true,
+    follow_redirects: String(policy.followRedirects ?? ''),
+    aggressive_payloads: policy.aggressivePayloads === true
+  }
 }
 
 /** 抓包归属当前 dsh 会话；没有会话时不能猜一个 scope。 */
@@ -409,6 +554,152 @@ export function apply(ctx: ToolContext): void {
       return await ctx.vexnarCore.request(
         `/api/exploration/findings/${encodeURIComponent(findingId)}/traffic`,
         { method: 'POST', body: { traffic_refs: refs } }
+      )
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_session_create',
+    '为一次授权测试创建隔离的 HTTP 会话（独立 CookieJar / 身份 / 预算）。origin 必须是单个站点；凭据只进 Vault，不回显。',
+    webSessionCreateSchema,
+    async (args, execution) => {
+      const payload: Record<string, unknown> = { origin: requiredText(args, 'origin') }
+      const label = optionalText(args, 'label', 120)
+      if (label !== undefined) payload.label = label
+      const requestBudget = optionalInteger(args, 'request_budget', 1, 5000)
+      if (requestBudget !== undefined) payload.request_budget = requestBudget
+      const authProfileId = optionalText(args, 'auth_profile_id', 120)
+      if (authProfileId !== undefined) payload.auth_profile_id = authProfileId
+      const auth = stringRecord(args, 'auth')
+      if (auth !== undefined) payload.auth = auth
+      if (args.adversarial !== undefined) {
+        if (typeof args.adversarial !== 'boolean') throw new Error('adversarial 必须是布尔值')
+        payload.adversarial = args.adversarial
+      }
+      const created = await ctx.vexnarCore.request('/api/web/sessions', {
+        method: 'POST', headers: webHeaders(execution), body: payload
+      }) as Record<string, unknown>
+      return { session: created?.session, policy: publicWebPolicy(created?.policy) }
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_request_execute',
+    '在 web 会话内执行一次受控 HTTP 请求。跨 origin、超预算、超窗口、未批准的写方法会被策略拒绝；返回脱敏记录、响应片段与结构信号。',
+    webRequestExecuteSchema,
+    async (args, execution) => {
+      const sessionId = webSessionId(args)
+      const method = String(args.method ?? 'GET')
+      if (!(WEB_METHODS as readonly string[]).includes(method)) throw new Error('method 不合法')
+      const payload: Record<string, unknown> = { method, path: requiredText(args, 'path') }
+      const headers = stringRecord(args, 'headers')
+      if (headers !== undefined) payload.headers = headers
+      if (args.body !== undefined) {
+        if (typeof args.body !== 'string') throw new Error('body 必须是字符串')
+        if (args.body.length > 256 * 1024) throw new Error('body 过长')
+        payload.body = args.body
+      }
+      for (const key of ['approved_write', 'aggressive', 'evade'] as const) {
+        if (args[key] !== undefined) {
+          if (typeof args[key] !== 'boolean') throw new Error(`${key} 必须是布尔值`)
+          payload[key] = args[key]
+        }
+      }
+      const testCaseId = optionalText(args, 'test_case_id', 120)
+      if (testCaseId !== undefined) payload.test_case_id = testCaseId
+      const parentRequestId = optionalText(args, 'parent_request_id', 120)
+      if (parentRequestId !== undefined) payload.parent_request_id = parentRequestId
+      const note = optionalText(args, 'note', 500)
+      if (note !== undefined) payload.note = note
+      return await ctx.vexnarCore.request(
+        `/api/web/sessions/${encodeURIComponent(sessionId)}/requests`,
+        { method: 'POST', headers: webHeaders(execution), body: payload }
+      )
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_response_analyze',
+    '对已采集的响应做本地分析：structure 提取结构，diff 与基线比较。只读本地证据，不发新请求。',
+    webResponseAnalyzeSchema,
+    async (args, execution) => {
+      const sessionId = webSessionId(args)
+      const payload: Record<string, unknown> = { request_id: requiredText(args, 'request_id') }
+      const baseline = optionalText(args, 'baseline_request_id', 120)
+      if (baseline !== undefined) payload.baseline_request_id = baseline
+      const mode = optionalText(args, 'mode', 20) ?? 'auto'
+      if (!['structure', 'diff', 'auto'].includes(mode)) throw new Error('mode 只能是 structure、diff 或 auto')
+      payload.mode = mode
+      return await ctx.vexnarCore.request(
+        `/api/web/sessions/${encodeURIComponent(sessionId)}/analyze`,
+        { method: 'POST', headers: webHeaders(execution), body: payload }
+      )
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_session_inspect',
+    '查 web 会话状态、预算余额、请求历史、分类统计与策略事件。可用 request_id 精查一条，按 limit 限制历史条数。',
+    webSessionInspectSchema,
+    async (args, execution) => {
+      const sessionId = webSessionId(args)
+      if (args.include !== undefined && !['history', 'stats', 'both'].includes(String(args.include))) {
+        throw new Error('include 只能是 history、stats 或 both')
+      }
+      const query = new URLSearchParams()
+      const limit = optionalInteger(args, 'limit', 1, 200)
+      if (limit !== undefined) query.set('limit', String(limit))
+      const requestId = optionalText(args, 'request_id', 120)
+      if (requestId !== undefined) query.set('request_id', requestId)
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+      return await ctx.vexnarCore.request(
+        `/api/web/sessions/${encodeURIComponent(sessionId)}${suffix}`,
+        { headers: webHeaders(execution) }
+      )
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_evasion_report',
+    '汇总 web 会话的拦截→升级→结果：各变异/出口/身份的尝试与通过次数、升级样本、最终仍被拦的请求。只陈述观测结果。',
+    webEvasionReportSchema,
+    async (args, execution) => {
+      const sessionId = webSessionId(args)
+      const query = new URLSearchParams()
+      const testCaseId = optionalText(args, 'test_case_id', 120)
+      if (testCaseId !== undefined) query.set('test_case_id', testCaseId)
+      const limit = optionalInteger(args, 'limit', 1, 500)
+      if (limit !== undefined) query.set('limit', String(limit))
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+      return await ctx.vexnarCore.request(
+        `/api/web/sessions/${encodeURIComponent(sessionId)}/evasion${suffix}`,
+        { headers: webHeaders(execution) }
+      )
+    }
+  )
+
+  registerTool(
+    ctx,
+    'web_session_control',
+    '暂停、恢复、关闭 web 会话，或重置预算。关闭会销毁 Vault 凭据并释放连接池。',
+    webSessionControlSchema,
+    async (args, execution) => {
+      const sessionId = webSessionId(args)
+      const action = requiredText(args, 'action')
+      if (!['pause', 'resume', 'close', 'reset_budget'].includes(action)) {
+        throw new Error('action 只能是 pause、resume、close 或 reset_budget')
+      }
+      const payload: Record<string, unknown> = { action }
+      const budget = optionalInteger(args, 'budget', 1, 5000)
+      if (budget !== undefined) payload.budget = budget
+      return await ctx.vexnarCore.request(
+        `/api/web/sessions/${encodeURIComponent(sessionId)}/control`,
+        { method: 'POST', headers: webHeaders(execution), body: payload }
       )
     }
   )
