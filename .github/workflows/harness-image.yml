@@ -1,0 +1,120 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# 把 VEXNAR Harness 打成容器镜像并推到 ghcr.io。
+#
+# 触发点与桌面安装包一致：`app-v*` tag 一推就跟着出镜像，tag 里的版本号同时
+# 作为镜像标签；手动触发只打 latest 与 sha。两个架构各用原生 runner 构建
+# （不在 QEMU 里编译原生模块），最后合成一个多架构 manifest。
+
+name: harness-image
+
+on:
+  push:
+    tags:
+      - 'app-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 额外镜像标签（留空则只打 latest 与 sha）
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: harness-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/vexnar-harness
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/harness.Dockerfile
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            VEXNAR_VERSION=${{ github.ref_name }}
+          # 先按 digest 推，架构合并留给 publish 作业，避免两个架构互相覆盖 tag。
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+      - name: Record digest
+        run: |
+          mkdir -p "${RUNNER_TEMP}/digests"
+          digest='${{ steps.build.outputs.digest }}'
+          echo "${digest#sha256:}" > "${RUNNER_TEMP}/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: publish manifest
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Assemble tags
+        id: tags
+        run: |
+          set -euo pipefail
+          version=''
+          case "${GITHUB_REF_NAME}" in
+            app-v*) version="${GITHUB_REF_NAME#app-v}" ;;
+          esac
+          input='${{ inputs.tag }}'
+          if [ -n "$input" ]; then version="$input"; fi
+          tags="-t ${IMAGE}:latest -t ${IMAGE}:sha-${GITHUB_SHA:0:7}"
+          if [ -n "$version" ]; then tags="$tags -t ${IMAGE}:${version}"; fi
+          printf 'value=%s\n' "$tags" >> "$GITHUB_OUTPUT"
+      - name: Push multi-arch manifest
+        run: |
+          set -euo pipefail
+          refs=''
+          for file in digests/*; do
+            refs="$refs ${IMAGE}@sha256:$(cat "$file")"
+          done
+          docker buildx imagetools create ${{ steps.tags.outputs.value }} $refs
+          docker buildx imagetools inspect "${IMAGE}:latest"

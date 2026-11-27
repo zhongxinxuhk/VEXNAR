@@ -3,7 +3,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 .git
+.worktrees
 **/node_modules
+# Harness 镜像在容器里现建这三样，从本地带进去只会把上下文撑大。
+app/dsh
+app/.desktop-overlay
+app/desktop-resources
+app/desktop/dist
+参考项目
 web/.next
 web/out
 server/webui/dist
