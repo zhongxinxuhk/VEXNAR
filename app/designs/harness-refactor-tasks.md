@@ -194,7 +194,7 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“12 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[x] 已完成`（D4=A；P1-1～P1-8 全部完成；真实 dsh 模型会话内的工具发现/调用未核验）
+**阶段状态**：`[x] 已完成`（D4=A；P1-1～P1-8 全部完成；真实 dsh 模型会话内 12 个工具已实际调用并回填结果，见下方 P1 补验）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -386,6 +386,29 @@ dsh agent loop（唯一循环）
   - 提交 `472519e16`，合并 `5351cef13`。
 - 备注：这次只改文档；没有重跑 core/web/tools/account 测试（也没有运行时代码变更）。真实 dsh 模型会话内的工具发现/调用仍未核验。
 - 依赖：P1-7。
+
+#### P1 补验：真实模型会话调用 12 个工具（2026-11-27）
+
+- 状态：`[x] 已完成`（12/12 工具均有真实调用返回，`isError=false`；6 个 `web_*` 已实际走通创建→执行→分析→巡检→规避报告→关闭）
+- 分支：`docs/harness-ledger-live-tools`；提交：`dd57fa1d7`
+- 环境：`app/` 下 `VEXNAR_HOME="$PWD/.vexnar-home" node --import tsx scripts/vexnar-web.ts 3199`；真实 dsh web 在 3199 启动，模型为 `deepsec-flash`（provider `vexnar`）；只记录工具返回值，不记录登录态、访问令牌或抓包 hook。
+- 合成流量：为验证 `traffic_get`/`traffic_blob`，通过 core `/api/traffic/ingest` 注入一条本地测试流量 `1795752031-5793`（host `p18-tool-check.test`，`POST https://p18-tool-check.test/api/login` → 200，响应 263168 字节）；这不是目标站点实测。
+- 实际调用与返回：
+  - `traffic_search`：`{"host":"p18-tool-check.test","page":0,"size":5}` → `total=1`，首条 id `1795752031-5793`；`isError=false`（`session-21f68ab9-ab06-45af-a0c1-2dd91ab6755b`）。
+  - `traffic_get`：`{"id":"1795752031-5793"}` → 返回 `req`/`resp`，响应含 `@blob sha256:e08ece6e9b409c5e2e63ce389bb5e89a1e44747ef63997b626c19283efe66cd0`；`isError=false`（`session-d1b1f5b3-d0b3-4459-ba7e-06b55fcd2882`）。
+  - `traffic_blob`：`{"hash":"e08ece...66cd0"}` → `bytes=263168`、`encoding=base64`、`data` 字段存在，`isError=false`；dsh 工具结果日志在约 49,932 字符处截断，完整 base64 未落台账（`session-acd063fc-d7cf-4ab9-9b02-6e0c8cd6e933`）。
+  - `capture_control`：`{"action":"status"}` → `ok=true`、`active=false`、`scope=session-d1b1f5b3-d0b3-4459-ba7e-06b55fcd2882`、`items=0`；返回中的 hook/ingest 字段按凭据处理，未抄录（同 `session-d1b...`）。
+  - `report_finding`：`task_id=100`、`vulnclass=P1-8工具补验`、`severity=low` → `finding_id=3141`、`isError=false`；这是合成补验记录（`session-1d874bd6-6d7a-42b5-9013-e67c564daddd`）。
+  - `bind_finding_traffic`：`finding_id=3141` + `traffic_id=1795752031-5793`、`role=supporting` → `bindings=1`、binding id `246`、snapshot id `270afa87d28873790a5e6da14c5418d8206b8cd048c87065ad45230ff6077d2c`，`isError=false`（同 `session-1d8...`）。
+  - `web_session_create`：origin `https://example.com`、`request_budget=10` → `sessionId=ws-mwyghndg-274eef`、status `active`；`isError=false`（`session-e26aca6f-92ae-493d-8058-79307f0371b2`）。
+  - `web_request_execute`：GET `/` → request id `rq-mwyghndg-274eef-0001`、HTTP 200、classification `normal`、duration 965ms；`isError=false`（同 `session-e26...`）。
+  - `web_response_analyze`：该 request、`mode=auto` → 实际走 `mode=structure`、title `Example Domain`、excerpt 可读；`isError=false`（同 `session-e26...`）。
+  - `web_session_inspect`：`include=both, limit=5` → `requestCount=1`、`budgetLeft=9`、history 1 条、`policyEvents` 含 `session_created`；`isError=false`（同 `session-e26...`）。
+  - `web_evasion_report`：→ `logical_requests=1`、`attempts=1`、`escalated=0`、`passed_after_escalation=0`、`blocked_final=0`、`adversarial=false`、`egress_mode=on_block`；`isError=false`（同 `session-e26...`）。
+  - `web_session_control`：`action=close` → status `closed`；`isError=false`（同 `session-e26...`）。
+- 验收：上述五段会话 JSONL 中 `tool/call` 与 `tool/result` 可配对查询；12 个工具结果均为 `isError=false`。`web_*` 只对 `https://example.com` 发一次 GET `/`，未发写请求；最后已关闭 Web 会话。
+- 边界：`traffic_get`/`traffic_blob` 使用人工注入的合成流量，只证明工具链与 core 路由可用，不证明真实目标抓包质量；`traffic_blob` 的完整正文受 dsh 输出上限截断，未逐字节校验。
+- 备注：本节覆盖 P1-5/P1-6/P1-7 备注中“dsh 会话内实测未核验”的时点结论；原任务提交历史不改。
 
 ---
 
@@ -720,6 +743,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | P1-6 删除 8792 监听 | 待开始 → 已完成（8792 关闭、dsh 单 URL 启动、6 个 web_* 与构建产物均核验；会话模型调用未核验） | 提交 `9bfa20ef0`；分支合并 `8c0932b4e`；并入 main `c14e77a68`；core 29/29、tools 20/20、web 21/21、account 59/59；smoke 8 presets/tools 61/61，8792 探活失败；真实 dsh 3199 单 URL、8792 无监听；built 12 tools（web 6/6） |
 | 2026-11-27 | P1-7 工具面契约测试 | 待开始 → 已完成（12 个工具名、13 条白名单路径、未登记路径 404 均锁定；会话模型调用未核验） | 提交 `2e61ecee0`；合并 `8715a35d2`；tools 23/23；新增 `CORE_ROUTES` + `guardedCore`；404 不触达 core；built 12 tools / routes 13；typecheck/build 0；core 29/29、web 21/21、account 59/59；smoke 8 presets/tools 61/61 |
 | 2026-11-27 | P1-8 README/工具文档 | 待开始 → 已完成（12 工具/13 路由与 `CORE_ROUTES` 对齐；8792 默认移除已写明；纯文档未重跑运行时测试） | 提交 `472519e16`；合并 `5351cef13`；README 表 12 行/13 路由，`missing=none` / `extra=none`；`git diff --check` 0 |
+| 2026-11-27 | P1 真实模型会话补验 | 未核验 → 已完成（12/12 工具实际调用；6 个 `web_*` 跑通） | 分支 `docs/harness-ledger-live-tools`；dsh 3199 / `deepsec-flash`；`traffic_search` id `1795752031-5793`；`traffic_get` req/resp + blob；`traffic_blob` 263168 bytes；`capture_control` active=false；finding `3141` / binding `246`；web `ws-mwyghndg-274eef` 创建→GET 200→analyze→inspect→evasion→close；全部 `isError=false` |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -727,7 +751,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **真实模型会话补验**：在可用的 dsh 会话里实际调用 12 个工具（重点是 6 个 `web_*`），确认工具发现与执行；P1-7 只验证到注册面、处理器和构建产物。
+1. ~~真实模型会话补验~~：已完成（12/12 工具实际调用，6 个 `web_*` 跑通；证据见 P1 补验）。
 2. **P2 前置**：P2 需要 D1；P3/P4 仍受 D2/D5 与 MCP allowed-tools 决策约束。
 
 **当前阻塞**：D1/D2/D3/D5 需要拍板；P1 已按 D4=A 启动，P3 不能先于 D5，P4 不能先于 D1。
