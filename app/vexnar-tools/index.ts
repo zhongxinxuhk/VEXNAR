@@ -153,6 +153,55 @@ const captureControlSchema: ToolSchema = {
   }
 }
 
+const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
+const TRAFFIC_ROLES = ['baseline', 'proof', 'verification', 'supporting'] as const
+
+const reportFindingSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['task_id', 'vulnclass', 'severity', 'summary', 'evidence'],
+  properties: {
+    task_id: { type: 'string', description: '当前 VEXNAR 任务 id（数字字符串）。' },
+    vulnclass: { type: 'string', description: '漏洞类别，例如 SQL注入。' },
+    name: { type: 'string', description: '漏洞名称。' },
+    severity: { type: 'string', enum: [...SEVERITIES], description: '严重度。' },
+    summary: { type: 'string', description: '发现摘要。' },
+    evidence: { type: 'string', description: '可验证证据/PoC 文本；不能为空。' },
+    intent_id: { type: 'integer', minimum: 1, description: '可选：当前任务的意图 id。' },
+    worker: { type: 'string', description: '可选：执行者标识。' },
+    asset_ids: {
+      type: 'array',
+      items: { type: 'integer', minimum: 1 },
+      description: '可选：受影响资产 id。'
+    }
+  }
+}
+
+const bindFindingTrafficSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['finding_id', 'traffic_refs'],
+  properties: {
+    finding_id: { type: 'string', pattern: '^[0-9]+$', description: '独立漏洞记录 ID，不是探索节点 ID。' },
+    traffic_refs: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 50,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['traffic_id'],
+        properties: {
+          traffic_id: { type: 'string', description: 'traffic_search 返回的真实流量 ID。' },
+          role: { type: 'string', enum: [...TRAFFIC_ROLES], description: '默认 supporting。' },
+          note: { type: 'string', description: '该流量支持什么结论。' }
+        }
+      },
+      description: '已核实的真实流量引用；按复现顺序提交。'
+    }
+  }
+}
+
 /** core 的 capture scope 只接受这种 host chat session id。 */
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u
 
@@ -229,12 +278,13 @@ function captureResult(action: 'status' | 'start' | 'stop', payload: CapturePayl
 }
 
 /**
- * 插件入口：注册只读流量三件套与当前会话的抓包开关。
+ * 插件入口：注册流量、抓包和 finding 证据工具。
  *
  * 流量检索走 `/api/traffic` 的既有过滤字段；抓包控制按真实 core 路由走
  * `/api/sessions/:id/traffic/endpoint`（status）和 `/traffic/capture`（start/stop）。
- * 后者不是站点级 `/api/traffic/capture` 的 POST（该路由不存在），scope 由当前
- * dsh 会话推导，工具不接受任意 session id 或路径。
+ * finding 上报走 `POST /api/exploration/findings`，流量补绑走
+ * `POST /api/exploration/findings/:id/traffic`（body `traffic_refs`）。
+ * 所有路由和 id 形状都是固定的，工具不接受任意路径参数。
  *
  * @param ctx - 已注入 tools 与 vexnarCore 的插件上下文。
  */
@@ -299,6 +349,67 @@ export function apply(ctx: ToolContext): void {
         ? await ctx.vexnarCore.request(`${base}/endpoint`)
         : await ctx.vexnarCore.request(`${base}/capture`, { method: 'POST', body: { action } })
       return captureResult(action, payload as CapturePayload)
+    }
+  )
+
+  registerTool(
+    ctx,
+    'report_finding',
+    '记录一条已确认漏洞。必须给当前 task_id、vulnclass、severity、summary 和非空 evidence；返回 finding_id。流量证据用 bind_finding_traffic 补绑。',
+    reportFindingSchema,
+    async args => {
+      const taskId = requiredText(args, 'task_id')
+      const vulnclass = requiredText(args, 'vulnclass')
+      const severity = requiredText(args, 'severity')
+      if (!(SEVERITIES as readonly string[]).includes(severity)) throw new Error('severity 只能是 critical、high、medium 或 low')
+      const summary = requiredText(args, 'summary')
+      const evidence = requiredText(args, 'evidence')
+      const body: Record<string, unknown> = { task_id: taskId, vulnclass, severity, summary, evidence }
+      for (const key of ['name', 'worker'] as const) {
+        const value = String(args[key] ?? '').trim()
+        if (value !== '') body[key] = value
+      }
+      if (args.intent_id !== undefined && args.intent_id !== null && String(args.intent_id).trim() !== '') {
+        const intentId = Number(args.intent_id)
+        if (!Number.isInteger(intentId) || intentId <= 0) throw new Error('intent_id 必须是正整数')
+        body.intent_id = String(intentId)
+      }
+      if (args.asset_ids !== undefined && args.asset_ids !== null) {
+        if (!Array.isArray(args.asset_ids)) throw new Error('asset_ids 必须是数组')
+        const ids = args.asset_ids.map((value) => Number(value))
+        if (ids.some((id) => !Number.isInteger(id) || id <= 0)) throw new Error('asset_ids 必须是正整数数组')
+        body.asset_ids = ids
+      }
+      return await ctx.vexnarCore.request('/api/exploration/findings', { method: 'POST', body })
+    }
+  )
+
+  registerTool(
+    ctx,
+    'bind_finding_traffic',
+    '把已核实的真实流量补绑到已登记漏洞。finding_id 是独立漏洞记录 ID；traffic_refs 来自 traffic_search/traffic_get，按复现顺序提交。同批原子，重复绑定不覆盖已有说明。',
+    bindFindingTrafficSchema,
+    async args => {
+      const findingId = requiredText(args, 'finding_id')
+      if (!/^\d+$/u.test(findingId)) throw new Error('finding_id 必须是数字字符串')
+      if (!Array.isArray(args.traffic_refs) || args.traffic_refs.length === 0) throw new Error('traffic_refs 至少一条')
+      const refs: Array<{ traffic_id: string; role: string; note: string }> = []
+      const seen = new Set<string>()
+      for (const raw of args.traffic_refs) {
+        if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error('traffic_refs 每条必须是对象')
+        const item = raw as Record<string, unknown>
+        const trafficId = requiredText(item, 'traffic_id')
+        if (trafficId.length > 512) throw new Error('traffic_id 过长')
+        if (seen.has(trafficId)) continue
+        seen.add(trafficId)
+        const role = String(item.role ?? 'supporting').trim() || 'supporting'
+        if (!(TRAFFIC_ROLES as readonly string[]).includes(role)) throw new Error('role 只能是 baseline、proof、verification 或 supporting')
+        refs.push({ traffic_id: trafficId, role, note: String(item.note ?? '') })
+      }
+      return await ctx.vexnarCore.request(
+        `/api/exploration/findings/${encodeURIComponent(findingId)}/traffic`,
+        { method: 'POST', body: { traffic_refs: refs } }
+      )
     }
   )
 }

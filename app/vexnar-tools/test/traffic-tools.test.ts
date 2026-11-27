@@ -43,6 +43,18 @@ const core = {
         hook: 'hook-script'
       }
     }
+    if (path === '/api/exploration/findings') {
+      return { finding_id: '7', finding_node_id: '11', traffic: null, record: { id: '7' } }
+    }
+    if (/^\/api\/exploration\/findings\/\d+\/traffic$/u.test(path)) {
+      return {
+        finding_id: '42',
+        version: 2,
+        report_version: 0,
+        bindings: [{ id: '1', finding_id: '42', snapshot_id: 'snap-1', role: 'proof', note: 'poc', position: 0 }],
+        added: 1
+      }
+    }
     if (path.startsWith('/api/traffic/blob?')) {
       return { base64: Buffer.from('hello').toString('base64'), bytes: 5, content_type: 'application/octet-stream' }
     }
@@ -71,8 +83,8 @@ async function run(name: string, args: Record<string, unknown>, execution: unkno
   return await tool.execute(args, execution)
 }
 
-test('apply 注册流量三件套与 capture_control', () => {
-  assert.deepEqual([...tools.keys()].sort(), ['capture_control', 'traffic_blob', 'traffic_get', 'traffic_search'])
+test('apply 注册流量、抓包与 finding 证据工具', () => {
+  assert.deepEqual([...tools.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search'])
   for (const tool of tools.values()) {
     assert.ok(tool.description.length > 0)
     assert.equal(tool.parameters.type, 'object')
@@ -165,6 +177,78 @@ test('capture_control 用当前 dsh 会话映射 status/start/stop', async () =>
   assert.equal(stopped.stopped_at, 1700000001)
   assert.deepEqual(calls[2].init, { method: 'POST', body: { action: 'stop' } })
   assert.equal(calls[2].path, '/api/sessions/chat-abc/traffic/capture')
+})
+
+test('report_finding 只把白名单字段 POST 到 findings 路由', async () => {
+  calls.length = 0
+  const result = await run('report_finding', {
+    task_id: ' 7 ',
+    vulnclass: ' SQL注入 ',
+    name: ' union ',
+    severity: 'high',
+    summary: ' 参数可注入 ',
+    evidence: ' id=1 UNION SELECT 1 ',
+    intent_id: 3,
+    worker: ' tester ',
+    asset_ids: [1, '2'],
+    traffic_refs: [{ traffic_id: 'ignored' }]
+  })
+  assert.deepEqual(result, { finding_id: '7', finding_node_id: '11', traffic: null, record: { id: '7' } })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].path, '/api/exploration/findings')
+  assert.deepEqual(calls[0].init, {
+    method: 'POST',
+    body: {
+      task_id: '7',
+      vulnclass: 'SQL注入',
+      severity: 'high',
+      summary: '参数可注入',
+      evidence: 'id=1 UNION SELECT 1',
+      name: 'union',
+      worker: 'tester',
+      intent_id: '3',
+      asset_ids: [1, 2]
+    }
+  })
+})
+
+test('bind_finding_traffic 只把固定 finding 路由和去重后的 traffic_refs 交给 core', async () => {
+  calls.length = 0
+  const result = await run('bind_finding_traffic', {
+    finding_id: '42',
+    traffic_refs: [
+      { traffic_id: ' ex-1 ', role: 'proof', note: ' poc ' },
+      { traffic_id: 'ex-2' },
+      { traffic_id: 'ex-1', role: 'baseline', note: 'duplicate' }
+    ]
+  }) as Record<string, unknown>
+  assert.equal(result.finding_id, '42')
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].path, '/api/exploration/findings/42/traffic')
+  assert.deepEqual(calls[0].init, {
+    method: 'POST',
+    body: {
+      traffic_refs: [
+        { traffic_id: 'ex-1', role: 'proof', note: ' poc ' },
+        { traffic_id: 'ex-2', role: 'supporting', note: '' }
+      ]
+    }
+  })
+})
+
+test('缺失或非法 finding 参数在本地拒绝，不触碰 core', async () => {
+  calls.length = 0
+  const base = { task_id: '7', vulnclass: 'SQL注入', severity: 'high', summary: 's', evidence: 'e' }
+  await assert.rejects(async () => await run('report_finding', { ...base, task_id: ' ' }), /task_id 不能为空/u)
+  await assert.rejects(async () => await run('report_finding', { ...base, severity: 'urgent' }), /severity 只能是/u)
+  await assert.rejects(async () => await run('report_finding', { ...base, evidence: ' ' }), /evidence 不能为空/u)
+  await assert.rejects(async () => await run('report_finding', { ...base, intent_id: 1.5 }), /intent_id 必须是正整数/u)
+  await assert.rejects(async () => await run('report_finding', { ...base, asset_ids: [0] }), /asset_ids 必须是正整数数组/u)
+  await assert.rejects(async () => await run('bind_finding_traffic', { finding_id: '1/2', traffic_refs: [{ traffic_id: 'a' }] }), /finding_id 必须是数字字符串/u)
+  await assert.rejects(async () => await run('bind_finding_traffic', { finding_id: '1', traffic_refs: [] }), /traffic_refs 至少一条/u)
+  await assert.rejects(async () => await run('bind_finding_traffic', { finding_id: '1', traffic_refs: [{ traffic_id: 'a', role: 'bogus' }] }), /role 只能是/u)
+  await assert.rejects(async () => await run('bind_finding_traffic', { finding_id: '1', traffic_refs: [{ traffic_id: ' ' }] }), /traffic_id 不能为空/u)
+  assert.equal(calls.length, 0)
 })
 
 test('缺失或非法参数在本地拒绝，不触碰 core', async () => {

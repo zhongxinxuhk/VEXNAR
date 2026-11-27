@@ -111,6 +111,63 @@ async function readExchangeRaw(id: string) {
   }
 }
 
+/** Split the capture-plane's assembled request/response text into head and body. */
+function splitRaw(raw: string): { head: string; body: string } {
+  const cut = String(raw ?? '').indexOf('\n')
+  if (cut < 0) return { head: '', body: String(raw ?? '') }
+  return { head: String(raw).slice(0, cut), body: String(raw).slice(cut + 1) }
+}
+
+/**
+ * Resolve one `traffic_search` id into the exact exchange shape that
+ * `ingestTrafficEvidence` stores. Local kv rows keep head/body separately (and
+ * may spill the body to a blob); the capture plane's archived rows only expose
+ * assembled text, so split that text back at the first newline.
+ */
+async function evidenceExchange(id: string): Promise<IngestEvidenceExchange> {
+  const trafficId = String(id ?? '').trim()
+  if (!trafficId) throw Object.assign(new Error('traffic_id 不能为空'), { status: 400 })
+  const row = ((await allExchanges()) as any[]).find((item) => String(item.id) === trafficId)
+  if (!row) throw Object.assign(new Error(`流量不存在: ${trafficId}`), { status: 404 })
+  if (row.source === 'archive' || (row.req_head === undefined && row.resp_head === undefined)) {
+    const raw = await readExchangeRaw(trafficId)
+    if (!raw) throw Object.assign(new Error(`流量正文不存在: ${trafficId}`), { status: 404 })
+    const req = splitRaw(raw.req)
+    const resp = splitRaw(raw.resp)
+    return {
+      traffic_id: trafficId,
+      captured_at: Number(row.ts ?? 0),
+      url: String(row.url ?? ''),
+      method: String(row.method ?? ''),
+      status: Number(row.status ?? 0),
+      content_type: String(row.content_type ?? ''),
+      req_head: req.head,
+      resp_head: resp.head,
+      req_body: req.body,
+      resp_body: resp.body
+    }
+  }
+  const body = async (bodyKey: string, blobKey: string): Promise<string | Buffer> => {
+    const blob = String(row[blobKey] ?? '').trim()
+    if (blob) {
+      try { return await readBlobBuffer(blob) } catch { /* fall back to the inline preview */ }
+    }
+    return String(row[bodyKey] ?? '')
+  }
+  return {
+    traffic_id: trafficId,
+    captured_at: Number(row.ts ?? 0),
+    url: String(row.url ?? ''),
+    method: String(row.method ?? ''),
+    status: Number(row.status ?? 0),
+    content_type: String(row.content_type ?? ''),
+    req_head: String(row.req_head ?? ''),
+    resp_head: String(row.resp_head ?? ''),
+    req_body: await body('req_body', 'req_blob'),
+    resp_body: await body('resp_body', 'resp_blob')
+  }
+}
+
 async function readBlobBuffer(hash: string) {
   const h = hash.toLowerCase().trim()
   if (!BLOB_HASH_RE.test(h)) throw Object.assign(new Error('非法的 blob hash'), { status: 400 })
@@ -334,6 +391,7 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
 
   const existing = ((await writer().list('finding_traffic_bindings')) as any[])
     .filter((row) => String(row.finding_id) === String(findingId))
+  const existingSnapshots = new Set(existing.map((row) => String(row.snapshot_id ?? '')))
   let position = existing.reduce((max, row) => Math.max(max, Number(row.position ?? 0)), -1) + 1
   let nextBindingId = (await writer().maxKey('finding_traffic_bindings')) + 1
 
@@ -341,6 +399,7 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
   const seen = new Set<string>()
   const ops: Array<{ table: string; key: string; record: Record<string, unknown>; expectedRev?: number }> = []
   const bindings: any[] = []
+  let changed = false
 
   for (const exchange of exchanges) {
     const role = String(exchange.role ?? 'supporting')
@@ -365,8 +424,9 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
       created_at: now
     }
     const id = trafficSnapshotId(snapshot)
-    if (seen.has(id)) continue
+    if (seen.has(id) || existingSnapshots.has(id)) continue
     seen.add(id)
+    changed = true
 
     ops.push({ table: 'traffic_evidence_snapshots', key: id, record: { id, snapshot } })
     const bindingId = String(nextBindingId++)
@@ -384,6 +444,15 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
     bindings.push({ ...binding, snapshot })
   }
 
+  if (!changed) {
+    return {
+      finding_id: String(findingId),
+      version: Number(current.evidence_version ?? 0),
+      bindings: [],
+      written: 0,
+      added: 0
+    }
+  }
   const nextFinding: Record<string, unknown> = { ...current, evidence_version: Number(current.evidence_version ?? 0) + 1 }
   delete nextFinding.rev
   ops.push({ table: 'findings', key: String(findingId), record: nextFinding, expectedRev: Number(current.rev ?? 0) })
@@ -394,8 +463,66 @@ export async function ingestTrafficEvidence(findingId: string, exchanges: Ingest
     finding_id: String(findingId),
     version: Number(nextFinding.evidence_version),
     bindings,
-    written: written.length
+    written: written.length,
+    added: bindings.length
   }
+}
+
+export interface TrafficRefInput {
+  traffic_id?: unknown
+  role?: unknown
+  note?: unknown
+}
+
+/** Strip raw head blocks from a finding-traffic payload for tool/API responses. */
+function trafficSummary(out: any) {
+  if (!out) return out
+  return {
+    ...out,
+    bindings: (out.bindings ?? []).map((binding: any) => {
+      if (!binding?.snapshot) return binding
+      const { req_head: _reqHead, resp_head: _respHead, ...snapshot } = binding.snapshot
+      return { ...binding, snapshot }
+    })
+  }
+}
+
+/**
+ * Bind already-captured traffic IDs to a finding. Mirrors Go evidence.Store.Bind:
+ * normalize/dedupe refs, resolve every ID before writing, and return the finding's
+ * full traffic summary. Re-binding an existing snapshot is a no-op.
+ */
+export async function bindTrafficRefs(findingId: string, refs: TrafficRefInput[]) {
+  const id = String(findingId ?? '').trim()
+  if (!id) throw Object.assign(new Error('finding_id 不能为空'), { status: 400 })
+  const current = await writer().readRecord('findings', id)
+  if (!current) throw Object.assign(new Error('漏洞不存在'), { status: 404 })
+
+  const seen = new Set<string>()
+  const normalized: Array<{ traffic_id: string; role: string; note: string }> = []
+  for (const ref of Array.isArray(refs) ? refs : []) {
+    const trafficId = String(ref?.traffic_id ?? '').trim()
+    if (!trafficId) throw Object.assign(new Error('traffic_id 不能为空'), { status: 400 })
+    if (seen.has(trafficId)) continue
+    seen.add(trafficId)
+    const role = String(ref?.role ?? 'supporting').trim() || 'supporting'
+    if (!TRAFFIC_ROLES.has(role)) throw Object.assign(new Error(`无效的流量用途 "${role}"`), { status: 400 })
+    normalized.push({ traffic_id: trafficId, role, note: String(ref?.note ?? '') })
+  }
+  if (normalized.length === 0) throw Object.assign(new Error('补绑需要至少一条已核实的 traffic_refs'), { status: 400 })
+
+  const exchanges: IngestEvidenceExchange[] = []
+  for (const ref of normalized) {
+    exchanges.push({
+      ...(await evidenceExchange(ref.traffic_id)),
+      role: ref.role,
+      note: ref.note
+    })
+  }
+  const ingested = await ingestTrafficEvidence(id, exchanges)
+  const out = await store.traffic(id)
+  if (!out) throw Object.assign(new Error('漏洞不存在'), { status: 404 })
+  return { ...trafficSummary(out), written: ingested.written, added: ingested.added }
 }
 
 // ── ZIP 导出（对齐 server/finding_traffic_export.go） ─────────────────────
@@ -569,6 +696,20 @@ export function register(api: Hono) {
       const deleted = await removeExchanges(() => true)
       store.invalidate?.(['traffic_exchanges'])
       return c.json({ deleted, reclaimed: 0 })
+    } catch (e: any) {
+      return c.json({ error: String(e?.message ?? e) }, e?.name === 'StoreConflict' ? 409 : e?.status ?? 400)
+    }
+  })
+
+  // 为已登记漏洞补绑已采集流量（Go 侧 POST .../traffic 的等价路由）。
+  api.post('/api/exploration/findings/:id/traffic', async (c) => {
+    try {
+      const id = c.req.param('id')
+      if (!/^\d+$/u.test(id)) return c.json({ error: 'invalid finding id' }, 400)
+      const body = await c.req.json().catch(() => ({}))
+      const refs = Array.isArray(body?.traffic_refs) ? body.traffic_refs : []
+      if (refs.length === 0) return c.json({ error: '请选择流量' }, 400)
+      return c.json(await bindTrafficRefs(id, refs))
     } catch (e: any) {
       return c.json({ error: String(e?.message ?? e) }, e?.name === 'StoreConflict' ? 409 : e?.status ?? 400)
     }
