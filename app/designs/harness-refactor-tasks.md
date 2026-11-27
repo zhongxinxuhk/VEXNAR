@@ -194,7 +194,7 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1、P1-2 完成，P1-3～P1-8 待开始）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-3 完成，P1-4～P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -243,14 +243,30 @@ dsh agent loop（唯一循环）
 
 #### P1-3 `capture_control`
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
-- 动作：注册 `capture_control`，支持 `status/start/stop`，映射 `GET/POST /api/traffic/capture`；`start` 返回 scope + proxy endpoint。
+- 状态：`[x] 已完成`（真实 core 生命周期测试通过；dsh 会话内实测未核验）
+- 分支：`refactor/harness-tool-plane-p1-3`
+- 动作：
+  1. 注册 `capture_control`，只接受 `action=status|start|stop`；scope 从当前 dsh 会话 id 推导，不接受任意 session id 或路径参数。
+  2. 核对后按**真实路由**实现：
+     - `status` → `GET /api/sessions/:id/traffic/endpoint`
+     - `start/stop` → `POST /api/sessions/:id/traffic/capture`，body `{action}`
+     - 站点级 `GET /api/traffic/capture` 只做概览，没有对应 POST；台账原写的 `GET/POST /api/traffic/capture` 不成立。
+  3. 会话 id 与 UI 的 `sessionKey()` 一样先剥一层 `session-`，避免 core 拼成 `session-session-…`。
+  4. 统一 start/stop/status 返回字段：`action/ok/scope/active/proxy/ca_pem_url/source/started_at/stopped_at/items/last_ts/ingest_url/hook`；start/stop 的条数取 `summary`，status 的条数取 `capture`。
 - 验收：
-  - 会话里 `capture_control({action:'start'})` 后 `trafficCaptures` 出现 active 行。
-  - `stop` 后行消失/停止，端口释放。
+  - 工具处理器 + 真实 core 路由（临时 SQLite）：`start` 后 `active=true`、`scope=session-chat-abc`、`proxy=http://127.0.0.1:<port>`、`started_at>0`、`stopped_at=0`；`trafficCaptures` 有 active 行，mitm scope 表出现该端口。
+  - `status` 读到同一 scope、同一端口和 started_at；`stop` 后 `active=false`、`proxy=''`、`stopped_at>0`，mitm scope 表中该端口消失，capture 行保留 stopped_at。
+  - `hook` 含 `X-Flow-Scope: session-chat-abc`；工具名集合为 4 个。
+  - **未核验**：dsh 会话内实际调用；本次验证到工具处理器与真实 core 路由。
+- 证据：任务提交 `6c6f82928`；合并 `3184e57f7`；5 files changed, 273 insertions(+), 9 deletions(-)。
+  - `pnpm --filter @vexnar/dsh-tools run typecheck` → 0；`pnpm --filter @vexnar/dsh-tools run test` → 8/8（含真实 core 生命周期）。
+  - `pnpm --filter @vexnar/core exec tsx session-traffic.test.ts` → 18/18。
+  - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0。
+  - `pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm test:preset` → 2/2（inventory 13 checks）；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`；这里的 tools 是 core 目录统计，不等于 dsh 插件工具数。
+- 备注：dsh 会话 id 的前缀处理与 UI 共用同一口径，但实现是两处独立代码；P1-7 的工具契约测试应继续锁住路径与字段。工具描述已写明卸载插件前先 `stop`。
+- 风险：插件卸载不会自动关闭 scope 端口，必须显式 stop；若宿主改变 session id 形态，剥离规则需同步 UI 与工具。
 - 依赖：P1-1。
-- 风险：卸载插件前必须 stop，否则 scope 端口留到进程退出；在工具描述里写清。
 
 #### P1-4 finding 写入与证据绑定
 
@@ -633,6 +649,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | D4 领域工具面形态 | 待拍板 → 已拍板（A） | 选 `ctx.tools.register` 进程内注册；经 `vexnarCore.request` 直连 core；无第二 MCP 端口 |
 | 2026-11-27 | P1-1 `@vexnar/dsh-tools` 骨架 | 待开始 → 已完成 | 提交 `3f00328a8`；合并 `c4d3a898b`；包 build/全量 typecheck 0；产物 4/23；smoke 8 presets、tools 61/61 |
 | 2026-11-27 | P1-2 只读流量三件套 | 待开始 → 已完成（契约测试通过；会话实测未核验） | 提交 `ac15626ce`；合并 `c98384668`；tools test 6/6（local+archive+blob）；account 59/59；core traffic 17/17；smoke 8 presets/tools 61/61 |
+| 2026-11-27 | P1-3 `capture_control` | 待开始 → 已完成（真实 core 生命周期通过；会话实测未核验） | 提交 `6c6f82928`；合并 `3184e57f7`；tools test 8/8；core session-traffic 18/18；start 建 active/端口，stop 释放端口 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -640,7 +657,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-3**：注册 `capture_control`，映射 `GET/POST /api/traffic/capture`；先把 start/stop 的 scope 与端口生命周期钉住。
+1. **P1-4**：注册 `report_finding` 与 `bind_finding_traffic`；先确认 `/api/exploration/findings` 与流量绑定路由，没有就补最小路由。
 2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
 3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
