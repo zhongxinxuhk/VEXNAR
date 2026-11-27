@@ -55,14 +55,17 @@ jobs:
       - name: Build VEXNAR plugins
         working-directory: app
         # app/ 只有 pnpm 一个包管理入口（app/pnpm-lock.yaml），所有插件都在同一个
-        # workspace 里；只装这四个包的闭包，避免把 electron 之类与本任务无关的重依赖拉下来。
-        # 四个包缺一不可：core 的 build:embedded 产出落进 account/lib，egress 是常驻插件，
-        # 漏掉任何一个都会让安装包少一截功能。产物不入库，所以这里必须是全量重建。
+        # workspace 里；只装这几个包的闭包，避免把 electron 之类与本任务无关的重依赖拉下来。
+        # 五个包缺一不可：core 的 build:embedded 产出落进 account/lib，egress 是常驻插件，
+        # tools 由 cordis.patch.yml 挂载，漏掉任何一个都会让构建失败或安装包少一截功能
+        # （漏掉 tools 时 build.ts 找不到 esbuild，整个 app-bundle 直接失败）。
+        # 产物不入库，所以这里必须是全量重建。
         run: |
           pnpm install --frozen-lockfile \
             --filter @vexnar/dsh-ui... \
             --filter @vexnar/dsh-account... \
             --filter @vexnar/dsh-egress... \
+            --filter @vexnar/dsh-tools... \
             --filter @vexnar/core...
           pnpm run clean:outputs
           pnpm run build
@@ -81,6 +84,7 @@ jobs:
             vexnar/ui/package.json vexnar/ui/lib \
             vexnar/account/package.json vexnar/account/lib vexnar/account/assets \
             vexnar-egress \
+            vexnar-tools \
             -C .. LICENSE
       - uses: actions/upload-artifact@v4
         with:
@@ -95,7 +99,7 @@ jobs:
         run: |
           pnpm run overlay:prepare
           node -e "const m = require('./.desktop-overlay/overlay.json'); \
-            if (m.fileDeps.length !== 4) throw new Error('overlay 缺少 VEXNAR 本地依赖：' + m.fileDeps.length); \
+            if (m.fileDeps.length !== 5) throw new Error('overlay 缺少 VEXNAR 本地依赖：' + m.fileDeps.length); \
             if (!m.bundles.includes('@vexnar/app-bundle')) throw new Error('overlay 的 bundles 层没有 @vexnar/app-bundle'); \
             console.log('overlay OK：' + m.bundles.length + ' 个 bundle，' + m.fileDeps.length + ' 个本地依赖')"
           tar -czf "$RUNNER_TEMP/vexnar-desktop-overlay.tar.gz" -C . .desktop-overlay
