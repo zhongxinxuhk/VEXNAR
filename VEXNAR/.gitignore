@@ -1,0 +1,17 @@
+# Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
+# Repository: https://github.com/zhongxinxuhk/VEXNAR
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Go 侧的构建与运行产物。仓库根的 .gitignore 用的是锚定规则（/dist/、/jwt.key），
+# 只管仓库根；这一份补上 VEXNAR/ 里的同名产物。
+
+/dist/
+/server/webui/dist/
+/vexnar
+/vexnar.new
+/vexnar.new.sha256
+/vexnar.old
+/vexnar.failed
+/vexnar.upgrade.json
+/data/
+/jwt.key

@@ -60,8 +60,11 @@ Thumbs.db
 /artex
 /vexnar-*
 
-# 内嵌前端的单二进制产物
+# 内嵌前端的单二进制产物（仓库根的这个可执行文件）。
+# `VEXNAR/` 是旧 Go 产品的源码目录；macOS/Windows 的文件系统不区分大小写，
+# 同一规则会把整个目录吃掉，必须显式放行。
 /vexnar
+!/VEXNAR/
 # 一键更新在可执行文件旁留下的中间产物（暂存件 / 备份 / 失败版本 / 升级标记）
 /vexnar.new
 /vexnar.new.sha256

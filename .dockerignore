@@ -1,27 +1,22 @@
 # Copyright (c) 2026 xuzhongxin <xuzhongxin@sec.hn.cn>
 # Repository: https://github.com/zhongxinxuhk/VEXNAR
 # SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# 仓库根的镜像构建上下文只服务 Harness 镜像（docker/harness.Dockerfile）。
+# 旧 Go 产品在 VEXNAR/，除了 account 构建要拷的 yakhistory 协议定义，其余不进包。
 
 .git
 .worktrees
 **/node_modules
-# Harness 镜像在容器里现建这三样，从本地带进去只会把上下文撑大。
+参考项目
+# Harness 镜像在容器里现建这几样，从本地带进去只会把上下文撑大。
 app/dsh
 app/.desktop-overlay
 app/desktop-resources
 app/desktop/dist
-参考项目
-web/.next
-web/out
-server/webui/dist
-/vexnar
-data
-*.db
-transcripts
-bench/kv
-bench/debug
-bench/__pycache__
-bench/.env
-bench/scheduler.py
-bench/entrypoint_v2.sh
-bench/seed_v2.sh
+# Go 侧只留源码与 yakhistory：产物与前端依赖不参与 Harness 构建。
+VEXNAR/dist
+VEXNAR/web/.next
+VEXNAR/web/out
+VEXNAR/server/webui/dist
+VEXNAR/vexnar

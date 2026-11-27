@@ -28,8 +28,8 @@ RUN apt-get update \
 WORKDIR /src/app
 COPY app/ ./
 COPY assets/logo.png /src/assets/logo.png
-# account 的构建要把协议定义拷进 lib（app/vexnar/account/build.ts 里的 ../../../yakhistory）。
-COPY yakhistory/ /src/yakhistory/
+# account 的构建要把协议定义拷进 lib（app/vexnar/account/build.ts 里的 ../../../VEXNAR/yakhistory）。
+COPY VEXNAR/yakhistory/ /src/VEXNAR/yakhistory/
 # 只装 VEXNAR 五个包的闭包，与 .github/workflows/app-build.yml 的 app-bundle 作业一致。
 RUN pnpm install --frozen-lockfile \
       --filter @vexnar/dsh-ui... \

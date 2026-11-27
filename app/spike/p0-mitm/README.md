@@ -14,8 +14,8 @@
 ## 运行
 
 ```sh
-# 1. 启动 Go（默认 8787，捕获代理 8788）
-go run ./cmd/vexnar -addr 127.0.0.1:8787 -data ./data
+# 1. 启动 Go（默认 8787，捕获代理 8788；Go 侧在 VEXNAR/）
+(cd ../../../VEXNAR && go run ./cmd/vexnar -addr 127.0.0.1:8787 -data ./data)
 
 # 2. 打开流量捕获（脚本外执行一次；会持久化到 settings）
 PUT /api/settings {"traffic_capture":true}

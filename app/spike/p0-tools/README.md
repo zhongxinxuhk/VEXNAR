@@ -11,8 +11,8 @@
 ## 运行
 
 ```sh
-# Go 以固定 token 启动，便于脚本对账
-VEXNAR_MCP_TOKEN=spike-token go run ./cmd/vexnar -addr 127.0.0.1:8787 -data ./data
+# Go 以固定 token 启动，便于脚本对账（Go 侧在 VEXNAR/）
+(cd ../../../VEXNAR && VEXNAR_MCP_TOKEN=spike-token go run ./cmd/vexnar -addr 127.0.0.1:8787 -data ./data)
 
 VEXNAR_MCP_TOKEN=spike-token pnpm --filter @vexnar/p0-tools-spike run compare
 ```

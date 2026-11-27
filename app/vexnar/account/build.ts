@@ -66,7 +66,7 @@ const externals = [
 ]
 
 await mkdir(lib, { recursive: true })
-await copyFile(join(here, '../../../yakhistory/wire/history.proto'), join(lib, 'yak-history.proto'))
+await copyFile(join(here, '../../../VEXNAR/yakhistory/wire/history.proto'), join(lib, 'yak-history.proto'))
 await build({
   entryPoints: hostEntries,
   outdir: lib,

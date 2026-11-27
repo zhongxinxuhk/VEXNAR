@@ -132,7 +132,7 @@ current desktop path.
 
 - The Go service remains the fallback data/tool backend: task engine, findings, traffic evidence,
   assets, reports and conversation storage are still available there for `VEXNAR_RUNTIME_MODE=go`
-  and for the Go/`web/` console deployment.
+  and for the Go/`VEXNAR/web/` console deployment.
 - Default clients consume `vexnar-core` routes; in Go mode they can consume the Go MCP server
   (`/mcp`, tools and domain data). Model access is not part of either backend surface inside this
   product — the dsh process owns it (see above). UI-only state belongs to the client.
@@ -169,12 +169,12 @@ current desktop path.
 
 ## Connect to the web console's API — do not rewrite the web console
 
-- `web/` is an existing, finished client. Work on other clients connects to its backend APIs; it
+- `VEXNAR/web/` is an existing, finished client. Work on other clients connects to its backend APIs; it
   must not restyle, refactor or restructure the web app to make another client fit. Only change
-  `web/` when a shared backend contract genuinely requires it, and keep the edit minimal.
+  `VEXNAR/web/` when a shared backend contract genuinely requires it, and keep the edit minimal.
 - Data shown on several surfaces must come from the same endpoint and row. If surfaces disagree,
   fix the backend state or contract — never special-case one client.
-- Never run `next build` inside `web/` while `next dev` is running. Both write `.next/`, and the
+- Never run `next build` inside `VEXNAR/web/` while `next dev` is running. Both write `.next/`, and the
   dev server then resolves no routes and returns 404 for every page (including `/`). Stop the
   dev server first, or build in a separate copy. Recovery: stop dev, move `.next/` aside
   (`mv .next /tmp/vexnar-next-stale`), then `npm run dev` again.
@@ -202,7 +202,7 @@ Rules:
 - Apply the header to source, scripts, styles, migrations, configuration and project docs that
   the owner wrote. Do not stamp files merely because they are tracked.
 - Never add the header to generated files, lockfiles, dependency manifests, binaries, vendored
-  dependencies, the `参考项目/` reference tree, `skills/` imported skill assets, or `web/` files
+  dependencies, the `参考项目/` reference tree, `skills/` imported skill assets, or `VEXNAR/web/` files
   that retain their upstream MIT license. Respect upstream copyright and `SPDX` identifiers.
 - JSON has no comment syntax: record authorship in `author`, `repository` and `license` fields
   when the file is a project manifest; never corrupt JSON to add a header.

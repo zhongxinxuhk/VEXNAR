@@ -40,7 +40,7 @@ VEXNAR 当前是 **Go 单体服务 + PostgreSQL + 内嵌 Next.js 控制台** 的
 | PostgreSQL 表 | 60 条声明 / 59 张唯一表 | `grep -c 'CREATE TABLE' db/schema.sql`；`desktop_projects` 在 590 与 995 行各声明一次 |
 | MCP 工具 | 20 个 | `server/mcp.go`：15 个领域工具 + `traffic_search`/`traffic_get`/`traffic_blob` + `list_assets` + `create_task` |
 | 通知通道 | 6 类（钉钉 / 飞书 / 企微 / Webhook / Telegram / 邮件） | `notify/` |
-| 内嵌前端 | Next.js `^16.2.9`，静态导出 | `web/` → `web/out` → `server/webui/dist`（`build.sh`），`server/webui_embed.go` 的 `//go:embed all:webui/dist` |
+| 内嵌前端 | Next.js `^16.2.9`，静态导出 | `VEXNAR/web/` → `web/out` → `server/webui/dist`（`VEXNAR/build.sh`），`server/webui_embed.go` 的 `//go:embed all:webui/dist` |
 | TS 只读 API | 20 个 GET 端点 | `app/vexnar-core/src/routes.ts` |
 | 上游 dsh | tag `dsh-v0.2.2-rc.5` / commit `9c2670d3…` / MIT | `app/upstream.lock.json` |
 | Go 关键依赖 | norma v0.4.3、go-mitmproxy v1.9.2、pgx v5.10.0、modernc.org/sqlite v1.52.0、dnsx | `go.mod` |
