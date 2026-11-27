@@ -137,7 +137,9 @@ function overlayDigest() {
 function install() {
   const overlay = JSON.parse(readFileSync(join(overlayRoot, 'overlay.json'), 'utf8'))
   const home = harnessHome()
-  const profileDir = join(home, 'profiles', 'desktop')
+  // 桌面固定用 `desktop`；容器里 dsh 不允许占用这个保留名，用 `VEXNAR_PROFILE` 换成普通 profile。
+  const profileName = process.env.VEXNAR_PROFILE || 'desktop'
+  const profileDir = join(home, 'profiles', profileName)
   const bundlesDir = join(home, 'bundles')
   const stampFile = join(profileDir, '.vexnar-overlay')
   const digest = overlayDigest()
