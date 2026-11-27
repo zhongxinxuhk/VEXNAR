@@ -215,14 +215,20 @@ function applyBrand() {
   // scripts/release.mjs version 给出）；本地开发不设这个变量就保持上游原样。
   const releaseVersion = process.env.VEXNAR_RELEASE_VERSION?.trim()
   if (releaseVersion !== undefined && releaseVersion !== '') {
-    const manifestPath = 'package.json'
-    const manifest = JSON.parse(read(manifestPath))
-    if (manifest.version !== releaseVersion) {
+    // 三个 manifest 必须同版本，少改一个都会被上游的打包校验拒掉：
+    //   - prepare-dsh.ts 的 desktopRelease() 比对 apps/desktop 与根 package.json
+    //     （Electron 0.2.2-rc.5 must bind the same version of @deepseek-ai/dsh）；
+    //   - runtime-tree.ts 的 readDesktopRuntime() 要求运行时里的
+    //     `@deepseek-ai/dsh` 与 `@deepseek-ai/dsh-desktop-host` 都等于这个版本
+    //     （core-package-set.ts 的 RELEASE_PACKAGES）。
+    for (const manifestPath of ['package.json', 'apps/desktop/package.json', 'apps/desktop-host/package.json']) {
+      const manifest = JSON.parse(read(manifestPath))
+      if (manifest.version === releaseVersion) continue
       manifest.version = releaseVersion
       writeFileSync(join(dsh, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
       changed.push(manifestPath)
-      console.log(`  ~ dsh/package.json version → ${releaseVersion}`)
     }
+    console.log(`  ~ dsh + apps/desktop version → ${releaseVersion}`)
   }
 
   // ── 1. 品牌字符串（用户可见的文案与 .app 目录名） ──────────────────────────
