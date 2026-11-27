@@ -160,12 +160,12 @@ dsh agent loop（唯一循环）
   - `pnpm exec tsx scripts/smoke-harness.ts` 在干净 home 下退出码 0，并打印实际 preset/tool 列表。已执行。
   - 故意删掉 `preset-vexnar-goals` 的副本执行 `--check`，退出码 1。已执行。
   - 单文件 `tsc --noEmit ... scripts/smoke-harness.ts` 退出码 0；`git diff --check` 退出码 0。已执行。
-  - “无 8792 监听”断言：**未核验**，按依赖留到 P1-6 完成后补。
+  - “无 8792 监听”断言：已由 P1-6 补齐；core 启动期间探活 8792 失败，`lsof` 退出码 1。
 - 证据：
   - 分支 `refactor/harness-smoke`；提交 `81e513db1`；合并 `49b93355d`。
-  - 干净临时 home：`setup` 0.5s；presets `8/8`（goals/planner/main/worker/auto/pentest/reporter/retester）；core `agents total=0`、`tools total=61 enabled=61 bound=60`、`mcp total=3 enabled=3`、SQLite store；Web MCP 监听随机端口（非 8792）；`SMOKE PASS 8 presets / tools 61/61（bound 60）`。
+  - 干净临时 home：`setup` 0.5s；presets `8/8`（goals/planner/main/worker/auto/pentest/reporter/retester）；core `agents total=0`、`tools total=61 enabled=61 bound=60`、`mcp total=3 enabled=3`、SQLite store；Web MCP 监听随机端口（非 8792，P1-6 后不再启动）；`SMOKE PASS 8 presets / tools 61/61（bound 60）`。
   - 负向自检：删一个 preset 后读到 `7/8`，检查器拒绝；外部 `--check /tmp/vexnar-smoke-corrupt.yml` → 退出码 1，`缺少 preset: vexnar-goals；preset 数 7 != 8`。
-- 依赖：P0-1；P1-6 完成后才能断言“无 8792”。
+- 依赖：P0-1；P1-6 已补齐“无 8792”断言。
 - 风险：`setup` 会联网装 profile，CI 上要允许离线缓存；否则标记为“本机冒烟”，不塞进默认门禁。
 - 备注：工具断言口径是 `topology.tools.enabled/bound`（已注册且绑定 agent），未通过 dsh 实际调用工具；`--full` 未跑（联网 extras），默认只做本机结构冒烟。
 
@@ -194,7 +194,7 @@ dsh agent loop（唯一循环）
 ### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-4 完成，P1-5～P1-8 待开始）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-6 完成，P1-7～P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -295,7 +295,7 @@ dsh agent loop（唯一循环）
 
 #### P1-5 Web 六工具并入同一插件
 
-- 状态：`[x] 已完成`（REST/工具处理器与 MCP 同 fixture 对照通过；dsh 会话内实测未核验；旧 8792 MCP 仍在，会话「只看到一套前缀」需 P1-6 收口）
+- 状态：`[x] 已完成`（REST/工具处理器与 MCP 同 fixture 对照通过；dsh 会话内实测未核验；旧 8792 MCP 已由 P1-6 删除）
 - 分支：`refactor/harness-tool-plane-p1-5`
 - 动作：
   1. 把 `web_session_create`、`web_request_execute`、`web_response_analyze`、`web_session_inspect`、`web_session_control`、`web_evasion_report` 注册到 `@vexnar/dsh-tools`，分别固定映射 `POST /api/web/sessions`、`POST /api/web/sessions/:id/requests`、`POST .../analyze`、`GET .../:id`、`POST .../control`、`GET .../evasion`。不复制 Web 引擎，不新开端口。
@@ -308,32 +308,44 @@ dsh agent loop（唯一循环）
   - 同 fixture 对照通过：创建、执行、分析、巡检、规避报告、关闭六步的 session/policy/outcome/structure/inspect/evasion/control 业务字段与 MCP 版逐项相等；只忽略每次运行必然不同的 id、时间戳和耗时。
   - 真实引擎生命周期通过：创建 → 两次请求 → 分析 → `request_id` 精确巡检（只回 1 条）→ 规避报告 → 暂停/恢复/重置预算/关闭；跨 Harness 会话读取返回 403；Authorization 在记录中为 `***`，返回值不含明文凭据。
   - REST 缺口回归通过：`request_id` 过滤生效；非法 `control.action` 由 core 返回 400，而不是被当成 `reset_budget` 静默执行。
-  - **未核验**：dsh 会话内实际调用；旧 `vexnar-web` MCP 仍由 `mcp-manager` 挂在 8792，直到 P1-6 删除后才只剩 `dsh-tools` 一套前缀。
+  - **未核验**：dsh 会话内实际调用。P1-5 当时旧 `vexnar-web` MCP 仍由 `mcp-manager` 挂在 8792；P1-6 已删除。
 - 证据：任务提交 `7f518b937`；合并 `fb0c7e686`；8 files changed, 914 insertions(+), 6 deletions(-)。
   - `pnpm --filter @vexnar/dsh-tools run typecheck` → 0；`pnpm --filter @vexnar/dsh-tools run test` → 20/20（含 `web-core` 2 条、`web-mcp-parity` 1 条、`web-tools` 5 条）。
   - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0；构建后 `index.js` 注册 12 个工具（6 个 `web_*` 全在）。
   - `pnpm --filter @vexnar/core run test` → 29/29 个测试文件通过；`traffic.test.ts` → 17/17；`pnpm --filter @vexnar/web run test` → 20/20。
   - `pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm test:preset` → 2/2（inventory 13 checks）；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
-  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，`routes=361`，Web MCP 在 8792 启动 6 个工具（P1-6 目标）。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，`routes=361`，Web MCP 在 8792 启动 6 个工具（P1-6 后该监听已移除）。
   - 合并后在 `main` 复跑 tools test → 20/20；core traffic → 17/17；重新构建后 `index.js` 仍为 12 个工具。
 - 备注：旧 MCP 版保留了富文本摘要和 SSE 传输；这六个工具本身都是同步请求/响应，REST 返回的是同一份结构化 `record/outcome/snapshot/report`，因此本次没有补 SSE。`web_session_inspect` 的 `include` 只影响 MCP 文本展示，结构化快照两边本来就一致；工具仍返回完整快照。P1-5 只扩了 `dsh-tools`，没有删除 8792、没有改启动注入。
-- 风险：旧 8792 MCP 在 P1-6 前仍会和 `dsh-tools` 的 6 个同名工具并存；旧 profile 若未装 `@vexnar/dsh-tools`，`cordis.patch.yml` 会跳过新插件，只能继续走旧 MCP。实际 dsh 会话内的工具发现/调用仍未核验，需在 P1-6 后用真实会话补验。REST 的 `include` 参数仍只是 MCP 文本层语义，不改结构化快照。
+- 风险：P1-5 当时旧 8792 MCP 仍会和 `dsh-tools` 的 6 个同名工具并存（P1-6 已删除）；旧 profile 若未装 `@vexnar/dsh-tools`，`cordis.patch.yml` 会跳过新插件，只能继续走旧 MCP。实际 dsh 会话内的工具发现/调用仍未核验，需后续用真实模型会话补验。REST 的 `include` 参数仍只是 MCP 文本层语义，不改结构化快照。
 - 依赖：P1-1。
 
 #### P1-6 删除 8792 监听
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
+- 状态：`[x] 已完成`（8792 无监听、6 个 `web_*` 与真实 dsh 单 URL 启动均已核验；dsh 会话内模型调用未核验）
+- 分支：`refactor/harness-tool-plane-p1-6`
 - 动作：
-  1. `vexnar-core/src/web.ts` 的 `startWebRuntime` 传 `mcp: false`。
-  2. `vexnar/cordis.patch.yml` 的 `mcp-manager.servers` 删除 `vexnar-web`。
-  3. 删除 `VEXNAR_WEB_MCP_TOKEN` / `VEXNAR_WEB_MCP_PORT` 的启动注入（保留读取兼容一个版本）。
+  1. `vexnar-core/src/web.ts` 的 `webRuntime()` 给 `startWebRuntime` 传 `mcp: false`；`webStatus()` 返回 `mode=in-process`、`mcp=null`，`webHttp` 不再传空的 `mcpUrl`。
+  2. `vexnar-web/src/index.ts` 只在 `mcp !== false` 时解析 token；进程内模式 `tokenSource=''`，不写 `mcp.token`。
+  3. `vexnar/cordis.patch.yml` 的 `mcp-manager` 删除 `vexnar-web`；只有 `VEXNAR_RUNTIME_MODE=go` 时注册 Go `vexnar` server，默认返回空对象。
+  4. 不再注入 `VEXNAR_WEB_MCP_TOKEN` / `VEXNAR_WEB_MCP_PORT`；topology 的 `runtime.web_mcp`、`web.mcp_port/mcp_url` 均为 `null`，`web.mode='in-process'`，`listeners` 不再包含 `web-mcp`。
+  5. 冒烟新增断言：已安装 patch 不含 `vexnar-web` 与 `VEXNAR_WEB_MCP_TOKEN/PORT`；core 存活时探活 8792 必须失败；topology 必须是 `in-process` 且无 `web-mcp` listener。
+  6. 新增 `vexnar-web/test/runtime.test.ts` 覆盖 `mcp:false`；`vexnar-tools/test/web-core.test.ts` 改用同一契约。
 - 验收：
-  - `lsof -nP -iTCP:8792 -sTCP:LISTEN` 无输出。
-  - dsh 启动输出只有一个 URL。
-  - 六个 web 工具仍可调用（走 P1-5 的进程内实现）。
-- 依赖：P1-5 完成后再删，避免工具面断档。
-- 风险：旧 profile 仍可能引用 8792；`setup` 要能迁移，旧 profile 启动时给出明确告警。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `web: in-process (no 8792 MCP)`，core 存活时 `portListening(8792)=false`；脚本退出后 `lsof -nP -iTCP:8792 -sTCP:LISTEN` 退出码 1。
+  - 真实 dsh 包装器（临时 `VEXNAR_HOME`，端口 3199）启动输出只有一行 `vexnar web: http://127.0.0.1:3199/...`；3199 在监听，8792 不在监听；停止后 3199/8792 都无监听。
+  - 六个 `web_*` 工具仍可调用：`web-core.test.ts` 走真实 `/api/web/*` 完成创建→执行→分析→巡检→规避报告→控制；tools test 20/20。
+  - 构建后的 `app/vexnar-tools/index.js` 注册 12 个工具，6 个 `web_*` 全在；冒烟 `tools 61/61（bound 60）`。
+  - **未核验**：dsh 会话内让模型实际调用 6 个 `web_*` 工具（当前没有可用的模型会话）；本次验证到工具处理器、真实 core 路由与真实 dsh 启动。
+- 证据：任务提交 `9bfa20ef0`；分支先合入 `main` 的 `8c0932b4e`，最终 `--no-ff` 合并 `c14e77a68`；11 files changed, 136 insertions(+), 99 deletions(-)。
+  - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
+  - `pnpm --filter @vexnar/core run test` → 29/29 个测试文件通过；`topology.test.ts` → 21 assertions passed。
+  - `pnpm --filter @vexnar/web run test` → 21/21；`pnpm --filter @vexnar/dsh-tools run test` → 20/20；`pnpm --filter @vexnar/dsh-account run test` → 59/59。
+  - `pnpm test:preset` → 2/2（inventory 13 checks）；`pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，`routes=361`。
+  - 合并后在 `main` 复跑：`pnpm typecheck` 0、`pnpm run build` 0、tools 20/20、web 21/21、smoke 通过；构建入口注册 12 个工具，`web_tools=6/6`。
+- 备注：`startWebRuntime` 的默认值仍是 `mcp: true`，只服务独立兼容入口 `pnpm --filter @vexnar/web run mcp`；core 始终传 `false`，所以常规启动没有第二个监听。旧 profile 由 `setup`/`ensureProfile` 刷新 app-bundle 文件后生效；本次只在干净 profile 验证了安装后的 patch，没有对已有旧 profile 做升级实测。
+- 风险：仍在运行的旧 dsh 进程会继续使用内存里的旧 patch，并尝试连接已关闭的 8792，直到重启/setup 后消失；手工执行独立 MCP 入口时 8792 会再次监听，这是兼容入口，不是 core 的默认行为。
+- 依赖：P1-5。
 
 #### P1-7 工具面契约测试
 
@@ -685,7 +697,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | P1-2 只读流量三件套 | 待开始 → 已完成（契约测试通过；会话实测未核验） | 提交 `ac15626ce`；合并 `c98384668`；tools test 6/6（local+archive+blob）；account 59/59；core traffic 17/17；smoke 8 presets/tools 61/61 |
 | 2026-11-27 | P1-3 `capture_control` | 待开始 → 已完成（真实 core 生命周期通过；会话实测未核验） | 提交 `6c6f82928`；合并 `3184e57f7`；tools test 8/8；core session-traffic 18/18；start 建 active/端口，stop 释放端口 |
 | 2026-11-27 | P1-4 finding 写入与证据绑定 | 待开始 → 已完成（真实 core 路由通过；会话实测未核验） | 提交 `03fe79b0d`；合并 `5ff12f13f`；tools test 12/12；补 POST findings/:id/traffic；finding +1、snapshot/binding 可读、重复绑定不增行 |
-| 2026-11-27 | P1-5 Web 六工具并入同一插件 | 待开始 → 已完成（REST/MCP 同 fixture 对照通过；会话实测与单前缀待 P1-6） | 提交 `7f518b937`；合并 `fb0c7e686`；tools test 20/20；补 inspect limit/request_id 与 control action 校验；6 个 web 工具逐项对齐 MCP；built 12 tools；smoke 8 presets/tools 61/61 |
+| 2026-11-27 | P1-5 Web 六工具并入同一插件 | 待开始 → 已完成（REST/MCP 同 fixture 对照通过；会话实测未核验；单前缀由 P1-6 收口） | 提交 `7f518b937`；合并 `fb0c7e686`；tools test 20/20；补 inspect limit/request_id 与 control action 校验；6 个 web 工具逐项对齐 MCP；built 12 tools；smoke 8 presets/tools 61/61 |
+| 2026-11-27 | P1-6 删除 8792 监听 | 待开始 → 已完成（8792 关闭、dsh 单 URL 启动、6 个 web_* 与构建产物均核验；会话模型调用未核验） | 提交 `9bfa20ef0`；分支合并 `8c0932b4e`；并入 main `c14e77a68`；core 29/29、tools 20/20、web 21/21、account 59/59；smoke 8 presets/tools 61/61，8792 探活失败；真实 dsh 3199 单 URL、8792 无监听；built 12 tools（web 6/6） |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -693,8 +706,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-6**：删 8792 的 MCP 监听与 `mcp-manager` 的 `vexnar-web` 行，随后在真实 dsh 会话里补验 6 个 `web_*` 工具，确认只剩一套前缀。
-2. **P1-7**：新增 `registration.test.ts`，锁死 12 个工具名、白名单路径和未登记路径 404。
-3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
+1. **P1-7**：新增 `registration.test.ts`，锁死 12 个工具名、白名单路径和未登记路径 404。
+2. **P1-8**：更新 `app/README.md` 的 Web/领域工具段落与“工具 → core 路由”表，和 P1-7 清单对齐。
+3. **真实模型会话补验**：在可用的 dsh 会话里实际调用 6 个 `web_*`，确认工具发现与执行（P1-6 只验证到处理器、真实 core 路由和启动面）。
 
 **当前阻塞**：D1/D2/D3/D5 需要拍板；P1 已按 D4=A 启动，P3 不能先于 D5，P4 不能先于 D1。
