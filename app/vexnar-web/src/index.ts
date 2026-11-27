@@ -78,9 +78,11 @@ export async function startWebRuntime(options: WebRuntimeOptions): Promise<WebRu
     fetchImpl: options.fetchImpl,
     log
   })
-  const { token, source } = resolveToken(options.root, options.token)
   let mcp: RunningMcpServer | null = null
+  let tokenSource = ''
   if (options.mcp !== false) {
+    const { token, source } = resolveToken(options.root, options.token)
+    tokenSource = source
     mcp = await startMcpServer({
       engine,
       token,
@@ -92,7 +94,7 @@ export async function startWebRuntime(options: WebRuntimeOptions): Promise<WebRu
     engine,
     mcp,
     mcpUrl: mcp?.url ?? '',
-    tokenSource: source,
+    tokenSource,
     stop: async () => {
       await mcp?.close().catch(() => undefined)
       await engine.close()

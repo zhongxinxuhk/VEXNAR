@@ -24,7 +24,8 @@ registerNotificationSettings(api)
 registerEgress(api)
 
 // Web 测试域：会话感知 HTTP 引擎（Policy/Session/Transport/Observer/Evidence）。
-// Harness 走 MCP（默认 127.0.0.1:8792/mcp）；这里的 REST 面给控制台与 CLI 用。
+// 引擎由 core 进程内启动，只有 REST 面；Harness 的六个 web_* 工具走 @vexnar/dsh-tools
+// 的进程内 vexnarCore.request，不再申请 8792 MCP 监听。
 api.all('/api/web', async (c) => (await webHttp(c.req.raw)) ?? c.json({ error: 'not found' }, 404))
 api.all('/api/web/*', async (c) => (await webHttp(c.req.raw)) ?? c.json({ error: 'not found' }, 404))
 

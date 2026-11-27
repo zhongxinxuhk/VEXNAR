@@ -39,7 +39,7 @@ export interface TopologySnapshot {
     store_locked: boolean
     engine: string
     task_concurrency: number
-    web_mcp: string
+    web_mcp: null
     go: {
       enabled: boolean
       url_configured: boolean
@@ -76,9 +76,9 @@ export interface TopologySnapshot {
     }>
   }
   web: {
-    mcp_port: number
-    mcp_url: string
-    mode: 'legacy-http'
+    mcp_port: null
+    mcp_url: null
+    mode: 'in-process'
     adversarial: boolean
   }
   listeners: ListenerSnapshot[]
@@ -99,15 +99,9 @@ function isOn(name: string): boolean {
   return /^(1|on|true|yes)$/i.test(process.env[name]?.trim() ?? '')
 }
 
-function webPort(): number {
-  const value = Number(process.env.VEXNAR_WEB_MCP_PORT ?? 8792)
-  return Number.isInteger(value) && value >= 1 && value <= 65_535 ? value : 8792
-}
-
-function listeners(port: number, goEnabled: boolean): ListenerSnapshot[] {
+function listeners(goEnabled: boolean): ListenerSnapshot[] {
   const found: ListenerSnapshot[] = [
-    { name: 'dsh-web', kind: 'external', address: 'dsh', source: 'dsh' },
-    { name: 'web-mcp', kind: 'http', address: `127.0.0.1:${port}`, source: 'VEXNAR_WEB_MCP_PORT' }
+    { name: 'dsh-web', kind: 'external', address: 'dsh', source: 'dsh' }
   ]
   const corePort = envValue('PORT')
   if (corePort) {
@@ -129,7 +123,6 @@ export async function topology(): Promise<TopologySnapshot> {
   const tools = rows(toolRows)
   const servers = rows(mcpRows)
   const info = runtimeInfo()
-  const port = webPort()
   const goUrl = envValue('VEXNAR_GO_URL')
   const goEnabled = isOn('VEXNAR_GO') || goUrl !== null
 
@@ -179,19 +172,18 @@ export async function topology(): Promise<TopologySnapshot> {
       }))
     },
     web: {
-      mcp_port: port,
-      mcp_url: `http://127.0.0.1:${port}/mcp`,
-      mode: 'legacy-http',
+      mcp_port: null,
+      mcp_url: null,
+      mode: 'in-process',
       adversarial: isOn('VEXNAR_WEB_ADVERSARIAL')
     },
-    listeners: listeners(port, goEnabled),
+    listeners: listeners(goEnabled),
     env: {
       VEXNAR_RUNTIME_MODE: envValue('VEXNAR_RUNTIME_MODE'),
       VEXNAR_STORE: envValue('VEXNAR_STORE'),
       VEXNAR_EGRESS: envValue('VEXNAR_EGRESS'),
       VEXNAR_GO: envValue('VEXNAR_GO'),
       VEXNAR_CORE_EMBEDDED: envValue('VEXNAR_CORE_EMBEDDED'),
-      VEXNAR_WEB_MCP_PORT: String(port),
       VEXNAR_WEB_ADVERSARIAL: envValue('VEXNAR_WEB_ADVERSARIAL'),
       VEXNAR_TASK_CONCURRENCY: envValue('VEXNAR_TASK_CONCURRENCY')
     }
