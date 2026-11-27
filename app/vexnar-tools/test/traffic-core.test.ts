@@ -110,7 +110,7 @@ async function run(name: string, args: Record<string, unknown>): Promise<any> {
 }
 
 test('流量三件套能读真实 local + archive，并还原 blob', async () => {
-  assert.deepEqual([...registered.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search'])
+  assert.deepEqual([...registered.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search', 'web_evasion_report', 'web_request_execute', 'web_response_analyze', 'web_session_control', 'web_session_create', 'web_session_inspect'])
 
   const list = await run('traffic_search', { host: 'shared.test', size: 10, path: '/api/secret' })
   assert.equal(list.total, 2)

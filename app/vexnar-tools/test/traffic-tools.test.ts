@@ -84,7 +84,7 @@ async function run(name: string, args: Record<string, unknown>, execution: unkno
 }
 
 test('apply 注册流量、抓包与 finding 证据工具', () => {
-  assert.deepEqual([...tools.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search'])
+  assert.deepEqual([...tools.keys()].sort(), ['bind_finding_traffic', 'capture_control', 'report_finding', 'traffic_blob', 'traffic_get', 'traffic_search', 'web_evasion_report', 'web_request_execute', 'web_response_analyze', 'web_session_control', 'web_session_create', 'web_session_inspect'])
   for (const tool of tools.values()) {
     assert.ok(tool.description.length > 0)
     assert.equal(tool.parameters.type, 'object')
