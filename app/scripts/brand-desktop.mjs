@@ -215,21 +215,29 @@ function applyBrand() {
   // scripts/release.mjs version 给出）；本地开发不设这个变量就保持上游原样。
   const releaseVersion = process.env.VEXNAR_RELEASE_VERSION?.trim()
   if (releaseVersion !== undefined && releaseVersion !== '') {
-    // 四个 manifest 必须同版本，少改一个都会被上游的打包校验拒掉：
-    //   - prepare-dsh.ts 的 desktopRelease() 比对 apps/desktop 与根 package.json
-    //     （Electron 0.2.2-rc.5 must bind the same version of @deepseek-ai/dsh）；
-    //   - core-package-set.ts 的 RELEASE_PACKAGES 是 `@deepseek-ai/dsh`（CLI，在
-    //     apps/cli）与 `@deepseek-ai/dsh-desktop-host`：包集与运行时都要求这两个
-    //     包的版本等于 Desktop 的版本（runtime-tree.ts 的 readDesktopRuntime）。
-    //   根包本身叫 `@deepseek-ai/dsh-root`，只改它不够。
-    for (const manifestPath of ['package.json', 'apps/cli/package.json', 'apps/desktop/package.json', 'apps/desktop-host/package.json']) {
+    // 上游 scripts/release/families.ts 的 DshFamily 把 `packages/*/*` 与 `apps/*`
+    // 下所有非 private 包当成一个 release family，要求它们共享同一个版本（一个 tag
+    // 命名整个 family）。所以只改几个入口包会在打包时被三段校验连续拒掉：
+    //   - desktopRelease()：apps/desktop 与根 package.json 必须同版本；
+    //   - core-package-set.ts 的 RELEASE_PACKAGES：`@deepseek-ai/dsh`（CLI）与
+    //     `@deepseek-ai/dsh-desktop-host` 必须等于 Desktop 版本；
+    //   - families.ts 的 verifyVersions()：整个 family 只允许一个版本。
+    // 根包（`@deepseek-ai/dsh-root`）不在 family 里，但 desktopRelease() 要它，
+    // 所以单独放进清单；private 包不参与 family，保持上游版本。
+    const releaseManifests = ['package.json']
+    const familyManifests = git('ls-files', '--', 'apps/*/package.json', 'packages/*/*/package.json')
+      .split('\n').filter(Boolean)
+    for (const path of familyManifests) {
+      if (JSON.parse(read(path)).private !== true) releaseManifests.push(path)
+    }
+    for (const manifestPath of releaseManifests) {
       const manifest = JSON.parse(read(manifestPath))
       if (manifest.version === releaseVersion) continue
       manifest.version = releaseVersion
       writeFileSync(join(dsh, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
       changed.push(manifestPath)
     }
-    console.log(`  ~ dsh / cli / desktop / desktop-host version → ${releaseVersion}`)
+    console.log(`  ~ ${releaseManifests.length} 个 release manifest version → ${releaseVersion}`)
   }
 
   // ── 1. 品牌字符串（用户可见的文案与 .app 目录名） ──────────────────────────
