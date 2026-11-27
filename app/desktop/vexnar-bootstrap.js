@@ -23,7 +23,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -31,7 +31,7 @@ const resources = process.env.VEXNAR_RESOURCES || process.resourcesPath
 const overlayRoot = join(resources, 'vexnar-overlay')
 
 /** VEXNAR 自己的包：安装包升级时要跟着换，用户装的第三方插件不在此列。 */
-const OWN_PACKAGES = ['vexnar', 'vexnar-egress']
+const OWN_PACKAGES = ['vexnar', 'vexnar-egress', 'vexnar-tools']
 
 function log(message) {
   console.log(`[vexnar] ${message}`)
@@ -39,6 +39,65 @@ function log(message) {
 
 function warn(message) {
   console.warn(`[vexnar] ${message}`)
+}
+
+/**
+ * 装完是上游界面时，用户看不到打包进程的 stderr，只能靠这份日志定位。
+ * 写不进去也不该影响启动，所以整段吞掉异常。
+ */
+function note(message) {
+  try {
+    const home = harnessHome()
+    // 首次启动时 `.vexnar` 还不存在，先建目录，否则最早的失败反而记不下来。
+    mkdirSync(home, { recursive: true, mode: 0o700 })
+    appendFileSync(join(home, 'bootstrap.log'), `${new Date().toISOString()} ${message}\n`)
+  } catch {
+    // 日志不可写不是启动失败的理由。
+  }
+}
+
+/**
+ * 逐项复制 profile。
+ *
+ * Windows 上 `MAX_PATH`（260）会把整份复制中断在某个深层测试夹具上，而 `cpSync`
+ * 一抛错，后面的插件就全部装不上——表现正好是「装完还是上游 dsh」。所以这里
+ * 一项一项复制：超长路径跳过、单文件失败只记一笔，不连坐整份 profile。
+ * `seen` 记住目录的真实路径，避免 pnpm 的符号链接绕回祖先目录造成无限递归。
+ */
+function copyProfile(from, to, stats = { copied: 0, skipped: 0 }, stack = new Set()) {
+  mkdirSync(to, { recursive: true, mode: 0o700 })
+  for (const name of readdirSync(from)) {
+    const source = join(from, name)
+    const target = join(to, name)
+    try {
+      if (process.platform === 'win32' && target.length >= 240) {
+        stats.skipped += 1
+        continue
+      }
+      const real = realpathSync(source)
+      // 只拦「祖先目录」：pnpm 里同一个包目录会从 `.pnpm` 和顶层各链一次，
+      // 那是两份该保留的副本，不能去重。
+      if (stack.has(real)) {
+        stats.skipped += 1
+        continue
+      }
+      const info = statSync(source)
+      if (info.isDirectory()) {
+        stack.add(real)
+        copyProfile(source, target, stats, stack)
+        stack.delete(real)
+      } else if (info.isFile()) {
+        copyFileSync(source, target)
+        stats.copied += 1
+      } else {
+        stats.skipped += 1
+      }
+    } catch (error) {
+      stats.skipped += 1
+      note(`复制失败 ${source}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  return stats
 }
 
 /**
@@ -55,10 +114,15 @@ function harnessHome() {
  */
 function overlayDigest() {
   const hash = createHash('sha256')
+  const seen = new Set()
   const walk = (path) => {
     if (!existsSync(path)) return
+    // pnpm 的符号链接可能绕回祖先目录，不拦就会无限递归。
+    const real = realpathSync(path)
+    if (seen.has(real)) return
     const stats = statSync(path)
     if (stats.isDirectory()) {
+      seen.add(real)
       for (const name of readdirSync(path).sort()) walk(join(path, name))
       return
     }
@@ -82,10 +146,12 @@ function install() {
   const upgraded = !fresh && (!existsSync(stampFile) || readFileSync(stampFile, 'utf8').trim() !== digest)
   if (!fresh && !upgraded) return
 
+  let summary
   if (fresh) {
     log(`首次启动：安装预装配置到 ${profileDir}`)
     mkdirSync(dirname(profileDir), { recursive: true, mode: 0o700 })
-    cpSync(join(overlayRoot, 'profile'), profileDir, { recursive: true, dereference: true })
+    summary = copyProfile(join(overlayRoot, 'profile'), profileDir)
+    log(`profile 复制完成：${summary.copied} 个文件，跳过 ${summary.skipped} 个`)
   } else {
     log('安装包已更新：同步 VEXNAR 插件')
   }
@@ -94,11 +160,19 @@ function install() {
   // /Applications 里，Windows 在 Program Files 里），而且升级安装包会被整目录替换。
   for (const name of OWN_PACKAGES) {
     const from = join(overlayRoot, name)
-    if (!existsSync(from)) continue
+    if (!existsSync(from)) {
+      note(`缺少插件源码目录：${from}`)
+      continue
+    }
     const to = join(bundlesDir, name)
-    rmSync(to, { recursive: true, force: true })
-    mkdirSync(dirname(to), { recursive: true, mode: 0o700 })
-    cpSync(from, to, { recursive: true, dereference: true })
+    try {
+      rmSync(to, { recursive: true, force: true })
+      mkdirSync(dirname(to), { recursive: true, mode: 0o700 })
+      copyProfile(from, to)
+    } catch (error) {
+      // 一个插件坏了不该让其余插件跟着装不上；原因留给日志。
+      note(`同步 ${name} 失败：${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   const manifestPath = join(profileDir, 'package.json')
@@ -117,7 +191,7 @@ function install() {
       const target = join(profileDir, 'node_modules', ...dep.name.split('/'))
       if (!existsSync(source) || !existsSync(target)) continue
       rmSync(target, { recursive: true, force: true })
-      cpSync(source, target, { recursive: true, dereference: true })
+      copyProfile(source, target)
     }
   }
 
@@ -130,8 +204,16 @@ function install() {
   }
 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`, { mode: 0o600 })
+
+  // 锁文件记的还是打包机上的 `/home/runner/...`：清单改写后它必然过期，pnpm 按旧
+  // specifier 重新解析时会在 Windows 上失败。node_modules 已经就位，删掉让 pnpm
+  // 下次按新清单重算即可。
+  const lockfile = join(profileDir, 'pnpm-lock.yaml')
+  if (existsSync(lockfile)) rmSync(lockfile, { force: true })
+
   mkdirSync(profileDir, { recursive: true })
   writeFileSync(stampFile, `${digest}\n`)
+  note(`overlay ${digest.slice(0, 12)} 就位：copied=${summary?.copied ?? 0} skipped=${summary?.skipped ?? 0}`)
 }
 
 try {
@@ -139,7 +221,9 @@ try {
 } catch (error) {
   // 覆盖层坏了不该让应用打不开：dsh 会退回它自己的 profile，用户至少能进设置页
   // 看到出了什么事。把原因留在 stderr 里。
-  warn(`覆盖层就位失败：${error instanceof Error ? error.message : String(error)}`)
+  const reason = error instanceof Error ? error.message : String(error)
+  note(`覆盖层就位失败：${reason}`)
+  warn(`覆盖层就位失败：${reason}`)
 }
 
 // 打包后的调试出口：只跑就位、不加载 main，方便验证「装完东西在哪」。
