@@ -24,6 +24,25 @@ const calls: CoreCall[] = []
 const core = {
   async request(path: string, init?: Record<string, unknown>): Promise<unknown> {
     calls.push({ path, init })
+    if (path.startsWith('/api/sessions/')) {
+      const action = String((init?.body as { action?: string } | undefined)?.action ?? 'status')
+      const active = action !== 'stop'
+      return {
+        ok: action !== 'status',
+        enabled: active,
+        scope: 'session-chat-abc',
+        proxy: active ? 'http://127.0.0.1:12345' : '',
+        ca_pem_url: '/api/traffic/mitm/ca.pem',
+        capture: {
+          source: 'yakit',
+          started_at: active ? 1700000000 : 0,
+          stopped_at: active ? 0 : 1700000001
+        },
+        summary: { active, items: 2, last_ts: 1700000000 },
+        ingest_url: 'http://127.0.0.1:3099/api/traffic/ingest',
+        hook: 'hook-script'
+      }
+    }
     if (path.startsWith('/api/traffic/blob?')) {
       return { base64: Buffer.from('hello').toString('base64'), bytes: 5, content_type: 'application/octet-stream' }
     }
@@ -46,14 +65,14 @@ const ctx = {
 
 apply(ctx as unknown as ToolContext)
 
-async function run(name: string, args: Record<string, unknown>): Promise<unknown> {
+async function run(name: string, args: Record<string, unknown>, execution: unknown = {}): Promise<unknown> {
   const tool = tools.get(name)
   assert.ok(tool, `${name} 未注册`)
-  return await tool.execute(args, {})
+  return await tool.execute(args, execution)
 }
 
-test('apply 只注册三条只读流量工具', () => {
-  assert.deepEqual([...tools.keys()].sort(), ['traffic_blob', 'traffic_get', 'traffic_search'])
+test('apply 注册流量三件套与 capture_control', () => {
+  assert.deepEqual([...tools.keys()].sort(), ['capture_control', 'traffic_blob', 'traffic_get', 'traffic_search'])
   for (const tool of tools.values()) {
     assert.ok(tool.description.length > 0)
     assert.equal(tool.parameters.type, 'object')
@@ -123,9 +142,37 @@ test('traffic_blob 用 base64 通道读取超限正文', async () => {
   assert.equal(url.searchParams.get('hash'), 'a'.repeat(64))
 })
 
+test('capture_control 用当前 dsh 会话映射 status/start/stop', async () => {
+  calls.length = 0
+  const execution = { agent: { session: { id: 'session-chat-abc' } } }
+  const status = await run('capture_control', { action: 'status' }, execution) as Record<string, unknown>
+  assert.equal(status.scope, 'session-chat-abc')
+  assert.equal(status.active, true)
+  assert.equal(calls[0].path, '/api/sessions/chat-abc/traffic/endpoint')
+  assert.equal(calls[0].init, undefined)
+
+  const started = await run('capture_control', { action: 'start' }, execution) as Record<string, unknown>
+  assert.equal(started.active, true)
+  assert.equal(started.proxy, 'http://127.0.0.1:12345')
+  assert.equal(started.started_at, 1700000000)
+  assert.equal(started.items, 2)
+  assert.equal(started.last_ts, 1700000000)
+  assert.deepEqual(calls[1].init, { method: 'POST', body: { action: 'start' } })
+
+  const stopped = await run('capture_control', { action: 'stop' }, execution) as Record<string, unknown>
+  assert.equal(stopped.active, false)
+  assert.equal(stopped.proxy, '')
+  assert.equal(stopped.stopped_at, 1700000001)
+  assert.deepEqual(calls[2].init, { method: 'POST', body: { action: 'stop' } })
+  assert.equal(calls[2].path, '/api/sessions/chat-abc/traffic/capture')
+})
+
 test('缺失或非法参数在本地拒绝，不触碰 core', async () => {
   calls.length = 0
   await assert.rejects(async () => await run('traffic_get', { id: '   ' }), /id 不能为空/u)
   await assert.rejects(async () => await run('traffic_blob', { hash: 'nope' }), /64 位十六进制/u)
+  await assert.rejects(async () => await run('capture_control', { action: 'start' }), /dsh 会话 id/u)
+  await assert.rejects(async () => await run('capture_control', { action: 'start' }, { agent: { session: { id: 'bad id' } } }), /不能映射/u)
+  await assert.rejects(async () => await run('capture_control', { action: 'bogus' }, { agent: { session: { id: 'ok' } } }), /status、start 或 stop/u)
   assert.equal(calls.length, 0)
 })

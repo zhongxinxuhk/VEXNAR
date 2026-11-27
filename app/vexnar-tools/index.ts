@@ -140,6 +140,22 @@ const trafficBlobSchema: ToolSchema = {
   }
 }
 
+const captureControlSchema: ToolSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['action'],
+  properties: {
+    action: {
+      type: 'string',
+      enum: ['status', 'start', 'stop'],
+      description: 'status 查看当前会话抓包状态；start 开启；stop 停止并释放端口。'
+    }
+  }
+}
+
+/** core 的 capture scope 只接受这种 host chat session id。 */
+const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u
+
 /** 只把白名单字段写进 query，避免工具参数变成任意 core 路由代理。 */
 function trafficQuery(args: Record<string, unknown>, keys: readonly string[]): string {
   const query = new URLSearchParams()
@@ -158,11 +174,67 @@ function requiredText(args: Record<string, unknown>, key: string): string {
   return value
 }
 
+/** 抓包归属当前 dsh 会话；没有会话时不能猜一个 scope。 */
+function currentSession(execution: ToolExecution): string {
+  const raw = String(execution.agent?.session?.id ?? '').trim()
+  if (raw === '') throw new Error('capture_control 需要当前 dsh 会话 id')
+  // dsh slot 给的 id 已带 `session-` 前缀；core 会再拼一次，必须与 UI 的
+  // sessionKey() 一样先剥一层，否则 scope 会变成 session-session-…。
+  const id = raw.startsWith('session-') ? raw.slice('session-'.length) : raw
+  if (!SESSION_ID.test(id)) throw new Error('当前 dsh 会话 id 不能映射到 capture scope')
+  return id
+}
+
+interface CaptureSnapshot {
+  source?: unknown
+  started_at?: unknown
+  stopped_at?: unknown
+  items?: unknown
+  last_ts?: unknown
+}
+
+interface CapturePayload {
+  ok?: unknown
+  scope?: unknown
+  enabled?: unknown
+  proxy?: unknown
+  ca_pem_url?: unknown
+  capture?: CaptureSnapshot | null
+  summary?: CaptureSnapshot | null
+  ingest_url?: unknown
+  hook?: unknown
+}
+
+/** 把会话 endpoint 与 start/stop 两种响应收成同一组字段。 */
+function captureResult(action: 'status' | 'start' | 'stop', payload: CapturePayload) {
+  // start/stop 的 `capture` 是 capture-state 行（无 items/last_ts），条数在
+  // `summary`；status 的 endpoint 则把条数放在 `capture`。两者互补，不能只取一个。
+  const state = payload.capture ?? {}
+  const sample = payload.summary ?? {}
+  return {
+    action,
+    ok: payload.ok !== false,
+    scope: String(payload.scope ?? ''),
+    active: payload.enabled === true,
+    proxy: String(payload.proxy ?? ''),
+    ca_pem_url: String(payload.ca_pem_url ?? ''),
+    source: String(state.source ?? sample.source ?? ''),
+    started_at: Number(state.started_at ?? sample.started_at ?? 0) || 0,
+    stopped_at: Number(state.stopped_at ?? sample.stopped_at ?? 0) || 0,
+    items: Number(sample.items ?? state.items ?? 0) || 0,
+    last_ts: Number(sample.last_ts ?? state.last_ts ?? 0) || 0,
+    ingest_url: String(payload.ingest_url ?? ''),
+    hook: String(payload.hook ?? '')
+  }
+}
+
 /**
- * 插件入口：注册只读流量三件套。
+ * 插件入口：注册只读流量三件套与当前会话的抓包开关。
  *
- * 三条路径都对应 core 已有路由，过滤字段与 `/api/traffic` 的 query 完全一致；
- * 不提供任意 URL 或任意路径调用。
+ * 流量检索走 `/api/traffic` 的既有过滤字段；抓包控制按真实 core 路由走
+ * `/api/sessions/:id/traffic/endpoint`（status）和 `/traffic/capture`（start/stop）。
+ * 后者不是站点级 `/api/traffic/capture` 的 POST（该路由不存在），scope 由当前
+ * dsh 会话推导，工具不接受任意 session id 或路径。
  *
  * @param ctx - 已注入 tools 与 vexnarCore 的插件上下文。
  */
@@ -208,6 +280,25 @@ export function apply(ctx: ToolContext): void {
         encoding: 'base64',
         data: blob.base64
       }
+    }
+  )
+
+  registerTool(
+    ctx,
+    'capture_control',
+    '控制当前 dsh 会话的流量抓包：status 查看状态，start 开启该 scope 的 MITM 回环端口，stop 停止并释放端口。卸载插件前先 stop。',
+    captureControlSchema,
+    async (args, execution) => {
+      const action = String(args.action ?? '').trim() as 'status' | 'start' | 'stop'
+      if (action !== 'status' && action !== 'start' && action !== 'stop') {
+        throw new Error('action 只能是 status、start 或 stop')
+      }
+      const session = currentSession(execution)
+      const base = `/api/sessions/${encodeURIComponent(session)}/traffic`
+      const payload = action === 'status'
+        ? await ctx.vexnarCore.request(`${base}/endpoint`)
+        : await ctx.vexnarCore.request(`${base}/capture`, { method: 'POST', body: { action } })
+      return captureResult(action, payload as CapturePayload)
     }
   )
 }
