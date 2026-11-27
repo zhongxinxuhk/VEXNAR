@@ -2612,11 +2612,14 @@ body[data-ds-dark-theme] {
 /* 页签条收在内容宽度上：整行拉满会像一块空的工具条。 */
 .vx-int-page > .vx-task-tabbar { align-self: flex-start; }
 
+/* 设置页的内容宽度由宿主弹窗决定（800px 弹窗里只剩 ~480px），规则表要按“自己有多宽”
+   降级，而不是按视口。这里做成容器查询的锚点，表在窄容器下换行成两行。 */
 .vx-int-stack {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  container-type: inline-size;
 }
 
 .vx-int-head {
@@ -2627,10 +2630,19 @@ body[data-ds-dark-theme] {
 }
 
 .vx-int-count {
-  margin-inline-start: auto;
   font-size: 11.5px;
   color: var(--vx-text-dim);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 计数与两个按钮绑成一组靠右：窄容器里换行时整组一起下移，不会剩「全部启用」孤零零留在左边。 */
+.vx-int-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-inline-start: auto;
 }
 
 .vx-int-hint {
@@ -2693,23 +2705,23 @@ body[data-ds-dark-theme] {
 }
 .vx-int-bar-actions { display: flex; align-items: center; gap: 6px; flex: none; }
 
-/* 规则表：列宽固定成比例，模式列吃掉剩余宽度，窄容器横向滚动。 */
+/* 规则表：列宽随容器收缩，模式/名称吃掉剩余宽度；容器再窄就降级成两行（见下方容器查询），
+   任何宽度下都不出现“列被表边裁掉一半”的状态。 */
 .vx-int-table {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--vx-border);
   border-radius: 10px;
   background: var(--vx-surface);
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .vx-int-tr {
   display: grid;
   grid-template-columns:
-    58px minmax(110px, 1.3fr) 64px 54px minmax(140px, 1.9fr) 58px 48px 62px;
-  gap: 8px;
+    38px minmax(0, 1.55fr) 48px 30px minmax(0, 1.35fr) 38px 34px 46px;
+  gap: 6px;
   align-items: center;
-  min-width: 640px;
   padding: 6px 10px;
   border-top: 1px solid color-mix(in oklab, var(--vx-border) 60%, transparent);
   font-size: 12px;
@@ -2733,6 +2745,9 @@ body[data-ds-dark-theme] {
 .vx-int-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vx-int-pattern { min-width: 0; display: block; }
 
+/* 两行布局里才出现的「优先级 · 目标 · 类型」摘要，宽表里由独立列承载。 */
+.vx-int-pattern-meta { display: none; }
+
 .vx-int-code {
   display: block;
   width: fit-content;
@@ -2748,6 +2763,48 @@ body[data-ds-dark-theme] {
 }
 
 .vx-int-actions { display: flex; justify-content: flex-end; gap: 2px; }
+
+/* 容器 < 470px：八列放不下，改成两行——第一行 名称/策略/启用/操作，第二行整行给模式。
+   优先级、目标、类型收进模式前的摘要里，列一个都不丢，也不横向滚动。 */
+@container (max-width: 560px) {
+  .vx-int-tr {
+    grid-template-columns: minmax(0, 1fr) auto 36px 48px;
+    grid-template-areas:
+      "name action switch actions"
+      "pattern pattern pattern pattern";
+    row-gap: 4px;
+    align-items: center;
+  }
+
+  .vx-int-tr--head > *:nth-child(1),
+  .vx-int-tr--head > *:nth-child(3),
+  .vx-int-tr--head > *:nth-child(4),
+  .vx-int-tr--head > *:nth-child(5) { display: none; }
+
+  .vx-int-tr:not(.vx-int-tr--head) > *:nth-child(1),
+  .vx-int-tr:not(.vx-int-tr--head) > *:nth-child(3),
+  .vx-int-tr:not(.vx-int-tr--head) > *:nth-child(4) { display: none; }
+
+  .vx-int-tr > *:nth-child(2) { grid-area: name; }
+  .vx-int-tr > *:nth-child(5) { grid-area: pattern; }
+  .vx-int-tr > *:nth-child(6) { grid-area: action; }
+  .vx-int-tr > *:nth-child(7) { grid-area: switch; }
+  .vx-int-tr > *:nth-child(8) { grid-area: actions; }
+
+  .vx-int-pattern { display: flex; align-items: center; gap: 6px; }
+  .vx-int-pattern > .vx-int-code { flex: 1 1 auto; }
+
+  .vx-int-pattern-meta {
+    display: inline-block;
+    flex: none;
+    font-size: 10.5px;
+    color: var(--vx-text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 表头不再有「模式」列，第二行是纯内容，表头与行都从名称开始对齐。 */
+  .vx-int-tr--head > *:nth-child(6) { justify-self: start; }
+}
 
 .vx-int-iconbtn {
   display: inline-flex;
@@ -2848,7 +2905,9 @@ textarea.vx-int-prompt {
 .vx-int-divider { height: 1px; background: var(--vx-border); }
 .vx-int-checkline { display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap; }
 
-/* 浮层：抽屉与对话框共用遮罩，Esc / 点遮罩关闭。 */
+/* 浮层：抽屉与对话框共用遮罩，Esc / 点遮罩关闭。
+   z-index 必须高于宿主设置弹窗（ui-settings-general 的 SettingsRoot 是 1000，账户浮层用 1001）：
+   低于它，这两层会被压在设置弹窗下面——抽屉看不见、按钮点不到，只剩上下两端从卡片边缘漏出来。 */
 .vx-int-overlay {
   position: fixed;
   inset: 0;

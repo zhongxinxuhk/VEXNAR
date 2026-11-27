@@ -287,20 +287,22 @@ function RulesTab(): ReactNode {
     <div className="vx-int-stack">
       <div className="vx-int-head">
         <span className="vx-int-hint">按优先级（数字越大越先）逐条匹配，首条命中的规则生效</span>
-        {rules.data !== undefined ? (
-          <span className="vx-int-count">
-            共 {rows.length} 条规则 · {enabledCount} 条启用
-          </span>
-        ) : null}
-        {enabledCount < rows.length ? (
-          <Button tone="ghost" disabled={bulk} onClick={() => void enableAll()}>
-            {bulk ? '启用中…' : '全部启用'}
+        <div className="vx-int-head-right">
+          {rules.data !== undefined ? (
+            <span className="vx-int-count">
+              共 {rows.length} 条规则 · {enabledCount} 条启用
+            </span>
+          ) : null}
+          {enabledCount < rows.length ? (
+            <Button tone="ghost" disabled={bulk} onClick={() => void enableAll()}>
+              {bulk ? '启用中…' : '全部启用'}
+            </Button>
+          ) : null}
+          <Button tone="primary" disabled={rules.data === undefined} onClick={() => setCreating(true)}>
+            <PlusIcon />
+            新建规则
           </Button>
-        ) : null}
-        <Button tone="primary" disabled={rules.data === undefined} onClick={() => setCreating(true)}>
-          <PlusIcon />
-          新建规则
-        </Button>
+        </div>
       </div>
 
       <ErrorLine error={error || rules.error} />
@@ -346,6 +348,9 @@ function RulesTab(): ReactNode {
                 {TYPE_LABEL[rule.match_type]}
               </span>
               <span role="cell" className="vx-int-pattern">
+                <span className="vx-int-pattern-meta">
+                  {`${rule.priority} · ${TARGET_LABEL[rule.match_target]} · ${TYPE_LABEL[rule.match_type]}`}
+                </span>
                 <code className="vx-int-code" title={rule.pattern}>
                   {rule.pattern}
                 </code>
