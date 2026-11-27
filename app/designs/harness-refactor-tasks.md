@@ -191,10 +191,10 @@ dsh agent loop（唯一循环）
 
 ---
 
-### P1 工具面收口：从“62 条目录”到“10 个可调用工具”
+### P1 工具面收口：从“62 条目录”到“12 个可调用工具”
 
 **阶段目标**：dsh 会话里能直接调用领域工具；删除进程内第二个 MCP 端口 8792；工具实现复用 core 现有路由，不新开服务。  
-**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-6 完成，P1-7～P1-8 待开始）
+**阶段状态**：`[~] 进行中`（D4=A 已拍板；P1-1～P1-7 完成，P1-8 待开始）
 
 #### P1-1 新建 `@vexnar/dsh-tools` 插件包
 
@@ -349,15 +349,28 @@ dsh agent loop（唯一循环）
 
 #### P1-7 工具面契约测试
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
-- 动作：新增 `app/vexnar-tools/test/registration.test.ts`：
-  - 断言注册的工具名集合精确等于预期列表。
-  - 断言每个工具只映射到白名单路径。
-  - 断言未登记路径返回 404。
-- 验收：`pnpm --filter @vexnar/dsh-tools run test` 退出码 0。
+- 状态：`[x] 已完成`（12 个工具名、13 条 pathname/method、未登记路径 404 均已锁住；dsh 会话内模型调用未核验）
+- 分支：`refactor/harness-tool-plane-p1-7`
+- 动作：
+  1. 新增 `app/vexnar-tools/test/registration.test.ts`：精确断言 12 个工具名；遍历 14 个调用（覆盖 13 条 pathname/method），逐项断言 core 路径、method、Web 会话头与 body。
+  2. 测试给每次调用注入伪造的 `route`/`url`/`core_path`，断言它们不会进入 core 路径；Web 工具必须带 `x-vexnar-session`，非 Web 工具不能带。
+  3. 在 `vexnar-tools/index.ts` 增加 `CORE_ROUTES` 显式白名单（13 条：12 个工具，`capture_control` 的 endpoint/capture 两条）和 `guardedCore()`；`apply()` 统一包住 `ctx.vexnarCore`。
+  4. `guardedCore` 只放行白名单 pathname + method；未登记路径、method 不符、绝对 URL 都在触达 core 前抛 `CorePathNotFoundError`，`status=404`。
+  5. 测试同时锁定描述与 schema：每个工具描述非空、`additionalProperties:false`，且描述不出现“任意 URL/任意路径”的承诺。
+- 验收：
+  - `pnpm --filter @vexnar/dsh-tools run test` → 23/23（原 20 条 + 新增 registration 3 条）。
+  - 测试覆盖 13 条 pathname/method，与 `CORE_ROUTES.length` 相等；伪造 route/url 不出现在 core path/body；未登记路径 `CorePathNotFoundError.status=404` 且底层桥调用次数为 0。
+  - 构建后的 `app/vexnar-tools/index.js`：12 个工具、`CORE_ROUTES=13`，`guardedCore('/api/not-registered')` 返回 `status=404`，允许路径 `/api/traffic?host=x` 正常过桥。
+  - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件；`pnpm test:preset` → 2/2。
+  - `pnpm --filter @vexnar/core run test` → 29/29；`pnpm --filter @vexnar/web run test` → 21/21；`pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`。
+  - **未核验**：dsh 会话内让模型实际调用 12 个工具；本次验证到注册面、假桥/真实工具处理器与构建产物。
+- 证据：任务提交 `2e61ecee0`；`--no-ff` 合并 `8715a35d2`；2 files changed, 363 insertions(+), 13 deletions(-)。
+  - `registration.test.ts` 通过；`tools test` 23/23；`pnpm typecheck` 0；`pnpm run build` 0。
+  - 构建入口：`built_tools=12`、`guard_status=404`、`routes=13`；工具名单与 P1-5 一致。
+  - 合并后在 `main` 复跑 tools 23/23、typecheck 0、build 0；构建入口仍为 12 个工具、404 守卫生效。
+- 备注：404 是**工具桥边界**的行为；core 通用 `notFound` 仍返回 501，未在这次改动中切换，避免影响非工具 HTTP 客户端。`CORE_ROUTES` 是新增工具时必须同步更新的第二份清单，P1-8 的文档表以它和 `registration.test.ts` 为准。
+- 风险：白名单用正则匹配动态 id 段，新增路由或改变 method 会先被测试/桥拦下；如果未来允许工具直接拿任意 core 路径，这个守卫必须同步放宽，否则会出现“工具已实现但 404”。真实 dsh 模型会话内的工具发现/调用仍未核验。
 - 依赖：P1-1。
-- 风险：工具描述直接进 prompt，测试要锁住描述里的危险措辞（不能出现“任意 URL/任意路径”）。
 
 #### P1-8 更新 README 与工具文档
 
@@ -699,6 +712,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | P1-4 finding 写入与证据绑定 | 待开始 → 已完成（真实 core 路由通过；会话实测未核验） | 提交 `03fe79b0d`；合并 `5ff12f13f`；tools test 12/12；补 POST findings/:id/traffic；finding +1、snapshot/binding 可读、重复绑定不增行 |
 | 2026-11-27 | P1-5 Web 六工具并入同一插件 | 待开始 → 已完成（REST/MCP 同 fixture 对照通过；会话实测未核验；单前缀由 P1-6 收口） | 提交 `7f518b937`；合并 `fb0c7e686`；tools test 20/20；补 inspect limit/request_id 与 control action 校验；6 个 web 工具逐项对齐 MCP；built 12 tools；smoke 8 presets/tools 61/61 |
 | 2026-11-27 | P1-6 删除 8792 监听 | 待开始 → 已完成（8792 关闭、dsh 单 URL 启动、6 个 web_* 与构建产物均核验；会话模型调用未核验） | 提交 `9bfa20ef0`；分支合并 `8c0932b4e`；并入 main `c14e77a68`；core 29/29、tools 20/20、web 21/21、account 59/59；smoke 8 presets/tools 61/61，8792 探活失败；真实 dsh 3199 单 URL、8792 无监听；built 12 tools（web 6/6） |
+| 2026-11-27 | P1-7 工具面契约测试 | 待开始 → 已完成（12 个工具名、13 条白名单路径、未登记路径 404 均锁定；会话模型调用未核验） | 提交 `2e61ecee0`；合并 `8715a35d2`；tools 23/23；新增 `CORE_ROUTES` + `guardedCore`；404 不触达 core；built 12 tools / routes 13；typecheck/build 0；core 29/29、web 21/21、account 59/59；smoke 8 presets/tools 61/61 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -706,8 +720,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-7**：新增 `registration.test.ts`，锁死 12 个工具名、白名单路径和未登记路径 404。
-2. **P1-8**：更新 `app/README.md` 的 Web/领域工具段落与“工具 → core 路由”表，和 P1-7 清单对齐。
-3. **真实模型会话补验**：在可用的 dsh 会话里实际调用 6 个 `web_*`，确认工具发现与执行（P1-6 只验证到处理器、真实 core 路由和启动面）。
+1. **P1-8**：更新 `app/README.md` 的 Web/领域工具段落与“工具 → core 路由”表，和 P1-7 的 `CORE_ROUTES`/`registration.test.ts` 对齐。
+2. **真实模型会话补验**：在可用的 dsh 会话里实际调用 12 个工具（重点是 6 个 `web_*`），确认工具发现与执行；P1-7 只验证到注册面、处理器和构建产物。
+3. **P2 前置**：P2 需要 D1；P3/P4 仍受 D2/D5 与 MCP allowed-tools 决策约束。
 
 **当前阻塞**：D1/D2/D3/D5 需要拍板；P1 已按 D4=A 启动，P3 不能先于 D5，P4 不能先于 D1。
