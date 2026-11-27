@@ -13,7 +13,7 @@ Go 服务只是回退路径。
 |---|---|---|
 | 账户登录 | HXSEC AI Platform | 客户端启动时验证。密码和两步验证码可在 App 输入，第三方认证使用独立平台窗口 |
 | 模型目录与推理 | dsh 进程内的账号插件 | 设置 → 模型维护目录，账号插件通过 `setModelCompletion` 向 core 注册调用函数 |
-| 领域工具 | core 原生路由 | 任务/漏洞/流量/资产/拦截/用量全部读本地 SQLite store |
+| 领域工具 | `@vexnar/dsh-tools` → core 原生路由 | 12 个工具进程内注册，路径走 `CORE_ROUTES` 白名单；任务/漏洞/流量/资产/拦截/用量读本地 SQLite store |
 | 回退 | Go 服务 | `VEXNAR_RUNTIME_MODE=go` 时数据面转发给配置的 Go 服务，dsh 的模型访问仍在自身进程内 |
 
 ## 目录
@@ -35,6 +35,7 @@ app/                          # WebStorm 工程根（项目名 app）
 ├─ vexnar-core/               # 默认数据面：路由 / store / 引擎 / 任务队列
 ├─ vexnar-store/              # SQLite / JSON / PG store
 ├─ vexnar-web/                # 会话感知 HTTP 引擎
+├─ vexnar-tools/              # @vexnar/dsh-tools：12 个领域工具（index.ts → index.js）
 ├─ vexnar-egress/             # 出口工具插件
 ├─ vexnar-mcp/                # @vexnar/dsh-vexnar-mcp：MCP 注册插件（index.ts → index.js）
 └─ vexnar/
@@ -59,7 +60,7 @@ app/                          # WebStorm 工程根（项目名 app）
 | `vexnar/{ui,account}/src/*.ts`（宿主半边）、`vexnar-mcp/index.ts` | `pnpm run build` 生成 `lib/*.js` / `index.js` 后由 dsh 加载 | dsh 从 profile 的 `node_modules` 里 import 插件；Node 对 `node_modules` **不擦类型**（`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`），所以入口必须是真 JS |
 | `website/`（见 `website/`） | `vite` / `node --test` / `node scripts/prerender.ts` | vite 自己处理 TS；prerender 与测试用 Node 原生擦类型 |
 
-`pnpm run typecheck` 检查 `@vexnar/dsh-ui`、`@vexnar/dsh-account`、`@vexnar/dsh-egress`、`@vexnar/core` 和 `@vexnar/web`。
+`pnpm run typecheck` 检查 `@vexnar/dsh-ui`、`@vexnar/dsh-account`、`@vexnar/dsh-egress`、`@vexnar/dsh-tools`、`@vexnar/core` 和 `@vexnar/web`。
 启动脚本可用单文件 `pnpm exec tsc --noEmit ... <file>` 检查；全量 `scripts/tsconfig.json` 还包含测试文件，当前不作为门禁。
 
 ## 包管理器：只用 pnpm
@@ -68,8 +69,8 @@ app/                          # WebStorm 工程根（项目名 app）
 
 ```sh
 cd app
-pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、core、store、spike
-pnpm run build               # 构建 UI、账号、出口插件及内嵌 core
+pnpm install                 # 全 workspace 一次装完：vexnar/ui、vexnar/account、vexnar-tools、core、store、spike
+pnpm run build               # 构建 UI、账号、出口与工具插件及内嵌 core
 pnpm run setup               # 初始化 VEXNAR profile
 pnpm run upstream:check      # 上游边界 + 包管理器边界
 pnpm --filter @vexnar/core start
@@ -118,9 +119,14 @@ Agent 决定测什么，引擎负责发请求、管会话、控节奏、留证�
 | Response Observer | `vexnar-web/src/analyzer.ts` | 状态码/限流/挑战特征、结构提取、差异对比、脱敏 |
 | Evidence Store | `vexnar-web/src/store.ts` | 脱敏记录 + AES-256-GCM 证据正文 |
 
-MCP 入口默认 `127.0.0.1:8792/mcp`（`vexnar/cordis.patch.yml` 已注册 `vexnar-web`），
-工具：`web_session_create` / `web_request_execute` / `web_response_analyze` /
-`web_session_inspect` / `web_session_control` / `web_evasion_report`。REST 面在 `/api/web/*`。
+**进程内工具面。** core 以 `startWebRuntime({ mcp: false })` 拉引擎，正常启动不监听
+`127.0.0.1:8792`，`vexnar/cordis.patch.yml` 的 `mcp-manager` 也不再注册 `vexnar-web`。
+六个 `web_*` 工具由 `@vexnar/dsh-tools` 在 dsh 进程内注册，经 `vexnarCore.request`
+调用 core 的 `/api/web/*`；策略、预算、会话和证据仍只有引擎的一份。`/api/web/status`
+返回 `mode=in-process`、`mcp=null`。
+
+`pnpm --filter @vexnar/web run mcp` 仅保留为外部兼容调试入口；它不在 `pnpm web` / core
+的启动链里，显式运行才会监听 8792，用完自行停止。
 
 默认遇 WAF/限流即熔断。需要"被打回后继续测规则覆盖"时，可开启**对抗模式**
 （平台 `VEXNAR_WEB_ADVERSARIAL=on` + 会话 `adversarial: true` + origin 白名单，三件套缺一不可）：
@@ -128,12 +134,44 @@ MCP 入口默认 `127.0.0.1:8792/mcp`（`vexnar/cordis.patch.yml` 已注册 `vex
 `web_evasion_report` 汇总"哪种编码/出口/身份还能通"。它不改 TLS 指纹、不保证绕过。
 
 ```sh
-pnpm --filter @vexnar/web run test    # 策略/会话/去重/重定向/熔断/分析/MCP 共 14 例
-pnpm --filter @vexnar/web run mcp     # 独立起 MCP；随 core 启动则无需单独跑
+pnpm --filter @vexnar/web run test       # 策略/会话/去重/重定向/熔断/分析/MCP 共 21 例
+pnpm --filter @vexnar/dsh-tools run test  # 12 个工具的注册/路径白名单/404 契约
 ```
 
 详见 [Web 测试引擎](docs/WEB-TESTING-ENGINE.md)。能力边界写在文档 §3.2：不消除 TLS 指纹、
-不承诺绕过 WAF、403 不等于 WAF。
+不承诺绕过 WAF、403 不等于 WAF；工具注册与端口口径以本节和 `vexnar-tools/test/registration.test.ts` 为准。
+
+## 领域工具（dsh 进程内注册）
+
+12 个领域工具由 `@vexnar/dsh-tools` 在 dsh 进程内注册。每个工具经
+`vexnarCore.request` 调用 core 的固定路由；允许的 pathname/method 在
+`vexnar-tools/index.ts` 的 `CORE_ROUTES` 中显式列出（13 条：`capture_control`
+有 status 与 start/stop 两条）。新增工具必须同时更新 `CORE_ROUTES` 和
+`vexnar-tools/test/registration.test.ts`；未登记的路径在工具桥边界返回
+`CorePathNotFoundError`（`status=404`），不会到达 core。
+
+| 工具 | core 路由（method pathname） | 用途 |
+|---|---|---|
+| `traffic_search` | `GET /api/traffic` | 按 host/method/q/状态码/响应长度等白名单字段检索本地与归档流量 |
+| `traffic_get` | `GET /api/traffic/exchange?id=...` | 读取单条流量原文 |
+| `traffic_blob` | `GET /api/traffic/blob?hash=...` | 以 base64 读取超限正文 |
+| `capture_control` | `GET /api/sessions/:id/traffic/endpoint`；`POST /api/sessions/:id/traffic/capture` | 查询/启停当前 dsh 会话的抓包 scope |
+| `report_finding` | `POST /api/exploration/findings` | 写入 finding |
+| `bind_finding_traffic` | `POST /api/exploration/findings/:id/traffic` | 把真实流量绑定为证据 |
+| `web_session_create` | `POST /api/web/sessions` | 创建隔离 Web 会话 |
+| `web_request_execute` | `POST /api/web/sessions/:id/requests` | 在会话内执行受控请求 |
+| `web_response_analyze` | `POST /api/web/sessions/:id/analyze` | 分析响应结构/差异 |
+| `web_session_inspect` | `GET /api/web/sessions/:id` | 查看会话状态、预算与历史 |
+| `web_evasion_report` | `GET /api/web/sessions/:id/evasion` | 汇总对抗升级的观测结果 |
+| `web_session_control` | `POST /api/web/sessions/:id/control` | 暂停/恢复/关闭会话或重置预算 |
+
+Web 六工具统一带 `x-vexnar-session: <dsh 会话 id>`；`capture_control` 按当前 dsh 会话
+映射抓包 scope，`traffic_*` 只读本地/归档流量、不绑定 scope。工具参数不会变成任意 URL
+或任意 core 路径：查询只接受白名单字段，路径中的 id 也会先经过格式校验。
+
+`CORE_ROUTES` 与 `registration.test.ts` 的清单就是这张表：12 个工具名、13 条
+pathname/method，测试里的 14 个调用覆盖全部 13 条。改工具时先改这三处，再跑
+`pnpm --filter @vexnar/dsh-tools run test`。
 
 ## 控制台（四页统一）
 
@@ -305,7 +343,7 @@ npm 运行配置类型 + **package manager = pnpm**（`package.json` + script）
 | `pnpm install` | `app/` | — | 全 workspace 一次装完，先跑这个 |
 | `VEXNAR Web` | `app/package.json` | `web` | 起 `127.0.0.1:3099`，`VEXNAR_HOME=app/.vexnar-home` |
 | `VEXNAR Desktop` | `app/package.json` | `desktop` | 隔离 home 的桌面壳 |
-| `Plugin bundles build` | `app/package.json` | `build` | 产出 ui / account / egress 的构建物与内嵌 core |
+| `Plugin bundles build` | `app/package.json` | `build` | 产出 ui / account / egress / tools 的构建物与内嵌 core |
 | `UI cards build` | `app/package.json` | `ui:build` | 只重建卡片 bundle |
 | `Setup app profile` | `app/package.json` | `setup` | 安装 UI/账户插件并写 profile patch |
 | `Upstream check` | `app/package.json` | `upstream:check` | 上游边界 + 包管理器边界断言 |
