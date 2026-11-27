@@ -175,12 +175,22 @@ jobs:
         run: node app/scripts/release.mjs version
       - name: Apply the VEXNAR brand patch
         working-directory: app
+        shell: bash
         env:
           VEXNAR_RELEASE_VERSION: ${{ steps.release.outputs.version }}
         # 安装包是拿 vendored 的上游打的，用户看到的必须是 VEXNAR Harness：
         # productName / 产物前缀 / .app 目录名 / 桌面文案 / 图标 / CLI 命令 / home 目录。
         # 改了哪些文件记在 app/.vexnar-brand.json，upstream:check 据此放宽到「只差品牌补丁」。
-        run: pnpm run brand:desktop
+        #
+        # 直接跑脚本，不经 `pnpm run`：pnpm 12 会在执行脚本前按 verify-deps-before-run
+        # 先装一遍 app/ 依赖，brand 只用 node 内置模块，不需要它；上一轮两个平台也恰好
+        # 是在这次隐式安装之后丢了 app/dsh（构建在这一步失败）。万一还是不在，就地重拉。
+        run: |
+          if [ ! -f dsh/package.json ]; then
+            echo "::warning::app/dsh 缺失，重新执行 fetch-dsh.sh"
+            bash scripts/fetch-dsh.sh
+          fi
+          node scripts/brand-desktop.mjs
       - name: Install dsh workspace dependencies
         working-directory: app/dsh
         run: pnpm install --frozen-lockfile
