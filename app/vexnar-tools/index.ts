@@ -26,6 +26,72 @@ export interface CoreBridge {
   ): Promise<unknown>
 }
 
+/** 工具唯一允许访问的 core 路由；路径参数仍由各工具自己校验。 */
+export interface CoreRoute {
+  tool: string
+  method: 'GET' | 'POST'
+  pattern: RegExp
+}
+
+/**
+ * 显式白名单，而不是“任意 `/api/*` 代理”。
+ *
+ * 工具名和路由是两套契约：工具参数里出现 `path`/`route`/`url` 不能被拼成 core
+ * 路径，只有这里列出的 pathname + method 能过桥。新增工具时必须同时加一行。
+ */
+export const CORE_ROUTES: readonly CoreRoute[] = Object.freeze([
+  { tool: 'traffic_search', method: 'GET', pattern: /^\/api\/traffic$/u },
+  { tool: 'traffic_get', method: 'GET', pattern: /^\/api\/traffic\/exchange$/u },
+  { tool: 'traffic_blob', method: 'GET', pattern: /^\/api\/traffic\/blob$/u },
+  { tool: 'capture_control', method: 'GET', pattern: /^\/api\/sessions\/[^/]+\/traffic\/endpoint$/u },
+  { tool: 'capture_control', method: 'POST', pattern: /^\/api\/sessions\/[^/]+\/traffic\/capture$/u },
+  { tool: 'report_finding', method: 'POST', pattern: /^\/api\/exploration\/findings$/u },
+  { tool: 'bind_finding_traffic', method: 'POST', pattern: /^\/api\/exploration\/findings\/[^/]+\/traffic$/u },
+  { tool: 'web_session_create', method: 'POST', pattern: /^\/api\/web\/sessions$/u },
+  { tool: 'web_request_execute', method: 'POST', pattern: /^\/api\/web\/sessions\/[^/]+\/requests$/u },
+  { tool: 'web_response_analyze', method: 'POST', pattern: /^\/api\/web\/sessions\/[^/]+\/analyze$/u },
+  { tool: 'web_session_inspect', method: 'GET', pattern: /^\/api\/web\/sessions\/[^/]+$/u },
+  { tool: 'web_evasion_report', method: 'GET', pattern: /^\/api\/web\/sessions\/[^/]+\/evasion$/u },
+  { tool: 'web_session_control', method: 'POST', pattern: /^\/api\/web\/sessions\/[^/]+\/control$/u }
+])
+
+/** 桥在调用 core 之前拒绝未登记路径时抛出的错误；`status=404`。 */
+export class CorePathNotFoundError extends Error {
+  readonly status = 404
+  readonly path: string
+  readonly method: string
+
+  constructor(path: string, method: string) {
+    super(`未登记的 core 路径：${method} ${path}`)
+    this.name = 'CorePathNotFoundError'
+    this.path = path
+    this.method = method
+  }
+}
+
+function corePathname(path: string): string {
+  const query = path.indexOf('?')
+  return query === -1 ? path : path.slice(0, query)
+}
+
+/**
+ * 把 core 调用面收成显式白名单。
+ *
+ * 只检查 pathname/method；query 由各工具的白名单字段生成。返回原桥的错误与
+ * 返回值，不改变成功调用的语义。
+ */
+export function guardedCore(core: CoreBridge): CoreBridge {
+  return {
+    async request(path, init) {
+      const method = init?.method ?? 'GET'
+      const pathname = corePathname(path)
+      const allowed = CORE_ROUTES.some((route) => route.method === method && route.pattern.test(pathname))
+      if (!allowed) throw new CorePathNotFoundError(pathname, method)
+      return await core.request(path, init)
+    }
+  }
+}
+
 /** dsh 传给工具执行器的上下文；这里只声明工具面需要的字段。 */
 export interface ToolExecution {
   signal?: AbortSignal
@@ -434,12 +500,13 @@ function captureResult(action: 'status' | 'start' | 'stop', payload: CapturePayl
  * @param ctx - 已注入 tools 与 vexnarCore 的插件上下文。
  */
 export function apply(ctx: ToolContext): void {
+  const core = guardedCore(ctx.vexnarCore)
   registerTool(
     ctx,
     'traffic_search',
     '搜索已采集流量，支持 host/method/关键字/状态码/响应长度过滤；结果带 source=local|archive。',
     trafficSearchSchema,
-    async args => await ctx.vexnarCore.request(
+    async args => await core.request(
       `/api/traffic?${trafficQuery(args, ['host', 'method', 'q', 'status', 'resp_min', 'resp_max', 'sort', 'order', 'page', 'size'])}`
     )
   )
@@ -451,7 +518,7 @@ export function apply(ctx: ToolContext): void {
     trafficGetSchema,
     async args => {
       const id = requiredText(args, 'id')
-      const raw = await ctx.vexnarCore.request(`/api/traffic/exchange?${trafficQuery({ id }, ['id'])}`)
+      const raw = await core.request(`/api/traffic/exchange?${trafficQuery({ id }, ['id'])}`)
       return typeof raw === 'object' && raw !== null ? { id, ...(raw as Record<string, unknown>) } : raw
     }
   )
@@ -464,7 +531,7 @@ export function apply(ctx: ToolContext): void {
     async args => {
       const hash = requiredText(args, 'hash').toLowerCase()
       if (!/^[0-9a-f]{64}$/u.test(hash)) throw new Error('hash 必须是 64 位十六进制')
-      const blob = await ctx.vexnarCore.request(
+      const blob = await core.request(
         `/api/traffic/blob?${trafficQuery({ hash }, ['hash'])}`,
         { response: 'base64' }
       ) as { base64: string; bytes: number; content_type: string }
@@ -491,8 +558,8 @@ export function apply(ctx: ToolContext): void {
       const session = currentSession(execution)
       const base = `/api/sessions/${encodeURIComponent(session)}/traffic`
       const payload = action === 'status'
-        ? await ctx.vexnarCore.request(`${base}/endpoint`)
-        : await ctx.vexnarCore.request(`${base}/capture`, { method: 'POST', body: { action } })
+        ? await core.request(`${base}/endpoint`)
+        : await core.request(`${base}/capture`, { method: 'POST', body: { action } })
       return captureResult(action, payload as CapturePayload)
     }
   )
@@ -525,7 +592,7 @@ export function apply(ctx: ToolContext): void {
         if (ids.some((id) => !Number.isInteger(id) || id <= 0)) throw new Error('asset_ids 必须是正整数数组')
         body.asset_ids = ids
       }
-      return await ctx.vexnarCore.request('/api/exploration/findings', { method: 'POST', body })
+      return await core.request('/api/exploration/findings', { method: 'POST', body })
     }
   )
 
@@ -551,7 +618,7 @@ export function apply(ctx: ToolContext): void {
         if (!(TRAFFIC_ROLES as readonly string[]).includes(role)) throw new Error('role 只能是 baseline、proof、verification 或 supporting')
         refs.push({ traffic_id: trafficId, role, note: String(item.note ?? '') })
       }
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/exploration/findings/${encodeURIComponent(findingId)}/traffic`,
         { method: 'POST', body: { traffic_refs: refs } }
       )
@@ -577,7 +644,7 @@ export function apply(ctx: ToolContext): void {
         if (typeof args.adversarial !== 'boolean') throw new Error('adversarial 必须是布尔值')
         payload.adversarial = args.adversarial
       }
-      const created = await ctx.vexnarCore.request('/api/web/sessions', {
+      const created = await core.request('/api/web/sessions', {
         method: 'POST', headers: webHeaders(execution), body: payload
       }) as Record<string, unknown>
       return { session: created?.session, policy: publicWebPolicy(created?.policy) }
@@ -613,7 +680,7 @@ export function apply(ctx: ToolContext): void {
       if (parentRequestId !== undefined) payload.parent_request_id = parentRequestId
       const note = optionalText(args, 'note', 500)
       if (note !== undefined) payload.note = note
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/web/sessions/${encodeURIComponent(sessionId)}/requests`,
         { method: 'POST', headers: webHeaders(execution), body: payload }
       )
@@ -633,7 +700,7 @@ export function apply(ctx: ToolContext): void {
       const mode = optionalText(args, 'mode', 20) ?? 'auto'
       if (!['structure', 'diff', 'auto'].includes(mode)) throw new Error('mode 只能是 structure、diff 或 auto')
       payload.mode = mode
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/web/sessions/${encodeURIComponent(sessionId)}/analyze`,
         { method: 'POST', headers: webHeaders(execution), body: payload }
       )
@@ -656,7 +723,7 @@ export function apply(ctx: ToolContext): void {
       const requestId = optionalText(args, 'request_id', 120)
       if (requestId !== undefined) query.set('request_id', requestId)
       const suffix = query.toString() ? `?${query.toString()}` : ''
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/web/sessions/${encodeURIComponent(sessionId)}${suffix}`,
         { headers: webHeaders(execution) }
       )
@@ -676,7 +743,7 @@ export function apply(ctx: ToolContext): void {
       const limit = optionalInteger(args, 'limit', 1, 500)
       if (limit !== undefined) query.set('limit', String(limit))
       const suffix = query.toString() ? `?${query.toString()}` : ''
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/web/sessions/${encodeURIComponent(sessionId)}/evasion${suffix}`,
         { headers: webHeaders(execution) }
       )
@@ -697,7 +764,7 @@ export function apply(ctx: ToolContext): void {
       const payload: Record<string, unknown> = { action }
       const budget = optionalInteger(args, 'budget', 1, 5000)
       if (budget !== undefined) payload.budget = budget
-      return await ctx.vexnarCore.request(
+      return await core.request(
         `/api/web/sessions/${encodeURIComponent(sessionId)}/control`,
         { method: 'POST', headers: webHeaders(execution), body: payload }
       )
