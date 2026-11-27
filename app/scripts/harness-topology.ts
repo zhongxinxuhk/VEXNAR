@@ -266,7 +266,7 @@ function printReport(report: TopologyReport): void {
   lines.push('runtime')
   lines.push(`  mode=${topology.runtime.mode} store=${topology.runtime.store} started=${topology.runtime.started} engine=${topology.runtime.engine}`)
   lines.push(`  triggers=${topology.runtime.triggers} schedules=${topology.runtime.schedules} task_concurrency=${topology.runtime.task_concurrency}`)
-  lines.push(`  web_mcp=${topology.runtime.web_mcp} go_enabled=${topology.runtime.go.enabled} go_url=${topology.runtime.go.url_configured}`)
+  lines.push(`  web=${topology.web.mode} web_mcp=${topology.runtime.web_mcp ?? 'disabled'} go_enabled=${topology.runtime.go.enabled} go_url=${topology.runtime.go.url_configured}`)
   lines.push('')
   lines.push('store')
   lines.push(`  root=${topology.store.root}`)
@@ -274,7 +274,7 @@ function printReport(report: TopologyReport): void {
   lines.push(`  postgres_configured=${topology.store.postgres_configured}`)
   lines.push('')
   lines.push('web')
-  lines.push(`  mcp=${topology.web.mcp_url} mode=${topology.web.mode} adversarial=${topology.web.adversarial}`)
+  lines.push(`  mcp=${topology.web.mcp_url ?? 'disabled'} mode=${topology.web.mode} adversarial=${topology.web.adversarial}`)
   lines.push('')
   lines.push('listeners')
   for (const listener of topology.listeners) {

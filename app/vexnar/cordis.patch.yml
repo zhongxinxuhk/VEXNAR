@@ -68,31 +68,24 @@
         })()
 
 # ── Domain tools ──────────────────────────────────────────────────────────
-# `vexnar-web` 是常驻的：会话感知 HTTP 引擎由 core 在启动时拉起（127.0.0.1:8792），
-# 令牌与 core 同源（VEXNAR_WEB_MCP_TOKEN 优先，其次启动器注入的桌面令牌）。
+# P1-6 起 Web 测试引擎只由 core 在进程内通过 `/api/web/*` 提供，六个 web_* 工具
+# 由上面的 @vexnar/dsh-tools 注册；core 不再启动 127.0.0.1:8792 的 MCP 监听。
 # 旧的整段 Go 工具面（vexnar）只在 go 回退模式挂载，默认不参与组装。
 - id: mcp-manager
   config:
     servers: !!js >-
       (() => {
-        const token = process.env.VEXNAR_WEB_MCP_TOKEN || process.env.VEXNAR_DESKTOP_TOKEN || ''
-        const servers = {
-          'vexnar-web': {
-            transport: 'streamable-http',
-            url: 'http://127.0.0.1:' + (process.env.VEXNAR_WEB_MCP_PORT || '8792') + '/mcp',
-            headers: token ? { Authorization: 'Bearer ' + token } : {},
-            timeoutMs: 60000
-          }
-        }
         if (process.env.VEXNAR_RUNTIME_MODE === 'go') {
-          servers.vexnar = {
-            transport: 'streamable-http',
-            url: 'http://127.0.0.1:8787/mcp',
-            headers: { Authorization: 'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '') },
-            timeoutMs: 60000
+          return {
+            vexnar: {
+              transport: 'streamable-http',
+              url: 'http://127.0.0.1:8787/mcp',
+              headers: { Authorization: 'Bearer ' + (process.env.VEXNAR_MCP_TOKEN || '') },
+              timeoutMs: 60000
+            }
           }
         }
-        return servers
+        return {}
       })()
 
 # ── Brand: VEXNAR replaces the official artwork ─────────────────────────────

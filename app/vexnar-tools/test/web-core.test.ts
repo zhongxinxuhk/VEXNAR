@@ -5,17 +5,18 @@
 /**
  * 6 个 web_* 工具对真实 core `/api/web/*` handler 的集成测试。
  *
- * 用真实 WebTestingEngine + 临时 SQLite + 注入 fetch（不联网），只绕过 core
- * 的 HTTP 监听；`handleWebHttp` 就是 core 挂载的同一个 REST 实现。
+ * 用 `startWebRuntime({ mcp: false })` 启动真实引擎 + 临时 SQLite + 注入 fetch
+ * （不联网），只绕过 core 的 HTTP 监听；`handleWebHttp` 就是 core 挂载的同一个
+ * REST 实现。P1-6 后这条路径不再启动 8792，也不再生成 MCP token。
  */
 
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { WebTestingEngine } from '../../vexnar-web/src/engine.ts'
+import { startWebRuntime } from '../../vexnar-web/src/index.ts'
 import { handleWebHttp } from '../../vexnar-web/src/routes.ts'
 import { apply, type ToolContext } from '../index.ts'
 
@@ -28,11 +29,12 @@ interface RegisteredTool {
   execute: (args: unknown, execution: unknown) => Promise<unknown>
 }
 
-function build() {
-  const root = mkdtempSync(join(tmpdir(), 'vexnar-p15-'))
+async function build() {
+  const root = mkdtempSync(join(tmpdir(), 'vexnar-p16-'))
   const fetched: string[] = []
-  const engine = new WebTestingEngine({
+  const runtime = await startWebRuntime({
     root,
+    mcp: false,
     policy: {
       allowedOrigins: [ORIGIN],
       minIntervalMs: 0,
@@ -44,6 +46,11 @@ function build() {
       return new Response(HTML, { status: 200, headers: { 'content-type': 'text/html' } })
     }
   })
+  assert.equal(runtime.mcp, null, 'mcp:false 不能启动 Web MCP')
+  assert.equal(runtime.mcpUrl, '')
+  assert.equal(runtime.tokenSource, '')
+  assert.equal(existsSync(join(root, 'mcp.token')), false, 'mcp:false 不应生成 MCP token')
+  const engine = runtime.engine
   const tools = new Map<string, RegisteredTool>()
 
   const bridge = async (path: string, init: Record<string, any> = {}): Promise<any> => {
@@ -85,7 +92,7 @@ function build() {
   }
 
   const done = async () => {
-    await engine.close().catch(() => undefined)
+    await runtime.stop().catch(() => undefined)
     rmSync(root, { recursive: true, force: true })
   }
 
@@ -93,7 +100,7 @@ function build() {
 }
 
 test('6 个 web 工具走真实 /api/web/*：创建→执行→分析→巡检→规避报告→控制', async () => {
-  const h = build()
+  const h = await build()
   const execution = { agent: { session: { id: 'session-harness-p15' } } }
   try {
     const created = await h.call('web_session_create', {
@@ -166,7 +173,7 @@ test('6 个 web 工具走真实 /api/web/*：创建→执行→分析→巡检�
 })
 
 test('core REST 自行拒绝非法 control.action，并接受 inspect 的 limit/request_id', async () => {
-  const h = build()
+  const h = await build()
   const execution = { agent: { session: { id: 'session-harness-p15-rest' } } }
   try {
     const created = await h.call('web_session_create', { origin: ORIGIN }, execution)

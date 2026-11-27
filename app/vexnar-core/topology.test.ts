@@ -7,7 +7,7 @@
  *
  * 目标不是“字段存在”，而是锁住三件事：
  *   1. 组合面数字来自 meta（agents/tools/mcp），不是写死的；
- *   2. 存储/监听面的关键事实可核对（sqlite 路径、8792 端口、Go 默认关闭）；
+ *   2. 存储/监听面的关键事实可核对（sqlite 路径、无 8792 监听、Go 默认关闭）；
  *   3. token 与 DSN 不进入响应。
  */
 
@@ -86,15 +86,16 @@ assert.deepEqual(body.mcp.servers[0], {
   tools: 2
 })
 
-// ── Web 引擎：当前仍是 8792 的 legacy HTTP MCP ─────────────────────────────
-assert.equal(body.web.mcp_port, 18792)
-assert.equal(body.web.mcp_url, 'http://127.0.0.1:18792/mcp')
-assert.equal(body.web.mode, 'legacy-http')
+// ── Web 引擎：P1-6 起只在进程内提供 REST，环境里的旧端口不再表示监听 ──────
+assert.equal(body.runtime.web_mcp, null)
+assert.equal(body.web.mcp_port, null)
+assert.equal(body.web.mcp_url, null)
+assert.equal(body.web.mode, 'in-process')
 assert.equal(body.web.adversarial, false)
 
-// ── 监听面：dsh + web-mcp；没有 PORT / VEXNAR_GO 时不应多报 ────────────────
-assert.deepEqual(body.listeners.map((item: any) => item.name), ['dsh-web', 'web-mcp'])
-assert.equal(body.listeners[1].address, '127.0.0.1:18792')
+// ── 监听面：只有 dsh；没有 PORT / VEXNAR_GO / 8792 时不应多报 ───────────────
+assert.deepEqual(body.listeners.map((item: any) => item.name), ['dsh-web'])
+assert.equal(body.listeners.some((item: any) => item.name === 'web-mcp'), false)
 assert.equal(body.listeners.some((item: any) => item.name === 'core-http'), false)
 assert.equal(body.listeners.some((item: any) => item.name === 'go-service'), false)
 
@@ -102,7 +103,8 @@ assert.equal(body.listeners.some((item: any) => item.name === 'go-service'), fal
 const text = JSON.stringify(body)
 assert.equal(text.includes('super-secret'), false)
 assert.equal('VEXNAR_WEB_MCP_TOKEN' in body.env, false)
+assert.equal('VEXNAR_WEB_MCP_PORT' in body.env, false)
 assert.equal('VEXNAR_DESKTOP_TOKEN' in body.env, false)
 assert.equal('VEXNAR_PG_DSN' in body.env, false)
 
-console.log('topology.test.ts: 18 assertions passed')
+console.log('topology.test.ts: 21 assertions passed')

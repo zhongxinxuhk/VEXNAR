@@ -10,11 +10,11 @@
  *   1. 建临时 `VEXNAR_HOME`，跑一次 `pnpm run setup`；
  *   2. 从已安装的 `@vexnar/app-bundle` 读 preset，断言 8 个且 id 完全匹配；
  *   3. 在临时 store 上启动 core（TS 单进程、SQLite），断言新库的 agent 为 0、
- *      领域工具已注册并绑定 agent、Web MCP 真的监听在分配的端口；
+ *      领域工具已注册并绑定 agent、Web 只走进程内 REST、8792 没有监听；
  *   4. 负向自检：复制 patch、删掉一个 preset，确认同一个检查器会拒绝 7/8。
  *
  * 默认关闭 extras/theme，避免冒烟依赖 GitHub tarball 的网速；`--full` 才装
- * 预置插件。默认不存在的 8792 断言留到 P1-6（core 不再自己开 Web MCP）之后。
+ * 预置插件。P1-6 起 core 不再自己开 Web MCP，因此直接断言 8792 没有监听。
  *
  * 用法：
  *   pnpm exec tsx scripts/smoke-harness.ts
@@ -28,7 +28,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { createServer } from 'node:net'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
@@ -60,7 +60,7 @@ const REQUIRED_DOMAIN_TOOLS = [
 
 const MIN_DOMAIN_TOOLS = 10
 const SETUP_TIMEOUT_MS = 300_000
-const WEB_TOKEN = 'vexnar-smoke-web-token'
+const LEGACY_WEB_MCP_PORT = 8792
 
 interface Options {
   keep: boolean
@@ -144,19 +144,17 @@ function removePresetBlock(text: string, id: string): string {
   return [...lines.slice(0, start), ...lines.slice(end)].join('\n')
 }
 
-async function freePort(): Promise<number> {
-  for (;;) {
-    const port = await new Promise<number>((resolvePort, reject) => {
-      const server = createServer()
-      server.once('error', reject)
-      server.listen(0, '127.0.0.1', () => {
-        const address = server.address()
-        const found = typeof address === 'object' && address !== null ? address.port : 0
-        server.close(() => resolvePort(found))
-      })
-    })
-    if (port > 0 && port !== 8792) return port
-  }
+async function portListening(port: number): Promise<boolean> {
+  return await new Promise((resolvePort) => {
+    const socket = connect({ port, host: '127.0.0.1' })
+    const finish = (listening: boolean) => {
+      socket.destroy()
+      resolvePort(listening)
+    }
+    socket.setTimeout(500, () => finish(false))
+    socket.once('connect', () => finish(true))
+    socket.once('error', () => finish(false))
+  })
 }
 
 function tail(text: string | null | undefined, max = 30): string {
@@ -205,14 +203,12 @@ async function runSetup(home: string, full: boolean): Promise<void> {
   console.log(`[2/5] setup 完成（${seconds}s，extras/theme ${full ? '开启' : '关闭'}）`)
 }
 
-function configureCoreEnv(home: string, webPort: number): void {
+function configureCoreEnv(home: string): void {
   process.env.DSH_HOME = home
   process.env.VEXNAR_HOME = home
   process.env.VEXNAR_STORE = 'sqlite'
   process.env.VEXNAR_STORE_ROOT = join(home, 'vexnar', 'store')
   process.env.VEXNAR_RUNTIME_MODE = 'ts'
-  process.env.VEXNAR_WEB_MCP_PORT = String(webPort)
-  process.env.VEXNAR_WEB_MCP_TOKEN = WEB_TOKEN
   process.env.VEXNAR_TASK_CONCURRENCY = '1'
   process.env.VEXNAR_TRAFFIC_DIR = join(home, 'traffic')
   // 干净冒烟只测 TS/SQLite 主路径：不继承宿主的 Go、PG、代理或额外 token。
@@ -226,6 +222,8 @@ function configureCoreEnv(home: string, webPort: number): void {
     'VEXNAR_CORE_EMBEDDED',
     'VEXNAR_DESKTOP_TOKEN',
     'VEXNAR_API_TOKEN',
+    'VEXNAR_WEB_MCP_PORT',
+    'VEXNAR_WEB_MCP_TOKEN',
     'VEXNAR_WEB_ADVERSARIAL'
   ]) delete process.env[name]
 }
@@ -243,6 +241,11 @@ async function assertInstalledProfile(profileDir: string): Promise<{ patch: stri
 
   const patch = join(profileDir, 'node_modules', '@vexnar', 'app-bundle', 'cordis.patch.yml')
   if (!existsSync(patch)) throw new Error(`已安装的 app-bundle 缺 cordis.patch.yml：${patch}`)
+  const patchText = await readFile(patch, 'utf8')
+  if (patchText.includes("'vexnar-web'")) throw new Error('cordis.patch.yml 仍注册 vexnar-web MCP')
+  if (/VEXNAR_WEB_MCP_(?:TOKEN|PORT)/u.test(patchText)) {
+    throw new Error('cordis.patch.yml 仍注入 VEXNAR_WEB_MCP_TOKEN/PORT')
+  }
   const presets = readPresets(patch)
   assertPresetRows(presets, patch)
   return { patch, presets }
@@ -270,9 +273,8 @@ async function negativePresetCase(home: string, patch: string): Promise<void> {
 }
 
 async function runCore(home: string): Promise<TopologySnapshot> {
-  const webPort = await freePort()
-  console.log(`[5/5] 启动 core（sqlite，Web MCP 127.0.0.1:${webPort}）`)
-  configureCoreEnv(home, webPort)
+  console.log('[5/5] 启动 core（sqlite，Web REST in-process，无 8792 MCP）')
+  configureCoreEnv(home)
 
   const runtime = await import('../vexnar-core/src/runtime.ts')
   const routes = await import('../vexnar-core/src/routes.ts')
@@ -280,10 +282,12 @@ async function runCore(home: string): Promise<TopologySnapshot> {
   try {
     await runtime.startRuntime()
     const webStatus = await web.webStatus()
-    if (webStatus.ready !== true) throw new Error(`Web MCP 未就绪：${JSON.stringify(webStatus)}`)
-    const mcpUrl = String(webStatus.mcp ?? '')
-    if (new URL(mcpUrl).port !== String(webPort)) {
-      throw new Error(`Web MCP 端口 ${mcpUrl} 与分配的 ${webPort} 不一致`)
+    if (webStatus.ready !== true) throw new Error(`Web 引擎未就绪：${JSON.stringify(webStatus)}`)
+    if (webStatus.mode !== 'in-process' || webStatus.mcp !== null) {
+      throw new Error(`Web 引擎仍暴露 MCP：${JSON.stringify(webStatus)}`)
+    }
+    if (await portListening(LEGACY_WEB_MCP_PORT)) {
+      throw new Error(`127.0.0.1:${LEGACY_WEB_MCP_PORT} 仍有监听`)
     }
 
     const response = await routes.api.request('/api/_topology')
@@ -303,16 +307,19 @@ async function runCore(home: string): Promise<TopologySnapshot> {
       if (!snapshot.tools.keys.includes(key)) problems.push(`缺少领域工具 ${key}`)
     }
     if (snapshot.runtime.go.enabled) problems.push('VEXNAR_GO 仍处于启用状态')
-    if (snapshot.web.mcp_port !== webPort) problems.push(`topology.web.mcp_port=${snapshot.web.mcp_port} != ${webPort}`)
-    if (!snapshot.listeners.some((item) => item.name === 'web-mcp' && item.address === `127.0.0.1:${webPort}`)) {
-      problems.push('topology.listeners 中没有本次 web-mcp 监听')
-    }
+    if (snapshot.runtime.web_mcp !== null) problems.push(`topology.runtime.web_mcp=${snapshot.runtime.web_mcp} != null`)
+    if (snapshot.web.mode !== 'in-process') problems.push(`topology.web.mode=${snapshot.web.mode} != in-process`)
+    if (snapshot.web.mcp_port !== null) problems.push(`topology.web.mcp_port=${snapshot.web.mcp_port} != null`)
+    if (snapshot.web.mcp_url !== null) problems.push(`topology.web.mcp_url=${snapshot.web.mcp_url} != null`)
+    if (snapshot.listeners.some((item) => item.name === 'web-mcp')) problems.push('topology.listeners 仍含 web-mcp')
+    if (snapshot.env.VEXNAR_WEB_MCP_PORT) problems.push('topology.env 仍注入 VEXNAR_WEB_MCP_PORT')
     if (problems.length) throw new Error(problems.join('；'))
 
     console.log(`      agents: total=${snapshot.agents.total} enabled=${snapshot.agents.enabled} run_artifacts=${snapshot.agents.run_artifacts}`)
     console.log(`      tools: total=${snapshot.tools.total} enabled=${snapshot.tools.enabled} bound=${snapshot.tools.bound}`)
     console.log(`      mcp: total=${snapshot.mcp.total} enabled=${snapshot.mcp.enabled} servers=${snapshot.mcp.servers.map((server) => `${server.name}:${server.enabled ? 'on' : 'off'}`).join(', ')}`)
     console.log(`      store: ${snapshot.store.backend} ${snapshot.store.db_path ?? snapshot.store.root}`)
+    console.log('      web: in-process (no 8792 MCP)')
     console.log(`      tools(${snapshot.tools.keys.length}): ${snapshot.tools.keys.join(', ')}`)
     return snapshot
   } finally {

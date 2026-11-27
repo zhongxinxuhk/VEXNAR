@@ -148,6 +148,6 @@ export function runtimeInfo() {
     store_locked: state.storeLocked,
     engine: modelCompletionReady() ? 'ready' : 'idle',
     task_concurrency: Number(process.env.VEXNAR_TASK_CONCURRENCY ?? 2) || 2,
-    web_mcp: process.env.VEXNAR_WEB_MCP_PORT ?? '8792'
+    web_mcp: null
   }
 }

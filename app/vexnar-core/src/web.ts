@@ -5,9 +5,10 @@
 /**
  * core 里的 Web 测试域单例。
  *
- * 为什么不放在 routes 里直接 new：MCP 端点必须在 Harness 调用工具之前就监听，
- * 而 REST 只是可选入口。所以由 `runtime.ts` 在启动时拉起一次，路由与 MCP 共用
- * 同一个引擎——策略、预算、会话状态只有一份。
+ * 引擎随 core 进程内启动；REST `/api/web/*` 与 `@vexnar/dsh-tools` 的六个工具
+ * 共用这一份策略、预算、会话与证据。P1-6 起不再启动 8792 的 Web MCP 监听：
+ * 工具已经走进程内 `vexnarCore.request`，外部 MCP 只保留 `vexnar-web` 独立启动的
+ * 兼容入口（`pnpm --filter @vexnar/web run mcp`），core 默认不拉起。
  */
 
 import { join } from 'node:path'
@@ -19,14 +20,15 @@ import { storeRoot } from './context.ts'
 let booting: Promise<WebRuntime | null> | null = null
 let lastError = ''
 
-/** 幂等启动；端口被占等失败不阻断 core 启动（REST 仍可用，MCP 会缺位）。 */
+/** 幂等启动；引擎失败不阻断 core 启动（REST 返回 503）。 */
 export function webRuntime(): Promise<WebRuntime | null> {
   booting ??= startWebRuntime({
     root: join(storeRoot(), 'web'),
+    mcp: false,
     log: (message) => console.log(message)
   }).catch((error) => {
     lastError = (error as Error).message
-    console.error('[web] 启动失败（REST 仍可用）：', lastError)
+    console.error('[web] 启动失败（REST 返回 503）：', lastError)
     return null
   })
   return booting
@@ -37,15 +39,16 @@ export async function webHttp(request: Request): Promise<Response | undefined> {
   if (!runtime) {
     return Response.json({ error: `Web 测试引擎尚未就绪：${lastError || 'unknown'}` }, { status: 503 })
   }
-  return handleWebHttp(request, runtime.engine, { mcpUrl: runtime.mcpUrl })
+  return handleWebHttp(request, runtime.engine, { mcpUrl: runtime.mcpUrl || undefined })
 }
 
 export async function webStatus(): Promise<Record<string, unknown>> {
   const runtime = await webRuntime()
-  if (!runtime) return { ready: false, error: lastError }
+  if (!runtime) return { ready: false, mode: 'in-process', mcp: null, error: lastError }
   return {
     ready: true,
-    mcp: runtime.mcpUrl,
+    mode: 'in-process',
+    mcp: null,
     token_source: runtime.tokenSource,
     sessions: runtime.engine.listSessions('local').length
   }
