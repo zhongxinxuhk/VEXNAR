@@ -295,12 +295,30 @@ dsh agent loop（唯一循环）
 
 #### P1-5 Web 六工具并入同一插件
 
-- 状态：`[ ] 待开始`
-- 分支：`refactor/harness-tool-plane`
-- 动作：把 `web_session_create`、`web_request_execute`、`web_response_analyze`、`web_session_inspect`、`web_session_control`、`web_evasion_report` 的实现改为调用 core 的 `/api/web/*`，注册到 `dsh-tools`。
-- 验收：会话里只看到一套工具前缀；六个 web 工具行为与当前 MCP 版一致（用同一组 fixture 对比）。
-- 依赖：P1-1；`vexnar-web/src/routes.ts` 的 REST 面覆盖 MCP 能力。
-- 风险：MCP 工具有 SSE/流式语义，REST 面若没有对应端点，先补最小 REST，不要复制引擎。
+- 状态：`[x] 已完成`（REST/工具处理器与 MCP 同 fixture 对照通过；dsh 会话内实测未核验；旧 8792 MCP 仍在，会话「只看到一套前缀」需 P1-6 收口）
+- 分支：`refactor/harness-tool-plane-p1-5`
+- 动作：
+  1. 把 `web_session_create`、`web_request_execute`、`web_response_analyze`、`web_session_inspect`、`web_session_control`、`web_evasion_report` 注册到 `@vexnar/dsh-tools`，分别固定映射 `POST /api/web/sessions`、`POST /api/web/sessions/:id/requests`、`POST .../analyze`、`GET .../:id`、`POST .../control`、`GET .../evasion`。不复制 Web 引擎，不新开端口。
+  2. 核对 REST 面与 MCP 语义：6 个能力都有端点；补了两个最小缺口。`GET /api/web/sessions/:id` 原先忽略 `limit`/`request_id`，现透传 `limit`（1..200）和 `request_id`；`POST .../control` 原先不校验 `action`，现只接受 `pause|resume|close|reset_budget`，其他值 400。
+  3. 工具统一用 `x-vexnar-session: <dsh 会话 id>` 做 Web agentSession 隔离，不回退到 `local`；`session_id` 先做格式校验，所有可选字段在本地按 MCP schema 的长/值域拒绝。
+  4. `web_session_create` 只回传 MCP `publicPolicy` 的同一组字段，过滤内部 `adversarial/maxRedirects/egressMode` 等整包策略；凭据仍只进 Vault，不进入工具返回。
+  5. 新增 `web-tools.test.ts`（契约与本地拒绝）、`web-core.test.ts`（真实 `WebTestingEngine` + core 挂载的 `handleWebHttp` 生命周期/跨会话 403）、`web-mcp-parity.test.ts`（MCP 与 REST 同 fixture 逐项对照）。
+- 验收：
+  - 工具集合从 6 个扩到 12 个，6 个 `web_*` 名称精确存在；参数 JSON Schema 均 `additionalProperties:false`，必填 `session_id`/`path`/`request_id`/`action` 等。
+  - 同 fixture 对照通过：创建、执行、分析、巡检、规避报告、关闭六步的 session/policy/outcome/structure/inspect/evasion/control 业务字段与 MCP 版逐项相等；只忽略每次运行必然不同的 id、时间戳和耗时。
+  - 真实引擎生命周期通过：创建 → 两次请求 → 分析 → `request_id` 精确巡检（只回 1 条）→ 规避报告 → 暂停/恢复/重置预算/关闭；跨 Harness 会话读取返回 403；Authorization 在记录中为 `***`，返回值不含明文凭据。
+  - REST 缺口回归通过：`request_id` 过滤生效；非法 `control.action` 由 core 返回 400，而不是被当成 `reset_budget` 静默执行。
+  - **未核验**：dsh 会话内实际调用；旧 `vexnar-web` MCP 仍由 `mcp-manager` 挂在 8792，直到 P1-6 删除后才只剩 `dsh-tools` 一套前缀。
+- 证据：任务提交 `7f518b937`；合并 `fb0c7e686`；8 files changed, 914 insertions(+), 6 deletions(-)。
+  - `pnpm --filter @vexnar/dsh-tools run typecheck` → 0；`pnpm --filter @vexnar/dsh-tools run test` → 20/20（含 `web-core` 2 条、`web-mcp-parity` 1 条、`web-tools` 5 条）。
+  - `pnpm typecheck` → 6 个包全部 0；`pnpm run build` → 0；构建后 `index.js` 注册 12 个工具（6 个 `web_*` 全在）。
+  - `pnpm --filter @vexnar/core run test` → 29/29 个测试文件通过；`traffic.test.ts` → 17/17；`pnpm --filter @vexnar/web run test` → 20/20。
+  - `pnpm --filter @vexnar/dsh-account run test` → 59/59；`pnpm test:preset` → 2/2（inventory 13 checks）；`pnpm run check:artifacts` → 4 个 bundle / 24 个文件。
+  - `pnpm exec tsx scripts/smoke-harness.ts` → `SMOKE PASS 8 presets / tools 61/61（bound 60）`，`routes=361`，Web MCP 在 8792 启动 6 个工具（P1-6 目标）。
+  - 合并后在 `main` 复跑 tools test → 20/20；core traffic → 17/17；重新构建后 `index.js` 仍为 12 个工具。
+- 备注：旧 MCP 版保留了富文本摘要和 SSE 传输；这六个工具本身都是同步请求/响应，REST 返回的是同一份结构化 `record/outcome/snapshot/report`，因此本次没有补 SSE。`web_session_inspect` 的 `include` 只影响 MCP 文本展示，结构化快照两边本来就一致；工具仍返回完整快照。P1-5 只扩了 `dsh-tools`，没有删除 8792、没有改启动注入。
+- 风险：旧 8792 MCP 在 P1-6 前仍会和 `dsh-tools` 的 6 个同名工具并存；旧 profile 若未装 `@vexnar/dsh-tools`，`cordis.patch.yml` 会跳过新插件，只能继续走旧 MCP。实际 dsh 会话内的工具发现/调用仍未核验，需在 P1-6 后用真实会话补验。REST 的 `include` 参数仍只是 MCP 文本层语义，不改结构化快照。
+- 依赖：P1-1。
 
 #### P1-6 删除 8792 监听
 
@@ -667,6 +685,7 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 | 2026-11-27 | P1-2 只读流量三件套 | 待开始 → 已完成（契约测试通过；会话实测未核验） | 提交 `ac15626ce`；合并 `c98384668`；tools test 6/6（local+archive+blob）；account 59/59；core traffic 17/17；smoke 8 presets/tools 61/61 |
 | 2026-11-27 | P1-3 `capture_control` | 待开始 → 已完成（真实 core 生命周期通过；会话实测未核验） | 提交 `6c6f82928`；合并 `3184e57f7`；tools test 8/8；core session-traffic 18/18；start 建 active/端口，stop 释放端口 |
 | 2026-11-27 | P1-4 finding 写入与证据绑定 | 待开始 → 已完成（真实 core 路由通过；会话实测未核验） | 提交 `03fe79b0d`；合并 `5ff12f13f`；tools test 12/12；补 POST findings/:id/traffic；finding +1、snapshot/binding 可读、重复绑定不增行 |
+| 2026-11-27 | P1-5 Web 六工具并入同一插件 | 待开始 → 已完成（REST/MCP 同 fixture 对照通过；会话实测与单前缀待 P1-6） | 提交 `7f518b937`；合并 `fb0c7e686`；tools test 20/20；补 inspect limit/request_id 与 control action 校验；6 个 web 工具逐项对齐 MCP；built 12 tools；smoke 8 presets/tools 61/61 |
 
 > 每次只追加一行，不覆盖历史；完成的提交号写在“证据”里。
 
@@ -674,8 +693,8 @@ D1-D5 + P1 + P3 + P4 ── P5-1 ── P5-2 ── P5-4
 
 ## 8. 下一步（按顺序）
 
-1. **P1-5**：把 6 个 Web 工具切到 core 的 `/api/web/*`，与现有 MCP 版做同 fixture 对比。
-2. **P1-6**：工具面切换完成后再删 8792，避免中途断档。
+1. **P1-6**：删 8792 的 MCP 监听与 `mcp-manager` 的 `vexnar-web` 行，随后在真实 dsh 会话里补验 6 个 `web_*` 工具，确认只剩一套前缀。
+2. **P1-7**：新增 `registration.test.ts`，锁死 12 个工具名、白名单路径和未登记路径 404。
 3. **P0-3 的“无 8792”断言**：P1-6 完成后补进 smoke。
 
 **当前阻塞**：D1/D2/D3/D5 需要拍板；P1 已按 D4=A 启动，P3 不能先于 D5，P4 不能先于 D1。
