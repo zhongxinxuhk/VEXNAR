@@ -224,20 +224,28 @@ function applyBrand() {
     //   - families.ts 的 verifyVersions()：整个 family 只允许一个版本。
     // 根包（`@deepseek-ai/dsh-root`）不在 family 里，但 desktopRelease() 要它，
     // 所以单独放进清单；private 包不参与 family，保持上游版本。
-    const releaseManifests = ['package.json']
+    // apps/desktop 与 apps/desktop-host 是 private 包，不进 family，但上游的
+    // desktopRelease() / readDesktopRuntime() 仍要求它们等于发行版号，所以显式列入。
+    const releaseManifests = new Set([
+      'package.json',
+      'apps/desktop/package.json',
+      'apps/desktop-host/package.json',
+    ])
     const familyManifests = git('ls-files', '--', 'apps/*/package.json', 'packages/*/*/package.json')
       .split('\n').filter(Boolean)
     for (const path of familyManifests) {
-      if (JSON.parse(read(path)).private !== true) releaseManifests.push(path)
+      if (JSON.parse(read(path)).private !== true) releaseManifests.add(path)
     }
+    let bumped = 0
     for (const manifestPath of releaseManifests) {
       const manifest = JSON.parse(read(manifestPath))
       if (manifest.version === releaseVersion) continue
       manifest.version = releaseVersion
       writeFileSync(join(dsh, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
       changed.push(manifestPath)
+      bumped += 1
     }
-    console.log(`  ~ ${releaseManifests.length} 个 release manifest version → ${releaseVersion}`)
+    console.log(`  ~ ${bumped} 个 manifest version → ${releaseVersion}（清单 ${releaseManifests.size} 个）`)
   }
 
   // ── 1. 品牌字符串（用户可见的文案与 .app 目录名） ──────────────────────────
