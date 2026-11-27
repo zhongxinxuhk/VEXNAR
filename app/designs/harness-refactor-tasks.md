@@ -390,7 +390,7 @@ dsh agent loop（唯一循环）
 #### P1 补验：真实模型会话调用 12 个工具（2026-11-27）
 
 - 状态：`[x] 已完成`（12/12 工具均有真实调用返回，`isError=false`；6 个 `web_*` 已实际走通创建→执行→分析→巡检→规避报告→关闭）
-- 分支：`docs/harness-ledger-live-tools`
+- 分支：`docs/harness-ledger-live-tools`；提交：`dd57fa1d7`
 - 环境：`app/` 下 `VEXNAR_HOME="$PWD/.vexnar-home" node --import tsx scripts/vexnar-web.ts 3199`；真实 dsh web 在 3199 启动，模型为 `deepsec-flash`（provider `vexnar`）；只记录工具返回值，不记录登录态、访问令牌或抓包 hook。
 - 合成流量：为验证 `traffic_get`/`traffic_blob`，通过 core `/api/traffic/ingest` 注入一条本地测试流量 `1795752031-5793`（host `p18-tool-check.test`，`POST https://p18-tool-check.test/api/login` → 200，响应 263168 字节）；这不是目标站点实测。
 - 实际调用与返回：
