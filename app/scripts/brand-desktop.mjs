@@ -216,7 +216,7 @@ function applyBrand() {
   const releaseVersion = process.env.VEXNAR_RELEASE_VERSION?.trim()
   if (releaseVersion !== undefined && releaseVersion !== '') {
     const manifestPath = 'package.json'
-    const manifest = JSON.parse(read(join(dsh, manifestPath)))
+    const manifest = JSON.parse(read(manifestPath))
     if (manifest.version !== releaseVersion) {
       manifest.version = releaseVersion
       writeFileSync(join(dsh, manifestPath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
