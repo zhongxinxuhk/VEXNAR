@@ -56,9 +56,9 @@ jobs:
         working-directory: app
         # app/ 只有 pnpm 一个包管理入口（app/pnpm-lock.yaml），所有插件都在同一个
         # workspace 里；只装这几个包的闭包，避免把 electron 之类与本任务无关的重依赖拉下来。
-        # 五个包缺一不可：core 的 build:embedded 产出落进 account/lib，egress 是常驻插件，
-        # tools 由 cordis.patch.yml 挂载，漏掉任何一个都会让构建失败或安装包少一截功能
-        # （漏掉 tools 时 build.ts 找不到 esbuild，整个 app-bundle 直接失败）。
+        # 六个包缺一不可：core 的 build:embedded 产出落进 account/lib，egress 是常驻插件，
+        # tools 由 cordis.patch.yml 挂载，mcp 是 Go 模式下的工具面，漏掉任何一个都会让
+        # 构建失败或安装包少一截功能（漏掉 tools 或 mcp 时 build.ts 找不到 esbuild）。
         # 产物不入库，所以这里必须是全量重建。
         run: |
           pnpm install --frozen-lockfile \
@@ -66,6 +66,7 @@ jobs:
             --filter @vexnar/dsh-account... \
             --filter @vexnar/dsh-egress... \
             --filter @vexnar/dsh-tools... \
+            --filter @vexnar/dsh-vexnar-mcp... \
             --filter @vexnar/core...
           pnpm run clean:outputs
           pnpm run build
@@ -85,6 +86,7 @@ jobs:
             vexnar/account/package.json vexnar/account/lib vexnar/account/assets \
             vexnar-egress \
             vexnar-tools \
+            vexnar-mcp \
             -C .. LICENSE
       - uses: actions/upload-artifact@v4
         with:
@@ -98,9 +100,12 @@ jobs:
         # ——这正是上一版 dmg 装上去只有上游界面的原因。
         run: |
           pnpm run overlay:prepare
-          node -e "const m = require('./.desktop-overlay/overlay.json'); \
-            if (m.fileDeps.length !== 5) throw new Error('overlay 缺少 VEXNAR 本地依赖：' + m.fileDeps.length); \
-            if (!m.bundles.includes('@vexnar/app-bundle')) throw new Error('overlay 的 bundles 层没有 @vexnar/app-bundle'); \
+          node -e "const p = require('./scripts/vexnar-packages.json'); const m = require('./.desktop-overlay/overlay.json'); \
+            const want = p.shipped.map(x => x.name); const got = m.fileDeps.map(x => x.name); \
+            const missing = want.filter(n => !got.includes(n)); \
+            if (missing.length) throw new Error('overlay 缺少本地依赖：' + missing.join(', ')); \
+            const lost = p.shipped.filter(x => x.bundle).map(x => x.name).filter(n => !m.bundles.includes(n)); \
+            if (lost.length) throw new Error('overlay 的 bundles 层缺少：' + lost.join(', ')); \
             console.log('overlay OK：' + m.bundles.length + ' 个 bundle，' + m.fileDeps.length + ' 个本地依赖')"
           tar -czf "$RUNNER_TEMP/vexnar-desktop-overlay.tar.gz" -C . .desktop-overlay
       - uses: actions/upload-artifact@v4
