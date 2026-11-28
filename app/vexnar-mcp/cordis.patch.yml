@@ -12,10 +12,15 @@
 - insert:
     - id: vexnar-mcp
       name: '@vexnar/dsh-vexnar-mcp'
+      # 只有 go 回退模式才有 8787 上的 Go MCP 服务；默认 TS 模式没有这个监听，
+      # 挂上去只会在启动时反复连接失败。模式由 VEXNAR_RUNTIME_MODE 决定。
+      disabled: !!js "process.env.VEXNAR_RUNTIME_MODE !== 'go'"
       config:
         serverName: vexnar
         url: http://127.0.0.1:8787/mcp
-        tokenFile: /Users/xuzhongxin/GolandProjects/HKXsec VEXNAR/data/mcp.token
+        # 令牌从运行环境读：runtimeEnv() 会把 data/mcp.token 注入 VEXNAR_MCP_TOKEN。
+        # 不要写构建机绝对路径——它到了用户机器上必然不存在。
+        tokenFile: ''
         tokenEnv: VEXNAR_MCP_TOKEN
         startupTimeoutMs: 20000
         toolCallTimeoutMs: 60000

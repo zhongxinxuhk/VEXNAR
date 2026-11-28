@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "shipped": [
+    {
+      "name": "@vexnar/app-bundle",
+      "dir": "vexnar",
+      "overlay": "vexnar",
+      "bundle": true,
+      "files": ["cordis.patch.yml", "extras.json"]
+    },
+    {
+      "name": "@vexnar/dsh-ui",
+      "dir": "vexnar/ui",
+      "overlay": "vexnar/ui",
+      "files": ["lib/index.js", "lib/client.js"]
+    },
+    {
+      "name": "@vexnar/dsh-account",
+      "dir": "vexnar/account",
+      "overlay": "vexnar/account",
+      "files": [
+        "lib/billing.js",
+        "lib/index.js",
+        "lib/intercept.js",
+        "lib/intercept-guard.js",
+        "lib/platform.js",
+        "lib/platform-account.js",
+        "lib/update.js",
+        "lib/update-install.js",
+        "lib/support.js",
+        "lib/login-page.js",
+        "lib/login-client.js",
+        "lib/model-channel.js",
+        "lib/yak-history.js",
+        "lib/yak-sources.js",
+        "lib/yak-history-tools.js",
+        "lib/client.js",
+        "lib/core-embedded.js",
+        "lib/settings-embedded.js",
+        "lib/yak-history.proto",
+        "lib/yak-history.NOTICES.txt"
+      ]
+    },
+    {
+      "name": "@vexnar/dsh-vexnar-mcp",
+      "dir": "vexnar-mcp",
+      "overlay": "vexnar-mcp",
+      "bundle": true,
+      "files": [
+        "index.js",
+        "cordis.patch.yml",
+        "icon.svg",
+        "locale/de.json",
+        "locale/en.json",
+        "locale/es.json",
+        "locale/fr.json",
+        "locale/ja.json",
+        "locale/pt.json",
+        "locale/ru.json",
+        "locale/zh.json",
+        "docs/DETAIL.md",
+        "docs/DETAIL.zh.md",
+        "docs/preview.svg"
+      ]
+    },
+    {
+      "name": "@vexnar/dsh-egress",
+      "dir": "vexnar-egress",
+      "overlay": "vexnar-egress",
+      "files": ["index.js"]
+    },
+    {
+      "name": "@vexnar/dsh-tools",
+      "dir": "vexnar-tools",
+      "overlay": "vexnar-tools",
+      "files": ["index.js"]
+    }
+  ],
+  "embedded": {
+    "@vexnar/core": "构建输入：由 build:embedded 打成 account 的 lib/core-embedded.js 与 lib/settings-embedded.js",
+    "@vexnar/store": "构建输入：随 @vexnar/core 打进 core-embedded",
+    "@vexnar/web": "构建输入：随 @vexnar/core 打进 core-embedded"
+  },
+  "excluded": {
+    "@vexnar/p0-db-spike": "P0 验证 spike（spike/p0-db），只在开发机跑，不随安装包发布",
+    "@vexnar/p0-mitm-spike": "P0 验证 spike（spike/p0-mitm），只在开发机跑，不随安装包发布",
+    "@vexnar/p0-tools-spike": "P0 验证 spike（spike/p0-tools），只在开发机跑，不随安装包发布",
+    "@vexnar/p0-worker-spike": "P0 验证 spike（spike/p0-worker），只在开发机跑，不随安装包发布"
+  }
+}

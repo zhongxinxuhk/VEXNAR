@@ -74,12 +74,16 @@ export function mergeBundleLayer(input: {
   carried?: readonly string[]
   extras?: readonly string[]
   theme?: readonly string[]
-  bundle: string
+  /** VEXNAR 自己的 bundle 层（app-bundle、vexnar-mcp…），单一来源见 scripts/vexnar-packages.json。 */
+  bundles?: readonly string[]
+  /** 单个 bundle 的旧写法，等价于 `bundles: [bundle]`。 */
+  bundle?: string
 }): string[] {
   const extras = input.extras ?? []
   const carried = input.carried ?? []
   const theme = input.theme ?? []
-  const managed = new Set([...theme, ...extras, ...carried, input.bundle])
+  const own = input.bundles ?? (input.bundle === undefined ? [] : [input.bundle])
+  const managed = new Set([...theme, ...extras, ...carried, ...own])
   const ordered = input.existing.filter((name) => !managed.has(name))
-  return [...new Set([...ordered, ...carried, ...extras, ...theme, input.bundle])]
+  return [...new Set([...ordered, ...carried, ...extras, ...theme, ...own])]
 }
