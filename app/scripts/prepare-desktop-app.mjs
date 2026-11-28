@@ -28,6 +28,7 @@ import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { bundleNames, packages } from './vexnar-packages.mjs'
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -109,14 +110,11 @@ function installProfile() {
   const profileDir = join(home, 'profiles', profileName)
   mkdirSync(profileDir, { recursive: true, mode: 0o700 })
 
-  const dependencies = {
-    '@vexnar/app-bundle': `file:${join(out, 'vexnar')}`,
-    '@vexnar/dsh-ui': `file:${join(out, 'vexnar', 'ui')}`,
-    '@vexnar/dsh-account': `file:${join(out, 'vexnar', 'account')}`,
-    '@vexnar/dsh-egress': `file:${join(out, 'vexnar-egress')}`,
-    '@vexnar/dsh-tools': `file:${join(out, 'vexnar-tools')}`,
-    'dsh-claude-style': '^0.21.6'
+  const dependencies = {}
+  for (const item of packages.shipped) {
+    dependencies[item.name] = `file:${join(out, item.overlay)}`
   }
+  dependencies['dsh-claude-style'] = '^0.21.6'
   for (const item of installed) dependencies[item.name] = dependencySpec(item)
 
   writeFileSync(join(profileDir, 'package.json'), `${JSON.stringify({
@@ -131,7 +129,7 @@ function installProfile() {
           '@deepseek-ai/dsh-web-app',
           ...extras.map(item => item.name),
           'dsh-claude-style',
-          '@vexnar/app-bundle'
+          ...bundleNames
         ]
       }
     }
@@ -197,9 +195,13 @@ rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 
 // ── 2. 插件源 ────────────────────────────────────────────────────────────
-for (const name of ['vexnar', 'vexnar-egress', 'vexnar-tools']) {
-  log(`复制 ${name}`)
-  copyTree(join(app, name), join(out, name))
+const copied = []
+for (const item of [...packages.shipped].sort((left, right) => left.dir.length - right.dir.length)) {
+  const from = join(app, item.dir)
+  if (copied.some(root => from === root || from.startsWith(root + sep))) continue
+  log(`复制 ${item.dir} -> ${item.overlay}`)
+  copyTree(from, join(out, item.overlay))
+  copied.push(from)
 }
 
 // ── 3. profile ───────────────────────────────────────────────────────────

@@ -30,8 +30,31 @@ import { dirname, join } from 'node:path'
 const resources = process.env.VEXNAR_RESOURCES || process.resourcesPath
 const overlayRoot = join(resources, 'vexnar-overlay')
 
-/** VEXNAR 自己的包：安装包升级时要跟着换，用户装的第三方插件不在此列。 */
-const OWN_PACKAGES = ['vexnar', 'vexnar-egress', 'vexnar-tools']
+/**
+ * VEXNAR 自己的包：安装包升级时要跟着换，用户装的第三方插件不在此列。
+ *
+ * 名单来自 overlay.json（由 scripts/vexnar-packages.json 生成）。以前这里是手写
+ * 数组，新增 vexnar-mcp 时只改了打包脚本没改这里，升级安装包后它永远停在旧版本。
+ */
+let cachedOwnPackages
+function ownPackagePaths() {
+  if (cachedOwnPackages !== undefined) return cachedOwnPackages
+  const manifestPath = join(overlayRoot, 'overlay.json')
+  if (!existsSync(manifestPath)) {
+    cachedOwnPackages = []
+    return cachedOwnPackages
+  }
+  const overlay = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  // 0.0.14 起的 overlay.json 带 packages；旧包只有 fileDeps，按同样的 path 回落。
+  const paths = (overlay.packages ?? overlay.fileDeps ?? []).map(item => item.path).filter(Boolean)
+  const roots = []
+  for (const path of paths.sort((left, right) => left.length - right.length)) {
+    if (roots.some(root => path === root || path.startsWith(root + '/'))) continue
+    roots.push(path)
+  }
+  cachedOwnPackages = roots
+  return roots
+}
 
 function log(message) {
   console.log(`[vexnar] ${message}`)
@@ -128,7 +151,7 @@ function overlayDigest() {
     }
     hash.update(path.slice(overlayRoot.length)).update(String(stats.size))
   }
-  for (const name of OWN_PACKAGES) walk(join(overlayRoot, name))
+  for (const name of ownPackagePaths()) walk(join(overlayRoot, name))
   const manifest = join(overlayRoot, 'profile', 'package.json')
   if (existsSync(manifest)) hash.update(readFileSync(manifest, 'utf8'))
   return hash.digest('hex')
@@ -160,7 +183,7 @@ function install() {
 
   // 插件源码放在 home 下而不是安装目录：安装目录可能只读（macOS 的 .app 在
   // /Applications 里，Windows 在 Program Files 里），而且升级安装包会被整目录替换。
-  for (const name of OWN_PACKAGES) {
+  for (const name of ownPackagePaths()) {
     const from = join(overlayRoot, name)
     if (!existsSync(from)) {
       note(`缺少插件源码目录：${from}`)
@@ -201,8 +224,9 @@ function install() {
   // 用户自己装的、预置的、皮肤的既有顺序原样保留。
   manifest.dsh ??= { profile: { bundles: [] } }
   manifest.dsh.profile ??= { bundles: [] }
-  if (!manifest.dsh.profile.bundles.includes('@vexnar/app-bundle')) {
-    manifest.dsh.profile.bundles.push('@vexnar/app-bundle')
+  // 覆盖层里声明的每个 VEXNAR bundle 都要在插件层里（app-bundle、vexnar-mcp）。
+  for (const name of (overlay.bundles ?? []).filter(item => item.startsWith('@vexnar/'))) {
+    if (!manifest.dsh.profile.bundles.includes(name)) manifest.dsh.profile.bundles.push(name)
   }
 
   writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 2)}\n`, { mode: 0o600 })

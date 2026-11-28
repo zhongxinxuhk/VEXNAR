@@ -6,6 +6,10 @@ import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
+// 直接 import JSON：esbuild 打桌面主进程时会把清单内联进 bundle。若改成运行时
+// 读文件，`desktop/dist/main.js` 里的 import.meta.dirname 指向 dist，安装包里
+// 没有那份 JSON，启动就会失败。
+import packageManifestJson from './vexnar-packages.json' with { type: 'json' }
 
 /**
  * VEXNAR 的应用目录：插件源码、运行时依赖、预装 profile 都在它下面。
@@ -22,25 +26,38 @@ export const appDir = process.env.VEXNAR_APP_DIR
 export const packaged = Boolean(process.env.VEXNAR_APP_DIR)
 
 export const profileName = 'vexnar'
-export const bundleFiles: Record<string, string[]> = {
-  '@vexnar/app-bundle': ['cordis.patch.yml'],
-  '@vexnar/dsh-ui': ['lib/index.js', 'lib/client.js'],
-  '@vexnar/dsh-account': ['lib/index.js', 'lib/platform.js', 'lib/platform-account.js', 'lib/billing.js', 'lib/login-page.js', 'lib/login-client.js', 'lib/client.js', 'lib/core-embedded.js', 'lib/settings-embedded.js', 'lib/yak-history.js', 'lib/yak-history.proto', 'lib/yak-history.NOTICES.txt'],
-  // egress 与 tools 都是单文件 index.js；缺产物时不该拿 profile 里的旧副本凑数。
-  '@vexnar/dsh-egress': ['index.js'],
-  '@vexnar/dsh-tools': ['index.js']
+
+/**
+ * 打包清单的单一来源：`scripts/vexnar-packages.json`。
+ *
+ * 以前这里是两份手写表：`bundleFiles` 与 `bundleSources`。加一个包（`dsh-tools`）
+ * 只改一处、漏一处，就会在启动时才报「插件清单不完整」；account 的宿主模块还漏
+ * 了八个文件，升级安装包后 profile 里的旧副本永远不会被换掉。现在统一从清单读，
+ * 清单又由 `check:artifacts` 对着工作区与 build.ts 校验。
+ */
+interface VexnarPackageManifest {
+  shipped: Array<{ name: string; dir: string; overlay: string; bundle?: boolean; files: string[] }>
 }
+
+const packageManifest = packageManifestJson as VexnarPackageManifest
+
+/** 每个包在安装后必须同步的运行时文件。 */
+export const bundleFiles: Record<string, string[]> = Object.fromEntries(
+  packageManifest.shipped.map(item => [item.name, item.files])
+)
+
 /**
  * 安装包里各 bundle 的源目录（相对 {@link appDir}）。profile 清单里的 `file:`
  * 依赖指向这里，`ensureProfile` 也按它把安装包里的产物同步进 profile。
  */
-export const bundleSources: Record<string, string> = {
-  '@vexnar/app-bundle': 'vexnar',
-  '@vexnar/dsh-ui': 'vexnar/ui',
-  '@vexnar/dsh-account': 'vexnar/account',
-  '@vexnar/dsh-egress': 'vexnar-egress',
-  '@vexnar/dsh-tools': 'vexnar-tools'
-}
+export const bundleSources: Record<string, string> = Object.fromEntries(
+  packageManifest.shipped.map(item => [item.name, item.overlay])
+)
+
+/** 作为 dsh bundle 进入 profile 插件层的包（app-bundle、vexnar-mcp）。 */
+export const packagedBundles: string[] = packageManifest.shipped
+  .filter(item => item.bundle === true)
+  .map(item => item.name)
 
 const binPart = join('node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 

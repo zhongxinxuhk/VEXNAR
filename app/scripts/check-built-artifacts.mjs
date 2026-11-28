@@ -3,27 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * 构建产物是否齐全。
+ * 构建产物与打包清单是否自洽。
  *
  * 产物不入库（见 app/.gitignore），所以「包里有插件」这件事只能靠构建来保证。
- * 这个脚本按源码推导每个包应有的产物，逐个检查存在与语法，缺一个就退出 1。
+ * 这里做两件事：
  *
- * 为什么不是一张写死的文件名清单：清单会漏。0.1.0 的打包任务只归档了
- * account/lib 下的 `index.js` 与 `client.js`，同一个目录里另外十三个宿主模块
- * 全被丢在仓库里没进包——用户装上去，账号页、登录、拦截守卫、yak 历史都不存在。
- * 按 `src/*.ts` 推导，新增一个宿主模块就自动进入检查范围，漏不掉。
+ *   1. 每个 `@vexnar/*` 工作区包都必须在 `scripts/vexnar-packages.json` 里
+ *      登记为 shipped 或 embedded。新加一个包却忘了打包，构建直接失败，而不是
+ *      等用户装完发现插件缺席。
+ *   2. 清单里声明的每个运行时产物都真实存在、非空、能通过语法检查。
  *
- * 用 Node 内置模块写成 .mjs、不 import 任何依赖：CI 的 app-bundle 任务只安装
- * 插件的依赖闭包，它必须在安装之前或之后都能跑。
+ * account 的宿主模块清单以 `vexnar/account/build.ts` 的 `hostEntries` 为准：
+ * 手写清单会漏——0.1.0 的打包任务只归档了 `index.js` 与 `client.js`，同目录
+ * 另外十三个宿主模块全被丢在仓库里没进包。现在清单与 build.ts 两边交叉核对，
+ * 任何一边新增/改名而另一边没跟上都会报错。
+ *
+ * 用 Node 内置模块写成 .mjs：CI 的打包任务只安装插件的依赖闭包，它必须在
+ * 安装之前或之后都能跑。
  */
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const here = dirname(fileURLToPath(import.meta.url))
-const app = join(here, '..')
+import { join } from 'node:path'
+import { appRoot as app, classificationProblems, packages, shippedByName } from './vexnar-packages.mjs'
 
 /**
  * account 的宿主模块清单以 `vexnar/account/build.ts` 的 `hostEntries` 为准。
@@ -42,91 +44,67 @@ function accountHostModules() {
   return names
 }
 
-/**
- * 每个包：`artifacts` 是必须存在的产物（相对 `app/`），`sources` 声明产物的来源。
- * 与 `scripts/vexnar-runtime.ts` 的 `bundleFiles` 是同一份事实，改一处必须改两处。
- */
-const packages = [
-  {
-    name: '@vexnar/dsh-ui',
-    artifacts: ['vexnar/ui/lib/index.js', 'vexnar/ui/lib/client.js'],
-    sources: {
-      'vexnar/ui/lib/index.js': 'vexnar/ui/src/index.ts',
-      'vexnar/ui/lib/client.js': 'vexnar/ui/src/client.tsx'
-    }
-  },
-  {
-    name: '@vexnar/dsh-account',
-    artifacts: [
-      ...accountHostModules().map(name => `vexnar/account/lib/${name}.js`),
-      'vexnar/account/lib/client.js',
-      // 由 @vexnar/core 的 build-embedded.ts 生成，落进 account/lib。
-      'vexnar/account/lib/core-embedded.js',
-      'vexnar/account/lib/settings-embedded.js',
-      // 构建脚本生成的附随文件，没有单一源文件。
-      'vexnar/account/lib/yak-history.proto',
-      'vexnar/account/lib/yak-history.NOTICES.txt'
-    ].sort(),
-    sources: {
-      'vexnar/account/lib/client.js': 'vexnar/account/src/client.tsx',
-      'vexnar/account/lib/core-embedded.js': 'vexnar-core/src/embedded.ts',
-      'vexnar/account/lib/settings-embedded.js': 'vexnar-core/src/settings-embedded.ts'
-    }
-  },
-  {
-    name: '@vexnar/dsh-egress',
-    artifacts: ['vexnar-egress/index.js'],
-    sources: { 'vexnar-egress/index.js': 'vexnar-egress/index.ts' }
-  },
-  {
-    name: '@vexnar/dsh-tools',
-    artifacts: ['vexnar-tools/index.js'],
-    sources: { 'vexnar-tools/index.js': 'vexnar-tools/index.ts' }
-  }
-]
+/** 同一个问题可能被多处发现，去重后只报一条。 */
+const problems = new Set(classificationProblems(app))
 
-/** 同一个文件可能被 sources 与 artifacts 各查一次，去重后只报一条。 */
-const problems = new Set()
-
-function checkFile(path, reason) {
-  const full = join(app, path)
-  if (!existsSync(full)) {
-    problems.add(`${path} 不存在（${reason}）`)
-    return false
+// account 的产物由 build.ts 决定，清单必须与它一一对应。
+const account = shippedByName.get('@vexnar/dsh-account')
+if (account === undefined) {
+  problems.add('vexnar-packages.json 缺少 @vexnar/dsh-account')
+} else {
+  const generated = new Set([
+    ...accountHostModules().map(name => `lib/${name}.js`),
+    'lib/client.js',
+    // 由 @vexnar/core 的 build-embedded.ts 生成，落进 account/lib。
+    'lib/core-embedded.js',
+    'lib/settings-embedded.js',
+    // 构建脚本生成的附随文件，没有单一源文件。
+    'lib/yak-history.proto',
+    'lib/yak-history.NOTICES.txt'
+  ])
+  const declared = new Set(account.files)
+  for (const file of generated) {
+    if (!declared.has(file)) problems.add(`@vexnar/dsh-account: 产物 ${file} 没有登记到 scripts/vexnar-packages.json`)
   }
-  if (statSync(full).size === 0) {
-    problems.add(`${path} 是空文件（${reason}）`)
-    return false
+  for (const file of declared) {
+    if (!generated.has(file)) problems.add(`@vexnar/dsh-account: 清单里的 ${file} 没有构建来源（hostEntries 或生成步骤）`)
   }
-  return true
 }
 
-for (const pack of packages) {
-  for (const [artifact, source] of Object.entries(pack.sources)) {
-    if (!existsSync(join(app, source))) {
-      problems.add(`${pack.name}: 脚本声明的源文件 ${source} 不存在，检查脚本本身`)
-    }
-    checkFile(artifact, pack.name)
+let total = 0
+for (const item of packages.shipped) {
+  const base = join(app, item.dir)
+  if (!existsSync(base)) {
+    problems.add(`${item.name}: 源目录 ${item.dir} 不存在`)
+    continue
   }
-  for (const artifact of pack.artifacts) {
-    if (!checkFile(artifact, pack.name)) continue
-    if (!artifact.endsWith('.js')) continue
+  for (const file of item.files) {
+    total += 1
+    const full = join(base, file)
+    if (!existsSync(full)) {
+      problems.add(`${item.name}: ${file} 不存在`)
+      continue
+    }
+    if (statSync(full).size === 0) {
+      problems.add(`${item.name}: ${file} 是空文件`)
+      continue
+    }
+    if (!file.endsWith('.js')) continue
     // bundle 出来的都是 ESM；`node --check` 只做语法，不解析 import。
     try {
-      execFileSync(process.execPath, ['--check', join(app, artifact)], { stdio: 'pipe' })
+      execFileSync(process.execPath, ['--check', full], { stdio: 'pipe' })
     } catch (error) {
       const detail = String(error.stderr ?? error.message).trim().split('\n').slice(0, 4).join('\n    ')
-      problems.add(`${artifact} 语法检查失败：\n    ${detail}`)
+      problems.add(`${item.name}: ${file} 语法检查失败：\n    ${detail}`)
     }
   }
 }
 
 if (problems.size > 0) {
-  console.error(`✗ 构建产物不完整，共 ${problems.size} 项：`)
+  console.error(`✗ 打包清单与产物不一致，共 ${problems.size} 项：`)
   for (const problem of problems) console.error(`  - ${problem}`)
-  console.error('先在 app/ 执行 `pnpm run build` 再打包。')
+  console.error('先在 app/ 执行 `pnpm run build`；新增包请同步 scripts/vexnar-packages.json。')
   process.exit(1)
 }
 
-const total = packages.reduce((sum, pack) => sum + pack.artifacts.length, 0)
-console.log(`✓ 构建产物齐全：${packages.length} 个 bundle / ${total} 个文件`)
+console.log(`✓ 打包清单齐全：${packages.shipped.length} 个自研包 / ${total} 个运行时文件；工作区没有未登记的 @vexnar/* 包`)

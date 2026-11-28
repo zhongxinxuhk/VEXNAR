@@ -9,16 +9,17 @@
  * VEXNAR 的卡片、账号页、拦截守卫、出口工具、以及 profile 里装过的第三方插件
  * 一个都不在。这里把这些东西打成一个可直接落地的目录，随安装包一起发：
  *
- *   <out>/vexnar/             VEXNAR bundle（cordis 补丁 + 两个客户端插件）
+ *   <out>/vexnar/             VEXNAR bundle（cordis 补丁 + extras 清单 + 两个客户端插件）
+ *   <out>/vexnar-mcp/         Go 服务的 MCP 工具面（仅 go 回退模式启用）
  *   <out>/vexnar-egress/      出口工具插件
- *   <out>/vexnar-tools/       领域工具插件（P1-1 骨架）
+ *   <out>/vexnar-tools/       领域工具插件
  *   <out>/profile/            预装好的 profile（含 node_modules，插件全在里面）
  *   <out>/overlay.json        来源清单：这些 file: 依赖原本指向哪里
  *
- * 首启由 `app/desktop/vexnar-bootstrap.js` 把 profile 复制到
- * `~/.vexnar/profiles/desktop`，并把 package.json 里指向构建机的绝对路径改写
- * 成安装后 `~/.vexnar/bundles/…`。所以这里是「在打包机上装一次，用户机器上
- * 不用再联网装一遍」。
+ * 要发哪些包、每个包有哪些运行时产物，只看 `scripts/vexnar-packages.json`——
+ * 这里不再手写第二份名单。首启由 `app/desktop/vexnar-bootstrap.js` 把 profile
+ * 复制到 `~/.vexnar/profiles/desktop`，并把 package.json 里指向构建机的绝对路径
+ * 改写成安装后的位置。所以这里是「在打包机上装一次，用户机器上不用再联网装一遍」。
  *
  * 用法（在 app/ 下）：
  *   node scripts/prepare-desktop-overlay.mjs                       # 现装一份 profile
@@ -30,6 +31,7 @@ import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { bundleNames, overlayPaths, packages, profileProblems } from './vexnar-packages.mjs'
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -55,15 +57,6 @@ const COPY_IGNORE = new Set(['node_modules', '.git', 'client.cjs', '.plugin-mana
  * 的全部内容，不带它用户首启就得联网重装四百兆的插件。
  */
 const PROFILE_IGNORE = new Set(['.plugin-manager', 'cordis.yml', 'lock', 'pnpm-debug.log'])
-
-/** 安装后 VEXNAR 各包在 `~/.vexnar/bundles/` 下的位置。与 overlay 内部结构一一对应。 */
-const BUNDLE_PATHS = {
-  '@vexnar/app-bundle': 'vexnar',
-  '@vexnar/dsh-ui': 'vexnar/ui',
-  '@vexnar/dsh-account': 'vexnar/account',
-  '@vexnar/dsh-egress': 'vexnar-egress',
-  '@vexnar/dsh-tools': 'vexnar-tools'
-}
 
 function log(message) {
   console.log(`[overlay] ${message}`)
@@ -99,7 +92,7 @@ function dependencySpec(item) {
 }
 
 /**
- * 装一份 profile：VEXNAR 五个包 + `vexnar/extras.json` 里的全部插件。
+ * 装一份 profile：清单里的全部 VEXNAR 包 + `vexnar/extras.json` 里的插件。
  *
  * 这里不调 `vexnar.ts setup`：setup 走 `runtimeBin()` 解析 dsh 运行时，要求
  * 打包机把整个 app/ 依赖装齐（含 electron）。打包任务只需要 pnpm，直接写
@@ -118,15 +111,12 @@ function installProfile() {
   const profileDir = join(home, 'profiles', profileName)
   mkdirSync(profileDir, { recursive: true, mode: 0o700 })
 
-  const dependencies = {
-    '@vexnar/app-bundle': `file:${join(out, 'vexnar')}`,
-    '@vexnar/dsh-ui': `file:${join(out, 'vexnar', 'ui')}`,
-    '@vexnar/dsh-account': `file:${join(out, 'vexnar', 'account')}`,
-    '@vexnar/dsh-egress': `file:${join(out, 'vexnar-egress')}`,
-    '@vexnar/dsh-tools': `file:${join(out, 'vexnar-tools')}`,
-    // 与 setup-app-profile.ts 的 theme 规格保持一致。
-    'dsh-claude-style': '^0.21.6'
+  const dependencies = {}
+  for (const item of packages.shipped) {
+    dependencies[item.name] = `file:${join(out, item.overlay)}`
   }
+  // 与 setup-app-profile.ts 的 theme 规格保持一致。
+  dependencies['dsh-claude-style'] = '^0.21.6'
   for (const item of installed) dependencies[item.name] = dependencySpec(item)
 
   const manifest = {
@@ -142,7 +132,7 @@ function installProfile() {
           '@deepseek-ai/dsh-web-app',
           ...extras.map(item => item.name),
           'dsh-claude-style',
-          '@vexnar/app-bundle'
+          ...bundleNames
         ]
       }
     }
@@ -169,9 +159,19 @@ rmSync(out, { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 
 // ── 2. VEXNAR 插件源：安装后仍要能读到 cordis 补丁与 extras 清单 ──────────
-for (const name of ['vexnar', 'vexnar-egress', 'vexnar-tools']) {
-  log(`复制 ${name}`)
-  copyTree(join(app, name), join(out, name))
+// `vexnar/` 下面还有 ui/ 与 account/ 两个子包，按目录长度从短到长复制，
+// 已经落在别的条目里的子目录不再重复复制。
+const copied = []
+for (const item of [...packages.shipped].sort((left, right) => left.dir.length - right.dir.length)) {
+  const from = join(app, item.dir)
+  if (!existsSync(from)) {
+    console.error(`[overlay] ${item.name} 的源目录 ${item.dir} 不存在`)
+    process.exit(1)
+  }
+  if (copied.some(root => from === root || from.startsWith(root + sep))) continue
+  log(`复制 ${item.dir} -> ${item.overlay}`)
+  copyTree(from, join(out, item.overlay))
+  copied.push(from)
 }
 
 // ── 3. 预装 profile ─────────────────────────────────────────────────────
@@ -204,12 +204,19 @@ for (const name of ['package.json', 'cordis.patch.yml', 'pnpm-workspace.yaml', '
 
 // ── 4. 来源清单：bootstrap 靠它把 file: 绝对路径改写成安装后的位置 ─────────
 // 路径不从打包机算：`--reuse-profile` 指向别的 checkout 时那样算出来的相对路径
-// 毫无意义。VEXNAR 五个包在 overlay 里的位置是固定的，按名字给。
+// 毫无意义。各包在 overlay 里的位置由清单固定，按名字给。
 const manifest = JSON.parse(readFileSync(join(out, 'profile', 'package.json'), 'utf8'))
+const gaps = profileProblems(manifest)
+if (gaps.length > 0) {
+  console.error('[overlay] profile 与打包清单不一致（大概率是 --reuse-profile 指向了旧 profile），缺：')
+  for (const gap of gaps) console.error(`  - ${gap}`)
+  console.error('[overlay] 删掉旧 profile 重新生成，不要复用不完整的 profile。')
+  process.exit(1)
+}
 const fileDeps = Object.entries(manifest.dependencies ?? {})
   .filter(([, spec]) => typeof spec === 'string' && spec.startsWith('file:'))
   .flatMap(([name, spec]) => {
-    const path = BUNDLE_PATHS[name]
+    const path = overlayPaths.get(name)
     if (path === undefined) {
       console.warn(`[overlay] 忽略未知的本地依赖 ${name}（${spec}）：安装包里没有它的副本`)
       return []
@@ -221,7 +228,10 @@ writeFileSync(join(out, 'overlay.json'), `${JSON.stringify({
   format: 1,
   generatedFrom: app,
   profile: profileName,
+  // overlay.json 由安装包携带，bootstrap 与 ensureProfile 都以它为准；
+  // 这里把全部随包发布的包列出来，运行时不再另存一份手写名单。
   fileDeps,
+  packages: packages.shipped.map(item => ({ name: item.name, path: item.overlay, files: item.files })),
   bundles: manifest.dsh?.profile?.bundles ?? []
 }, undefined, 2)}\n`)
 

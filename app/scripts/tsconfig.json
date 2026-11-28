@@ -10,6 +10,8 @@
     "types": ["node"],
     "strict": true,
     "skipLibCheck": true,
+    // 打包清单 scripts/vexnar-packages.json 直接 import，由 esbuild 内联进主进程。
+    "resolveJsonModule": true,
     "noEmit": true,
     // 脚本由 tsx 直接执行，import 里写的是真实的 .ts 路径。
     "allowImportingTsExtensions": true

@@ -21,7 +21,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { planLegacyBundles, readLegacyManifests } from './profile-migration.ts'
 import { extrasSpecs, mergeBundleLayer, readExtras } from './vexnar-extras.ts'
-import { appDir, bundleFiles, bundleSources, modernPython, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
+import { appDir, bundleFiles, bundleSources, modernPython, packagedBundles, profileName, runtimeBin, runtimeEnv, vexnarHome } from './vexnar-runtime.ts'
 
 const bin = runtimeBin()
 const require = createRequire(await realpath(bin))
@@ -167,7 +167,8 @@ last.dsh.profile.bundles = mergeBundleLayer({
   carried,
   extras: extraNames,
   theme: themeNames,
-  bundle
+  // 全部 VEXNAR bundle（app-bundle、vexnar-mcp），来源是 vexnar-packages.json。
+  bundles: packagedBundles
 })
 await writeFile(manifestPath, JSON.stringify(last, null, 2) + '\n')
 
